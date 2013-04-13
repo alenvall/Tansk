@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.test;
+package chalmers.TDA367.B17;
 
 import org.newdawn.slick.*;
 
