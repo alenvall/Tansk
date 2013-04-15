@@ -2,6 +2,8 @@ package chalmers.TDA367.B17;
 
 import org.newdawn.slick.*;
 
+import chalmers.TDA367.B17.model.World;
+
 public class Tansk extends BasicGame
 {
  
@@ -28,6 +30,8 @@ public class Tansk extends BasicGame
  
   public static void main(String[] args) throws SlickException {
      AppGameContainer app = new AppGameContainer(new Tansk());
+     
+     World wrld = new World();
  
      app.setDisplayMode(800, 600, false);
      app.start();
