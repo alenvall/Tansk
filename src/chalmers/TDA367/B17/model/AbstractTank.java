@@ -11,8 +11,8 @@ public abstract class AbstractTank extends MovableEntity{
 	private double turretTurnSpeed;
 	private Vector2f turretDirection;
 	
-	public AbstractTank(int id, Vector2f direction, double speed, double maxSpeed, double minSpeed) {
-		super(id, direction, speed, maxSpeed, minSpeed);
+	public AbstractTank(int id, Vector2f direction, double speed, double maxSpeed, double minSpeed, double reverseSpeed) {
+		super(id, direction, speed, maxSpeed, minSpeed, reverseSpeed);
 		//currentWeapon = Weapons.DEFAULT_WEAPON;
 	}
 	

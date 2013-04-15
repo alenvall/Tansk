@@ -8,13 +8,15 @@ public abstract class MovableEntity extends Entity {
 	private double speed;
 	private double maxSpeed;
 	private double minSpeed;
+	private double reverseSpeed;
 	
-	public MovableEntity(int id, Vector2f direction, double speed, double maxSpeed, double minSpeed) {
+	public MovableEntity(int id, Vector2f direction, double speed, double maxSpeed, double minSpeed, double reverseSpeed) {
 		super(id);
 		this.direction = direction;
 		this.speed = speed;
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
+		this.reverseSpeed = reverseSpeed;
 	}
 	
 	public Vector2f getDirection(){
@@ -47,5 +49,13 @@ public abstract class MovableEntity extends Entity {
 	
 	public void setMinSpeed(double minSpeed){
 		this.minSpeed = minSpeed;
+	}
+
+	public double getReverseSpeed() {
+		return reverseSpeed;
+	}
+
+	public void setReverseSpeed(double reverseSpeed) {
+		this.reverseSpeed = reverseSpeed;
 	}
 }
