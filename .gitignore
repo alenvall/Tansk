@@ -2,6 +2,9 @@
 .project
 .classpath
 \bin
+\.idea
+\out
+*.iml
 .DS_Store
 
 # Package Files #
