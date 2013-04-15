@@ -12,9 +12,9 @@ public class World {
 		Entity apa = new Entity(createNewID());
 		Entity kaka = new Entity(createNewID());
 		
-		entities.put(hej.getID(), hej);
-		entities.put(apa.getID(), apa);
-		entities.put(kaka.getID(), kaka);
+		entities.put(hej.getId(), hej);
+		entities.put(apa.getId(), apa);
+		entities.put(kaka.getId(), kaka);
 		
 	}
 	
