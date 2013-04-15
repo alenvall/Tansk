@@ -4,6 +4,7 @@ public class Player {
 	private String name;
 	private int playerId;
 	private int score;
+	private AbstractTank tank;
 	
 	public Player(String name){
 		this.name = name;
