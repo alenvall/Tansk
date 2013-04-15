@@ -14,6 +14,7 @@ public abstract class AbstractTank extends MovableEntity{
 	public AbstractTank(int id, Vector2f direction, double speed, double maxSpeed, double minSpeed, double reverseSpeed) {
 		super(id, direction, speed, maxSpeed, minSpeed, reverseSpeed);
 		//currentWeapon = Weapons.DEFAULT_WEAPON;
+		// TODO
 	}
 	
 	public String getName() {

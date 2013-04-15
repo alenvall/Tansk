@@ -2,7 +2,7 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Vector2f;
 
-public class AbstractProjectile extends MovableEntity {
+public abstract class AbstractProjectile extends MovableEntity {
 	
 	private double damage;
 	private double duration;

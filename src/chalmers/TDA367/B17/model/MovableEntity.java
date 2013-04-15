@@ -58,4 +58,8 @@ public abstract class MovableEntity extends Entity {
 	public void setReverseSpeed(double reverseSpeed) {
 		this.reverseSpeed = reverseSpeed;
 	}
+	
+	public void move(){
+		//TODO
+	}
 }
