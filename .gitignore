@@ -2,6 +2,7 @@
 .project
 .classpath
 \bin
+.DS_Store
 
 # Package Files #
 *.jar
