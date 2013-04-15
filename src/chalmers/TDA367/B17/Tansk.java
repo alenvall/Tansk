@@ -21,7 +21,9 @@ public class Tansk extends BasicGame
  
   @Override
   public void render(GameContainer gc, Graphics g) throws SlickException {
-     g.drawString("Hello World", 100, 100);
+	  int x = (int) (1000*Math.random());
+	  int y = (int) (1000*Math.random());
+	  g.drawString("Hello World", x, y);
   }
  
   public static void main(String[] args) throws SlickException {
