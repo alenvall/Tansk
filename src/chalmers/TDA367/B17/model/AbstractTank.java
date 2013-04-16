@@ -8,7 +8,7 @@ public abstract class AbstractTank extends MovableEntity{
 	private double health;
 	private AbstractWeapon currentWeapon;
 	private AbstractPowerUp currentPowerUp;
-	private double turnSpeed;
+	private double turnSpeed; // How many degrees the tank will turn each update
 	private Vector2f turretDirection;
 	
 	public AbstractTank(int id, Vector2f velocity, double maxSpeed, double minSpeed, double reverseSpeed) {
@@ -59,6 +59,10 @@ public abstract class AbstractTank extends MovableEntity{
 
 	public Vector2f getTurretDirection() {
 		return turretDirection;
+	}
+	
+	public void turn(){
+		this.getVelocity().add(turnSpeed);
 	}
 
 	public void setTurretDirection(Vector2f turretDirection) {
