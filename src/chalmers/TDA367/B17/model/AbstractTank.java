@@ -8,7 +8,7 @@ public abstract class AbstractTank extends MovableEntity{
 	private double health;
 	private AbstractWeapon currentWeapon;
 	private AbstractPowerUp currentPowerUp;
-	private double turretTurnSpeed;
+	private double turnSpeed;
 	private Vector2f turretDirection;
 	
 	public AbstractTank(int id, Vector2f velocity, double maxSpeed, double minSpeed, double reverseSpeed) {
@@ -49,12 +49,12 @@ public abstract class AbstractTank extends MovableEntity{
 		this.currentPowerUp = currentPowerUp;
 	}
 
-	public double getTurretTurnSpeed() {
-		return turretTurnSpeed;
+	public double getTurnSpeed() {
+		return turnSpeed;
 	}
 
-	public void setTurretTurnSpeed(double turretTurnSpeed) {
-		this.turretTurnSpeed = turretTurnSpeed;
+	public void setTurnSpeed(double turretTurnSpeed) {
+		this.turnSpeed = turretTurnSpeed;
 	}
 
 	public Vector2f getTurretDirection() {
