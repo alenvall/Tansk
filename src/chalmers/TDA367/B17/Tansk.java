@@ -24,7 +24,14 @@ public class Tansk extends BasicGame
  
   @Override
   public void update(GameContainer gc, int delta) throws SlickException {
- 
+	Input input = gc.getInput();
+
+	  if(input.isKeyDown(Input.KEY_W)){
+		 tank.update();
+	  }
+
+	  System.out.println(tank.getPosition().x);
+	  System.out.println(tank.getPosition().y);
   }
  
   @Override
