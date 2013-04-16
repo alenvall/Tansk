@@ -4,28 +4,26 @@ import org.newdawn.slick.geom.*;
 
 public abstract class MovableEntity extends Entity {
 
-	private Vector2f direction;
-	private double speed;
+	private Vector2f velocity;
 	private double maxSpeed;
 	private double minSpeed;
 	private double reverseSpeed;
 	private double acceleration;
 	
-	public MovableEntity(int id, Vector2f direction, double speed, double maxSpeed, double minSpeed, double reverseSpeed) {
+	public MovableEntity(int id, Vector2f velocity, double maxSpeed, double minSpeed, double reverseSpeed) {
 		super(id);
-		this.direction = direction;
-		this.speed = speed;
+		this.velocity = velocity;
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
 		this.reverseSpeed = reverseSpeed;
 	}
 	
-	public Vector2f getDirection(){
-		return direction;
+	public Vector2f getVelocity(){
+		return velocity;
 	}
 
 	public double getSpeed(){
-		return speed;
+		return velocity.length();
 	}
 	
 	public double getMaxSpeed(){
@@ -36,12 +34,12 @@ public abstract class MovableEntity extends Entity {
 		return minSpeed;
 	}
 	
-	public void setDirection(Vector2f v){
-		direction = v;
+	public void setVelocity(Vector2f v){
+		velocity = v;
 	}
 	
 	public void setSpeed(double speed){
-		this.speed = speed;
+		this.velocity.scale((float)(speed/this.velocity.length()));
 	}
 	
 	public void setMaxSpeed(double maxSpeed){
@@ -59,7 +57,7 @@ public abstract class MovableEntity extends Entity {
 	public void setReverseSpeed(double reverseSpeed) {
 		this.reverseSpeed = reverseSpeed;
 	}
-	
+
 	public double getAcceleration() {
 		return acceleration;
 	}
@@ -70,7 +68,7 @@ public abstract class MovableEntity extends Entity {
 
 	public void move(){
 		// compute velocity
-		Vector2f velocity = getDirection().scale((float)getSpeed());
+		Vector2f velocity = getVelocity().scale((float) getSpeed());
 
 		// add velocity
 		setPosition(getPosition().add(velocity));
