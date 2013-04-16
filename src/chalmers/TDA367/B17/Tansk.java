@@ -18,7 +18,7 @@ public class Tansk extends BasicGame
   @Override
   public void init(GameContainer gc) throws SlickException {
 	  world = new World();
-	  tank = new DefaultTank(1, new Vector2f(0,1), 100, 0, 5);
+	  tank = new DefaultTank(1, new Vector2f(0,1), 20, 0, 5);
 	  tank.update();
   }
  
@@ -47,6 +47,10 @@ public class Tansk extends BasicGame
  
   @Override
   public void render(GameContainer gc, Graphics g) throws SlickException {
+
+	  g.setColor(Color.pink);
+	  g.drawRect((int)tank.getPosition().x, (int)tank.getPosition().y, 100, 100);
+	  g.drawString(tank.getDebugInfo(), 20, 30);
   }
  
   public static void main(String[] args) throws SlickException {

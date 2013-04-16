@@ -13,7 +13,7 @@ public abstract class AbstractTank extends MovableEntity{
 	
 	public AbstractTank(int id, Vector2f velocity, double maxSpeed, double minSpeed, double reverseSpeed) {
 		super(id, velocity, maxSpeed, minSpeed, reverseSpeed);
-		turnSpeed = 1;
+		turnSpeed = 5;
 		//currentWeapon = Weapons.DEFAULT_WEAPON;
 		// TODO
 	}
@@ -63,20 +63,24 @@ public abstract class AbstractTank extends MovableEntity{
 	}
 	
 	public void turnLeft(){
-		setDirection(getDirection().add(turnSpeed));
+		setDirection(getDirection().add(-turnSpeed));
 	}
 	
 	public void turnRight(){
-		setDirection(getDirection().add(-turnSpeed));
+		setDirection(getDirection().add(turnSpeed));
 	}
 
 	public void setTurretDirection(Vector2f turretDirection) {
 		this.turretDirection = turretDirection;
 	}
 	
+	public String getDebugInfo(){
+		return "posX:" + getPosition().getX() + " posY:" + getPosition().getY() + " rotX:" + getDirection().getX() + " rotY:" + getDirection().getY() + " speed:" + getSpeed();
+
+	}
+	
 	@Override
 	public void update(){
 		super.update();
-		System.out.println("posX:" + getPosition().getX() + " posY:" + getPosition().getY() + " rotX:" + getDirection().getX() + " rotY:" + getDirection().getY() + " speed:" + getSpeed());
 	}
 }
