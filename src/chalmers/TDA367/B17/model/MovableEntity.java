@@ -18,8 +18,8 @@ public abstract class MovableEntity extends Entity {
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
 		this.reverseSpeed = reverseSpeed;
-		this.acceleration = maxSpeed*0.01f;
-		this.deacceleration = maxSpeed*0.05f;
+		this.acceleration = maxSpeed*0.1f;
+		this.deacceleration = maxSpeed*0.07f;
 	}
 	
 	public Vector2f getDirection(){
@@ -83,8 +83,8 @@ public abstract class MovableEntity extends Entity {
 		Vector2f tmp = new Vector2f(direction);
 		Vector2f velocity = tmp.scale(speed);
 		
-		velocity.x = velocity.x * delta/50;
-		velocity.y = velocity.y * delta/50;
+		velocity.x = velocity.x * delta/60;
+		velocity.y = velocity.y * delta/60;
 		
 		setPosition(position.add(velocity));
 	}

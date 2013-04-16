@@ -8,9 +8,11 @@ import java.util.*;
 public class Tansk extends BasicGame {
 	World world;
 	Input input;
-	Shape debugRect;
 	ArrayList<Player> players;
 	Player playerOne;
+	Image plane = null;
+	Image map = null;
+	boolean newImages = true;
 
 	public Tansk() {
 		super("Tansk!");
@@ -19,11 +21,12 @@ public class Tansk extends BasicGame {
 	@Override
 	public void init(GameContainer gc) throws SlickException {
 		world = new World();
-		debugRect = new Rectangle(0, 0, 50, 50);
-
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
+		
+		plane = new Image("tank.png");
+		map = new Image("map.png");
 	}
  
 	@Override
@@ -37,21 +40,38 @@ public class Tansk extends BasicGame {
 		}
 	  
 		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
-			playerOne.getTank().turnLeft();
+			playerOne.getTank().turnLeft(delta);
+            plane.rotate(-playerOne.getTank().getTurnSpeed() * delta);
 		}
 	
 		if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
-			playerOne.getTank().turnRight();
+			playerOne.getTank().turnRight(delta);
+            plane.rotate(playerOne.getTank().getTurnSpeed() * delta);
 		}
+		
+		if(input.isKeyDown(Input.KEY_TAB)){
+			if(newImages){
+				plane = new Image("plane.png");
+				map = new Image("map.jpg");
+				playerOne.getTank().setDirection(new Vector2f(0, -1));
+				newImages = false;
+			}else{
+				plane = new Image("tank.png");
+				map = new Image("map.png");
+				playerOne.getTank().setDirection(new Vector2f(0, -1));
+				newImages = true;
+			}
+					
+		}
+		
 		playerOne.getTank().update(delta);
-		debugRect.setLocation(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);
-  }
+}
  
 	@Override
 	public void render(GameContainer gc, Graphics g) throws SlickException {
-
-		g.setColor(Color.pink);
-		g.draw(debugRect);
+		map.draw();
+		plane.draw(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);
+		
 		g.setColor(Color.white);
 		g.drawString("posX:  " + playerOne.getTank().getPosition().x, 10, 30); g.drawString("rotX: " + playerOne.getTank().getDirection().x, 180, 30);
 		g.drawString("posY:  " + playerOne.getTank().getPosition().y, 10, 50); g.drawString("rotY: " + playerOne.getTank().getDirection().y, 180, 50);
@@ -62,9 +82,8 @@ public class Tansk extends BasicGame {
 		AppGameContainer app = new AppGameContainer(new Tansk());
 
 		app.setTargetFrameRate(60);
-		app.setVSync(true);
-		app.setMaximumLogicUpdateInterval(50);
-		app.setMinimumLogicUpdateInterval(10);
+		app.setMaximumLogicUpdateInterval(500);
+		app.setMinimumLogicUpdateInterval(5);
 		app.setDisplayMode(800, 600, false);
 	
 		app.start();
