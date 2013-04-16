@@ -69,6 +69,10 @@ public abstract class MovableEntity extends Entity {
 	}
 
 	public void move(){
-		//TODO
+		// compute velocity
+		Vector2f velocity = getDirection().scale((float)getSpeed());
+
+		// add velocity
+		setPosition(getPosition().add(velocity));
 	}
 }
