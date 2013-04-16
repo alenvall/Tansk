@@ -9,6 +9,7 @@ public abstract class MovableEntity extends Entity {
 	private double maxSpeed;
 	private double minSpeed;
 	private double reverseSpeed;
+	private double acceleration;
 	
 	public MovableEntity(int id, Vector2f direction, double speed, double maxSpeed, double minSpeed, double reverseSpeed) {
 		super(id);
@@ -59,6 +60,14 @@ public abstract class MovableEntity extends Entity {
 		this.reverseSpeed = reverseSpeed;
 	}
 	
+	public double getAcceleration() {
+		return acceleration;
+	}
+
+	public void setAcceleration(double acceleration) {
+		this.acceleration = acceleration;
+	}
+
 	public void move(){
 		//TODO
 	}
