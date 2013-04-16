@@ -27,24 +27,26 @@ public class Tansk extends BasicGame
 	Input input = gc.getInput();
 
 	  if(input.isKeyDown(Input.KEY_W)){
-		 tank.update();
+		  tank.accelerate();
 	  }
-
-	  System.out.println(tank.getPosition().x);
-	  System.out.println(tank.getPosition().y);
+	  
+	  // update all game objects
+	  tank.update();
+	  
+	  //System.out.println(tank.getPosition().x + "  " + tank.getAcceleration() + "  " + tank.getSpeed());
+	  //System.out.println(tank.getPosition().y);
   }
  
   @Override
   public void render(GameContainer gc, Graphics g) throws SlickException {
-	  int x = (int) (1000*Math.random());
-	  int y = (int) (1000*Math.random());
-	  g.drawString("Hello World", x, y);
   }
  
   public static void main(String[] args) throws SlickException {
      AppGameContainer app = new AppGameContainer(new Tansk());
 
-
+     app.setTargetFrameRate(60);
+     app.setMaximumLogicUpdateInterval(60);
+     app.setMinimumLogicUpdateInterval(10);
      app.setDisplayMode(800, 600, false);
      app.start();
   }
