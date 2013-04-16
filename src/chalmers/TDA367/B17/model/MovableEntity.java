@@ -10,6 +10,7 @@ public abstract class MovableEntity extends Entity {
 	private double minSpeed;
 	private double reverseSpeed;
 	private double acceleration;
+	private double deacceleration;
 	
 	public MovableEntity(int id, Vector2f direction, double maxSpeed, double minSpeed, double reverseSpeed) {
 		super(id);
@@ -17,11 +18,15 @@ public abstract class MovableEntity extends Entity {
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
 		this.reverseSpeed = reverseSpeed;
-		this.acceleration = maxSpeed*0.005;
+		this.acceleration = maxSpeed*0.01;
+		this.deacceleration = maxSpeed*0.05;
 	}
 	
 	public Vector2f getDirection(){
 		return direction;
+	}
+	public void setDirection(Vector2f newDirection){
+		this.direction = newDirection;
 	}
 
 	public double getSpeed(){
@@ -47,8 +52,6 @@ public abstract class MovableEntity extends Entity {
 			this.speed = minSpeed;
 		}else{
 			this.speed = speed;
-			//System.out.println(this.speed);
-			System.out.println(Double.toString(getSpeed()));
 		}
 	}
 	
@@ -86,13 +89,10 @@ public abstract class MovableEntity extends Entity {
 	}
 
 	public void accelerate(){ // TODO change name
-		/*System.out.println("Speed: " + getSpeed());
-		System.out.println("Acceleration: " + getAcceleration());
-		System.out.println("MaxSpeed: "+ maxSpeed);
-		System.out.println("MinSpeed: " + minSpeed);
-		*/
 		setSpeed(getSpeed() + getAcceleration());
-		System.out.println(Double.toString(getSpeed()));
+	}
+	public void deaccelerate(){
+		setSpeed(getSpeed() - deacceleration);
 	}
 
 	public void update(){
