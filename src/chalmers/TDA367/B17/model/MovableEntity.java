@@ -16,6 +16,7 @@ public abstract class MovableEntity extends Entity {
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
 		this.reverseSpeed = reverseSpeed;
+		this.acceleration = maxSpeed*0.05;
 	}
 	
 	public Vector2f getDirection(){
@@ -76,11 +77,7 @@ public abstract class MovableEntity extends Entity {
 	}
 
 	public void accelerate(){ // TODO change name
-		setVelocity(getDirection().normalise());
-		System.out.println(getDirection());
-		//getVelocity().scale((float)getAcceleration());
-
-		System.out.println(getDirection());
+		setSpeed(getSpeed() + getAcceleration());
 	}
 
 	public void update(){
