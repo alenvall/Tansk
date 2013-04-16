@@ -39,7 +39,8 @@ public abstract class MovableEntity extends Entity {
 	}
 	
 	public void setSpeed(double speed){
-		this.velocity.scale((float)(speed/this.velocity.length()));
+		getVelocity().normalise();
+		getVelocity().scale((float)speed);
 	}
 	
 	public void setMaxSpeed(double maxSpeed){
@@ -75,11 +76,15 @@ public abstract class MovableEntity extends Entity {
 	}
 
 	public void accelerate(){ // TODO change name
-		setVelocity(getVelocity().scale((float)getAcceleration()/getVelocity().length()));
+		setVelocity(getVelocity().normalise());
+		System.out.println(getVelocity());
+		//getVelocity().scale((float)getAcceleration());
+
+		System.out.println(getVelocity());
 	}
 
 	public void update(){
-		move();
 		accelerate();
+		move();
 	}
 }
