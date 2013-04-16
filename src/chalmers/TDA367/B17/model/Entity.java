@@ -12,7 +12,7 @@ public class Entity {
 		this.id = id;
 	}
 	
-	private Vector2f getPosition(){
+	public Vector2f getPosition(){
 		return position;
 	}
 	
