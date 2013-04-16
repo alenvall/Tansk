@@ -73,4 +73,13 @@ public abstract class MovableEntity extends Entity {
 		// add velocity
 		setPosition(getPosition().add(velocity));
 	}
+
+	public void accelerate(){ // TODO change name
+		setVelocity(getVelocity().scale((float)getAcceleration()/getVelocity().length()));
+	}
+
+	public void update(){
+		move();
+		accelerate();
+	}
 }
