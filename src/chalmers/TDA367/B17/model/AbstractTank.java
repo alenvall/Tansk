@@ -11,9 +11,9 @@ public abstract class AbstractTank extends MovableEntity{
 	private double turnSpeed; // How many degrees the tank will turn each update
 	private Vector2f turretDirection;
 	
-	public AbstractTank(int id, Vector2f velocity, double maxSpeed, double minSpeed, double reverseSpeed) {
+	public AbstractTank(int id, Vector2f velocity, float maxSpeed, float minSpeed, float reverseSpeed) {
 		super(id, velocity, maxSpeed, minSpeed, reverseSpeed);
-		turnSpeed = 5;
+		turnSpeed = 3;
 		//currentWeapon = Weapons.DEFAULT_WEAPON;
 		// TODO
 	}
@@ -72,11 +72,5 @@ public abstract class AbstractTank extends MovableEntity{
 
 	public void setTurretDirection(Vector2f turretDirection) {
 		this.turretDirection = turretDirection;
-	}
-	
-	
-	@Override
-	public void update(){
-		super.update();
 	}
 }

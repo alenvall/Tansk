@@ -5,21 +5,21 @@ import org.newdawn.slick.geom.*;
 public abstract class MovableEntity extends Entity {
 
 	private Vector2f direction;
-	private double speed;
-	private double maxSpeed;
-	private double minSpeed;
-	private double reverseSpeed;
-	private double acceleration;
-	private double deacceleration;
+	private float speed;
+	private float maxSpeed;
+	private float minSpeed;
+	private float reverseSpeed;
+	private float acceleration;
+	private float deacceleration;
 	
-	public MovableEntity(int id, Vector2f direction, double maxSpeed, double minSpeed, double reverseSpeed) {
+	public MovableEntity(int id, Vector2f direction, float maxSpeed, float minSpeed, float reverseSpeed) {
 		super(id);
 		this.direction = direction;
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
 		this.reverseSpeed = reverseSpeed;
-		this.acceleration = maxSpeed*0.01;
-		this.deacceleration = maxSpeed*0.05;
+		this.acceleration = maxSpeed*0.01f;
+		this.deacceleration = maxSpeed*0.05f;
 	}
 	
 	public Vector2f getDirection(){
@@ -29,15 +29,15 @@ public abstract class MovableEntity extends Entity {
 		this.direction = newDirection;
 	}
 
-	public double getSpeed(){
+	public float getSpeed(){
 		return speed;
 	}
 	
-	public double getMaxSpeed(){
+	public float getMaxSpeed(){
 		return maxSpeed;
 	}
 	
-	public double getMinSpeed(){
+	public float getMinSpeed(){
 		return minSpeed;
 	}
 	
@@ -45,21 +45,21 @@ public abstract class MovableEntity extends Entity {
 		direction = v;
 	}
 	
-	public void setSpeed(double speed){
-		if(speed>maxSpeed){
+	public void setSpeed(float speed){
+		if(speed > maxSpeed){
 			this.speed = maxSpeed;
-		}else if(speed<minSpeed){
+		}else if(speed < minSpeed){
 			this.speed = minSpeed;
 		}else{
 			this.speed = speed;
 		}
 	}
 	
-	public void setMaxSpeed(double maxSpeed){
+	public void setMaxSpeed(float maxSpeed){
 		this.maxSpeed = maxSpeed;
 	}
 	
-	public void setMinSpeed(double minSpeed){
+	public void setMinSpeed(float minSpeed){
 		this.minSpeed = minSpeed;
 	}
 
@@ -67,7 +67,7 @@ public abstract class MovableEntity extends Entity {
 		return reverseSpeed;
 	}
 
-	public void setReverseSpeed(double reverseSpeed) {
+	public void setReverseSpeed(float reverseSpeed) {
 		this.reverseSpeed = reverseSpeed;
 	}
 
@@ -75,27 +75,29 @@ public abstract class MovableEntity extends Entity {
 		return acceleration;
 	}
 
-	public void setAcceleration(double acceleration) {
+	public void setAcceleration(float acceleration) {
 		this.acceleration = acceleration;
 	}
 
-	public void move(){
-		// compute velocity
-		Vector2f tmp = new Vector2f(getDirection());
-		Vector2f velocity = tmp.scale((float) getSpeed());
-
-		// add velocity
-		setPosition(getPosition().add(velocity));
+	public void move(int delta){
+		Vector2f tmp = new Vector2f(direction);
+		Vector2f velocity = tmp.scale(speed);
+		
+		velocity.x = velocity.x * delta/50;
+		velocity.y = velocity.y * delta/50;
+		
+		setPosition(position.add(velocity));
 	}
 
-	public void accelerate(){ // TODO change name
-		setSpeed(getSpeed() + getAcceleration());
+	public void accelerate(){
+		setSpeed(speed + acceleration);
 	}
 	public void deaccelerate(){
-		setSpeed(getSpeed() - deacceleration);
+		setSpeed(speed - deacceleration);
 	}
 
-	public void update(){
-		move();
+
+	public void update(int delta){
+		move(delta);
 	}
 }

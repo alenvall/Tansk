@@ -38,14 +38,12 @@ public class Tansk extends BasicGame {
 	  
 		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
 			playerOne.getTank().turnLeft();
-			debugRect.setLocation(0, 0);
 		}
 	
 		if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
 			playerOne.getTank().turnRight();
-			debugRect.setLocation(0, 0);
 		}
-		playerOne.getTank().update();
+		playerOne.getTank().update(delta);
 		debugRect.setLocation(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);
   }
  
@@ -67,6 +65,7 @@ public class Tansk extends BasicGame {
 		app.setMaximumLogicUpdateInterval(50);
 		app.setMinimumLogicUpdateInterval(10);
 		app.setDisplayMode(800, 600, false);
+	
 		app.start();
   }
 }
