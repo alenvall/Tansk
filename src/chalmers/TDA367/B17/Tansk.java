@@ -61,7 +61,8 @@ public class Tansk extends BasicGame {
 	public static void main(String[] args) throws SlickException {
 		AppGameContainer app = new AppGameContainer(new Tansk());
 
-		app.setTargetFrameRate(50);
+		app.setTargetFrameRate(60);
+		app.setVSync(true);
 		app.setMaximumLogicUpdateInterval(50);
 		app.setMinimumLogicUpdateInterval(10);
 		app.setDisplayMode(800, 600, false);
