@@ -62,7 +62,7 @@ public abstract class AbstractTank extends MovableEntity{
 	}
 	
 	public void turn(){
-		this.getVelocity().add(turnSpeed);
+		this.getDirection().add(turnSpeed);
 	}
 
 	public void setTurretDirection(Vector2f turretDirection) {
