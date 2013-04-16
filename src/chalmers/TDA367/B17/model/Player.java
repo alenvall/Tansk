@@ -1,5 +1,7 @@
 package chalmers.TDA367.B17.model;
 
+import org.newdawn.slick.geom.Vector2f;
+
 public class Player {
 	private String name;
 	private int playerId;
@@ -8,6 +10,12 @@ public class Player {
 	
 	public Player(String name){
 		this.name = name;
+		
+		tank = new DefaultTank(1, new Vector2f(0,1), 20, 0, 5);
+	}
+	
+	public AbstractTank getTank(){
+		return tank;
 	}
 	
 	public String getName() {

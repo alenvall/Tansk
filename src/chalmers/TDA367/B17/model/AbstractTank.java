@@ -74,10 +74,6 @@ public abstract class AbstractTank extends MovableEntity{
 		this.turretDirection = turretDirection;
 	}
 	
-	public String getDebugInfo(){
-		return "posX:" + getPosition().getX() + " posY:" + getPosition().getY() + " rotX:" + getDirection().getX() + " rotY:" + getDirection().getY() + " speed:" + getSpeed();
-
-	}
 	
 	@Override
 	public void update(){
