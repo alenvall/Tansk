@@ -7,9 +7,9 @@ public abstract class AbstractProjectile extends MovableEntity {
 	private double damage;
 	private double duration;
 
-	public AbstractProjectile(int id, Vector2f direction, double speed,
+	public AbstractProjectile(int id, Vector2f velocity,
 			double maxSpeed, double minSpeed, double reverseSpeed) {
-		super(id, direction, speed, maxSpeed, minSpeed, reverseSpeed);
+		super(id, velocity, maxSpeed, minSpeed, reverseSpeed);
 		// TODO Auto-generated constructor stub
 	}
 
