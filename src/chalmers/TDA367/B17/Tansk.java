@@ -10,56 +10,57 @@ public class Tansk extends BasicGame
 {
 	World world;
 	DefaultTank tank;
+	Input input;
 
-  public Tansk() {
-     super("Tansk!");
-  }
- 
-  @Override
-  public void init(GameContainer gc) throws SlickException {
-	  world = new World();
-	  tank = new DefaultTank(1, new Vector2f(0,1), 20, 0, 5);
-	  tank.update();
-  }
- 
-  @Override
-  public void update(GameContainer gc, int delta) throws SlickException {
-	  Input input = gc.getInput();
-
-	  if(input.isKeyDown(Input.KEY_W)){
-		  tank.accelerate();
-	  }else{
-		  tank.deaccelerate();
-	  }
-	  
-	  if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
-		  tank.turnLeft();
-	  }
-	if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
-		  tank.turnRight();
+	public Tansk() {
+		super("Tansk!");
 	}
-	  // update all game objects
-	  tank.update();
+ 
+	@Override
+	public void init(GameContainer gc) throws SlickException {
+		world = new World();
+		tank = new DefaultTank(1, new Vector2f(0,1), 20, 0, 5);
+		tank.update();
+	}
+ 
+	@Override
+	public void update(GameContainer gc, int delta) throws SlickException {
+		input = gc.getInput();
+
+		if(input.isKeyDown(Input.KEY_W)){
+			tank.accelerate();
+		}else{
+			tank.deaccelerate();
+		}
 	  
-	  //System.out.println(tank.getPosition().x + "  " + tank.getAcceleration() + "  " + tank.getSpeed());
-	  //System.out.println(tank.getPosition().y);
+		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
+			tank.turnLeft();
+		}
+	
+		if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
+			tank.turnRight();
+		}
+		tank.update();
   }
  
-  @Override
-  public void render(GameContainer gc, Graphics g) throws SlickException {
+	@Override
+	public void render(GameContainer gc, Graphics g) throws SlickException {
 
-	  g.setColor(Color.pink);
-	  g.drawRect((int)tank.getPosition().x, (int)tank.getPosition().y, 100, 100);
-	  g.drawString(tank.getDebugInfo(), 20, 30);
+	g.setColor(Color.pink);
+	g.drawRect((int)tank.getPosition().x, (int)tank.getPosition().y, 100, 100);
+	g.setColor(Color.white);
+	g.drawString("posX:  " + tank.getPosition().x, 10, 30); g.drawString("rotX: " + tank.getDirection().x, 180, 30);
+	g.drawString("posY:  " + tank.getPosition().y, 10, 50); g.drawString("rotY: " + tank.getDirection().y, 180, 50);
+	g.drawString("speed: " + Double.toString(tank.getSpeed()), 10, 70);
   }
  
-  public static void main(String[] args) throws SlickException {
-     AppGameContainer app = new AppGameContainer(new Tansk());
+	public static void main(String[] args) throws SlickException {
+		AppGameContainer app = new AppGameContainer(new Tansk());
 
-     app.setTargetFrameRate(60);
-     app.setMaximumLogicUpdateInterval(60);
-     app.setMinimumLogicUpdateInterval(10);
-     app.setDisplayMode(800, 600, false);
-     app.start();
+		app.setTargetFrameRate(50);
+		app.setMaximumLogicUpdateInterval(50);
+		app.setMinimumLogicUpdateInterval(10);
+		app.setDisplayMode(800, 600, false);
+		app.start();
   }
 }
