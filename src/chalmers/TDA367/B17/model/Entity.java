@@ -23,6 +23,10 @@ public class Entity{
 	public Vector2f getSize(){
 		return size;
 	}
+	
+	public Vector2f getCenter(){
+		return new Vector2f(size.x/2, size.y/2);
+	}
 
 	public void setSize(Vector2f size){
 		this.size = size;
