@@ -63,11 +63,11 @@ public abstract class AbstractTank extends MovableEntity{
 	}
 	
 	public void turnLeft(int delta){
-		setDirection(getDirection().add(-turnSpeed * delta/60 * (speed*0.2f + 0.7)));
+		setDirection(getDirection().add(-turnSpeed * delta/60 * (Math.abs(speed)*0.2f + 0.7)));
 	}
 	
 	public void turnRight(int delta){
-		setDirection(getDirection().add(turnSpeed * delta/60 * (speed*0.2f + 0.7)));
+		setDirection(getDirection().add(turnSpeed * delta/60 * (Math.abs(speed)*0.2f + 0.7)));
 	}
 
 	public void setTurretDirection(Vector2f turretDirection) {
