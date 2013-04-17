@@ -5,7 +5,7 @@ import org.newdawn.slick.geom.*;
 public abstract class MovableEntity extends Entity {
 
 	private Vector2f direction;
-	private float speed;
+	protected float speed;
 	private float maxSpeed;
 	private float minSpeed;
 	private float reverseSpeed;

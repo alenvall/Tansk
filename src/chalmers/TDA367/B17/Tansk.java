@@ -41,12 +41,12 @@ public class Tansk extends BasicGame {
 	  
 		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
 			playerOne.getTank().turnLeft(delta);
-            plane.rotate(-playerOne.getTank().getTurnSpeed() * delta);
+            plane.rotate(-playerOne.getTank().getTurnSpeed() * delta/60 * (playerOne.getTank().getSpeed()*0.2f + 0.7f));
 		}
 	
 		if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
 			playerOne.getTank().turnRight(delta);
-            plane.rotate(playerOne.getTank().getTurnSpeed() * delta);
+            plane.rotate(playerOne.getTank().getTurnSpeed() * delta/60 * (playerOne.getTank().getSpeed()*0.2f + 0.7f));
 		}
 		
 		if(input.isKeyDown(Input.KEY_TAB)){

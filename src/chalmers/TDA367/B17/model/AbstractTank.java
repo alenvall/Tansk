@@ -13,7 +13,7 @@ public abstract class AbstractTank extends MovableEntity{
 	
 	public AbstractTank(int id, Vector2f velocity, float maxSpeed, float minSpeed, float reverseSpeed) {
 		super(id, velocity, maxSpeed, minSpeed, reverseSpeed);
-		turnSpeed = 0.06f;
+		turnSpeed = 3f;
 		//currentWeapon = Weapons.DEFAULT_WEAPON;
 		// TODO
 	}
@@ -63,11 +63,11 @@ public abstract class AbstractTank extends MovableEntity{
 	}
 	
 	public void turnLeft(int delta){
-		setDirection(getDirection().add(-turnSpeed * delta));
+		setDirection(getDirection().add(-turnSpeed * delta/60 * (speed*0.2f + 0.7)));
 	}
 	
 	public void turnRight(int delta){
-		setDirection(getDirection().add(turnSpeed * delta));
+		setDirection(getDirection().add(turnSpeed * delta/60 * (speed*0.2f + 0.7)));
 	}
 
 	public void setTurretDirection(Vector2f turretDirection) {
