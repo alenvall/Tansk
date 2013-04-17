@@ -9,13 +9,16 @@ public abstract class AbstractTank extends MovableEntity{
 	private AbstractWeapon currentWeapon;
 	private AbstractPowerUp currentPowerUp;
 	private float turnSpeed; // How many degrees the tank will turn each update
-	private Vector2f turretDirection;
+	private AbstractTurret turret;
+	private Vector2f turretPosition;
 	
 	public AbstractTank(int id, Vector2f velocity, float maxSpeed, float minSpeed, float reverseSpeed) {
 		super(id, velocity, maxSpeed, minSpeed, reverseSpeed);
 		turnSpeed = 3f;
 		//currentWeapon = Weapons.DEFAULT_WEAPON;
-		// TODO
+		turret = new DefaultTurret(1337);
+		
+		
 	}
 	
 	public String getName() {
@@ -57,11 +60,15 @@ public abstract class AbstractTank extends MovableEntity{
 	public void setTurnSpeed(float turnSpeed) {
 		this.turnSpeed = turnSpeed;
 	}
-
-	public Vector2f getTurretDirection() {
-		return turretDirection;
-	}
 	
+	public AbstractTurret getTurret() {
+		return turret;
+	}
+
+	public void setTurret(AbstractTurret turret) {
+		this.turret = turret;
+	}
+
 	public void turnLeft(int delta){
 		setDirection(getDirection().add(-turnSpeed * delta/60 * (Math.abs(speed)*0.2f + 0.7)));
 	}
@@ -70,7 +77,11 @@ public abstract class AbstractTank extends MovableEntity{
 		setDirection(getDirection().add(turnSpeed * delta/60 * (Math.abs(speed)*0.2f + 0.7)));
 	}
 
-	public void setTurretDirection(Vector2f turretDirection) {
-		this.turretDirection = turretDirection;
+	public Vector2f getTurretPosition() {
+		return turretPosition;
+	}
+
+	public void setTurretPosition(Vector2f turretPosition) {
+		this.turretPosition = turretPosition;
 	}
 }
