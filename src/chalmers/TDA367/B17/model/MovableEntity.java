@@ -22,6 +22,10 @@ public abstract class MovableEntity extends Entity {
 		this.deacceleration = maxSpeed*0.1f;
 	}
 	
+	public boolean isReversing(){
+		return speed<0;
+	}
+	
 	public Vector2f getDirection(){
 		return direction;
 	}
