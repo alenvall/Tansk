@@ -94,8 +94,16 @@ public abstract class MovableEntity extends Entity {
 		setSpeed(speed + acceleration * delta/60);
 	}
 	public void deaccelerate(int delta){
-//		setSpeed(speed - deacceleration);
-		setSpeed(speed - deacceleration * delta/60);
+		if(speed-deacceleration * delta/60 > 0){
+			setSpeed(speed - deacceleration * delta/60);
+		}else if(speed+deacceleration * delta/60 < 0){
+			setSpeed(speed + deacceleration * delta/60); //TODO Make sure there are no pssible bugs
+		}else{
+			setSpeed(0);
+		}
+	}
+	public void reverse(int delta){
+			setSpeed(speed - deacceleration * delta/60);
 	}
 
 
