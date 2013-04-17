@@ -35,8 +35,6 @@ public class Tansk extends BasicGame {
 
 		if(input.isKeyDown(Input.KEY_W)){
 			playerOne.getTank().accelerate(delta);
-		}else if(input.isKeyDown(Input.KEY_S)){
-			playerOne.getTank().reverse(delta);
 		}else{
 			playerOne.getTank().deaccelerate(delta);
 		}
