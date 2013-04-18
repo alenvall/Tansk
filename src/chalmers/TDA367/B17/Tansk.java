@@ -37,7 +37,7 @@ public class Tansk extends BasicGame implements MouseListener{
 		players.add(playerOne);
 		
 		turret = new Image("turret.png");
-		tank = new Image("tank.png");
+		tank = new Image("tank2.png");
 		map = new Image("map.png");
 		input = gc.getInput();
 		input.addMouseListener(this);
@@ -88,7 +88,7 @@ public class Tansk extends BasicGame implements MouseListener{
 				newImages = true;
 			}		
 		}
-	 //   tankTurret.setPosition(new Vector2f(playerTank.getPosition().x+playerTank.getTurretOffset().x, playerTank.getPosition().y+playerTank.getTurretOffset().y));
+	    tankTurret.setPosition(new Vector2f(playerTank.getPosition().x+playerTank.getTurretOffset().x, playerTank.getPosition().y+playerTank.getTurretOffset().y));
 	      
         Vector2f position = new Vector2f(tankTurret.getPosition().x, tankTurret.getPosition().y);
         float rotation = (float) Math.toDegrees(Math.atan2(position.x - mouseCoords.x + 0, position.y - mouseCoords.y + 0)* -1)+180;
@@ -121,7 +121,7 @@ public class Tansk extends BasicGame implements MouseListener{
         //draws the gun dependend on the ship position and the ship rotation
         //don't forget to subtract half the width/height for exact positioning
       //  tankTurret.setPosition(new Vector2f(tankRotationsCenterX - gunX_offset - gunXhalf, tankRotationsCenterY - gunY_offset - gunYhalf));
-        tankTurret.setPosition(new Vector2f(tankRotationsCenterX - gunX_offset, tankRotationsCenterY - gunY_offset));
+      //  tankTurret.setPosition(new Vector2f(tankRotationsCenterX - gunX_offset, tankRotationsCenterY - gunY_offset));
         
       //  turret.drawIngame(tankRotationsCenterX - playerTank.getTurretOffset().x -gunXhalf , (tankRotationsCenterY - playerTank.getTurretOffset().y) - gunYhalf);
  
@@ -136,8 +136,10 @@ public class Tansk extends BasicGame implements MouseListener{
 	@Override
 	public void render(GameContainer gc, Graphics g) throws SlickException {
 		map.draw();
+		
 		tank.draw(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);
-	//	turret.draw(playerTank.getTurretPosition().x, playerTank.getTurretPosition().y);
+		
+		//	turret.draw(playerTank.getTurretPosition().x, playerTank.getTurretPosition().y);
 		turret.draw(tankTurret.getPosition().x, tankTurret.getPosition().y);
 
 		
