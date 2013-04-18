@@ -22,6 +22,10 @@ public abstract class AbstractTank extends MovableEntity{
 		
 	}
 	
+	public double getRotation(){
+		return direction.getTheta();
+	}
+	
 	public String getName() {
 		return name;
 	}

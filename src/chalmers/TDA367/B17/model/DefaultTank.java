@@ -9,7 +9,7 @@ public class DefaultTank extends AbstractTank {
 		super(id, direction, maxSpeed, minSpeed, reverseSpeed);
 		setSize(new Vector2f(65f, 96f));
 		setPosition(new Vector2f(100, 150));
-		setTurretOffset(new Vector2f(32f, 55f));
+		setTurretOffset(new Vector2f(33f, 55f));
 		setTurretPosition(new Vector2f(getPosition().x+turretOffset.x, getPosition().y+turretOffset.y));
 	}
 }

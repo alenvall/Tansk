@@ -6,6 +6,8 @@ import org.newdawn.slick.*;
 import org.newdawn.slick.geom.*;
 
 import java.awt.Point;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
 import java.util.*;
 
 public class Tansk extends BasicGame implements MouseListener{
@@ -21,6 +23,7 @@ public class Tansk extends BasicGame implements MouseListener{
 	AbstractTurret tankTurret;
 	AbstractTank playerTank;
 	Shape recturret;
+	float x, y;
 
 	public Tansk() {
 		super("Tansk!");
@@ -42,6 +45,7 @@ public class Tansk extends BasicGame implements MouseListener{
 		tankTurret = playerOne.getTank().getTurret();
 		playerTank = playerOne.getTank();
 		turret.setCenterOfRotation(0, 0);
+		tankTurret.setPosition(new Vector2f(0,0));
 	}
  
 	@Override
@@ -84,15 +88,43 @@ public class Tansk extends BasicGame implements MouseListener{
 				newImages = true;
 			}		
 		}
-		playerTank.setTurretPosition(new Vector2f(playerTank.getPosition().x+playerTank.getTurretOffset().x, playerTank.getPosition().y+playerTank.getTurretOffset().y));
-
-        Vector2f position = new Vector2f(playerTank.getTurretPosition().x, playerTank.getTurretPosition().y);
+	 //   tankTurret.setPosition(new Vector2f(playerTank.getPosition().x+playerTank.getTurretOffset().x, playerTank.getPosition().y+playerTank.getTurretOffset().y));
+	      
+        Vector2f position = new Vector2f(tankTurret.getPosition().x, tankTurret.getPosition().y);
         float rotation = (float) Math.toDegrees(Math.atan2(position.x - mouseCoords.x + 0, position.y - mouseCoords.y + 0)* -1)+180;
         tankTurret.setRotation(rotation);
         turret.setRotation(tankTurret.getRotation());
         
- //		tankTurret.setTurretDirection(new Vector2f(mouseCoords.x, mouseCoords.y));
-		
+      //calculate the gun position on top of the tank
+        float gunPosX = playerTank.getPosition().x + playerTank.getTurretOffset().x;
+        float gunPosY = playerTank.getPosition().y + playerTank.getTurretOffset().y;
+
+        //calculate the tank rotation center
+        float tankRotationsCenterX = playerTank.getPosition().x + playerTank.getCenter().x;
+        float tankRotationsCenterY = playerTank.getPosition().y + playerTank.getCenter().y;
+
+        //calculate distance between gun position and tank rotation center
+        float dx = tankRotationsCenterX - gunPosX ;
+        float dy = tankRotationsCenterY - gunPosY ;
+        float dis = (float) Math.sqrt(dx * dx + dy * dy);
+
+        //calculate the offset based on the rotation of the tank
+        //rotation offset for the gun placement
+        float gunRotaOff = 1;
+
+        float gunX_offset = (float) (dis*Math.cos(Math.toRadians(playerTank.getRotation()+gunRotaOff)));
+        float gunY_offset = (float) (dis*Math.sin(Math.toRadians(playerTank.getRotation())+gunRotaOff));
+
+        float gunXhalf = tankTurret.getSize().x / 2;
+        float gunYhalf = tankTurret.getSize().y / 2;
+
+        //draws the gun dependend on the ship position and the ship rotation
+        //don't forget to subtract half the width/height for exact positioning
+      //  tankTurret.setPosition(new Vector2f(tankRotationsCenterX - gunX_offset - gunXhalf, tankRotationsCenterY - gunY_offset - gunYhalf));
+        tankTurret.setPosition(new Vector2f(tankRotationsCenterX - gunX_offset, tankRotationsCenterY - gunY_offset));
+        
+      //  turret.drawIngame(tankRotationsCenterX - playerTank.getTurretOffset().x -gunXhalf , (tankRotationsCenterY - playerTank.getTurretOffset().y) - gunYhalf);
+ 
 		playerOne.getTank().update(delta);
 		tank.setRotation((float) (playerTank.getDirection().getTheta() + 90));
 	}
@@ -105,18 +137,20 @@ public class Tansk extends BasicGame implements MouseListener{
 	public void render(GameContainer gc, Graphics g) throws SlickException {
 		map.draw();
 		tank.draw(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);
-		turret.draw(playerTank.getTurretPosition().x, playerTank.getTurretPosition().y);
+	//	turret.draw(playerTank.getTurretPosition().x, playerTank.getTurretPosition().y);
+		turret.draw(tankTurret.getPosition().x, tankTurret.getPosition().y);
+
 		
 		g.setColor(Color.black);
 		g.drawString("posX:  " + playerOne.getTank().getPosition().x, 10, 30);
 		g.drawString("posY:  " + playerOne.getTank().getPosition().y, 10, 50);
-		g.drawString("rotX: " + playerOne.getTank().getDirection().x, 10, 70);
-		g.drawString("rotY: " + playerOne.getTank().getDirection().y, 10, 90);
+		g.drawString("rotX:  " + playerOne.getTank().getDirection().x, 10, 70);
+		g.drawString("rotY:  " + playerOne.getTank().getDirection().y, 10, 90);
 
-		g.drawString("turPosX:   " + playerTank.getTurretPosition().x, 200, 30);
-		g.drawString("turPosY:   " + playerTank.getTurretPosition().y, 200, 50);
-		g.drawString("turAng:    " + tankTurret.getRotation(), 		 200, 70);
-		g.drawString("turImgAng: " + turret.getRotation(),			 200, 90);
+		g.drawString("turPosX:   " + tankTurret.getPosition().x, 200, 30);
+		g.drawString("turPosY:   " + tankTurret.getPosition().y, 200, 50);
+		g.drawString("turAng:    " + tankTurret.getRotation(), 	 200, 70);
+		g.drawString("turImgAng: " + turret.getRotation(),		 200, 90);
 		
 		g.drawString("mouseX: " + mouseCoords.x, 430, 30);
 		g.drawString("mouseY: " + mouseCoords.y, 430, 50);
@@ -125,10 +159,7 @@ public class Tansk extends BasicGame implements MouseListener{
 				
 		
 		g.setColor(Color.red);
-		g.drawLine(playerTank.getTurretPosition().x,
-					playerTank.getTurretPosition().y, 
-					mouseCoords.x, 
-					mouseCoords.y);
+		g.drawLine(tankTurret.getPosition().x, tankTurret.getPosition().y, mouseCoords.x, mouseCoords.y);
 
 	}
  
