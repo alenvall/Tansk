@@ -91,10 +91,10 @@ public class Tansk extends BasicGame implements MouseListener{
 		float yDist = (float)mouseCoords.getY() - playerTank.getTurretPosition().y;
 		
 		double angle = Math.toDegrees(Math.atan2(yDist, xDist));
-		tankTurret.setDirection(tankTurret.getDirection() + (float)angle);
+		tankTurret.setDirection((float)angle);
 		turret.setRotation((float)angle - 90);
 		
-		turret.setCenterOfRotation(1,0);
+		turret.setCenterOfRotation(0,0);
 		
 		playerOne.getTank().update(delta);
 		tank.setRotation((float) playerTank.getDirection().getTheta() + 90);
