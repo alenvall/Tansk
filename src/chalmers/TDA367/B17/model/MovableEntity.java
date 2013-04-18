@@ -101,7 +101,7 @@ public abstract class MovableEntity extends Entity {
 		if(speed-deacceleration * delta/60 > 0){
 			setSpeed(speed - deacceleration * delta/60);
 		}else if(speed+deacceleration * delta/60 < 0){
-			setSpeed(speed + deacceleration * delta/60); //TODO Make sure there are no pssible bugs
+			setSpeed(speed + deacceleration * delta/60); //TODO Make sure there are no possible bugs
 		}else{
 			setSpeed(0);
 		}
