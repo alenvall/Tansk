@@ -17,8 +17,6 @@ public abstract class AbstractTank extends MovableEntity{
 		turnSpeed = 3f;
 		//currentWeapon = Weapons.DEFAULT_WEAPON;
 		turret = new DefaultTurret(1337);
-		
-		
 	}
 	
 	public String getName() {
