@@ -90,7 +90,7 @@ public abstract class MovableEntity extends Entity {
 		velocity.x = velocity.x * delta/60;
 		velocity.y = velocity.y * delta/60;
 		
-		setPosition(position.add(velocity));
+		setPosition(getPosition().add(velocity));
 	}
 
 	public void accelerate(int delta){
