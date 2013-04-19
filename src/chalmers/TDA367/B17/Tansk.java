@@ -15,8 +15,10 @@ public class Tansk extends BasicGame implements MouseListener {
 	Image map = null;
 	SpriteSheet tankSprite  = null;
 	SpriteSheet turretSprite = null;
+	List<SpriteSheet> projectileSprites;
+	
 	Point mouseCoords;
-
+	
 	Input input;
 
 	public Tansk() {
@@ -29,7 +31,9 @@ public class Tansk extends BasicGame implements MouseListener {
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
-
+		
+		projectileSprites = new ArrayList<SpriteSheet>();
+		
 		turretSprite = new SpriteSheet("data/turret2.png", 45, 65);
 		map = new Image("data/map.png");
 		input = gc.getInput();
@@ -64,6 +68,11 @@ public class Tansk extends BasicGame implements MouseListener {
 				playerOne.getTank().turnRight(delta);
 			}
 		}
+		
+		if(input.isKeyDown(Input.KEY_SPACE) && playerOne.getTank().fire == true){
+			playerOne.getTank().fireWeapon(delta);
+		}
+		
 		playerOne.getTank().update(delta, mouseCoords);
       
 		tankSprite.setRotation((float) (playerOne.getTank().getDirection().getTheta() + 90));	
@@ -71,7 +80,6 @@ public class Tansk extends BasicGame implements MouseListener {
         
         for(AbstractProjectile p : playerOne.getTank().getProjectiles()){
         	p.update(delta);
-        	System.out.println(p.getPosition());
         }
 	}
 
@@ -80,7 +88,15 @@ public class Tansk extends BasicGame implements MouseListener {
 		map.draw();
 		tankSprite.draw(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y);
 		turretSprite.draw(playerOne.getTank().getTurret().getImagePosition().x , playerOne.getTank().getTurret().getImagePosition().y);
-
+		
+		
+		//Render projectiles:
+		for(AbstractProjectile ap : playerOne.getTank().getProjectiles()){
+			SpriteSheet tmp = new SpriteSheet("data/bullet.png", 5, 15);
+			tmp.setRotation((float)ap.getDirection().getTheta() + 90);
+	        tmp.draw(ap.getPosition().x, ap.getPosition().y);
+        }
+		
 		debugRender(g);
 	}
 
@@ -101,6 +117,12 @@ public class Tansk extends BasicGame implements MouseListener {
 
 		g.drawString("speed: " + Double.toString(playerOne.getTank().getSpeed()), 530, 90);
 
+		
+		if(!playerOne.getTank().getProjectiles().isEmpty()){
+			g.drawString("projPos: "+playerOne.getTank()
+				.getProjectiles().get(0).getPosition().x+" , "+playerOne.getTank()
+				.getProjectiles().get(0).getPosition().y, 530, 110);
+		}
 /*		g.setColor(Color.yellow);
 		g.drawLine(tankTurret.getPosition().x, tankTurret.getPosition().y, mouseCoords.x, mouseCoords.y);
 		g.setColor(Color.green);
@@ -121,11 +143,9 @@ public class Tansk extends BasicGame implements MouseListener {
 	}
 	
 	public void mousePressed(int oldx, int oldy, int newx, int newy) {
-		playerOne.getTank().fire = true;
 	}
 	
 	public void mouseReleased(int oldx, int oldy, int newx, int newy) {
-		playerOne.getTank().fire = false;
 	}
  
 	public static void main(String[] args) throws SlickException {
