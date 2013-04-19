@@ -1,26 +1,21 @@
 package chalmers.TDA367.B17;
 
 import chalmers.TDA367.B17.model.*;
-
 import org.newdawn.slick.*;
-import org.newdawn.slick.geom.*;
-
 import java.awt.Point;
 import java.util.*;
 
-public class Tansk extends BasicGame implements MouseListener{
+public class Tansk extends BasicGame implements MouseListener {
 	World world;
-	Input input;
 	ArrayList<Player> players;
 	Player playerOne;
-	Image tank = null;
-	Image turret = null;
+
 	Image map = null;
-	boolean newImages = true;
+	SpriteSheet tankSprite  = null;
+	SpriteSheet turretSprite = null;
 	Point mouseCoords;
-	AbstractTurret tankTurret;
-	AbstractTank playerTank;
-	Shape recturret;
+
+	Input input;
 
 	public Tansk() {
 		super("Tansk!");
@@ -32,20 +27,18 @@ public class Tansk extends BasicGame implements MouseListener{
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
-		
-		turret = new Image("turret.png");
-		tank = new Image("tank.png");
-		map = new Image("map.png");
+
+		turretSprite = new SpriteSheet("data/turret2.png", 45, 65);
+		map = new Image("data/map.png");
 		input = gc.getInput();
 		input.addMouseListener(this);
 		mouseCoords = new Point();
-		tankTurret = playerOne.getTank().getTurret();
-		playerTank = playerOne.getTank();
+		turretSprite.setCenterOfRotation(22.5f, 22.5f);
+		tankSprite = new SpriteSheet("data/tank.png", 65,85);
 	}
- 
+ ;
 	@Override
 	public void update(GameContainer gc, int delta) throws SlickException {
-
 		if(input.isKeyDown(Input.KEY_W)){
 			playerOne.getTank().accelerate(delta);
 		}else if(input.isKeyDown(Input.KEY_S)){
@@ -53,7 +46,7 @@ public class Tansk extends BasicGame implements MouseListener{
 		}else{
 			playerOne.getTank().friction(delta);
 		}
-	  
+
 		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
 			if(input.isKeyDown(Input.KEY_S)){
 				playerOne.getTank().turnRight(delta);
@@ -61,72 +54,59 @@ public class Tansk extends BasicGame implements MouseListener{
 				playerOne.getTank().turnLeft(delta);
 			}
 		}
-	
+
 		if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
 			if(input.isKeyDown(Input.KEY_S)){
 				playerOne.getTank().turnLeft(delta);
 			} else {
 				playerOne.getTank().turnRight(delta);
 			}
-     	}
-		
-		if(input.isKeyDown(Input.KEY_TAB)){
-			if(newImages){
-				tank = new Image("plane.png");
-				map = new Image("map.jpg");
-				playerOne.getTank().setDirection(new Vector2f(0, -1));
-				newImages = false;
-			}else{
-				tank = new Image("tank.png");
-				map = new Image("map.png");
-				playerOne.getTank().setDirection(new Vector2f(0, -1));
-				newImages = true;
-			}
-					
 		}
-		
-		playerTank.setTurretPosition(new Vector2f(playerTank.getPosition().x+playerTank.getSize().x/2, playerTank.getPosition().y+playerTank.getSize().y/2));
-		
-		float xDist = (float)mouseCoords.getX() - playerTank.getTurretPosition().x;
-		float yDist = (float)mouseCoords.getY() - playerTank.getTurretPosition().y;
-		
-		double angle = Math.toDegrees(Math.atan2(yDist, xDist));
-		tankTurret.setDirection((float)angle);
-		turret.setRotation(tankTurret.getDirection() - 90);
-		
-		turret.setCenterOfRotation(0,0);
-		
-		playerOne.getTank().update(delta);
-		tank.setRotation((float) playerTank.getDirection().getTheta() + 90);
+		playerOne.getTank().update(delta, mouseCoords);
+      
+		tankSprite.setRotation((float) (playerOne.getTank().getDirection().getTheta() + 90));	
+        turretSprite.setRotation(playerOne.getTank().getTurret().getRotation());
 	}
-	
-	public void mouseMoved(int oldx, int oldy, int newx, int newy){
-		mouseCoords.setLocation(newx, newy);
-	}
-	
-	public void mouseDragged(int oldx, int oldy, int newx, int newy){
-		mouseCoords.setLocation(newx, newy);
-	}
- 
+
 	@Override
 	public void render(GameContainer gc, Graphics g) throws SlickException {
 		map.draw();
-		tank.draw(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);
-		
+		tankSprite.draw(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y);
+		turretSprite.draw(playerOne.getTank().getTurret().getImagePosition().x , playerOne.getTank().getTurret().getImagePosition().y);
+
+		debugRender(g);
+	}
+
+	public void debugRender(Graphics g){
 		g.setColor(Color.black);
-		g.drawString("posX:  " + playerOne.getTank().getPosition().x, 10, 30); g.drawString("rotX: " + playerOne.getTank().getDirection().x, 180, 30);
-		g.drawString("posY:  " + playerOne.getTank().getPosition().y, 10, 50); g.drawString("rotY: " + playerOne.getTank().getDirection().y, 180, 50);
-		g.drawString("speed: " + Double.toString(playerOne.getTank().getSpeed()), 10, 70);
-		
-		g.drawString("turAngle: " + tankTurret.getDirection(), 10, 90); 		
-		g.drawString("turPosX: " + playerTank.getTurretPosition().x, 180, 90); g.drawString("turPosY: " + playerTank.getTurretPosition().y, 180, 110);
-		
-		g.drawString("mouseX: " + mouseCoords.x, 10, 130);
-		g.drawString("mouseY: " + mouseCoords.y, 10, 150);
-		
-		turret.draw(playerOne.getTank().getTurretPosition().x, 
-			playerOne.getTank().getTurretPosition().y);
-	
+		g.drawString("tankPosX:   " + playerOne.getTank().getPosition().x,  10, 30);
+		g.drawString("tankPosY:   " + playerOne.getTank().getPosition().y,  10, 50);
+		g.drawString("tankAng:    " + playerOne.getTank().getRotation(),	10, 70);
+		g.drawString("tankImgAng: " + (tankSprite.getRotation()),			10, 90);
+
+		g.drawString("turPosX:   " + playerOne.getTank().getTurret().getPosition().x, 300, 30);
+		g.drawString("turPosY:   " + playerOne.getTank().getTurret().getPosition().y, 300, 50);
+		g.drawString("turAng:    " + playerOne.getTank().getTurret().getRotation(),	  300, 70);
+		g.drawString("turImgAng: " + turretSprite.getRotation(),		 			  300, 90);
+
+		g.drawString("mouseX: " + mouseCoords.x, 530, 30);
+		g.drawString("mouseY: " + mouseCoords.y, 530, 50);
+
+		g.drawString("speed: " + Double.toString(playerOne.getTank().getSpeed()), 530, 90);
+
+/*		g.setColor(Color.yellow);
+		g.drawLine(tankTurret.getPosition().x, tankTurret.getPosition().y, mouseCoords.x, mouseCoords.y);
+		g.setColor(Color.green);
+		g.drawLine(tankTurret.getImagePosition().x, tankTurret.getImagePosition().y,  mouseCoords.x, mouseCoords.y);
+		g.setColor(Color.red);
+		g.drawLine(playerTank.getPosition().x, playerTank.getPosition().y, mouseCoords.x, mouseCoords.y);
+		g.setColor(Color.blue);
+		g.drawLine(playerTank.getImagePosition().x, playerTank.getImagePosition().y,  mouseCoords.x, mouseCoords.y);
+*/	
+	}
+
+	public void mouseMoved(int oldx, int oldy, int newx, int newy){
+		mouseCoords.setLocation(newx, newy);
 	}
  
 	public static void main(String[] args) throws SlickException {
@@ -136,7 +116,7 @@ public class Tansk extends BasicGame implements MouseListener{
 		app.setMaximumLogicUpdateInterval(500);
 		app.setMinimumLogicUpdateInterval(5);
 		app.setDisplayMode(800, 600, false);
-	
+
 		app.start();
   }
 }

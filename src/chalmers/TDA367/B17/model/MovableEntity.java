@@ -4,8 +4,9 @@ import org.newdawn.slick.geom.*;
 
 public abstract class MovableEntity extends Entity {
 
-	private Vector2f direction;
-	private float speed;
+
+	protected Vector2f direction;
+	protected float speed;
 	private float maxSpeed;
 	private float minSpeed;
 	private float acceleration;
@@ -33,7 +34,7 @@ public abstract class MovableEntity extends Entity {
 	 * @return True if the speed is less than 0
 	 */
 	public boolean isReversing(){
-		return speed<0;
+		return speed < 0;
 	}
 	
 	/**

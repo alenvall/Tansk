@@ -3,10 +3,10 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Vector2f;
 
 public abstract class Entity{
-	private int id; // The if of this object
-	private Vector2f position; // The position of the Entity
-	private Vector2f size; // The size of the entity
-	
+	protected int id; // The id of this object
+	protected Vector2f position; // The position of the Entity
+	protected Vector2f size; // The size of the entity
+
 	/**
 	 * Create an Entity based on an id
 	 * @param id The value used for setting the id of this object
@@ -38,6 +38,10 @@ public abstract class Entity{
 	public Vector2f getSize(){
 		return size;
 	}
+	
+	public Vector2f getCenter(){
+		return new Vector2f(size.x/2, size.y/2);
+	}
 
 	/**
 	 * Set the size of this entity
@@ -61,5 +65,9 @@ public abstract class Entity{
 	 */
 	public void setPosition(Vector2f position){
 		this.position = position;
+	}
+	
+	public void update(int delta){
+		
 	}
 }
