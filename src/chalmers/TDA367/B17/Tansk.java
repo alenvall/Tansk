@@ -51,7 +51,7 @@ public class Tansk extends BasicGame implements MouseListener{
 		}else if(input.isKeyDown(Input.KEY_S)){
 			playerOne.getTank().reverse(delta);
 		}else{
-			playerOne.getTank().deaccelerate(delta);
+			playerOne.getTank().friction(delta);
 		}
 	  
 		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
@@ -92,7 +92,7 @@ public class Tansk extends BasicGame implements MouseListener{
 		
 		double angle = Math.toDegrees(Math.atan2(yDist, xDist));
 		tankTurret.setDirection((float)angle);
-		turret.setRotation((float)angle - 90);
+		turret.setRotation(tankTurret.getDirection() - 90);
 		
 		turret.setCenterOfRotation(0,0);
 		
@@ -101,6 +101,10 @@ public class Tansk extends BasicGame implements MouseListener{
 	}
 	
 	public void mouseMoved(int oldx, int oldy, int newx, int newy){
+		mouseCoords.setLocation(newx, newy);
+	}
+	
+	public void mouseDragged(int oldx, int oldy, int newx, int newy){
 		mouseCoords.setLocation(newx, newy);
 	}
  
