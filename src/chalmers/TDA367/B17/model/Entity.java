@@ -2,14 +2,14 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Vector2f;
 
-public class Entity{
+public abstract class Entity{
 	private int id; // The if of this object
 	private Vector2f position; // The position of the Entity
 	private Vector2f size; // The size of the entity
 	
 	/**
 	 * Create an Entity based on an id
-	 * @param id The id of the entity
+	 * @param id The value used for setting the id of this object
 	 */
 	public Entity(int id){
 		this.id = id;
@@ -25,7 +25,7 @@ public class Entity{
 	
 	/**
 	 * Get the id of this entity
-	 * @return The id
+	 * @return The id of this object
 	 */
 	public int getId(){
 		return id;
@@ -49,7 +49,7 @@ public class Entity{
 
 	/**
 	 * Set the id of this entity
-	 * @param id The new id
+	 * @param id The new id for this object
 	 */
 	public void setId(int id){
 		this.id = id;
