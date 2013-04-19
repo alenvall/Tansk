@@ -10,7 +10,7 @@ public abstract class MovableEntity extends Entity {
 	private float maxSpeed;
 	private float minSpeed;
 	private float acceleration;
-	private float friction; //Should be called "friction"
+	private float friction;
 	
 	/**
 	 * Create a new MovableEntity based on the following parameters

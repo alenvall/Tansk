@@ -1,6 +1,9 @@
 package chalmers.TDA367.B17.model;
 
 import java.awt.Point;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.newdawn.slick.geom.*;
 
 public abstract class AbstractTank extends MovableEntity {
@@ -13,10 +16,13 @@ public abstract class AbstractTank extends MovableEntity {
 	protected AbstractTurret turret;
 	protected float turretOffset;
 	Point mouseCoords;
+	private List<AbstractProjectile> projectiles;
+	public boolean fire = false;
 	
 	public AbstractTank(int id, Vector2f velocity, float maxSpeed, float minSpeed) {
 		super(id, velocity, maxSpeed, minSpeed);
 		turnSpeed = 3f;
+		projectiles = new ArrayList<AbstractProjectile>();
 	}
 	
 	public Vector2f getImagePosition(){
@@ -87,8 +93,13 @@ public abstract class AbstractTank extends MovableEntity {
 	    return turretOffset;
     }
 	
+	public List<AbstractProjectile> getProjectiles(){
+		return projectiles;
+	}
+	
 	public void update(int delta, Point mouseCoords){
 		super.update(delta);
+		fireWeapon(delta);
 		updateTurret(mouseCoords);
 	}
 
@@ -102,4 +113,12 @@ public abstract class AbstractTank extends MovableEntity {
       	
 		turret.setPosition(new Vector2f(newTurX, newTurY));
     }
+	
+	public void fireWeapon(int delta){
+		if(fire && (delta >= currentWeapon.getFireRate())){
+			AbstractProjectile proj = currentWeapon.getProjectileType();
+			proj.setDirection(new Vector2f(turret.getRotation()));
+			projectiles.add(proj);
+		}
+	}
 }

@@ -2,6 +2,8 @@ package chalmers.TDA367.B17;
 
 import chalmers.TDA367.B17.model.*;
 import org.newdawn.slick.*;
+import org.newdawn.slick.geom.Vector2f;
+
 import java.awt.Point;
 import java.util.*;
 
@@ -66,6 +68,10 @@ public class Tansk extends BasicGame implements MouseListener {
       
 		tankSprite.setRotation((float) (playerOne.getTank().getDirection().getTheta() + 90));	
         turretSprite.setRotation(playerOne.getTank().getTurret().getRotation());
+        
+        for(AbstractProjectile p : playerOne.getTank().getProjectiles()){
+        	p.update(delta);
+        }
 	}
 
 	@Override
@@ -111,6 +117,14 @@ public class Tansk extends BasicGame implements MouseListener {
 	
 	public void mouseDragged(int oldx, int oldy, int newx, int newy){
 		mouseCoords.setLocation(newx, newy);
+	}
+	
+	public void mousePressed(int oldx, int oldy, int newx, int newy) {
+		playerOne.getTank().fire = true;
+	}
+	
+	public void mouseReleased(int oldx, int oldy, int newx, int newy) {
+		playerOne.getTank().fire = false;
 	}
  
 	public static void main(String[] args) throws SlickException {

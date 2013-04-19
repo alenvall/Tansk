@@ -8,9 +8,10 @@ public abstract class AbstractProjectile extends MovableEntity {
 	private double duration;
 
 	public AbstractProjectile(int id, Vector2f velocity,
-			float maxSpeed, float minSpeed) {
+			float maxSpeed, float minSpeed, double damage, int duration) {
 		super(id, velocity, maxSpeed, minSpeed);
-		// TODO Auto-generated constructor stub
+		this.damage = damage;
+		this.duration = duration;
 	}
 
 	public double getDamage() {
@@ -28,5 +29,4 @@ public abstract class AbstractProjectile extends MovableEntity {
 	public void setDuration(double duration) {
 		this.duration = duration;
 	}
-
 }

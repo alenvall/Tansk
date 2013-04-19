@@ -13,4 +13,13 @@ public class DefaultTank extends AbstractTank {
 		turretOffset = 6;
 		turret.setPosition(new Vector2f(position.x, turretOffset));
 	}
+
+	/*
+	@Override
+	public void fireWeapon() {
+		Vector2f startPos = new Vector2f();
+		float direction = turret.getRotation();
+		
+		
+	}*/
 }
