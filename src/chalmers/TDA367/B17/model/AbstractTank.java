@@ -17,7 +17,7 @@ public abstract class AbstractTank extends MovableEntity {
 	protected float turretOffset;
 	Point mouseCoords;
 	private List<AbstractProjectile> projectiles;
-	public boolean fire = false;
+	public boolean fire = true;
 	
 	public AbstractTank(int id, Vector2f velocity, float maxSpeed, float minSpeed) {
 		super(id, velocity, maxSpeed, minSpeed);
@@ -99,7 +99,6 @@ public abstract class AbstractTank extends MovableEntity {
 	
 	public void update(int delta, Point mouseCoords){
 		super.update(delta);
-		fireWeapon(delta);
 		updateTurret(mouseCoords);
 	}
 
@@ -115,10 +114,9 @@ public abstract class AbstractTank extends MovableEntity {
     }
 	
 	public void fireWeapon(int delta){
-		if(fire){
-			AbstractProjectile proj = currentWeapon.getProjectileType();
-			proj.setDirection(new Vector2f(turret.getRotation()));
-			projectiles.add(proj);
-		}
+		AbstractProjectile proj = currentWeapon.createProjectile();
+		proj.setDirection(new Vector2f(turret.getRotation() + 90));
+		proj.setPosition(turret.getPosition().add(new Vector2f(getRotation())));
+		projectiles.add(proj);
 	}
 }
