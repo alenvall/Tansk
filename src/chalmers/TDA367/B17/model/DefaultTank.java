@@ -12,6 +12,7 @@ public class DefaultTank extends AbstractTank {
 		turret = new DefaultTurret(1337);
 		turretOffset = 6;
 		turret.setPosition(new Vector2f(position.x, turretOffset));
+		setCurrentWeapon(new DefaultWeapon());
 	}
 
 	/*
