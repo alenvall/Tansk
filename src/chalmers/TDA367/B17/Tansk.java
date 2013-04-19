@@ -81,9 +81,10 @@ public class Tansk extends BasicGame implements MouseListener {
 	@Override
 	public void render(GameContainer gc, Graphics g) throws SlickException {
 		map.draw();
-		tankSprite.draw(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y);
+//		tankSprite.draw(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y);
+		tankSprite.drawCentered(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);	
 		turretSprite.draw(playerOne.getTank().getTurret().getImagePosition().x , playerOne.getTank().getTurret().getImagePosition().y);
-
+	
 		debugRender(g);
 	}
 
