@@ -1,28 +1,29 @@
 package chalmers.TDA367.B17.model;
 
+import java.awt.Point;
 import org.newdawn.slick.geom.*;
 
-public abstract class AbstractTank extends MovableEntity{
+public abstract class AbstractTank extends MovableEntity {
 
 	private String name;
 	private double health;
 	private AbstractWeapon currentWeapon;
 	private AbstractPowerUp currentPowerUp;
 	private float turnSpeed; // How many degrees the tank will turn each update
-	private AbstractTurret turret;
-	private Vector2f turretPosition;
-	protected Vector2f turretOffset;
+	protected AbstractTurret turret;
+	protected float turretOffset;
+	Point mouseCoords;
 	
 	public AbstractTank(int id, Vector2f velocity, float maxSpeed, float minSpeed, float reverseSpeed) {
 		super(id, velocity, maxSpeed, minSpeed, reverseSpeed);
 		turnSpeed = 3f;
-		//currentWeapon = Weapons.DEFAULT_WEAPON;
-		turret = new DefaultTurret(1337);
-		
-		
 	}
 	
-	public double getRotation(){
+	public Vector2f getImagePosition(){
+		return new Vector2f(position.x - size.x/2, position.y - size.y/2);
+	}
+	
+	public double getRotation(){;
 		return direction.getTheta();
 	}
 	
@@ -82,19 +83,23 @@ public abstract class AbstractTank extends MovableEntity{
 		setDirection(getDirection().add(turnSpeed * delta/60 * (Math.abs(speed)*0.2f + 0.7)));
 	}
 
-	public Vector2f getTurretPosition() {
-		return turretPosition;
-	}
-
-	public void setTurretPosition(Vector2f turretPosition) {
-		this.turretPosition = turretPosition;
-	}
-
-	public Vector2f getTurretOffset() {
+	public float getTurretOffset() {
 	    return turretOffset;
     }
+	
+	public void update(int delta, Point mouseCoords){
+		super.update(delta);
+		updateTurret(mouseCoords);
+	}
 
-	public void setTurretOffset(Vector2f turretOffset) {
-	    this.turretOffset = turretOffset;
+	private void updateTurret(Point mouseCoords) {
+		float rotation = (float) Math.toDegrees(Math.atan2(turret.getPosition().x - mouseCoords.x + 0, turret.getPosition().y - mouseCoords.y + 0)* -1)+180;
+        turret.setRotation(rotation);  
+        
+        double tankRotation = getRotation(); 
+        float newTurX = (float) (position.x + turretOffset * Math.cos(Math.toRadians(tankRotation + 180)));
+        float newTurY = (float) ((float) position.y - turretOffset * Math.sin(Math.toRadians(tankRotation)));
+      	
+		turret.setPosition(new Vector2f(newTurX, newTurY));
     }
 }

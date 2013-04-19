@@ -6,7 +6,7 @@ public class DefaultTurret extends AbstractTurret {
 
 	public DefaultTurret(int id) {
 		super(id);
-		setSize(new Vector2f(10f, 65f));
+		setSize(new Vector2f(45f, 65f));
 	}
 
 }

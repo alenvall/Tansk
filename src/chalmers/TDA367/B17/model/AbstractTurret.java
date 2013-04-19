@@ -11,6 +11,10 @@ public abstract class AbstractTurret extends Entity {
 		super(id);
 		turretDirection = new Vector2f();
 	}
+	
+	public Vector2f getImagePosition(){
+		return new Vector2f(position.x - 23, position.y - 22);
+	}
 
 	public Vector2f getTurretDirection() {
 		return turretDirection;
