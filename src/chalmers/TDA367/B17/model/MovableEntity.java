@@ -23,7 +23,7 @@ public abstract class MovableEntity extends Entity {
 	}
 	
 	public boolean isReversing(){
-		return speed<0;
+		return speed < 0;
 	}
 	
 	public Vector2f getDirection(){
@@ -94,9 +94,9 @@ public abstract class MovableEntity extends Entity {
 	}
 
 	public void accelerate(int delta){
-//		setSpeed(speed + acceleration);
 		setSpeed(speed + acceleration * delta/60);
 	}
+	
 	public void deaccelerate(int delta){
 		if(speed-deacceleration * delta/60 > 0){
 			setSpeed(speed - deacceleration * delta/60);
@@ -109,7 +109,6 @@ public abstract class MovableEntity extends Entity {
 	public void reverse(int delta){
 			setSpeed(speed - deacceleration * delta/60);
 	}
-
 
 	public void update(int delta){
 		move(delta);

@@ -2,7 +2,7 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Vector2f;
 
-public class Entity{
+public abstract class Entity {
 	protected int id;
 	protected Vector2f position;
 	//private type
@@ -38,5 +38,9 @@ public class Entity{
 	
 	public void setPosition(Vector2f position){
 		this.position = position;
+	}
+	
+	public void update(int delta){
+		
 	}
 }
