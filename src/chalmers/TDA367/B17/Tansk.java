@@ -29,7 +29,7 @@ public class Tansk extends BasicGame implements MouseListener {
 		players = new ArrayList<Player>();
 		players.add(playerOne);
 
-		turretSprite = new SpriteSheet("data/turret2.png", 45, 65);
+		turretSprite = new SpriteSheet("data/turret.png", 45, 65);
 		map = new Image("data/map.png");
 		input = gc.getInput();
 		input.addMouseListener(this);
@@ -62,6 +62,10 @@ public class Tansk extends BasicGame implements MouseListener {
 			} else {
 				playerOne.getTank().turnRight(delta);
 			}
+		}
+		if(input.isKeyDown(Input.KEY_TAB)){
+			turretSprite = new SpriteSheet("data/quaketurr.png", 45, 65);
+			turretSprite.setCenterOfRotation(22.5f, 22.5f);
 		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
