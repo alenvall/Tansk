@@ -6,8 +6,8 @@ public abstract class AbstractWeapon {
 	private int fireRate; // milliseconds
 	
 	public AbstractWeapon(AbstractProjectile projectileType, int fireRate) {
-		this.projectileType = projectileType;
 		this.fireRate = fireRate;
+		this.projectileType = projectileType;
 	}
 
 	public AbstractProjectile getProjectileType() {
@@ -19,7 +19,7 @@ public abstract class AbstractWeapon {
 		//Shouldn't do anything.
 	}
 
-	public double getFireRate() {
+	public double getFireRate( ) {
 		return fireRate;
 	}
 
@@ -27,4 +27,5 @@ public abstract class AbstractWeapon {
 		this.fireRate = fireRate;
 	}
 
+	public abstract AbstractProjectile createProjectile();
 }
