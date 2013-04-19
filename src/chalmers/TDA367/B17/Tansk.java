@@ -63,6 +63,11 @@ public class Tansk extends BasicGame implements MouseListener {
 				playerOne.getTank().turnRight(delta);
 			}
 		}
+		
+		if(input.isKeyDown(Input.KEY_ESCAPE)){
+			gc.exit();
+		}
+		
 		playerOne.getTank().update(delta, mouseCoords);
       
 		tankSprite.setRotation((float) (playerOne.getTank().getDirection().getTheta() + 90));	
@@ -121,7 +126,7 @@ public class Tansk extends BasicGame implements MouseListener {
 		app.setMaximumLogicUpdateInterval(500);
 		app.setMinimumLogicUpdateInterval(5);
 		app.setDisplayMode(800, 600, false);
-
+		
 		app.start();
   }
 }
