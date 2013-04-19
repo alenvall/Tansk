@@ -98,7 +98,7 @@ public abstract class AbstractTank extends MovableEntity {
         
         double tankRotation = getRotation(); 
         float newTurX = (float) (position.x + turretOffset * Math.cos(Math.toRadians(tankRotation + 180)));
-        float newTurY = (float) ((float) position.y - turretOffset * Math.sin(Math.toRadians(tankRotation)));
+        float newTurY = (float) (position.y - turretOffset * Math.sin(Math.toRadians(tankRotation)));
       	
 		turret.setPosition(new Vector2f(newTurX, newTurY));
     }
