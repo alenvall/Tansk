@@ -8,8 +8,8 @@ public abstract class AbstractProjectile extends MovableEntity {
 	private double duration;
 
 	public AbstractProjectile(int id, Vector2f velocity,
-			float maxSpeed, float minSpeed, float reverseSpeed) {
-		super(id, velocity, maxSpeed, minSpeed, reverseSpeed);
+			float maxSpeed, float minSpeed) {
+		super(id, velocity, maxSpeed, minSpeed);
 		// TODO Auto-generated constructor stub
 	}
 
