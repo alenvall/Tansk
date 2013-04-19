@@ -23,6 +23,7 @@ public class Tansk extends BasicGame implements MouseListener {
  
 	@Override
 	public void init(GameContainer gc) throws SlickException {
+		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		world = new World();
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
@@ -93,15 +94,15 @@ public class Tansk extends BasicGame implements MouseListener {
 		g.drawString("mouseY: " + mouseCoords.y, 530, 50);
 
 		g.drawString("speed: " + Double.toString(playerOne.getTank().getSpeed()), 530, 90);
-
-/*		g.setColor(Color.yellow);
-		g.drawLine(tankTurret.getPosition().x, tankTurret.getPosition().y, mouseCoords.x, mouseCoords.y);
+/*
+		g.setColor(Color.yellow);
+		g.drawLine(playerOne.getTank().getTurret().getPosition().x, playerOne.getTank().getTurret().getPosition().y, mouseCoords.x, mouseCoords.y);
 		g.setColor(Color.green);
-		g.drawLine(tankTurret.getImagePosition().x, tankTurret.getImagePosition().y,  mouseCoords.x, mouseCoords.y);
+		g.drawLine(playerOne.getTank().getTurret().getImagePosition().x, playerOne.getTank().getTurret().getImagePosition().y,  mouseCoords.x, mouseCoords.y);
 		g.setColor(Color.red);
-		g.drawLine(playerTank.getPosition().x, playerTank.getPosition().y, mouseCoords.x, mouseCoords.y);
+		g.drawLine(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y, mouseCoords.x, mouseCoords.y);
 		g.setColor(Color.blue);
-		g.drawLine(playerTank.getImagePosition().x, playerTank.getImagePosition().y,  mouseCoords.x, mouseCoords.y);
+		g.drawLine(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y,  mouseCoords.x, mouseCoords.y);
 */	
 	}
 
@@ -112,7 +113,7 @@ public class Tansk extends BasicGame implements MouseListener {
 	public void mouseDragged(int oldx, int oldy, int newx, int newy){
 		mouseCoords.setLocation(newx, newy);
 	}
- 
+
 	public static void main(String[] args) throws SlickException {
 		AppGameContainer app = new AppGameContainer(new Tansk());
 
