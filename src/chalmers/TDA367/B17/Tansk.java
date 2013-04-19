@@ -108,6 +108,10 @@ public class Tansk extends BasicGame implements MouseListener {
 	public void mouseMoved(int oldx, int oldy, int newx, int newy){
 		mouseCoords.setLocation(newx, newy);
 	}
+	
+	public void mouseDragged(int oldx, int oldy, int newx, int newy){
+		mouseCoords.setLocation(newx, newy);
+	}
  
 	public static void main(String[] args) throws SlickException {
 		AppGameContainer app = new AppGameContainer(new Tansk());
