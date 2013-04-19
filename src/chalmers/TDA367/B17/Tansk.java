@@ -71,6 +71,7 @@ public class Tansk extends BasicGame implements MouseListener {
         
         for(AbstractProjectile p : playerOne.getTank().getProjectiles()){
         	p.update(delta);
+        	System.out.println(p.getPosition());
         }
 	}
 
