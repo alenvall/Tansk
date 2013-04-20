@@ -94,6 +94,7 @@ public class Tansk extends BasicGame implements MouseListener {
         }
 		
 		debugRender(g);
+		
 	}
 
 	public void debugRender(Graphics g){
