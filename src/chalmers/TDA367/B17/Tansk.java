@@ -37,7 +37,7 @@ public class Tansk extends BasicGame implements MouseListener {
 		input = gc.getInput();
 		input.addMouseListener(this);
 		mouseCoords = new Point();
-		turretSprite.setCenterOfRotation(22.5f, 22.5f);
+		turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
 		tankSprite = new SpriteSheet("data/tank.png", 65,85);
 	}
  ;

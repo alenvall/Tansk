@@ -4,13 +4,14 @@ import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractTurret extends Entity {
 	private float angle;
+	protected Vector2f turretCenter;
 
 	public AbstractTurret(int id) {
 		super();
 	}
 
 	public Vector2f getImagePosition(){
-		return new Vector2f(position.x - 23, position.y - 22);
+		return new Vector2f(position.x - turretCenter.x, position.y - turretCenter.y);
 	}
 
 	public float getRotation() {
@@ -20,4 +21,8 @@ public abstract class AbstractTurret extends Entity {
 	public void setRotation(float angle) {
 		this.angle = angle % 360.0f;
     }
+	
+	public Vector2f getTurretCenter(){
+		return new Vector2f(turretCenter);
+	}
 }
