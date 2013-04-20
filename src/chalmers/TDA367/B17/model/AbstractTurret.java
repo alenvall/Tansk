@@ -3,8 +3,9 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractTurret extends Entity {
-	private float angle;
+	protected float angle;
 	protected Vector2f turretCenter;
+	protected float turretLength;
 
 	public AbstractTurret() {
 		super();
@@ -24,5 +25,13 @@ public abstract class AbstractTurret extends Entity {
 	
 	public Vector2f getTurretCenter(){
 		return new Vector2f(turretCenter);
+	}
+	
+	public Vector2f getTurretNozzle(){
+		double turretRotation = getRotation(); 
+		float nozzleX = (float) (position.x - turretLength * Math.sin(Math.toRadians(turretRotation + 0)));
+		float nozzleY = (float) (position.y + turretLength * Math.cos(Math.toRadians(turretRotation )));
+		
+		return new Vector2f(nozzleX, nozzleY);
 	}
 }

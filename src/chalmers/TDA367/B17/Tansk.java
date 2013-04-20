@@ -90,7 +90,7 @@ public class Tansk extends BasicGame implements MouseListener {
 		//Render projectiles:
 		for(AbstractProjectile ap : playerOne.getTank().getProjectiles()){
 			projectileSprite.setRotation((float)ap.getDirection().getTheta() + 90);
-			projectileSprite.draw(ap.getPosition().x, ap.getPosition().y);
+			projectileSprite.drawCentered(ap.getPosition().x, ap.getPosition().y);
         }
 		
 		debugRender(g);

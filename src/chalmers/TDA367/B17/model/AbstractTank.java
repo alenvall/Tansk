@@ -116,7 +116,7 @@ public abstract class AbstractTank extends MovableEntity {
 	public void fireWeapon(int delta){
 		AbstractProjectile proj = currentWeapon.createProjectile();
 		proj.setDirection(new Vector2f(turret.getRotation() + 90));
-		proj.setPosition(turret.getPosition().add(new Vector2f(getRotation())));
+		proj.setPosition(turret.getTurretNozzle());
 		projectiles.add(proj);
 	}
 }
