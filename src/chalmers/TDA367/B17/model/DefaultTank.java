@@ -6,10 +6,10 @@ import org.newdawn.slick.geom.Vector2f;
 public class DefaultTank extends AbstractTank {
 
 	public DefaultTank(int id, Vector2f direction, float maxSpeed, float minSpeed) {
-		super(id, direction, maxSpeed, minSpeed);
+		super(direction, maxSpeed, minSpeed);
 		setSize(new Vector2f(65f, 85f));
 		setPosition(new Vector2f(100, 150));
-		turret = new DefaultTurret(1337);
+		turret = new DefaultTurret(World.generateID());
 		turretOffset = 6;
 		turret.setPosition(new Vector2f(position.x, turretOffset));
 		setCurrentWeapon(new DefaultWeapon());

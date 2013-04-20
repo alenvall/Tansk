@@ -19,8 +19,8 @@ public abstract class AbstractTank extends MovableEntity {
 	private List<AbstractProjectile> projectiles;
 	public boolean fire = true;
 	
-	public AbstractTank(int id, Vector2f velocity, float maxSpeed, float minSpeed) {
-		super(id, velocity, maxSpeed, minSpeed);
+	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed) {
+		super(velocity, maxSpeed, minSpeed);
 		turnSpeed = 3f;
 		projectiles = new ArrayList<AbstractProjectile>();
 	}

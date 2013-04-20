@@ -6,7 +6,7 @@ public abstract class AbstractTurret extends Entity {
 	private float angle;
 
 	public AbstractTurret(int id) {
-		super(id);
+		super();
 	}
 
 	public Vector2f getImagePosition(){

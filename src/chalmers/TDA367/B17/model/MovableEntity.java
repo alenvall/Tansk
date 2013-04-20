@@ -20,8 +20,8 @@ public abstract class MovableEntity extends Entity {
 	 * @param minSpeed The minimum speed of this object
 	 * @param reverseSpeed The speed at which the object is reversing
 	 */
-	public MovableEntity(int id, Vector2f direction, float maxSpeed, float minSpeed) {
-		super(id);
+	public MovableEntity(Vector2f direction, float maxSpeed, float minSpeed) {
+		super();
 		this.direction = direction;
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;;

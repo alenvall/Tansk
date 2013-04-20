@@ -6,7 +6,7 @@ public abstract class AbstractPowerUp extends Entity {
 	private double duration;
 	
 	public AbstractPowerUp(int id) {
-		super(id);
+		super();
 		// TODO Auto-generated constructor stub
 	}
 

@@ -2,8 +2,6 @@ package chalmers.TDA367.B17;
 
 import chalmers.TDA367.B17.model.*;
 import org.newdawn.slick.*;
-import org.newdawn.slick.geom.Vector2f;
-
 import java.awt.Point;
 import java.util.*;
 
@@ -31,6 +29,8 @@ public class Tansk extends BasicGame implements MouseListener {
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
+		
+		
 		
 		projectileSprites = new ArrayList<SpriteSheet>();
 		

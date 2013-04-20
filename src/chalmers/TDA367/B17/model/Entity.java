@@ -8,11 +8,11 @@ public abstract class Entity{
 	protected Vector2f size; // The size of the entity
 
 	/**
-	 * Create an Entity based on an id
-	 * @param id The value used for setting the id of this object
+	 * 
+	 * 
 	 */
-	public Entity(int id){
-		this.id = id;
+	public Entity(){
+		this.id = World.generateID();
 	}
 	
 	/**

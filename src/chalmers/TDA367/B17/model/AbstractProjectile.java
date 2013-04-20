@@ -7,9 +7,9 @@ public abstract class AbstractProjectile extends MovableEntity {
 	private double damage;
 	private double duration;
 
-	public AbstractProjectile(int id, Vector2f velocity,
+	public AbstractProjectile(Vector2f velocity,
 			float maxSpeed, float minSpeed, double damage, int duration) {
-		super(id, velocity, maxSpeed, minSpeed);
+		super(velocity, maxSpeed, minSpeed);
 		this.damage = damage;
 		this.duration = duration;
 	}
