@@ -13,7 +13,7 @@ public class Tansk extends BasicGame implements MouseListener {
 	Image map = null;
 	SpriteSheet tankSprite  = null;
 	SpriteSheet turretSprite = null;
-	List<SpriteSheet> projectileSprites;
+	SpriteSheet projectileSprite = null;
 	
 	Point mouseCoords;
 	
@@ -30,10 +30,8 @@ public class Tansk extends BasicGame implements MouseListener {
 		players = new ArrayList<Player>();
 		players.add(playerOne);
 		
-		
-		
-		projectileSprites = new ArrayList<SpriteSheet>();
-		
+
+		projectileSprite = new SpriteSheet("data/bullet.png", 5, 10);
 		turretSprite = new SpriteSheet("data/turret2.png", 45, 65);
 		map = new Image("data/map.png");
 		input = gc.getInput();
@@ -89,12 +87,10 @@ public class Tansk extends BasicGame implements MouseListener {
 		tankSprite.draw(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y);
 		turretSprite.draw(playerOne.getTank().getTurret().getImagePosition().x , playerOne.getTank().getTurret().getImagePosition().y);
 		
-		
 		//Render projectiles:
 		for(AbstractProjectile ap : playerOne.getTank().getProjectiles()){
-			SpriteSheet tmp = new SpriteSheet("data/bullet.png", 5, 15);
-			tmp.setRotation((float)ap.getDirection().getTheta() + 90);
-	        tmp.draw(ap.getPosition().x, ap.getPosition().y);
+			projectileSprite.setRotation((float)ap.getDirection().getTheta() + 90);
+			projectileSprite.draw(ap.getPosition().x, ap.getPosition().y);
         }
 		
 		debugRender(g);
