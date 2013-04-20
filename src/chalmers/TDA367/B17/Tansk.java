@@ -25,22 +25,23 @@ public class Tansk extends BasicGame implements MouseListener {
  
 	@Override
 	public void init(GameContainer gc) throws SlickException {
+		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		world = new World();
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
 		
-
 		projectileSprite = new SpriteSheet("data/bullet.png", 5, 10);
-		turretSprite = new SpriteSheet("data/turret2.png", 45, 65);
+		turretSprite = new SpriteSheet("data/turret.png", 45, 65);
 		map = new Image("data/map.png");
+		
 		input = gc.getInput();
 		input.addMouseListener(this);
 		mouseCoords = new Point();
 		turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
 		tankSprite = new SpriteSheet("data/tank.png", 65,85);
 	}
- ;
+ 
 	@Override
 	public void update(GameContainer gc, int delta) throws SlickException {
 		if(input.isKeyDown(Input.KEY_W)){
@@ -66,9 +67,18 @@ public class Tansk extends BasicGame implements MouseListener {
 				playerOne.getTank().turnRight(delta);
 			}
 		}
-		
+
 		if(input.isKeyDown(Input.KEY_SPACE) && playerOne.getTank().fire == true){
 			playerOne.getTank().fireWeapon(delta);
+		}
+		
+		if(input.isKeyDown(Input.KEY_Q)){
+			turretSprite = new SpriteSheet("data/quaketurr.png", 45, 65);
+			turretSprite.setCenterOfRotation(22.5f, 22.5f);
+		}
+		
+		if(input.isKeyDown(Input.KEY_ESCAPE)){
+			gc.exit();
 		}
 		
 		playerOne.getTank().update(delta, mouseCoords);
@@ -84,7 +94,8 @@ public class Tansk extends BasicGame implements MouseListener {
 	@Override
 	public void render(GameContainer gc, Graphics g) throws SlickException {
 		map.draw();
-		tankSprite.draw(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y);
+//		tankSprite.draw(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y);
+		tankSprite.drawCentered(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);	
 		turretSprite.draw(playerOne.getTank().getTurret().getImagePosition().x , playerOne.getTank().getTurret().getImagePosition().y);
 		
 		//Render projectiles:
@@ -94,7 +105,6 @@ public class Tansk extends BasicGame implements MouseListener {
         }
 		
 		debugRender(g);
-		
 	}
 
 	public void debugRender(Graphics g){
@@ -120,14 +130,16 @@ public class Tansk extends BasicGame implements MouseListener {
 				.getProjectiles().get(0).getPosition().x+" , "+playerOne.getTank()
 				.getProjectiles().get(0).getPosition().y, 530, 110);
 		}
-/*		g.setColor(Color.yellow);
-		g.drawLine(tankTurret.getPosition().x, tankTurret.getPosition().y, mouseCoords.x, mouseCoords.y);
+/*
+		g.setColor(Color.yellow);
+		g.drawLine(playerOne.getTank().getTurret().getPosition().x, playerOne.getTank().getTurret().getPosition().y, mouseCoords.x, mouseCoords.y);
+
 		g.setColor(Color.green);
-		g.drawLine(tankTurret.getImagePosition().x, tankTurret.getImagePosition().y,  mouseCoords.x, mouseCoords.y);
+		g.drawLine(playerOne.getTank().getTurret().getImagePosition().x, playerOne.getTank().getTurret().getImagePosition().y,  mouseCoords.x, mouseCoords.y);
 		g.setColor(Color.red);
-		g.drawLine(playerTank.getPosition().x, playerTank.getPosition().y, mouseCoords.x, mouseCoords.y);
+		g.drawLine(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y, mouseCoords.x, mouseCoords.y);
 		g.setColor(Color.blue);
-		g.drawLine(playerTank.getImagePosition().x, playerTank.getImagePosition().y,  mouseCoords.x, mouseCoords.y);
+		g.drawLine(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y,  mouseCoords.x, mouseCoords.y);
 */	
 	}
 
@@ -138,13 +150,14 @@ public class Tansk extends BasicGame implements MouseListener {
 	public void mouseDragged(int oldx, int oldy, int newx, int newy){
 		mouseCoords.setLocation(newx, newy);
 	}
+
 	
 	public void mousePressed(int oldx, int oldy, int newx, int newy) {
 	}
 	
 	public void mouseReleased(int oldx, int oldy, int newx, int newy) {
 	}
- 
+
 	public static void main(String[] args) throws SlickException {
 		AppGameContainer app = new AppGameContainer(new Tansk());
 
@@ -152,7 +165,7 @@ public class Tansk extends BasicGame implements MouseListener {
 		app.setMaximumLogicUpdateInterval(500);
 		app.setMinimumLogicUpdateInterval(5);
 		app.setDisplayMode(800, 600, false);
-
+		
 		app.start();
   }
 }
