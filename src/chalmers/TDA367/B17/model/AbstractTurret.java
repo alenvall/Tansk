@@ -6,7 +6,7 @@ public abstract class AbstractTurret extends Entity {
 	private float angle;
 	protected Vector2f turretCenter;
 
-	public AbstractTurret(int id) {
+	public AbstractTurret() {
 		super();
 	}
 

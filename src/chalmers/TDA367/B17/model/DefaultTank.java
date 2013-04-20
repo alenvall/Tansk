@@ -9,7 +9,7 @@ public class DefaultTank extends AbstractTank {
 		super(direction, maxSpeed, minSpeed);
 		setSize(new Vector2f(65f, 85f));
 		setPosition(new Vector2f(100, 150));
-		turret = new DefaultTurret(World.generateID());
+		turret = new DefaultTurret();
 		turretOffset = 6;
 		turret.setPosition(new Vector2f(position.x, turretOffset));
 		setCurrentWeapon(new DefaultWeapon());
