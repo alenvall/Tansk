@@ -6,9 +6,14 @@ public abstract class AbstractTurret extends Entity {
 	protected float angle;
 	protected Vector2f turretCenter;
 	protected float turretLength;
+	protected int fireRate;
 
 	public AbstractTurret() {
 		super();
+	}
+	
+	public int getFireRate(){
+		return fireRate;
 	}
 
 	public Vector2f getImagePosition(){
