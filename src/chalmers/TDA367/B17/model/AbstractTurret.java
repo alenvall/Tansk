@@ -39,4 +39,6 @@ public abstract class AbstractTurret extends Entity {
 		
 		return new Vector2f(nozzleX, nozzleY);
 	}
+	
+	
 }
