@@ -68,9 +68,7 @@ public class Tansk extends BasicGame implements MouseListener {
 			}
 		}
 
-		if(playerOne.getTank().fire == true){
-			playerOne.getTank().fireWeapon(delta);
-		}
+		playerOne.getTank().fireWeapon(delta);
 		
 		if(input.isKeyDown(Input.KEY_Q)){
 			turretSprite = new SpriteSheet("data/quaketurr.png", 45, 65);
