@@ -91,9 +91,14 @@ public class Tansk extends BasicGame implements MouseListener {
         List<AbstractProjectile> projs = playerOne.getTank().getProjectiles();
         for(int i = 0; i < projs.size(); i++){
         	AbstractProjectile proj = projs.get(i);
-        	proj.update(delta);
-        	if(proj.getPosition().x > 800 || proj.getPosition().x < 0 || proj.getPosition().y > 600 || proj.getPosition().y < 0)
+        	if(proj.isActive()){
+        		proj.update(delta);
+        		if(proj.getPosition().x > 800 || proj.getPosition().x < 0 || proj.getPosition().y > 600 || proj.getPosition().y < 0)
         		projs.remove(i);
+        	} else {
+        		projs.remove(i);
+        	}
+        	
         }
       /*  for(AbstractProjectile p : playerOne.getTank().getProjectiles()){
         	p.update(delta);
@@ -109,9 +114,11 @@ public class Tansk extends BasicGame implements MouseListener {
 		
 		//Render projectiles:
 		for(AbstractProjectile ap : playerOne.getTank().getProjectiles()){
-			projectileSprite.setRotation((float)ap.getDirection().getTheta() + 90);
-			projectileSprite.drawCentered(ap.getPosition().x, ap.getPosition().y);
-        }
+			if(ap.isActive()){
+				projectileSprite.setRotation((float)ap.getDirection().getTheta() + 90);
+				projectileSprite.drawCentered(ap.getPosition().x, ap.getPosition().y);
+			}
+		}
 		
 		debugRender(g);
 	}
