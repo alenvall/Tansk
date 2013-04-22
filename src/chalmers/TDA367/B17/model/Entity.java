@@ -6,6 +6,7 @@ public abstract class Entity{
 	protected int id; // The id of this object
 	protected Vector2f position; // The position of the Entity
 	protected Vector2f size; // The size of the entity
+	protected boolean active;
 
 	/**
 	 * 
@@ -13,6 +14,11 @@ public abstract class Entity{
 	 */
 	public Entity(){
 		this.id = World.generateID();
+		active = true;
+	}
+	
+	public boolean isActive(){
+		return active;
 	}
 	
 	/**
