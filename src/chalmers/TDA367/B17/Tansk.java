@@ -68,7 +68,7 @@ public class Tansk extends BasicGame implements MouseListener {
 			}
 		}
 
-		if(input.isKeyDown(Input.KEY_SPACE) && playerOne.getTank().fire == true){
+		if(playerOne.getTank().fire == true){
 			playerOne.getTank().fireWeapon(delta);
 		}
 		
@@ -100,9 +100,6 @@ public class Tansk extends BasicGame implements MouseListener {
         	}
         	
         }
-      /*  for(AbstractProjectile p : playerOne.getTank().getProjectiles()){
-        	p.update(delta);
-        }*/
 	}
 
 	@Override
@@ -147,21 +144,11 @@ public class Tansk extends BasicGame implements MouseListener {
 				.getProjectiles().get(0).getPosition().x+" , "+playerOne.getTank()
 				.getProjectiles().get(0).getPosition().y, 530, 110);
 		}
-/*
-		g.setColor(Color.yellow);
-		g.drawLine(playerOne.getTank().getTurret().getPosition().x, playerOne.getTank().getTurret().getPosition().y, mouseCoords.x, mouseCoords.y);
-
-		g.setColor(Color.green);
-		g.drawLine(playerOne.getTank().getTurret().getImagePosition().x, playerOne.getTank().getTurret().getImagePosition().y,  mouseCoords.x, mouseCoords.y);
-		g.setColor(Color.red);
-		g.drawLine(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y, mouseCoords.x, mouseCoords.y);
-		g.setColor(Color.blue);
-		g.drawLine(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y,  mouseCoords.x, mouseCoords.y);
-*/	
 	}
 
 	public void mouseMoved(int oldx, int oldy, int newx, int newy){
 		mouseCoords.setLocation(newx, newy);
+		
 	}
 	
 	public void mouseDragged(int oldx, int oldy, int newx, int newy){
@@ -169,10 +156,12 @@ public class Tansk extends BasicGame implements MouseListener {
 	}
 
 	
-	public void mousePressed(int oldx, int oldy, int newx, int newy) {
+	public void mousePressed(int button, int x, int y) {
+		playerOne.getTank().fire = true;
 	}
 	
-	public void mouseReleased(int oldx, int oldy, int newx, int newy) {
+	public void mouseReleased(int button, int x, int y) {
+		playerOne.getTank().fire = false;
 	}
 
 	public static void main(String[] args) throws SlickException {
