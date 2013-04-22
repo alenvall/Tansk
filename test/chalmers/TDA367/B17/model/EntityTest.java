@@ -9,7 +9,7 @@ public class EntityTest {
 
 	class EntityMock extends Entity{
 		protected EntityMock(){
-			super(0);
+			super();
 		}
 	}
 	

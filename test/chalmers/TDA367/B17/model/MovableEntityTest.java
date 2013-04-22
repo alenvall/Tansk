@@ -13,7 +13,7 @@ public class MovableEntityTest {
 	
 	class MovableEntityMock extends MovableEntity{
 		protected MovableEntityMock(){
-			super(0, new Vector2f(), 0, 0);
+			super(new Vector2f(), 0, 0);
 		}
 	}
 
