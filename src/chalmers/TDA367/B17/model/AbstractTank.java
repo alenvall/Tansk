@@ -26,9 +26,8 @@ public abstract class AbstractTank extends MovableEntity {
 		projectiles = new ArrayList<AbstractProjectile>();
 	}
 	/**
-	 * Get the duration of the tank.
-	 * @return The time in milliseconds that 
-	 * the projectile will remain on the map
+	 * Get the position of the tank's image.
+	 * @return The position of the tank's image.
 	 */
 	public Vector2f getImagePosition(){
 		return new Vector2f(position.x - size.x/2, position.y - size.y/2);
