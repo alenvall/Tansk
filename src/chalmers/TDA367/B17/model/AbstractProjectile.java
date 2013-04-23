@@ -46,8 +46,9 @@ public abstract class AbstractProjectile extends MovableEntity {
 		this.damage = damage;
 	}
 	/**
-	 * Set the name of the powerUp.
-	 * @param name The powerUps name
+	 * Set the duration of the power up.
+	 * @param duration The time in milliseconds that
+	 * the projectile will remain on the map
 	 */
 	public void setDuration(int duration) {
 		this.duration = duration;
