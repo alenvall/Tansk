@@ -11,6 +11,9 @@ public class Tansk extends BasicGame implements MouseListener {
 	public static final int SCREEN_WIDTH = 1024;
 	public static final int SCREEN_HEIGHT = 768;
 	
+	public ArrayList<AbstractTurret> turrets;
+	public int turretIndex;
+	
 	World world;
 	ArrayList<Player> players;
 	Player playerOne;
@@ -44,6 +47,13 @@ public class Tansk extends BasicGame implements MouseListener {
 		mouseCoords = new Point();
 		turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
 		tankSprite = new SpriteSheet("data/tank.png", 65,85);
+		
+		//Temporary to test switching between turrets
+		turrets = new ArrayList<AbstractTurret>();
+		turrets.add(new DefaultTurret());
+		turrets.add(new FlamethrowerTurret());
+		turrets.add(new ShotgunTurret());
+		turretIndex = 0;
 	}
  
 	@Override
@@ -81,8 +91,12 @@ public class Tansk extends BasicGame implements MouseListener {
 		
 		if(input.isKeyDown(Input.KEY_M)){
 			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().setTurret(new FlamethrowerTurret());
+			playerOne.getTank().setTurret(turrets.get(turretIndex));
 			playerOne.getTank().getTurret().setPosition(temp);
+			turretIndex++;
+			if(turretIndex == 3){
+				turretIndex = 0;
+			}
 		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
