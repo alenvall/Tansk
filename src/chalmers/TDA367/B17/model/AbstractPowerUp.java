@@ -4,36 +4,44 @@ public abstract class AbstractPowerUp extends Entity {
 
 	private String name;
 	private double duration;
-	
-	public AbstractPowerUp(int id) {
+
+	/**
+	 * Create a new AbstractPowerUp.
+	 */
+	public AbstractPowerUp() {
 		super();
 		// TODO Auto-generated constructor stub
 	}
+
 	/**
-	 * Get the name of the powerUp.
-	 * @return The name of the powerUp
+	 * Get the name of this power up.
+	 * @return the name
 	 */
 	public String getName() {
 		return name;
 	}
+
 	/**
-	 * Set the name of the powerUp.
-	 * @param name The powerUps name
+	 * Set the name of this power up.
+	 * @param name the new name
 	 */
 	public void setName(String name) {
 		this.name = name;
 	}
+
 	/**
-	 * Get the name of the powerUp.
-	 * @return The name of the powerUp
+	 * Get the duration of this power up.
+	 * @return the time in milliseconds that the
+	 * power up will remain on the map
 	 */
 	public double getDuration() {
 		return duration;
 	}
+
 	/**
-	 * Set the duration of the powerUp.
-	 * @param duration The time in milliseconds that the 
-	 * PowerUp will remain on the map
+	 * Set the duration of the power up.
+	 * @param duration the time in milliseconds that the
+	 * power up will remain on the map
 	 */
 	public void setDuration(double duration) {
 		this.duration = duration;
