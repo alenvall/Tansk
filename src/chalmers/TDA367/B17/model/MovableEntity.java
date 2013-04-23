@@ -14,11 +14,9 @@ public abstract class MovableEntity extends Entity {
 	
 	/**
 	 * Create a new MovableEntity based on the following parameters
-	 * @param id The id of this entity
 	 * @param direction The default direction this object is facing
 	 * @param maxSpeed The maximum speed of this object
 	 * @param minSpeed The minimum speed of this object
-	 * @param reverseSpeed The speed at which the object is reversing
 	 */
 	public MovableEntity(Vector2f direction, float maxSpeed, float minSpeed) {
 		super();
@@ -79,7 +77,7 @@ public abstract class MovableEntity extends Entity {
 	
 	/**
 	 * Set the speed of this object will be moving at
-	 * @param The new speed
+	 * @param speed The new speed
 	 */
 	public void setSpeed(float speed){
 		if(speed > maxSpeed){
