@@ -8,6 +8,14 @@ public abstract class AbstractProjectile extends MovableEntity {
 	protected int duration;
 	protected int durationTimer;
 
+	/**
+	 * Create a new AbstractProjectile.
+	 * @param velocity the initial velocity
+	 * @param maxSpeed the maximum speed
+	 * @param minSpeed the minimum speed
+	 * @param damage the damage this projectile does
+	 * @param duration the time in milliseconds this projectile will remain on the map
+	 */
 	public AbstractProjectile(Vector2f velocity,
 			float maxSpeed, float minSpeed, double damage, int duration) {
 		super(velocity, maxSpeed, minSpeed);
