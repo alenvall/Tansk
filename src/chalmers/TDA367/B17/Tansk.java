@@ -100,7 +100,7 @@ public class Tansk extends BasicGame implements MouseListener {
         	AbstractProjectile proj = projs.get(i);
         	if(proj.isActive()){
         		proj.update(delta);
-        		if(proj.getPosition().x > 800 || proj.getPosition().x < 0 || proj.getPosition().y > 600 || proj.getPosition().y < 0){
+        		if(proj.getPosition().x > SCREEN_WIDTH || proj.getPosition().x < 0 || proj.getPosition().y > SCREEN_HEIGHT|| proj.getPosition().y < 0){
         			projs.remove(i);
         		}
         	} else {
