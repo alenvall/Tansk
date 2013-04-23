@@ -77,6 +77,10 @@ public class Tansk extends BasicGame implements MouseListener {
 			turretSprite.setCenterOfRotation(22.5f, 22.5f);
 		}
 		
+		if(input.isKeyDown(Input.KEY_M)){
+			playerOne.getTank().setCurrentWeapon(new FlameThrowerWeapon());
+		}
+		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
 			gc.exit();
 		}
