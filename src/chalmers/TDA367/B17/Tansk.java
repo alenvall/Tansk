@@ -6,6 +6,9 @@ import java.awt.Point;
 import java.util.*;
 
 public class Tansk extends BasicGame implements MouseListener {
+	public static final int SCREEN_WIDTH = 1024;
+	public static final int SCREEN_HEIGHT = 768;
+	
 	World world;
 	ArrayList<Player> players;
 	Player playerOne;
@@ -16,9 +19,8 @@ public class Tansk extends BasicGame implements MouseListener {
 	SpriteSheet projectileSprite = null;
 	
 	Point mouseCoords;
-	
 	Input input;
-
+	
 	public Tansk() {
 		super("Tansk!");
 	}
@@ -168,7 +170,7 @@ public class Tansk extends BasicGame implements MouseListener {
 		app.setTargetFrameRate(60);
 		app.setMaximumLogicUpdateInterval(500);
 		app.setMinimumLogicUpdateInterval(5);
-		app.setDisplayMode(800, 600, false);
+		app.setDisplayMode(SCREEN_WIDTH, SCREEN_HEIGHT, false);
 		
 		app.start();
   }
