@@ -8,36 +8,68 @@ public class Player {
 	private int score;
 	private AbstractTank tank;
 	
+	/**
+	 * Create a new Player.
+	 * @param name The player's name
+	 */
 	public Player(String name){
 		this.name = name;
 		
 		tank = new DefaultTank(World.generateID(), new Vector2f(0,-1), 5, -3);
 	}
-	
+
+	/**
+	 * Get the players tank.
+	 * @return The tank
+	 */
 	public AbstractTank getTank(){
 		return tank;
 	}
 	
+	/**
+	 * Get the players name.
+	 * @return The name
+	 */
 	public String getName() {
 		return name;
 	}
-
+	
+	/**
+	 * Get the players ID.
+	 * @return The ID
+	 */
 	public int getPlayerId() {
 		return playerId;
 	}
-
+	
+	/**
+	 * Get the players score.
+	 * @return The score
+	 */
 	public int getScore() {
 		return score;
 	}
 	
+	/**
+	 * Set the players name.
+	 * @param name The new name
+	 */
 	public void setName(String name){
 		this.name = name;
 	}
 	
+	/**
+	 * Set the players ID.
+	 * @param id The new ID
+	 */
 	public void setPlayerId(int id){
 		this.playerId = id;
 	}
 	
+	/**
+	 * Set the players score.
+	 * @param score The new score
+	 */
 	public void setScore(int score){
 		this.score = score;
 	}
