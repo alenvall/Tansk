@@ -7,6 +7,7 @@ public abstract class AbstractTurret extends Entity {
 	protected Vector2f turretCenter;
 	protected float turretLength;
 	protected int fireRate;
+	protected String projectileType;
 
 	/**
 	 * Create a new AbstractTurret.
@@ -68,5 +69,9 @@ public abstract class AbstractTurret extends Entity {
 		return new Vector2f(nozzleX, nozzleY);
 	}
 	
-	
+	public void setFireRate(int fireRate) {
+		this.fireRate = fireRate;
+	}
+
+	public abstract AbstractProjectile createProjectile();
 }

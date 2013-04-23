@@ -2,6 +2,8 @@ package chalmers.TDA367.B17;
 
 import chalmers.TDA367.B17.model.*;
 import org.newdawn.slick.*;
+import org.newdawn.slick.geom.Vector2f;
+
 import java.awt.Point;
 import java.util.*;
 
@@ -48,9 +50,9 @@ public class Tansk extends BasicGame implements MouseListener {
 	public void update(GameContainer gc, int delta) throws SlickException {
 		if(input.isKeyDown(Input.KEY_W)){
 			playerOne.getTank().accelerate(delta);
-		}else if(input.isKeyDown(Input.KEY_S)){
+		} else if (input.isKeyDown(Input.KEY_S)){
 			playerOne.getTank().reverse(delta);
-		}else{
+		} else {
 			playerOne.getTank().friction(delta);
 		}
 
@@ -78,7 +80,9 @@ public class Tansk extends BasicGame implements MouseListener {
 		}
 		
 		if(input.isKeyDown(Input.KEY_M)){
-			playerOne.getTank().setCurrentWeapon(new FlameThrowerWeapon());
+			Vector2f temp = playerOne.getTank().getTurret().getPosition();
+			playerOne.getTank().setTurret(new FlamethrowerTurret());
+			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
@@ -90,19 +94,18 @@ public class Tansk extends BasicGame implements MouseListener {
 		tankSprite.setRotation((float) (playerOne.getTank().getDirection().getTheta() + 90));	
         turretSprite.setRotation(playerOne.getTank().getTurret().getRotation());
         
-        
         // Temporary, removes projectiles that are off screen
         List<AbstractProjectile> projs = playerOne.getTank().getProjectiles();
         for(int i = 0; i < projs.size(); i++){
         	AbstractProjectile proj = projs.get(i);
         	if(proj.isActive()){
         		proj.update(delta);
-        		if(proj.getPosition().x > 800 || proj.getPosition().x < 0 || proj.getPosition().y > 600 || proj.getPosition().y < 0)
-        		projs.remove(i);
+        		if(proj.getPosition().x > 800 || proj.getPosition().x < 0 || proj.getPosition().y > 600 || proj.getPosition().y < 0){
+        			projs.remove(i);
+        		}
         	} else {
         		projs.remove(i);
         	}
-        	
         }
 	}
 
@@ -152,14 +155,12 @@ public class Tansk extends BasicGame implements MouseListener {
 
 	public void mouseMoved(int oldx, int oldy, int newx, int newy){
 		mouseCoords.setLocation(newx, newy);
-		
 	}
 	
 	public void mouseDragged(int oldx, int oldy, int newx, int newy){
 		mouseCoords.setLocation(newx, newy);
 	}
 
-	
 	public void mousePressed(int button, int x, int y) {
 		playerOne.getTank().fire = true;
 	}

@@ -10,7 +10,6 @@ public abstract class AbstractTank extends MovableEntity {
 
 	private String name;
 	private double health;
-	private AbstractWeapon currentWeapon;
 	private AbstractPowerUp currentPowerUp;
 	private float turnSpeed; // How many degrees the tank will turn each update
 	protected AbstractTurret turret;
@@ -51,14 +50,6 @@ public abstract class AbstractTank extends MovableEntity {
 
 	public void setHealth(double health) {
 		this.health = health;
-	}
-
-	public AbstractWeapon getCurrentWeapon() {
-		return currentWeapon;
-	}
-
-	public void setCurrentWeapon(AbstractWeapon currentWeapon) {
-		this.currentWeapon = currentWeapon;
 	}
 
 	public AbstractPowerUp getCurrentPowerUp() {
@@ -120,7 +111,7 @@ public abstract class AbstractTank extends MovableEntity {
 	public void fireWeapon(int delta){
 		timeSinceLastShot -= delta;
 		if(timeSinceLastShot < 0 && fire){
-			AbstractProjectile proj = currentWeapon.createProjectile();
+			AbstractProjectile proj = turret.createProjectile();
 			proj.setDirection(new Vector2f(turret.getRotation() + 90));
 			proj.setPosition(turret.getTurretNozzle());
 			projectiles.add(proj);
