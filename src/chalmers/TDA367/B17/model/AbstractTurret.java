@@ -72,6 +72,8 @@ public abstract class AbstractTurret extends Entity {
 	public void setFireRate(int fireRate) {
 		this.fireRate = fireRate;
 	}
+	
+	public abstract void fireWeapon(int delta, AbstractTank a);
 
 	public abstract AbstractProjectile createProjectile();
 }

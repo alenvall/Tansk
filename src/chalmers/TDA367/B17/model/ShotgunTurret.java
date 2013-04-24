@@ -17,6 +17,26 @@ public class ShotgunTurret extends AbstractTurret {
 	public AbstractProjectile createProjectile() {
 		return new ShotgunProjectile();
 	}
+
+	@Override
+	public void fireWeapon(int delta, AbstractTank a) {
+		for(int i = -8; i < 8; i++){
+			AbstractProjectile proj = createProjectile();
+			Vector2f angle;
+			
+			if(i%2 == 0){
+				angle = new Vector2f(getRotation() + 90 - i*Math.random()*2);
+			}else{
+				angle = new Vector2f(getRotation() + 90 + i*Math.random()*2);
+			}
+			
+			proj.setDirection(angle);
+			proj.speed = (Math.abs(proj.getSpeed()+i*2));
+			
+			proj.setPosition(getTurretNozzle());
+			a.addProj(proj);
+		}
+	}
 	
 	/*
 	 * Should fireWeapon be moved to AbstractTurret?

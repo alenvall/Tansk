@@ -18,4 +18,12 @@ public class DefaultTurret extends AbstractTurret {
 		return new DefaultProjectile();
 	}
 
+	@Override
+	public void fireWeapon(int delta, AbstractTank a) {
+		AbstractTank at = a;
+		AbstractProjectile proj = createProjectile();
+		proj.setDirection(new Vector2f(getRotation() + 90));
+		proj.setPosition(getTurretNozzle());
+		at.addProj(proj);
+	}
 }
