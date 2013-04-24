@@ -89,14 +89,18 @@ public class Tansk extends BasicGame implements MouseListener {
 			turretSprite.setCenterOfRotation(22.5f, 22.5f);
 		}
 		
-		if(input.isKeyDown(Input.KEY_M)){
+		if(input.isKeyDown(Input.KEY_1)){
 			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().setTurret(turrets.get(turretIndex));
+			playerOne.getTank().setTurret(turrets.get(0));
 			playerOne.getTank().getTurret().setPosition(temp);
-			turretIndex++;
-			if(turretIndex == 3){
-				turretIndex = 0;
-			}
+		}if(input.isKeyDown(Input.KEY_2)){
+			Vector2f temp = playerOne.getTank().getTurret().getPosition();
+			playerOne.getTank().setTurret(turrets.get(1));
+			playerOne.getTank().getTurret().setPosition(temp);
+		}if(input.isKeyDown(Input.KEY_3)){
+			Vector2f temp = playerOne.getTank().getTurret().getPosition();
+			playerOne.getTank().setTurret(turrets.get(2));
+			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
