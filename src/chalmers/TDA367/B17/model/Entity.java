@@ -16,6 +16,7 @@ public abstract class Entity{
 	 */
 	public Entity(){
 		this.id = TanskController.getInstance().getWorld().generateID();
+		TanskController.getInstance().getWorld().addEntity(this);
 		active = true;
 	}
 	
