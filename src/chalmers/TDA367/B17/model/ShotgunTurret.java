@@ -10,7 +10,7 @@ public class ShotgunTurret extends AbstractTurret {
 		turretLength = 42f;
 		size = new Vector2f(45f, 65f);
 		fireRate = 1000;
-		projectileType = "default";
+		projectileType = "shotgun";
 	}
 
 	@Override
@@ -31,7 +31,7 @@ public class ShotgunTurret extends AbstractTurret {
 			}
 			
 			proj.setDirection(angle);
-			proj.speed = (Math.abs(proj.getSpeed()+i*2));
+			proj.setSpeed(Math.abs(proj.getSpeed()+i*2));
 			
 			proj.setPosition(getTurretNozzle());
 			a.addProj(proj);
