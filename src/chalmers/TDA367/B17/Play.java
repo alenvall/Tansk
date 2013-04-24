@@ -4,7 +4,6 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.newdawn.slick.AppGameContainer;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
@@ -12,6 +11,8 @@ import org.newdawn.slick.Image;
 import org.newdawn.slick.Input;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.SpriteSheet;
+
+import chalmers.TDA367.B17.controller.TanskController;
 import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
@@ -23,7 +24,6 @@ import chalmers.TDA367.B17.model.FlamethrowerTurret;
 import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.model.ShotgunTurret;
 import chalmers.TDA367.B17.model.SlowspeedyTurret;
-import chalmers.TDA367.B17.model.World;
 
 public class Play extends BasicGameState{
 
@@ -33,7 +33,7 @@ public class Play extends BasicGameState{
 	public ArrayList<AbstractTurret> turrets;
 	public int turretIndex;
 	
-	World world;
+	TanskController controller;
 	ArrayList<Player> players;
 	Player playerOne;
 
@@ -53,7 +53,8 @@ public class Play extends BasicGameState{
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
-		world = new World();
+		controller = TanskController.getInstance();
+		controller.newGame();
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
@@ -160,7 +161,7 @@ public class Play extends BasicGameState{
 			gc.exit();
 		}
 		
-		playerOne.getTank().update(delta, mouseCoords);
+		controller.getWorld().update(delta);
       
 		tankSprite.setRotation((float) (playerOne.getTank().getDirection().getTheta() + 90));	
         turretSprite.setRotation(playerOne.getTank().getTurret().getRotation());
@@ -213,11 +214,11 @@ public class Play extends BasicGameState{
 	}
 
 	public void mouseMoved(int oldx, int oldy, int newx, int newy){
-		mouseCoords.setLocation(newx, newy);
+		controller.setMouseCoordinates(newx, newy);
 	}
 	
 	public void mouseDragged(int oldx, int oldy, int newx, int newy){
-		mouseCoords.setLocation(newx, newy);
+		controller.setMouseCoordinates(newx, newy);
 	}
 	
 }

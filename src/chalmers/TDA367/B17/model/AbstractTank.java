@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.newdawn.slick.geom.*;
 
+import chalmers.TDA367.B17.controller.TanskController;
+
 public abstract class AbstractTank extends MovableEntity {
 
 	private String name;
@@ -96,12 +98,14 @@ public abstract class AbstractTank extends MovableEntity {
 		projectiles.add(ap);
 	}
 	
-	public void update(int delta, Point mouseCoords){
+	public void update(int delta){
 		super.update(delta);
-		updateTurret(mouseCoords);
+		updateTurret();
 	}
 
-	private void updateTurret(Point mouseCoords) {
+	private void updateTurret() {
+		Point mouseCoords = TanskController.getInstance().getMouseCoordinates();
+		
 		float rotation = (float) Math.toDegrees(Math.atan2(turret.getPosition().x - mouseCoords.x + 0, turret.getPosition().y - mouseCoords.y + 0)* -1)+180;
         turret.setRotation(rotation);  
         
