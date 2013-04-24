@@ -1,6 +1,7 @@
 package chalmers.TDA367.B17.model;
 
 import java.util.*;
+import java.util.Map.Entry;
 
 public class World {
 	
@@ -35,5 +36,18 @@ public class World {
 	public int generateID(){
 		latestID += 1;
 		return latestID;
+	}
+	
+	/**
+	 * Updates all entities existing in this world.
+	 * @param delta the time in milliseconds since last update
+	 */
+	public void update(int delta){
+		Iterator<Entry<Integer, Entity>> iterator = entities.entrySet().iterator();
+		while(iterator.hasNext()){
+			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
+			Entity entity = entry.getValue();
+			entity.update(delta);
+		}
 	}
 }
