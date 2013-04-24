@@ -53,7 +53,7 @@ public class Tansk extends BasicGame implements MouseListener {
 		turrets.add(new DefaultTurret());
 		turrets.add(new FlamethrowerTurret());
 		turrets.add(new ShotgunTurret());
-		turretIndex = 0;
+		turrets.add(new SlowspeedyTurret());
 	}
  
 	@Override
@@ -100,6 +100,10 @@ public class Tansk extends BasicGame implements MouseListener {
 		}if(input.isKeyDown(Input.KEY_3)){
 			Vector2f temp = playerOne.getTank().getTurret().getPosition();
 			playerOne.getTank().setTurret(turrets.get(2));
+			playerOne.getTank().getTurret().setPosition(temp);
+		}if(input.isKeyDown(Input.KEY_4)){
+			Vector2f temp = playerOne.getTank().getTurret().getPosition();
+			playerOne.getTank().setTurret(turrets.get(3));
 			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		
