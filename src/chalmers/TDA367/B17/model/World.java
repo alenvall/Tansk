@@ -6,7 +6,7 @@ public class World {
 	
 	private Map<Integer, Entity> entities = new HashMap<Integer, Entity>();
 	
-	private static int latestID;
+	private int latestID;
 	
 	public World() {
 		
@@ -32,7 +32,7 @@ public class World {
 	 * Generate a new ID.
 	 * @return The ID
 	 */
-	public static int generateID(){
+	public int generateID(){
 		latestID += 1;
 		return latestID;
 	}

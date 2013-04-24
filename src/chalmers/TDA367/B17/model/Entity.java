@@ -2,6 +2,8 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.TanskController;
+
 public abstract class Entity{
 	protected int id; // The id of this object
 	protected Vector2f position; // The position of the Entity
@@ -13,7 +15,7 @@ public abstract class Entity{
 	 * 
 	 */
 	public Entity(){
-		this.id = World.generateID();
+		this.id = TanskController.getInstance().getWorld().generateID();
 		active = true;
 	}
 	
