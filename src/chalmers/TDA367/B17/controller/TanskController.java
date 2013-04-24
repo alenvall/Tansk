@@ -1,9 +1,29 @@
 package chalmers.TDA367.B17.controller;
 
-public class TanskController {
+import chalmers.TDA367.B17.model.World;
 
-	public TanskController() {
+public class TanskController {
+	
+	private static TanskController instance;
+	private World world;
+
+	private TanskController() {
 		// TODO Auto-generated constructor stub
+	}
+	
+	public static TanskController getInstance(){
+		if(instance==null)
+			instance = new TanskController();
+		
+		return instance;
+	}
+	
+	public void newGame(){
+		world = new World();
+	}
+	
+	public World getWorld(){
+		return world;
 	}
 
 }
