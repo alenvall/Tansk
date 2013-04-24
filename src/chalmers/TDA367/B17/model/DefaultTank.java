@@ -5,7 +5,7 @@ import org.newdawn.slick.geom.Vector2f;
 
 public class DefaultTank extends AbstractTank {
 
-	public DefaultTank(int id, Vector2f direction, float maxSpeed, float minSpeed) {
+	public DefaultTank(Vector2f direction, float maxSpeed, float minSpeed) {
 		super(direction, maxSpeed, minSpeed);
 		setSize(new Vector2f(65f, 85f));
 		setPosition(new Vector2f(100, 150));

@@ -15,7 +15,7 @@ public class Player {
 	public Player(String name){
 		this.name = name;
 		
-		tank = new DefaultTank(World.generateID(), new Vector2f(0,-1), 5, -3);
+		tank = new DefaultTank(new Vector2f(0,-1), 5, -3);
 	}
 
 	/**
