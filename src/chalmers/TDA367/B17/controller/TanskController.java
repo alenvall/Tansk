@@ -8,7 +8,7 @@ public class TanskController {
 	private World world;
 
 	private TanskController() {
-		// TODO Auto-generated constructor stub
+		world = new World();
 	}
 	
 	public static TanskController getInstance(){
