@@ -16,7 +16,6 @@ public abstract class AbstractTank extends MovableEntity {
 	private float turnSpeed; // How many degrees the tank will turn each update
 	protected AbstractTurret turret;
 	protected float turretOffset;
-	Point mouseCoords;
 	private List<AbstractProjectile> projectiles;
 	public boolean fire = true;
 	protected int timeSinceLastShot = 0;
@@ -34,7 +33,7 @@ public abstract class AbstractTank extends MovableEntity {
 		return new Vector2f(position.x - size.x/2, position.y - size.y/2);
 	}
 	
-	public double getRotation(){;
+	public double getRotation(){
 		return direction.getTheta();
 	}
 	

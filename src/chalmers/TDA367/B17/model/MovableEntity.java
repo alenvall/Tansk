@@ -22,7 +22,7 @@ public abstract class MovableEntity extends Entity {
 		super();
 		this.direction = direction;
 		this.maxSpeed = maxSpeed;
-		this.minSpeed = minSpeed;;
+		this.minSpeed = minSpeed;
 		this.acceleration = maxSpeed*0.1f;
 		this.friction = maxSpeed*0.1f;
 		this.lastDirectionTheta = direction.getTheta();
@@ -108,14 +108,6 @@ public abstract class MovableEntity extends Entity {
 	public void setMinSpeed(float minSpeed){
 		this.minSpeed = minSpeed;
 	}
-
-	/*Are these methods used at all? :O
-	public double getReverseSpeed() {
-		return reverseSpeed;
-	}
-	public void setReverseSpeed(float reverseSpeed) {
-		this.reverseSpeed = reverseSpeed;
-	}*/
 
 	/**
 	 * Get the acceleration of this object
