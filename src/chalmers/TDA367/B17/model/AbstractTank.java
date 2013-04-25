@@ -93,8 +93,8 @@ public abstract class AbstractTank extends MovableEntity {
 		return projectiles;
 	}
 	
-	public void addProj(AbstractProjectile ap){
-		projectiles.add(ap);
+	public void addProjectile(AbstractProjectile projectile){
+		projectiles.add(projectile);
 	}
 	
 	public void update(int delta){

@@ -72,8 +72,28 @@ public abstract class AbstractTurret extends Entity {
 	public void setFireRate(int fireRate) {
 		this.fireRate = fireRate;
 	}
-	
-	public abstract void fireWeapon(int delta, AbstractTank a);
 
+	/**
+	 * Shoots projectiles.
+	 * @param delta time in milliseconds since last game update
+	 * @param tank the tank (owner of this turret) shooting
+	 */
+	public abstract void fireWeapon(int delta, AbstractTank tank);
+
+	/**
+	 * Defines which type of projectiles to create.
+	 * @return a new projectile
+	 */
 	public abstract AbstractProjectile createProjectile();
+
+	/**
+	 * Creates and spawns a new projectile.
+	 * @return the new projectile
+	 */
+	public AbstractProjectile spawnNewProjectile(){
+		AbstractProjectile projectile = createProjectile();
+		projectile.setDirection(new Vector2f(getRotation() + 90));
+		projectile.setPosition(getTurretNozzle());
+		return projectile;
+	}
 }

@@ -14,14 +14,11 @@ public class SlowspeedyTurret extends AbstractTurret {
 	}
 
 	@Override
-	public void fireWeapon(int delta, AbstractTank a) {
+	public void fireWeapon(int delta, AbstractTank tank) {
 		for(int i = 0; i < 5; i++){
-			AbstractProjectile proj = createProjectile();
-			
-			proj.setDirection(new Vector2f(getRotation() + 80 + (i*5)));
-			
-			proj.setPosition(getTurretNozzle());
-			a.addProj(proj);
+			AbstractProjectile projectile = spawnNewProjectile();
+			projectile.setDirection(new Vector2f(getRotation() + 80 + (i * 5)));
+			tank.addProjectile(projectile);
 		}
 	}
 

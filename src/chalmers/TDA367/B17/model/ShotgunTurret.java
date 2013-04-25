@@ -19,9 +19,9 @@ public class ShotgunTurret extends AbstractTurret {
 	}
 
 	@Override
-	public void fireWeapon(int delta, AbstractTank a) {
+	public void fireWeapon(int delta, AbstractTank tank) {
 		for(int i = -8; i < 8; i++){
-			AbstractProjectile proj = createProjectile();
+			AbstractProjectile projectile = spawnNewProjectile();
 			Vector2f angle;
 			
 			if(i%2 == 0){
@@ -30,11 +30,10 @@ public class ShotgunTurret extends AbstractTurret {
 				angle = new Vector2f(getRotation() + 90 + i*Math.random()*2);
 			}
 			
-			proj.setDirection(angle);
-			proj.setSpeed(Math.abs(proj.getSpeed()+i*2));
-			
-			proj.setPosition(getTurretNozzle());
-			a.addProj(proj);
+			projectile.setDirection(angle);
+			projectile.setSpeed(Math.abs(projectile.getSpeed() + i * 2));
+
+			tank.addProjectile(projectile);
 		}
 	}
 	
