@@ -58,10 +58,12 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param delta The time that has passed since the last update
 	 */
 	public void update(int delta){
-		durationTimer -= delta;
-		if(durationTimer < 0){
-			active = false;
-			durationTimer = this.duration;
+		if(duration != 0){
+			durationTimer -= delta;
+			if(durationTimer < 0){
+				active = false;
+				durationTimer = this.duration;
+			}
 		}
 		super.update(delta);
 	}
