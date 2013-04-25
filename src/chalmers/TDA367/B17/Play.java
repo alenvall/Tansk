@@ -196,6 +196,29 @@ public class Play extends BasicGameState{
 		return 1;
 	}
 
+	public void render(GameContainer gc, Graphics g) throws SlickException {
+		map.draw();
+//		tankSprite.draw(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y);
+		tankSprite.drawCentered(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);	
+		turretSprite.draw(playerOne.getTank().getTurret().getImagePosition().x , playerOne.getTank().getTurret().getImagePosition().y);
+
+		g.setColor(Color.blue);
+		g.draw(playerOne.getTank().getShape());
+
+		g.setColor(Color.red);
+		g.draw(obstacle.getShape());
+		
+		//Render projectiles:
+		for(AbstractProjectile ap : playerOne.getTank().getProjectiles()){
+			if(ap.isActive()){
+				projectileSprite.setRotation((float)ap.getDirection().getTheta() + 90);
+				projectileSprite.drawCentered(ap.getPosition().x, ap.getPosition().y);
+			}
+		}
+		
+		debugRender(g);
+	}
+
 	public void debugRender(Graphics g){
 		g.setColor(Color.black);
 		g.drawString("tankPosX:   " + playerOne.getTank().getPosition().x,  10, 30);
