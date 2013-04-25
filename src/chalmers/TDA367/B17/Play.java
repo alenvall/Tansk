@@ -22,6 +22,8 @@ import org.newdawn.slick.state.StateBasedGame;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTurret;
 import chalmers.TDA367.B17.model.Player;
+import chalmers.TDA367.B17.powerup.FireRatePowerUp;
+import chalmers.TDA367.B17.powerup.SpeedPowerUp;
 import chalmers.TDA367.B17.weapons.DefaultTurret;
 import chalmers.TDA367.B17.weapons.FlamethrowerTurret;
 import chalmers.TDA367.B17.weapons.ShotgunTurret;
@@ -33,7 +35,6 @@ public class Play extends BasicGameState{
 	public static final int SCREEN_HEIGHT = 768;
 	
 	public ArrayList<AbstractTurret> turrets;
-	public int turretIndex;
 	
 	TanskController controller;
 	ArrayList<Player> players;
@@ -79,8 +80,6 @@ public class Play extends BasicGameState{
 		turrets.add(new FlamethrowerTurret());
 		turrets.add(new ShotgunTurret());
 		turrets.add(new SlowspeedyTurret());
-		
-		turretIndex = 0;
 
 		obstacle = new Entity() {
 		};
@@ -154,6 +153,7 @@ public class Play extends BasicGameState{
 			sbg.enterState(0);
 		}
 		
+		//Weapons
 		if(input.isKeyDown(Input.KEY_1)){
 			Vector2f temp = playerOne.getTank().getTurret().getPosition();
 			playerOne.getTank().setTurret(turrets.get(0));
@@ -170,6 +170,15 @@ public class Play extends BasicGameState{
 			Vector2f temp = playerOne.getTank().getTurret().getPosition();
 			playerOne.getTank().setTurret(turrets.get(3));
 			playerOne.getTank().getTurret().setPosition(temp);
+		}
+		
+		//Powerups
+		if(input.isKeyDown(Input.KEY_COMMA)){
+			SpeedPowerUp spu = new SpeedPowerUp();
+			playerOne.getTank().setCurrentPowerUp(spu);
+		}if(input.isKeyDown(Input.KEY_PERIOD)){
+			FireRatePowerUp spu = new FireRatePowerUp();
+			playerOne.getTank().setCurrentPowerUp(spu);
 		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){

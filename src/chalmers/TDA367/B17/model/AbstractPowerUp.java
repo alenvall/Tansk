@@ -3,14 +3,20 @@ package chalmers.TDA367.B17.model;
 public abstract class AbstractPowerUp extends Entity {
 
 	private String name;
-	private double duration;
+	protected int duration;
+	protected int effectDuration;
+	protected boolean effectActive;
+	protected boolean activated;
+	protected AbstractTank absTank;
 
 	/**
 	 * Create a new AbstractPowerUp.
 	 */
 	public AbstractPowerUp() {
 		super();
-		// TODO Auto-generated constructor stub
+		effectActive = false;
+		activated = false;
+		absTank = null;
 	}
 
 	/**
@@ -34,7 +40,7 @@ public abstract class AbstractPowerUp extends Entity {
 	 * @return the time in milliseconds that the
 	 * power up will remain on the map
 	 */
-	public double getDuration() {
+	public int getDuration() {
 		return duration;
 	}
 
@@ -43,8 +49,51 @@ public abstract class AbstractPowerUp extends Entity {
 	 * @param duration the time in milliseconds that the
 	 * power up will remain on the map
 	 */
-	public void setDuration(double duration) {
+	public void setDuration(int duration) {
 		this.duration = duration;
 	}
+	
+	public void update(int delta) {
+		if(duration != 0){
+			duration -= delta;
+			if(duration <= 0){
+				active = false;
+			}
+		}
+		
+		if(activated){
+			effect();
+			activated = false;
+			effectActive = true;
+		}
+		
+		if(effectActive){
+			if(effectDuration > 0){
+				effectDuration -= delta;
+			}else{
+				deactivate();
+			}
+		}else if(effectActive && absTank != null && effectDuration <= 0){
+			deactivate();
+		}
+	}
+	
+	public void activate(AbstractTank absTank){
+		this.absTank = absTank;
+		activated = true;
+	}
+	
+	public void deactivate(){
+		if(absTank == null || !absTank.isActive())
+			return;
+		endEffect();
+		effectActive = false;
+		active = false;
+		absTank.setCurrentPowerUp(null);
+	}
+	
+	public abstract void effect();
+
+	public abstract void endEffect();
 
 }
