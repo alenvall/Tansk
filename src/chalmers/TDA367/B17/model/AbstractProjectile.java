@@ -77,7 +77,8 @@ public abstract class AbstractProjectile extends MovableEntity {
 	public void didCollideWith(Entity entity){
 		if(!(entity instanceof AbstractProjectile || entity == getTank())){
 			Toolkit.getDefaultToolkit().beep();
-			
+		}else if(entity instanceof MapBounds){
+			this.destroy();
 		}
 	}
 }
