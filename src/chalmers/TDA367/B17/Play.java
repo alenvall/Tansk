@@ -180,23 +180,6 @@ public class Play extends BasicGameState{
       
 		tankSprite.setRotation((float) (playerOne.getTank().getDirection().getTheta() + 90));	
         turretSprite.setRotation(playerOne.getTank().getTurret().getRotation());
-        
-        // Temporary, removes projectiles that are off screen
-        List<AbstractProjectile> projs = playerOne.getTank().getProjectiles();
-        for(int i = 0; i < projs.size(); i++){
-        	AbstractProjectile proj = projs.get(i);
-        	if(proj.isActive()){
-        		proj.update(delta);
-        		if(proj.getPosition().x > SCREEN_WIDTH || proj.getPosition().x < 0 || proj.getPosition().y > SCREEN_HEIGHT|| proj.getPosition().y < 0){
-        			projs.remove(i);
-					proj.destroy();
-        		}
-        	} else {
-        		projs.remove(i);
-				proj.destroy();
-        	}
-        }
-		
 	}
 
 	@Override
