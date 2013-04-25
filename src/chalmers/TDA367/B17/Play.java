@@ -183,9 +183,11 @@ public class Play extends BasicGameState{
         		proj.update(delta);
         		if(proj.getPosition().x > SCREEN_WIDTH || proj.getPosition().x < 0 || proj.getPosition().y > SCREEN_HEIGHT|| proj.getPosition().y < 0){
         			projs.remove(i);
+					proj.destroy();
         		}
         	} else {
         		projs.remove(i);
+				proj.destroy();
         	}
         }
 		
