@@ -7,6 +7,7 @@ public class FlamethrowerProjectile extends AbstractProjectile {
 	public FlamethrowerProjectile() {
 		super(new Vector2f(1,1), 100, 0, 5, 500);
 		setSpeed(15);
+		spriteID = "proj_fire";
 	}
 
 	

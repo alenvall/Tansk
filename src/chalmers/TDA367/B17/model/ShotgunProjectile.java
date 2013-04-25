@@ -7,6 +7,8 @@ public class ShotgunProjectile extends AbstractProjectile {
 	public ShotgunProjectile() {
 		super(new Vector2f(1,1), 100, 0, 5, 350);
 		setSpeed(30);
+		spriteID = "proj_shotgun";
+		setSize(new Vector2f(3,6));
 	}
 	
 	public void update(int delta){

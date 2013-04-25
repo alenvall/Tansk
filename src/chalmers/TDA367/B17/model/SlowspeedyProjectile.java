@@ -7,6 +7,8 @@ public class SlowspeedyProjectile extends AbstractProjectile {
 	public SlowspeedyProjectile() {
 		super(new Vector2f(1,1), 100, 0, 5, 3000);
 		setSpeed(2);
+		spriteID = "proj_energy";
+		setSize(new Vector2f(15,5));
 	}
 
 	@Override
