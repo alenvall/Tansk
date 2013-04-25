@@ -79,4 +79,10 @@ public abstract class AbstractProjectile extends MovableEntity {
 			this.destroy();
 		}
 	}
+
+	@Override
+	public void destroy(){
+		super.destroy();
+		getTank().getProjectiles().remove(this);
+	}
 }
