@@ -25,6 +25,7 @@ public class TanskController {
 	
 	public void newGame(int width, int height){
 		world = new World(new Dimension(width, height));
+		world.init();
 	}
 	
 	public World getWorld(){

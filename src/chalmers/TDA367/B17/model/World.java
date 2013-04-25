@@ -15,6 +15,11 @@ public class World {
 	public World(Dimension size) {
 		this.size = size;
 	}
+
+	public void init(){
+		new MapBounds(getSize());
+	}
+
 	/**
 	 * Adds a new entity.
 	 * @param newEntity the entity to add
