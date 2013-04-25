@@ -1,5 +1,7 @@
 package chalmers.TDA367.B17.model;
 
+import org.newdawn.slick.geom.Point;
+import org.newdawn.slick.geom.Shape;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.TanskController;
@@ -9,6 +11,7 @@ public abstract class Entity{
 	protected Vector2f position; // The position of the Entity
 	protected Vector2f size; // The size of the entity
 	protected boolean active;
+	private Shape shape;
 
 	/**
 	 * 
@@ -18,6 +21,7 @@ public abstract class Entity{
 		this.id = TanskController.getInstance().getWorld().generateID();
 		TanskController.getInstance().getWorld().addEntity(this);
 		active = true;
+		shape = new Point(-1, -1);
 	}
 	
 	public boolean isActive(){
@@ -75,7 +79,15 @@ public abstract class Entity{
 	public void setPosition(Vector2f position){
 		this.position = position;
 	}
-	
+
+	public Shape getShape() {
+		return shape;
+	}
+
+	public void setShape(Shape shape) {
+		this.shape = shape;
+	}
+
 	public void update(int delta){
 		
 	}
