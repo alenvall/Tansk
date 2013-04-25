@@ -15,7 +15,7 @@ public class World {
 	
 	public World(Dimension size) {
 		this.size = size;
-		this.entities = new HashMap<Integer, Entity>();
+		this.entities = new ConcurrentHashMap<Integer, Entity>();
 	}
 
 	public void init(){
