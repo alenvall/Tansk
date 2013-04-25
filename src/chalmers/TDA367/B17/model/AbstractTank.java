@@ -1,9 +1,12 @@
 package chalmers.TDA367.B17.model;
 
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.newdawn.slick.SlickException;
+import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.TanskController;
@@ -20,11 +23,30 @@ public abstract class AbstractTank extends MovableEntity {
 	public boolean fire = true;
 	protected int timeSinceLastShot = 0;
 	
+	private Sound debugWallHit = null;
+	
 	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed) {
 		super(velocity, maxSpeed, minSpeed);
 		turnSpeed = 3f;
 		projectiles = new ArrayList<AbstractProjectile>();
+
 		spriteID = "turret";
+		
+		
+		try {
+			debugWallHit = new Sound("data/wall.wav");
+        } catch (SlickException e) {
+	        // TODO Auto-generated catch block
+	        e.printStackTrace();
+        }
+	}
+	
+	/**
+	 * Get the position of the tank's image.
+	 * @return The position of the tank's image.
+	 */
+	public Vector2f getImagePosition(){
+		return new Vector2f(position.x - size.x/2, position.y - size.y/2);
 	}
 	
 	public double getRotation(){
@@ -116,4 +138,20 @@ public abstract class AbstractTank extends MovableEntity {
 			timeSinceLastShot = turret.getFireRate();
 		}
 	}
+
+	@Override
+	public void didCollideWith(Entity entity){
+		if(entity instanceof AbstractProjectile){
+			AbstractProjectile projectile = (AbstractProjectile)entity;
+			if(projectile.getTank() != this){
+			//	Toolkit.getDefaultToolkit().beep();
+			}
+		}else if(entity instanceof MapBounds){
+			setSpeed(-getSpeed());
+			debugWallHit.play();
+		}
+	}
 }
+
+
+

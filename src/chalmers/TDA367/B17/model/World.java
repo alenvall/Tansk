@@ -1,17 +1,26 @@
 package chalmers.TDA367.B17.model;
 
+import java.awt.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class World {
 	
-	private Map<Integer, Entity> entities = new HashMap<Integer, Entity>();
+	private Map<Integer, Entity> entities = new ConcurrentHashMap<Integer, Entity>();
+
+	private Dimension size;
 	
 	private int latestID;
 	
-	public World() {
-		
+	public World(Dimension size) {
+		this.size = size;
 	}
+
+	public void init(){
+		new MapBounds(getSize());
+	}
+
 	/**
 	 * Adds a new entity.
 	 * @param newEntity the entity to add
@@ -23,7 +32,7 @@ public class World {
 	/**
 	 * Get an entity from the World.
 	 * @param id The id of the requested entity
-	 * @return
+	 * @return entity.
 	 */
 	public Entity getEntity(int id){
 		return entities.get(id);
@@ -63,5 +72,9 @@ public class World {
 
 	public void removeEntity(Entity entity){
 		entities.remove(entity.getId());
+	}
+
+	public Dimension getSize() {
+		return size;
 	}
 }

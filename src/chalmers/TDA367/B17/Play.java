@@ -10,7 +10,6 @@ import org.newdawn.slick.state.*;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -26,7 +25,7 @@ public class Play extends BasicGameState{
 	private Image map = null;
 	private Point mouseCoords;
 	private Input input;
-	private SpriteSheet entSprite;
+	private SpriteSheet entSprite = null;
 	
 	public Play(int state) {
 		
@@ -36,7 +35,7 @@ public class Play extends BasicGameState{
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		controller = TanskController.getInstance();
-		controller.newGame();
+		controller.newGame(TanskController.SCREEN_WIDTH, TanskController.SCREEN_HEIGHT);
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
@@ -46,7 +45,11 @@ public class Play extends BasicGameState{
 		input = gc.getInput();
 		input.addMouseListener(this);
 		mouseCoords = new Point();
-		// turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
+
+	//	turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
+
+	//	obstacle = new Entity() {};
+	//	obstacle.setShape(new Rectangle(75, 250, 40, 40));
 	}
 	
 	@Override
@@ -93,25 +96,25 @@ public class Play extends BasicGameState{
 		if(input.isKeyDown(Input.KEY_1)){
 			Vector2f temp = playerOne.getTank().getTurret().getPosition();
 			playerOne.getTank().getTurret().destroy();
-			playerOne.getTank().setTurret(new DefaultTurret());
+			playerOne.getTank().setTurret(new DefaultTurret(playerOne.getTank()));
 			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		if(input.isKeyDown(Input.KEY_2)){
 			Vector2f temp = playerOne.getTank().getTurret().getPosition();
 			playerOne.getTank().getTurret().destroy();
-			playerOne.getTank().setTurret(new FlamethrowerTurret());
+			playerOne.getTank().setTurret(new FlamethrowerTurret(playerOne.getTank()));
 			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		if(input.isKeyDown(Input.KEY_3)){
 			Vector2f temp = playerOne.getTank().getTurret().getPosition();
 			playerOne.getTank().getTurret().destroy();
-			playerOne.getTank().setTurret(new ShotgunTurret());
+			playerOne.getTank().setTurret(new ShotgunTurret(playerOne.getTank()));
 			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		if(input.isKeyDown(Input.KEY_4)){
 			Vector2f temp = playerOne.getTank().getTurret().getPosition();
 			playerOne.getTank().getTurret().destroy();
-			playerOne.getTank().setTurret(new SlowspeedyTurret());
+			playerOne.getTank().setTurret(new SlowspeedyTurret(playerOne.getTank()));
 			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		
@@ -126,25 +129,9 @@ public class Play extends BasicGameState{
 			entity.update(delta);
 
 			if(entity instanceof MovableEntity)
-				controller.getWorld().checkCollisionsFor((MovableEntity)entity);			
+				if(((MovableEntity) entity).getSpeed() != 0)
+					controller.getWorld().checkCollisionsFor((MovableEntity)entity);			
 		}
-             
-        // Temporary, removes projectiles that are off screen
-        List<AbstractProjectile> projs = playerOne.getTank().getProjectiles();
-        for(int i = 0; i < projs.size(); i++){
-        	AbstractProjectile proj = projs.get(i);
-        	if(proj.isActive()){
-        		proj.update(delta);
-        		if(proj.getPosition().x > TanskController.SCREEN_WIDTH || proj.getPosition().x < 0 || proj.getPosition().y > TanskController.SCREEN_HEIGHT|| proj.getPosition().y < 0){
-        			projs.remove(i);
-					proj.destroy();
-        		}
-        	} else {
-        		projs.remove(i);
-				proj.destroy();
-        	}
-        }
-		
 	}
 	
 	@Override
@@ -158,19 +145,16 @@ public class Play extends BasicGameState{
 			
 			if(!entity.getSpriteID().equals("")){
 				entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
+				
+				if(entSprite != null){
+					if(entity instanceof AbstractTurret){
+						entSprite.setCenterOfRotation(entity.getCenter().x, entity.getCenter().y);
+					}
+					entSprite.setRotation((float) entity.getRotation());
+					entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);	
+				}
 			}
-			
-			if(entity instanceof AbstractTurret)
-				entSprite.setCenterOfRotation(entity.getCenter().x, entity.getCenter().y);
-			
-		//	entSprite.setCenterOfRotation(0, 0);
-			entSprite.setRotation((float) entity.getRotation());
-			entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);
 		}
-
-		g.setColor(Color.blue);
-	//	g.draw(playerOne.getTank().getShape());
-
 		debugRender(g);
 	}
 
@@ -197,6 +181,9 @@ public class Play extends BasicGameState{
 		g.drawString("speed: " + Double.toString(playerOne.getTank().getSpeed()), 530, 90);
 		g.drawString("projs: " + playerOne.getTank().getProjectiles().size(), 530, 130);
 	
+	//	g.setColor(Color.blue);
+	//	g.draw(playerOne.getTank().getShape());
+
 		if(!playerOne.getTank().getProjectiles().isEmpty()){
 			g.drawString("projPos: "+playerOne.getTank()
 				.getProjectiles().get(0).getPosition().x+" , "+playerOne.getTank()

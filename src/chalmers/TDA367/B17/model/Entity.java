@@ -11,7 +11,7 @@ public abstract class Entity{
 	protected Vector2f position; // The position of the Entity
 	protected Vector2f size; // The size of the entity
 	protected boolean active;
-	private Shape shape;
+	protected Shape shape;
 	protected String spriteID;
 	private double rotation;
 

@@ -13,16 +13,16 @@ public class DefaultTank extends AbstractTank {
 		setSize(new Vector2f(65f, 85f));
 		setPosition(new Vector2f(100, 150));
 		setShape(new Rectangle(getPosition().getX()-getSize().getX()/2, getPosition().getY()-getSize().getY()/2, getSize().getX(), getSize().getY()));
-		turret = new DefaultTurret();
+		turret = new DefaultTurret(this);
 		turretOffset = 6;
 		turret.setPosition(new Vector2f(position.x, turretOffset));
 		spriteID = "tank";
 	}
 
 	@Override
-	public void didCollideWith(Entity entity){
-		Toolkit.getDefaultToolkit().beep();
-	}
+//	public void didCollideWith(Entity entity){
+//		Toolkit.getDefaultToolkit().beep();
+//}
 	
 	public String getSpriteID(){
 		return spriteID;

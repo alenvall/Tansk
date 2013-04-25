@@ -4,8 +4,8 @@ import org.newdawn.slick.geom.Vector2f;
 
 public class ShotgunTurret extends AbstractTurret {
 
-	public ShotgunTurret() {
-		super();
+	public ShotgunTurret(AbstractTank tank) {
+		super(tank);
 		turretCenter = new Vector2f(22.5f, 22.5f);
 		turretLength = 42f;
 		size = new Vector2f(45f, 65f);
@@ -15,7 +15,7 @@ public class ShotgunTurret extends AbstractTurret {
 
 	@Override
 	public AbstractProjectile createProjectile() {
-		return new ShotgunProjectile();
+		return new ShotgunProjectile(getTank());
 	}
 
 	@Override
