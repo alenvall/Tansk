@@ -3,10 +3,11 @@ package chalmers.TDA367.B17.model;
 import java.awt.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class World {
 	
-	private Map<Integer, Entity> entities = new HashMap<Integer, Entity>();
+	private Map<Integer, Entity> entities;
 
 	private Dimension size;
 	
@@ -14,6 +15,7 @@ public class World {
 	
 	public World(Dimension size) {
 		this.size = size;
+		this.entities = new HashMap<Integer, Entity>();
 	}
 
 	public void init(){
