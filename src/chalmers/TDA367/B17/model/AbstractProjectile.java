@@ -67,10 +67,8 @@ public abstract class AbstractProjectile extends MovableEntity {
 	public void update(int delta){
 		if(duration != 0){
 			durationTimer -= delta;
-			if(durationTimer < 0){
-				active = false;
-				durationTimer = this.duration;
-			}
+			if(durationTimer < 0)
+				destroy();
 		}
 		super.update(delta);
 	}
