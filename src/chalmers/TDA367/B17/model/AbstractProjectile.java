@@ -22,6 +22,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 		this.damage = damage;
 		this.duration = duration;
 		this.durationTimer = duration;
+		spriteID = "bullet";
 	}
 	/**
 	 * Get the damage of this projectile.
@@ -66,5 +67,9 @@ public abstract class AbstractProjectile extends MovableEntity {
 			}
 		}
 		super.update(delta);
+	}
+	
+	public double getRotation(){
+		return direction.getTheta() + 90;
 	}
 }

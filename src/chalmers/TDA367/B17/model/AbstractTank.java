@@ -24,17 +24,11 @@ public abstract class AbstractTank extends MovableEntity {
 		super(velocity, maxSpeed, minSpeed);
 		turnSpeed = 3f;
 		projectiles = new ArrayList<AbstractProjectile>();
-	}
-	/**
-	 * Get the position of the tank's image.
-	 * @return The position of the tank's image.
-	 */
-	public Vector2f getImagePosition(){
-		return new Vector2f(position.x - size.x/2, position.y - size.y/2);
+		spriteID = "turret";
 	}
 	
 	public double getRotation(){
-		return direction.getTheta();
+		return direction.getTheta() + 90;
 	}
 	
 	public String getName() {
@@ -108,7 +102,7 @@ public abstract class AbstractTank extends MovableEntity {
 		float rotation = (float) Math.toDegrees(Math.atan2(turret.getPosition().x - mouseCoords.x + 0, turret.getPosition().y - mouseCoords.y + 0)* -1)+180;
         turret.setRotation(rotation);  
         
-        double tankRotation = getRotation(); 
+        double tankRotation = getRotation() - 90; 
         float newTurX = (float) (position.x + turretOffset * Math.cos(Math.toRadians(tankRotation + 180)));
         float newTurY = (float) (position.y - turretOffset * Math.sin(Math.toRadians(tankRotation)));
       	
