@@ -10,6 +10,7 @@ public abstract class MovableEntity extends Entity {
 	private float minSpeed;
 	private float acceleration;
 	private float friction;
+	private double lastDirectionTheta;
 	
 	/**
 	 * Create a new MovableEntity based on the following parameters
@@ -24,6 +25,7 @@ public abstract class MovableEntity extends Entity {
 		this.minSpeed = minSpeed;;
 		this.acceleration = maxSpeed*0.1f;
 		this.friction = maxSpeed*0.1f;
+		this.lastDirectionTheta = direction.getTheta();
 	}
 	
 	/**
@@ -43,11 +45,14 @@ public abstract class MovableEntity extends Entity {
 	}
 	
 	/**
-	 * Set the direction of this object
+	 * Set the direction of this object.
+	 * This also changes the rotation of the shape.
 	 * @param newDirection The new direction
 	 */
 	public void setDirection(Vector2f newDirection){
 		this.direction = newDirection;
+		setShape(getShape().transform(Transform.createRotateTransform((float)Math.toRadians(newDirection.getTheta()-lastDirectionTheta), getShape().getCenterX(), getShape().getCenterY())));
+		lastDirectionTheta = newDirection.getTheta();
 	}
 
 	/**
@@ -146,6 +151,7 @@ public abstract class MovableEntity extends Entity {
 
 	/**
 	 * Updates the position of the object, uses speed and direction to calculate the new position.
+	 * This also translates the shape of this entity.
 	 * @param delta hmm...
 	 */
 	public void move(int delta){
@@ -156,6 +162,7 @@ public abstract class MovableEntity extends Entity {
 		velocity.y = velocity.y * delta/60;
 		
 		setPosition(getPosition().add(velocity));
+		setShape(getShape().transform(Transform.createTranslateTransform(velocity.x, velocity.y)));
 	}
 
 	/**
