@@ -98,4 +98,8 @@ public abstract class Entity{
 	 * @param entity the other object
 	 */
 	public void didCollideWith(Entity entity){}
+
+	public void destroy(){
+		TanskController.getInstance().getWorld().removeEntity(this);
+	}
 }
