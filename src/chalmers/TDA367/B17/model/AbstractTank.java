@@ -132,6 +132,8 @@ public abstract class AbstractTank extends MovableEntity {
 			if(projectile.getTank() != this){
 				Toolkit.getDefaultToolkit().beep();
 			}
+		}else if(entity instanceof MapBounds){
+			setSpeed(-getSpeed());
 		}
 	}
 }
