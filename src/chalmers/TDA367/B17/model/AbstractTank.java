@@ -16,7 +16,7 @@ public abstract class AbstractTank extends MovableEntity {
 	protected float turretOffset;
 	Point mouseCoords;
 	private List<AbstractProjectile> projectiles;
-	public boolean fire = false;
+	public boolean fire = true;
 	protected int timeSinceLastShot = 0;
 	
 	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed) {
