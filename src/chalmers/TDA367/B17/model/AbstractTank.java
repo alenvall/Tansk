@@ -24,6 +24,7 @@ public abstract class AbstractTank extends MovableEntity {
 		super(velocity, maxSpeed, minSpeed);
 		turnSpeed = 3f;
 		projectiles = new ArrayList<AbstractProjectile>();
+		currentPowerUp = null;
 	}
 	/**
 	 * Get the position of the tank's image.
@@ -58,7 +59,12 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 
 	public void setCurrentPowerUp(AbstractPowerUp currentPowerUp) {
-		this.currentPowerUp = currentPowerUp;
+		if(this.currentPowerUp == null){
+			this.currentPowerUp = currentPowerUp;
+			this.currentPowerUp.activate(this);
+		}else if(currentPowerUp == null){
+			this.currentPowerUp = null;
+		}
 	}
 
 	public float getTurnSpeed() {
@@ -117,7 +123,7 @@ public abstract class AbstractTank extends MovableEntity {
 	
 	public void fireWeapon(int delta){
 		timeSinceLastShot -= delta;
-		if(timeSinceLastShot < 0 && fire){
+		if(timeSinceLastShot <= 0 && fire){
 			turret.fireWeapon(delta, this);
 			timeSinceLastShot = turret.getFireRate();
 		}
