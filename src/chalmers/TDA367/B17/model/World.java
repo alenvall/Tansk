@@ -1,16 +1,19 @@
 package chalmers.TDA367.B17.model;
 
+import java.awt.*;
 import java.util.*;
 import java.util.Map.Entry;
 
 public class World {
 	
 	private Map<Integer, Entity> entities = new HashMap<Integer, Entity>();
+
+	private Dimension size;
 	
 	private int latestID;
 	
-	public World() {
-		
+	public World(Dimension size) {
+		this.size = size;
 	}
 	/**
 	 * Adds a new entity.
@@ -71,5 +74,9 @@ public class World {
 
 	public void removeEntity(Entity entity){
 		entities.remove(entity.getId());
+	}
+
+	public Dimension getSize() {
+		return size;
 	}
 }

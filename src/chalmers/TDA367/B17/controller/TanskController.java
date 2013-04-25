@@ -1,6 +1,6 @@
 package chalmers.TDA367.B17.controller;
 
-import java.awt.Point;
+import java.awt.*;
 
 import chalmers.TDA367.B17.model.World;
 
@@ -12,7 +12,6 @@ public class TanskController {
 	private Point mouseCoordinates;
 
 	private TanskController() {
-		world = new World();
 		mouseCoordinates = new Point();
 		// TODO Auto-generated constructor stub
 	}
@@ -24,8 +23,8 @@ public class TanskController {
 		return instance;
 	}
 	
-	public void newGame(){
-		world = new World();
+	public void newGame(int width, int height){
+		world = new World(new Dimension(width, height));
 	}
 	
 	public World getWorld(){
