@@ -91,4 +91,11 @@ public abstract class Entity{
 	public void update(int delta){
 		
 	}
+
+	/**
+	 * Callback method for collisions.
+	 * This gets called when two game objects (entities) collides.
+	 * @param entity the other object
+	 */
+	public void didCollideWith(Entity entity){}
 }

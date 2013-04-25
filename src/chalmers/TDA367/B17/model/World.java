@@ -48,6 +48,24 @@ public class World {
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
 			Entity entity = entry.getValue();
 			entity.update(delta);
+
+			if(entity instanceof MovableEntity)
+				checkCollisionsFor((MovableEntity)entity);
+		}
+	}
+
+	private void checkCollisionsFor(MovableEntity movableEntity){
+		Iterator<Entry<Integer, Entity>> iterator = entities.entrySet().iterator();
+		while(iterator.hasNext()){
+			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
+			Entity entity = entry.getValue();
+
+			if(entity!=movableEntity && entity.getShape().intersects(movableEntity.getShape())){
+				movableEntity.didCollideWith(entity);
+				// prevent double method calls
+				if(!(entity instanceof MovableEntity))
+					entity.didCollideWith(movableEntity);
+			}
 		}
 	}
 }
