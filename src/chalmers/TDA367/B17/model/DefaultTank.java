@@ -1,5 +1,6 @@
 package chalmers.TDA367.B17.model;
 
+import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
 
@@ -9,6 +10,7 @@ public class DefaultTank extends AbstractTank {
 		super(direction, maxSpeed, minSpeed);
 		setSize(new Vector2f(65f, 85f));
 		setPosition(new Vector2f(100, 150));
+		setShape(new Rectangle(getPosition().getX()-getSize().getX()/2, getPosition().getY()-getSize().getY()/2, getSize().getX(), getSize().getY()));
 		turret = new DefaultTurret();
 		turretOffset = 6;
 		turret.setPosition(new Vector2f(position.x, turretOffset));
