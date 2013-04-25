@@ -4,8 +4,8 @@ import org.newdawn.slick.geom.Vector2f;
 
 public class SlowspeedyProjectile extends AbstractProjectile {
 
-	public SlowspeedyProjectile() {
-		super(new Vector2f(1,1), 100, 0, 5, 3000);
+	public SlowspeedyProjectile(AbstractTank tank) {
+		super(tank, new Vector2f(1,1), 100, 0, 5, 3000);
 		setSpeed(2);
 	}
 

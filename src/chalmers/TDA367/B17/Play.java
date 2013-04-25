@@ -75,10 +75,10 @@ public class Play extends BasicGameState{
 		
 		//Temporary to test switching between turrets
 		turrets = new ArrayList<AbstractTurret>();
-		turrets.add(new DefaultTurret());
-		turrets.add(new FlamethrowerTurret());
-		turrets.add(new ShotgunTurret());
-		turrets.add(new SlowspeedyTurret());
+		turrets.add(new DefaultTurret(playerOne.getTank()));
+		turrets.add(new FlamethrowerTurret(playerOne.getTank()));
+		turrets.add(new ShotgunTurret(playerOne.getTank()));
+		turrets.add(new SlowspeedyTurret(playerOne.getTank()));
 		
 		turretIndex = 0;
 

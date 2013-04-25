@@ -1,6 +1,7 @@
 package chalmers.TDA367.B17.model;
 
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +25,7 @@ public abstract class AbstractTank extends MovableEntity {
 		super(velocity, maxSpeed, minSpeed);
 		turnSpeed = 3f;
 		projectiles = new ArrayList<AbstractProjectile>();
+		
 	}
 	/**
 	 * Get the position of the tank's image.
@@ -122,4 +124,17 @@ public abstract class AbstractTank extends MovableEntity {
 			timeSinceLastShot = turret.getFireRate();
 		}
 	}
+
+	@Override
+	public void didCollideWith(Entity entity){
+		if(entity instanceof AbstractProjectile){
+			AbstractProjectile projectile = (AbstractProjectile)entity;
+			if(projectile.getTank() != this){
+				Toolkit.getDefaultToolkit().beep();
+			}
+		}
+	}
 }
+
+
+

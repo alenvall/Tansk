@@ -1,5 +1,7 @@
 package chalmers.TDA367.B17.model;
 
+import java.awt.Toolkit;
+
 import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractProjectile extends MovableEntity {
@@ -7,6 +9,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	protected double damage;
 	protected int duration;
 	protected int durationTimer;
+	protected AbstractTank tank;
 
 	/**
 	 * Create a new AbstractProjectile.
@@ -16,12 +19,16 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param damage the damage this projectile does
 	 * @param duration the time in milliseconds this projectile will remain on the map
 	 */
-	public AbstractProjectile(Vector2f velocity,
+	public AbstractProjectile(AbstractTank tank, Vector2f velocity,
 			float maxSpeed, float minSpeed, double damage, int duration) {
 		super(velocity, maxSpeed, minSpeed);
 		this.damage = damage;
 		this.duration = duration;
 		this.durationTimer = duration;
+		this.tank = tank;
+	}
+	public AbstractTank getTank(){
+		return tank;
 	}
 	/**
 	 * Get the damage of this projectile.
@@ -66,5 +73,11 @@ public abstract class AbstractProjectile extends MovableEntity {
 			}
 		}
 		super.update(delta);
+	}
+	public void didCollideWith(Entity entity){
+		if(!(entity instanceof AbstractProjectile || entity == getTank())){
+			Toolkit.getDefaultToolkit().beep();
+			
+		}
 	}
 }

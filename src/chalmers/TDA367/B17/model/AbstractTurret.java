@@ -8,12 +8,18 @@ public abstract class AbstractTurret extends Entity {
 	protected float turretLength;
 	protected int fireRate;
 	protected String projectileType;
+	protected AbstractTank tank;
 
 	/**
 	 * Create a new AbstractTurret.
 	 */
-	public AbstractTurret() {
+	public AbstractTurret(AbstractTank tank) {
 		super();
+		this.tank = tank;
+	}
+	
+	public AbstractTank getTank(){
+		return tank;
 	}
 
 	/**
