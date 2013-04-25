@@ -100,6 +100,7 @@ public abstract class AbstractTank extends MovableEntity {
 	public void update(int delta){
 		super.update(delta);
 		updateTurret();
+		timeSinceLastShot -= delta;
 	}
 
 	private void updateTurret() {
@@ -116,7 +117,6 @@ public abstract class AbstractTank extends MovableEntity {
     }
 	
 	public void fireWeapon(int delta){
-		timeSinceLastShot -= delta;
 		if(timeSinceLastShot < 0 && fire){
 			turret.fireWeapon(delta, this);
 			timeSinceLastShot = turret.getFireRate();
