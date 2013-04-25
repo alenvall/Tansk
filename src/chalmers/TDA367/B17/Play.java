@@ -13,6 +13,8 @@ import org.newdawn.slick.SlickException;
 import org.newdawn.slick.SpriteSheet;
 
 import chalmers.TDA367.B17.controller.TanskController;
+import chalmers.TDA367.B17.model.*;
+import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
@@ -36,6 +38,8 @@ public class Play extends BasicGameState{
 	TanskController controller;
 	ArrayList<Player> players;
 	Player playerOne;
+
+	Entity obstacle;
 
 	Image map = null;
 	SpriteSheet tankSprite  = null;
@@ -76,6 +80,11 @@ public class Play extends BasicGameState{
 		turrets.add(new ShotgunTurret());
 		turrets.add(new SlowspeedyTurret());
 		
+		turretIndex = 0;
+
+		obstacle = new Entity() {
+		};
+		obstacle.setShape(new Rectangle(75, 250, 40, 40));
 	}
 
 	@Override
