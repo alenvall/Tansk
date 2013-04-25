@@ -3,6 +3,8 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+import java.awt.*;
+
 
 public class DefaultTank extends AbstractTank {
 
@@ -14,5 +16,10 @@ public class DefaultTank extends AbstractTank {
 		turret = new DefaultTurret();
 		turretOffset = 6;
 		turret.setPosition(new Vector2f(position.x, turretOffset));
+	}
+
+	@Override
+	public void didCollideWith(Entity entity){
+		Toolkit.getDefaultToolkit().beep();
 	}
 }
