@@ -21,11 +21,11 @@ import org.newdawn.slick.state.StateBasedGame;
 
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTurret;
-import chalmers.TDA367.B17.model.DefaultTurret;
-import chalmers.TDA367.B17.model.FlamethrowerTurret;
 import chalmers.TDA367.B17.model.Player;
-import chalmers.TDA367.B17.model.ShotgunTurret;
-import chalmers.TDA367.B17.model.SlowspeedyTurret;
+import chalmers.TDA367.B17.weapons.DefaultTurret;
+import chalmers.TDA367.B17.weapons.FlamethrowerTurret;
+import chalmers.TDA367.B17.weapons.ShotgunTurret;
+import chalmers.TDA367.B17.weapons.SlowspeedyTurret;
 
 public class Play extends BasicGameState{
 
