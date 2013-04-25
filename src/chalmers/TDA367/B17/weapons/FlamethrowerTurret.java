@@ -13,7 +13,7 @@ public class FlamethrowerTurret extends AbstractTurret {
 		turretCenter = new Vector2f(22.5f, 22.5f);
 		turretLength = 42f;
 		size = new Vector2f(45f, 65f);
-		fireRate = 1;
+		fireRate = 32;
 		projectileType = "fire";
 	}
 	
@@ -24,6 +24,7 @@ public class FlamethrowerTurret extends AbstractTurret {
 
 	@Override
 	public void fireWeapon(int delta, AbstractTank tank){
-		tank.addProjectile(spawnNewProjectile());
+		for(int i = 0; i < 4; i++)
+			tank.addProjectile(spawnNewProjectile());
 	}
 }
