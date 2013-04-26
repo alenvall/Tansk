@@ -29,10 +29,8 @@ public abstract class AbstractTank extends MovableEntity {
 		super(velocity, maxSpeed, minSpeed);
 		turnSpeed = 3f;
 		projectiles = new ArrayList<AbstractProjectile>();
-
 		spriteID = "turret";
-		
-		
+
 		try {
 			debugWallHit = new Sound("data/wall.wav");
         } catch (SlickException e) {
@@ -149,7 +147,8 @@ public abstract class AbstractTank extends MovableEntity {
 		}else if(entity instanceof MapBounds){
 			setSpeed(-getSpeed());
 			debugWallHit.play();
-		}
+			//	Toolkit.getDefaultToolkit().beep();
+			}
 	}
 }
 

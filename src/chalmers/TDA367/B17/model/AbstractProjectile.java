@@ -12,8 +12,8 @@ public abstract class AbstractProjectile extends MovableEntity {
 	protected int duration;
 	protected int durationTimer;
 	protected AbstractTank tank;
-	
 	private Sound debugWallHit;
+
 
 	/**
 	 * Create a new AbstractProjectile.
@@ -37,8 +37,8 @@ public abstract class AbstractProjectile extends MovableEntity {
 	        // TODO Auto-generated catch block
 	        e.printStackTrace();
         }
+		this.tank = tank;
 	}
-	
 	public AbstractTank getTank(){
 		return tank;
 	}
@@ -98,5 +98,11 @@ public abstract class AbstractProjectile extends MovableEntity {
 			debugWallHit.play();
 			this.destroy();
 		}
+	}
+
+	@Override
+	public void destroy(){
+		super.destroy();
+		getTank().getProjectiles().remove(this);
 	}
 }

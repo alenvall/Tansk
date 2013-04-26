@@ -35,7 +35,9 @@ public class Play extends BasicGameState{
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		controller = TanskController.getInstance();
+
 		controller.newGame(TanskController.SCREEN_WIDTH, TanskController.SCREEN_HEIGHT);
+
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
