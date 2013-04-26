@@ -1,16 +1,19 @@
 package chalmers.TDA367.B17.model;
 
+import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
 public class SlowspeedyProjectile extends AbstractProjectile {
 
-	public SlowspeedyProjectile(AbstractTank tank) {
+	public SlowspeedyProjectile(AbstractTank tank, Vector2f position) {
 		super(tank, new Vector2f(1,1), 100, 0, 5, 3000);
 		setSpeed(2);
-		spriteID = "proj_energy";
 		setSize(new Vector2f(15,5));
+		setPosition(position);
+		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
+		spriteID = "proj_energy";
 	}
-
+	
 	@Override
 	public void update(int delta) {
 		if(getSpeed() < 10){

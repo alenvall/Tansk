@@ -24,7 +24,7 @@ public class SlowspeedyTurret extends AbstractTurret {
 
 	@Override
 	public AbstractProjectile createProjectile() {
-		return new SlowspeedyProjectile(getTank());
+		return new SlowspeedyProjectile(getTank(), getTurretNozzle());
 	}
 
 }

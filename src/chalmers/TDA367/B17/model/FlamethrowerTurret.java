@@ -3,8 +3,7 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Vector2f;
 
 public class FlamethrowerTurret extends AbstractTurret {
-	
-	
+		
 	public FlamethrowerTurret(AbstractTank tank)  {
 		super(tank);
 		turretCenter = new Vector2f(22.5f, 22.5f);

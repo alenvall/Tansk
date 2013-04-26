@@ -15,7 +15,7 @@ public class ShotgunTurret extends AbstractTurret {
 
 	@Override
 	public AbstractProjectile createProjectile() {
-		return new ShotgunProjectile(getTank());
+		return new ShotgunProjectile(getTank(), getTurretNozzle());
 	}
 
 	@Override

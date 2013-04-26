@@ -3,9 +3,6 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
-import java.awt.*;
-
-
 public class DefaultTank extends AbstractTank {
 
 	public DefaultTank(Vector2f direction, float maxSpeed, float minSpeed) {

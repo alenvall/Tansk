@@ -1,7 +1,6 @@
 package chalmers.TDA367.B17.model;
 
-import org.newdawn.slick.geom.Rectangle;
-import org.newdawn.slick.geom.Vector2f;
+import org.newdawn.slick.geom.*;
 
 public class DefaultProjectile extends AbstractProjectile {
 
@@ -11,5 +10,6 @@ public class DefaultProjectile extends AbstractProjectile {
 		setSize(new Vector2f(5f, 10f));
 		setPosition(position);
 		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
+		spriteID = "bullet";
 	}
 }

@@ -34,11 +34,11 @@ public abstract class AbstractProjectile extends MovableEntity {
 		try {
 	        debugWallHit = new Sound("data/bullet.wav");
         } catch (SlickException e) {
-	        // TODO Auto-generated catch block
 	        e.printStackTrace();
         }
 		this.tank = tank;
 	}
+	
 	public AbstractTank getTank(){
 		return tank;
 	}
