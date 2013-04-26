@@ -90,15 +90,16 @@ public abstract class AbstractProjectile extends MovableEntity {
 		return direction.getTheta() + 90;
 	}
 	
-	public void didCollideWith(Entity entity){
-		if(!(entity instanceof AbstractProjectile || entity == getTank())){
-			//Toolkit.getDefaultToolkit().beep();
-			
-		}else if(entity instanceof MapBounds){
-			debugWallHit.play();
-			this.destroy();
-		}
+public void didCollideWith(Entity entity){
+	if(entity instanceof AbstractProjectile || entity == getTank())
+		return;
+
+	if(entity instanceof MapBounds){
+		debugWallHit.play();
+		this.destroy();
 	}
+}
+
 
 	@Override
 	public void destroy(){

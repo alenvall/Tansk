@@ -7,14 +7,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class World {
 	
-	private Map<Integer, Entity> entities = new ConcurrentHashMap<Integer, Entity>();
-
+	private Map<Integer, Entity> entities;
 	private Dimension size;
 	
 	private int latestID;
 	
 	public World(Dimension size) {
 		this.size = size;
+		this.entities = new ConcurrentHashMap<Integer, Entity>();
 	}
 
 	public void init(){
