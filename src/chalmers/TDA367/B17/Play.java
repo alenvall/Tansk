@@ -159,6 +159,7 @@ public class Play extends BasicGameState{
 			Entity entity = entry.getValue();
 			
 			if(!entity.getSpriteID().equals("")){
+				// Tanks have to be drawn before all other entities.
 				if(entity instanceof AbstractTank){
 					entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
 					if(entSprite != null){
@@ -171,6 +172,7 @@ public class Play extends BasicGameState{
 			}
 		}
 		
+		// Draw the rest of the other entities (non-tanks).
 		for(Entity nonPrioEnt : nonPriorityEnts){
 			entSprite = TanskController.getInstance().getImageHandler().getSprite(nonPrioEnt.getSpriteID());
 			
@@ -182,8 +184,6 @@ public class Play extends BasicGameState{
 				entSprite.draw(nonPrioEnt.getSpritePosition().x, nonPrioEnt.getSpritePosition().y);	
 			}
 		}
-		
-		
 		debugRender(g);
 	}
 
