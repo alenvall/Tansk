@@ -8,12 +8,21 @@ public abstract class AbstractTurret extends Entity {
 	protected float turretLength;
 	protected int fireRate;
 	protected String projectileType;
+	protected AbstractTank tank;
 
 	/**
 	 * Create a new AbstractTurret.
 	 */
-	public AbstractTurret() {
+	public AbstractTurret(AbstractTank tank) {
 		super();
+		angle = 0;
+		spriteID = "turret";
+		position = new Vector2f(0, 0);
+		this.tank = tank;
+	}
+	
+	public AbstractTank getTank(){
+		return tank;
 	}
 
 	/**
@@ -24,20 +33,13 @@ public abstract class AbstractTurret extends Entity {
 		return fireRate;
 	}
 
-	/**
-	 * Get the turret image position.
-	 * That is the top left corner of the turret.
-	 * @return a new vector with the coordinates of that top left corner
-	 */
-	public Vector2f getImagePosition(){
+	@Override
+	public Vector2f getSpritePosition(){
 		return new Vector2f(position.x - turretCenter.x, position.y - turretCenter.y);
 	}
-
-	/**
-	 * Get the rotation angle of the turret.
-	 * @return the angle
-	 */
-	public float getRotation() {
+	
+	@Override
+	public double getRotation() {
 	    return angle;
     }
 
@@ -85,6 +87,11 @@ public abstract class AbstractTurret extends Entity {
 	 * @return a new projectile
 	 */
 	public abstract AbstractProjectile createProjectile();
+	
+	@Override
+	public Vector2f getCenter(){
+		return turretCenter;
+	}
 
 	/**
 	 * Creates and spawns a new projectile.

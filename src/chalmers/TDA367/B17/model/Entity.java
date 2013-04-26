@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Point;
 import org.newdawn.slick.geom.Shape;
+import org.newdawn.slick.geom.Transform;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.TanskController;
@@ -11,7 +12,9 @@ public abstract class Entity{
 	protected Vector2f position; // The position of the Entity
 	protected Vector2f size; // The size of the entity
 	protected boolean active;
-	private Shape shape;
+	protected Shape shape;
+	protected String spriteID;
+	private double rotation;
 
 	/**
 	 * 
@@ -22,10 +25,22 @@ public abstract class Entity{
 		TanskController.getInstance().getWorld().addEntity(this);
 		active = true;
 		shape = new Point(-1, -1);
+		rotation = 0;
+		position = new Vector2f(0,0);
+		size = new Vector2f(0,0);
+		spriteID = "";
 	}
 	
 	public boolean isActive(){
 		return active;
+	}
+	
+	public double getRotation(){
+		return rotation;
+	}
+	
+	public Vector2f getCenter(){
+		return new Vector2f(shape.getCenterX(), shape.getCenterY());
 	}
 	
 	/**
@@ -51,10 +66,7 @@ public abstract class Entity{
 	public Vector2f getSize(){
 		return size;
 	}
-	
-	public Vector2f getCenter(){
-		return new Vector2f(size.x/2, size.y/2);
-	}
+
 
 	/**
 	 * Set the size of this entity
@@ -93,6 +105,14 @@ public abstract class Entity{
 	}
 
 	/**
+	 * Get the position of where the entity's sprite is to be drawn.
+	 * @return The position of the entity's sprite.
+	 */
+	public Vector2f getSpritePosition(){
+		return new Vector2f(position.x - size.x/2, position.y - size.y/2);
+	}
+
+	/**
 	 * Callback method for collisions.
 	 * This gets called when two game objects (entities) collides.
 	 * @param entity the other object
@@ -101,5 +121,9 @@ public abstract class Entity{
 
 	public void destroy(){
 		TanskController.getInstance().getWorld().removeEntity(this);
+	}
+	
+	public String getSpriteID(){
+		return spriteID;
 	}
 }

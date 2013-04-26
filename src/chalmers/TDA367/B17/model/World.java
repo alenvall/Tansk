@@ -1,17 +1,26 @@
 package chalmers.TDA367.B17.model;
 
+import java.awt.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class World {
 	
-	private Map<Integer, Entity> entities = new HashMap<Integer, Entity>();
+	private Map<Integer, Entity> entities;
+	private Dimension size;
 	
 	private int latestID;
 	
-	public World() {
-		
+	public World(Dimension size) {
+		this.size = size;
+		this.entities = new ConcurrentHashMap<Integer, Entity>();
 	}
+
+	public void init(){
+		new MapBounds(getSize());
+	}
+
 	/**
 	 * Adds a new entity.
 	 * @param newEntity the entity to add
@@ -23,7 +32,7 @@ public class World {
 	/**
 	 * Get an entity from the World.
 	 * @param id The id of the requested entity
-	 * @return
+	 * @return entity.
 	 */
 	public Entity getEntity(int id){
 		return entities.get(id);
@@ -39,22 +48,14 @@ public class World {
 	}
 	
 	/**
-	 * Updates all entities existing in this world.
-	 * @param delta the time in milliseconds since last update
+	 * Return the entities in the world.
+	 * @return entities in world.
 	 */
-	public void update(int delta){
-		Iterator<Entry<Integer, Entity>> iterator = entities.entrySet().iterator();
-		while(iterator.hasNext()){
-			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
-			Entity entity = entry.getValue();
-			entity.update(delta);
-
-			if(entity instanceof MovableEntity)
-				checkCollisionsFor((MovableEntity)entity);
-		}
+	public Map<Integer, Entity> getEntities(){
+		return entities;
 	}
 
-	private void checkCollisionsFor(MovableEntity movableEntity){
+	public void checkCollisionsFor(MovableEntity movableEntity){
 		Iterator<Entry<Integer, Entity>> iterator = entities.entrySet().iterator();
 		while(iterator.hasNext()){
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
@@ -71,5 +72,9 @@ public class World {
 
 	public void removeEntity(Entity entity){
 		entities.remove(entity.getId());
+	}
+
+	public Dimension getSize() {
+		return size;
 	}
 }

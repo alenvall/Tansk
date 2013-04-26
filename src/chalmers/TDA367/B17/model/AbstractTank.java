@@ -1,9 +1,12 @@
 package chalmers.TDA367.B17.model;
 
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.newdawn.slick.SlickException;
+import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.TanskController;
@@ -20,12 +23,23 @@ public abstract class AbstractTank extends MovableEntity {
 	public boolean fire = true;
 	protected int timeSinceLastShot = 0;
 	
+	private Sound debugWallHit = null;
+	
 	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed) {
 		super(velocity, maxSpeed, minSpeed);
 		turnSpeed = 3f;
 		projectiles = new ArrayList<AbstractProjectile>();
 		currentPowerUp = null;
+		spriteID = "turret";
+
+		try {
+			debugWallHit = new Sound("data/wall.wav");
+        } catch (SlickException e) {
+	        // TODO Auto-generated catch block
+	        e.printStackTrace();
+        }
 	}
+	
 	/**
 	 * Get the position of the tank's image.
 	 * @return The position of the tank's image.
@@ -35,7 +49,7 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 	
 	public double getRotation(){
-		return direction.getTheta();
+		return direction.getTheta() + 90;
 	}
 	
 	public String getName() {
@@ -106,6 +120,7 @@ public abstract class AbstractTank extends MovableEntity {
 	public void update(int delta){
 		super.update(delta);
 		updateTurret();
+		timeSinceLastShot -= delta;
 	}
 
 	private void updateTurret() {
@@ -114,7 +129,7 @@ public abstract class AbstractTank extends MovableEntity {
 		float rotation = (float) Math.toDegrees(Math.atan2(turret.getPosition().x - mouseCoords.x + 0, turret.getPosition().y - mouseCoords.y + 0)* -1)+180;
         turret.setRotation(rotation);  
         
-        double tankRotation = getRotation(); 
+        double tankRotation = getRotation() - 90; 
         float newTurX = (float) (position.x + turretOffset * Math.cos(Math.toRadians(tankRotation + 180)));
         float newTurY = (float) (position.y - turretOffset * Math.sin(Math.toRadians(tankRotation)));
       	
@@ -128,4 +143,21 @@ public abstract class AbstractTank extends MovableEntity {
 			timeSinceLastShot = turret.getFireRate();
 		}
 	}
+
+	@Override
+	public void didCollideWith(Entity entity){
+		if(entity instanceof AbstractProjectile){
+			AbstractProjectile projectile = (AbstractProjectile)entity;
+			if(projectile.getTank() != this){
+			//	Toolkit.getDefaultToolkit().beep();
+			}
+		}else if(entity instanceof MapBounds){
+			setSpeed(-getSpeed());
+			debugWallHit.play();
+			//	Toolkit.getDefaultToolkit().beep();
+			}
+	}
 }
+
+
+
