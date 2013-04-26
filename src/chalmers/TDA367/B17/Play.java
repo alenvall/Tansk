@@ -152,23 +152,38 @@ public class Play extends BasicGameState{
 	public void render(GameContainer container, StateBasedGame sbg, Graphics g) throws SlickException {	
 		map.draw();	
 		
+		ArrayList<Entity> nonPriorityEnts = new ArrayList<Entity>();
 		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
 		while(iterator.hasNext()){
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
 			Entity entity = entry.getValue();
 			
 			if(!entity.getSpriteID().equals("")){
-				entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
-				
-				if(entSprite != null){
-					if(entity instanceof AbstractTurret){
-						entSprite.setCenterOfRotation(entity.getCenter().x, entity.getCenter().y);
+				if(entity instanceof AbstractTank){
+					entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
+					if(entSprite != null){
+						entSprite.setRotation((float) entity.getRotation());
+						entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);	
 					}
-					entSprite.setRotation((float) entity.getRotation());
-					entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);	
+				} else {
+					nonPriorityEnts.add(entity);		
 				}
 			}
 		}
+		
+		for(Entity nonPrioEnt : nonPriorityEnts){
+			entSprite = TanskController.getInstance().getImageHandler().getSprite(nonPrioEnt.getSpriteID());
+			
+			if(entSprite != null){
+				if(nonPrioEnt instanceof AbstractTurret){
+					entSprite.setCenterOfRotation(nonPrioEnt.getCenter().x, nonPrioEnt.getCenter().y);
+				}
+				entSprite.setRotation((float) nonPrioEnt.getRotation());
+				entSprite.draw(nonPrioEnt.getSpritePosition().x, nonPrioEnt.getSpritePosition().y);	
+			}
+		}
+		
+		
 		debugRender(g);
 	}
 
