@@ -99,34 +99,19 @@ public class Play extends BasicGameState{
 		
 		//Weapons
 		if(input.isKeyDown(Input.KEY_1)){
-			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().getTurret().destroy();
 			playerOne.getTank().setTurret(new DefaultTurret(playerOne.getTank()));
-			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		if(input.isKeyDown(Input.KEY_2)){
-			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().getTurret().destroy();
 			playerOne.getTank().setTurret(new FlamethrowerTurret(playerOne.getTank()));
-			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		if(input.isKeyDown(Input.KEY_3)){
-			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().getTurret().destroy();
 			playerOne.getTank().setTurret(new ShotgunTurret(playerOne.getTank()));
-			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		if(input.isKeyDown(Input.KEY_4)){
-			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().getTurret().destroy();
 			playerOne.getTank().setTurret(new SlowspeedyTurret(playerOne.getTank()));
-			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		if(input.isKeyDown(Input.KEY_5)){
-			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().getTurret().destroy();
 			playerOne.getTank().setTurret(new ShockwaveTurret(playerOne.getTank()));
-			playerOne.getTank().getTurret().setPosition(temp);
 		}
 		
 		//Powerups
