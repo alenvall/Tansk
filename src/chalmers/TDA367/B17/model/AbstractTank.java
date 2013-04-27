@@ -94,6 +94,7 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 
 	public void setTurret(AbstractTurret turret) {
+		getTurret().destroy();
 		this.turret = turret;
 	}
 
@@ -154,7 +155,6 @@ public abstract class AbstractTank extends MovableEntity {
 		}else if(entity instanceof MapBounds){
 			setSpeed(-getSpeed());
 			debugWallHit.play();
-			//	Toolkit.getDefaultToolkit().beep();
 			}
 	}
 }
