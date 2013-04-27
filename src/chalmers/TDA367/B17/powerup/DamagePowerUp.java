@@ -29,7 +29,6 @@ public class DamagePowerUp extends AbstractPowerUp{
 			if(!projectiles.contains(ap)){
 				ap.setDamage(ap.getDamage()*MULTIPLIER);
 				projectiles.add(ap);
-				System.out.println("Double damage! - ProjCounter: " + projectiles.size());
 			}
 		}
 	}
