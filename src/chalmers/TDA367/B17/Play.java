@@ -136,6 +136,9 @@ public class Play extends BasicGameState{
 		}if(input.isKeyDown(Input.KEY_PERIOD)){
 			FireRatePowerUp spu = new FireRatePowerUp();
 			playerOne.getTank().setCurrentPowerUp(spu);
+		}if(input.isKeyDown(Input.KEY_L)){
+			DamagePowerUp spu = new DamagePowerUp();
+			playerOne.getTank().setCurrentPowerUp(spu);
 		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
