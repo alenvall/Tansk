@@ -122,6 +122,12 @@ public class Play extends BasicGameState{
 			playerOne.getTank().setTurret(new SlowspeedyTurret(playerOne.getTank()));
 			playerOne.getTank().getTurret().setPosition(temp);
 		}
+		if(input.isKeyDown(Input.KEY_5)){
+			Vector2f temp = playerOne.getTank().getTurret().getPosition();
+			playerOne.getTank().getTurret().destroy();
+			playerOne.getTank().setTurret(new ShockwaveTurret(playerOne.getTank()));
+			playerOne.getTank().getTurret().setPosition(temp);
+		}
 		
 		//Powerups
 		if(input.isKeyDown(Input.KEY_COMMA)){
