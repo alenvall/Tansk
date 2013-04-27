@@ -70,6 +70,7 @@ public abstract class AbstractPowerUp extends Entity {
 		if(effectActive){
 			if(effectDuration > 0){
 				effectDuration -= delta;
+				updateEffect();
 			}else{
 				deactivate();
 			}
@@ -96,4 +97,5 @@ public abstract class AbstractPowerUp extends Entity {
 
 	public abstract void endEffect();
 
+	public abstract void updateEffect();
 }

@@ -11,6 +11,7 @@ public class SpeedPowerUp extends AbstractPowerUp {
 		effectDuration = 7000;
 	}
 
+	@Override
 	public void effect() {
 		absTank.setMaxSpeed(MAXSPEED);
 	}
@@ -19,5 +20,8 @@ public class SpeedPowerUp extends AbstractPowerUp {
 	public void endEffect() {
 		absTank.setMaxSpeed(5);
 	}
+
+	@Override
+	public void updateEffect() {}
 
 }
