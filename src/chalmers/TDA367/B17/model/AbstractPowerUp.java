@@ -1,5 +1,10 @@
 package chalmers.TDA367.B17.model;
 
+import org.newdawn.slick.geom.Rectangle;
+import org.newdawn.slick.geom.Vector2f;
+
+import chalmers.TDA367.B17.controller.TanskController;
+
 public abstract class AbstractPowerUp extends Entity {
 
 	private String name;
@@ -8,15 +13,19 @@ public abstract class AbstractPowerUp extends Entity {
 	protected boolean effectActive;
 	protected boolean activated;
 	protected AbstractTank absTank;
+	protected String type;
 
 	/**
 	 * Create a new AbstractPowerUp.
 	 */
-	public AbstractPowerUp() {
+	public AbstractPowerUp(Vector2f position) {
 		super();
 		effectActive = false;
 		activated = false;
 		absTank = null;
+		setSize(new Vector2f(50f, 15f));
+		setPosition(position);
+		setShape(new Rectangle(getPosition().getX()-getSize().getX()/2, getPosition().getY()-getSize().getY()/2, getSize().getX(), getSize().getY()));
 	}
 
 	/**
@@ -61,12 +70,6 @@ public abstract class AbstractPowerUp extends Entity {
 			}
 		}
 		
-		if(activated){
-			effect();
-			activated = false;
-			effectActive = true;
-		}
-		
 		if(effectActive){
 			if(effectDuration > 0){
 				effectDuration -= delta;
@@ -80,8 +83,13 @@ public abstract class AbstractPowerUp extends Entity {
 	}
 	
 	public void activate(AbstractTank absTank){
+		if(absTank.getCurrentPowerUp() != null)
+			absTank.getCurrentPowerUp().deactivate();
 		this.absTank = absTank;
-		activated = true;
+		absTank.setCurrentPowerUp(this);
+		effect();
+		active = false;
+		effectActive = true;
 	}
 	
 	public void deactivate(){
@@ -90,6 +98,7 @@ public abstract class AbstractPowerUp extends Entity {
 		endEffect();
 		effectActive = false;
 		active = false;
+		this.destroy();
 		absTank.setCurrentPowerUp(null);
 	}
 	
@@ -98,4 +107,11 @@ public abstract class AbstractPowerUp extends Entity {
 	public abstract void endEffect();
 
 	public abstract void updateEffect();
+	
+	public void didCollideWith(Entity entity){
+		if(entity instanceof AbstractTank){
+			activate((AbstractTank)entity);
+		}
+	}
+	
 }

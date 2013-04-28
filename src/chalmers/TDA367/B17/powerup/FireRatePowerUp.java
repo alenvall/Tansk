@@ -1,5 +1,7 @@
 package chalmers.TDA367.B17.powerup;
 
+import org.newdawn.slick.geom.Vector2f;
+
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTurret;
 
@@ -9,9 +11,11 @@ public class FireRatePowerUp extends AbstractPowerUp {
 	private AbstractTurret turret;
 	private int firerate;
 	
-	public FireRatePowerUp() {
-		super();
+	public FireRatePowerUp(Vector2f position) {
+		super(position);
 		effectDuration = 7000;
+		spriteID = "frate_powerup";
+		type = "firerate";
 	}
 
 	@Override
