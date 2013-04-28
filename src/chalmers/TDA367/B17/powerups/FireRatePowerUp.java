@@ -36,6 +36,8 @@ public class FireRatePowerUp extends AbstractPowerUp {
 
 	@Override
 	public void updateEffect() {
-		//TODO fix so that the effect remains after changing turret
+		if(turret != absTank.getTurret()){
+			effect();
+		}
 	}
 }
