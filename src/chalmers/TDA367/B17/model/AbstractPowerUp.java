@@ -19,7 +19,7 @@ public abstract class AbstractPowerUp extends Entity {
 		super();
 		effectActive = false;
 		absTank = null;
-		setSize(new Vector2f(50f, 15f));
+		setSize(new Vector2f(60f, 25f));
 		setPosition(position);
 		setShape(new Rectangle(getPosition().getX()-getSize().getX()/2, getPosition().getY()-getSize().getY()/2, getSize().getX(), getSize().getY()));
 	}
@@ -90,6 +90,7 @@ public abstract class AbstractPowerUp extends Entity {
 	public void deactivate(){
 		if(absTank == null || !absTank.isActive())
 			return;
+		updateEffect();
 		endEffect();
 		effectActive = false;
 		active = false;
