@@ -48,7 +48,11 @@ public class Play extends BasicGameState{
 		input = gc.getInput();
 		input.addMouseListener(this);
 		mouseCoords = new Point();
-
+		
+		//POWERUPS
+		new DamagePowerUp(new Vector2f(500,200));
+		new FireRatePowerUp(new Vector2f(500,400));
+		new SpeedPowerUp(new Vector2f(500,600));
 
 	//	turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
 
@@ -114,18 +118,6 @@ public class Play extends BasicGameState{
 			playerOne.getTank().setTurret(new ShockwaveTurret(playerOne.getTank()));
 		}
 		
-		//Powerups
-		if(input.isKeyDown(Input.KEY_COMMA)){
-			SpeedPowerUp spu = new SpeedPowerUp();
-			playerOne.getTank().setCurrentPowerUp(spu);
-		}if(input.isKeyDown(Input.KEY_PERIOD)){
-			FireRatePowerUp spu = new FireRatePowerUp();
-			playerOne.getTank().setCurrentPowerUp(spu);
-		}if(input.isKeyDown(Input.KEY_L)){
-			DamagePowerUp spu = new DamagePowerUp();
-			playerOne.getTank().setCurrentPowerUp(spu);
-		}
-		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
 			gc.exit();
 		}
@@ -135,10 +127,10 @@ public class Play extends BasicGameState{
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
 			Entity entity = entry.getValue();
 			entity.update(delta);
-
+			
 			if(entity instanceof MovableEntity)
 				if(((MovableEntity) entity).getSpeed() != 0)
-					controller.getWorld().checkCollisionsFor((MovableEntity)entity);			
+					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
 		}
 	}
 	
@@ -150,16 +142,17 @@ public class Play extends BasicGameState{
 		while(iterator.hasNext()){
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
 			Entity entity = entry.getValue();
-			
-			if(!entity.getSpriteID().equals("")){
-				entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
-				
-				if(entSprite != null){
-					if(entity instanceof AbstractTurret){
-						entSprite.setCenterOfRotation(entity.getCenter().x, entity.getCenter().y);
+			if(entity.isActive()){
+				if(!entity.getSpriteID().equals("")){
+					entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
+					
+					if(entSprite != null){
+						if(entity instanceof AbstractTurret){
+							entSprite.setCenterOfRotation(entity.getCenter().x, entity.getCenter().y);
+						}
+						entSprite.setRotation((float) entity.getRotation());
+						entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);	
 					}
-					entSprite.setRotation((float) entity.getRotation());
-					entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);	
 				}
 			}
 		}
