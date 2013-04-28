@@ -83,8 +83,6 @@ public abstract class AbstractPowerUp extends Entity {
 	}
 	
 	public void activate(AbstractTank absTank){
-		if(absTank.getCurrentPowerUp() != null)
-			absTank.getCurrentPowerUp().deactivate();
 		this.absTank = absTank;
 		absTank.setCurrentPowerUp(this);
 		effect();
