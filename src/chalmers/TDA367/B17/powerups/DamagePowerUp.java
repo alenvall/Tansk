@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.powerup;
+package chalmers.TDA367.B17.powerups;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +10,7 @@ import chalmers.TDA367.B17.model.AbstractProjectile;
 
 public class DamagePowerUp extends AbstractPowerUp{
 
-	public static int MULTIPLIER = 2;
+	private final int MULTIPLIER = 2;
 	private List<AbstractProjectile> projectiles;
 	
 	public DamagePowerUp(Vector2f position) {
@@ -18,7 +18,6 @@ public class DamagePowerUp extends AbstractPowerUp{
 		effectDuration = 7000;
 		projectiles = new ArrayList<AbstractProjectile>();
 		spriteID = "damage_powerup";
-		type = "damage";
 	}
 
 	@Override

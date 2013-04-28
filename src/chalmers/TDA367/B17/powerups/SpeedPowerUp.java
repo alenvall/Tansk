@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.powerup;
+package chalmers.TDA367.B17.powerups;
 
 import org.newdawn.slick.geom.Vector2f;
 
@@ -6,23 +6,24 @@ import chalmers.TDA367.B17.model.*;
 
 public class SpeedPowerUp extends AbstractPowerUp {
 	
-	public static int MAXSPEED = 10;
+	private final int MULTIPLIER = 2;
+	private float tmpSpeed;
 
 	public SpeedPowerUp(Vector2f position) {
 		super(position);
 		effectDuration = 7000;
 		spriteID = "speed_powerup";
-		type = "speed";
 	}
 
 	@Override
 	public void effect() {
-		absTank.setMaxSpeed(MAXSPEED);
+		tmpSpeed = absTank.getMaxSpeed();
+		absTank.setMaxSpeed(absTank.getMaxSpeed()*MULTIPLIER);
 	}
 
 	@Override
 	public void endEffect() {
-		absTank.setMaxSpeed(5);
+		absTank.setMaxSpeed(tmpSpeed);
 	}
 
 	@Override

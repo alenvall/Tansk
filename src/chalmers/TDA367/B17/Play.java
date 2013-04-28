@@ -4,7 +4,7 @@ import org.newdawn.slick.*;
 
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
-import chalmers.TDA367.B17.powerup.*;
+import chalmers.TDA367.B17.powerups.*;
 import chalmers.TDA367.B17.weapons.*;
 
 import org.newdawn.slick.geom.*;

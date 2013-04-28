@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.powerup;
+package chalmers.TDA367.B17.powerups;
 
 import org.newdawn.slick.geom.Vector2f;
 
@@ -7,15 +7,14 @@ import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class FireRatePowerUp extends AbstractPowerUp {
 
-	public static float MULTIPLIER = 0.5f;
+	private final float MULTIPLIER = 0.5f;
 	private AbstractTurret turret;
 	private int firerate;
 	
 	public FireRatePowerUp(Vector2f position) {
 		super(position);
 		effectDuration = 7000;
-		spriteID = "frate_powerup";
-		type = "firerate";
+		spriteID = "firerate_powerup";
 	}
 
 	@Override
@@ -31,11 +30,12 @@ public class FireRatePowerUp extends AbstractPowerUp {
 	
 	@Override
 	public void endEffect(){
-		if(absTank.getTurret() == turret){
+		if(turret == absTank.getTurret())
 			turret.setFireRate(firerate);
-		}
 	}
 
 	@Override
-	public void updateEffect() {}
+	public void updateEffect() {
+		//TODO fix so that the effect remains after changing turret
+	}
 }
