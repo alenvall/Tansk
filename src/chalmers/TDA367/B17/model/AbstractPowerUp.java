@@ -3,15 +3,12 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
-import chalmers.TDA367.B17.controller.TanskController;
-
 public abstract class AbstractPowerUp extends Entity {
 
 	private String name;
 	protected int duration;
 	protected int effectDuration;
 	protected boolean effectActive;
-	protected boolean activated;
 	protected AbstractTank absTank;
 	protected String type;
 
@@ -21,7 +18,6 @@ public abstract class AbstractPowerUp extends Entity {
 	public AbstractPowerUp(Vector2f position) {
 		super();
 		effectActive = false;
-		activated = false;
 		absTank = null;
 		setSize(new Vector2f(50f, 15f));
 		setPosition(position);
@@ -76,6 +72,7 @@ public abstract class AbstractPowerUp extends Entity {
 				updateEffect();
 			}else{
 				deactivate();
+				
 			}
 		}else if(effectActive && absTank != null && effectDuration <= 0){
 			deactivate();
@@ -107,7 +104,7 @@ public abstract class AbstractPowerUp extends Entity {
 	public abstract void updateEffect();
 	
 	public void didCollideWith(Entity entity){
-		if(entity instanceof AbstractTank){
+		if(entity instanceof AbstractTank && effectActive == false){
 			activate((AbstractTank)entity);
 		}
 	}
