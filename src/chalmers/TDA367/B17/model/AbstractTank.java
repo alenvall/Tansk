@@ -73,9 +73,11 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 
 	public void setCurrentPowerUp(AbstractPowerUp currentPowerUp) {
-		if(this.currentPowerUp == null){
+		if(currentPowerUp != null){
+			if(this.currentPowerUp != null){
+				this.currentPowerUp.deactivate();
+			}
 			this.currentPowerUp = currentPowerUp;
-			this.currentPowerUp.activate(this);
 		}else if(currentPowerUp == null){
 			this.currentPowerUp = null;
 		}
@@ -155,7 +157,7 @@ public abstract class AbstractTank extends MovableEntity {
 		}else if(entity instanceof MapBounds){
 			setSpeed(-getSpeed());
 			debugWallHit.play();
-			}
+		}
 	}
 }
 
