@@ -111,7 +111,7 @@ public abstract class AbstractTurret extends Entity {
 		float rotation = (float) Math.toDegrees(Math.atan2(this.getPosition().x - mouseCoordinates.x + 0, this.getPosition().y - mouseCoordinates.y + 0)* -1)+180;
 		this.setRotation(rotation);
 
-		double tankRotation = getRotation() - 90;
+		double tankRotation = tank.getRotation() - 90;
 		float newTurX = (float) (tank.getPosition().x + tank.getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
 		float newTurY = (float) (tank.getPosition().y - tank.getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
 
