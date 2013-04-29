@@ -85,7 +85,7 @@ public abstract class AbstractPowerUp extends Entity {
 		effect();
 		active = false;
 		effectActive = true;
-		this.destroy();
+		spriteID = "";
 	}
 	
 	public void deactivate(){
