@@ -10,7 +10,7 @@ public class SlowspeedyProjectile extends AbstractProjectile {
 
 	public SlowspeedyProjectile(AbstractTank tank, Vector2f position) {
 		super(tank, new Vector2f(1,1), 100, 0, 5, 3000);
-		setSpeed(2);
+		setSpeed(0.05f);
 		setSize(new Vector2f(15,5));
 		setPosition(position);
 		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
@@ -19,10 +19,10 @@ public class SlowspeedyProjectile extends AbstractProjectile {
 	
 	@Override
 	public void update(int delta) {
-		if(getSpeed() < 10){
-			setSpeed(getSpeed()*1.02f);
-		}else if(getSpeed() < 150){
-			setSpeed(getSpeed()*2f);
+		if(getSpeed() < 0.1){
+			setSpeed(getSpeed()*1.01f);
+		}else if(getSpeed() < 0.85){
+			setSpeed(getSpeed()*1.5f);
 		}
 		super.update(delta);
 	}

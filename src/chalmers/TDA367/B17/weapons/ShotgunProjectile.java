@@ -10,7 +10,7 @@ public class ShotgunProjectile extends AbstractProjectile {
 
 	public ShotgunProjectile(AbstractTank tank, Vector2f position) {
 		super(tank, new Vector2f(1,1), 100, 0, 5, 350);
-		setSpeed(30);
+		setSpeed(0.35f);
 		setSize(new Vector2f(3,6));
 		setPosition(position);
 		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));

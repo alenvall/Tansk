@@ -8,12 +8,8 @@ import chalmers.TDA367.B17.model.AbstractTank;
 public class FlamethrowerProjectile extends AbstractProjectile {
 
 	public FlamethrowerProjectile(AbstractTank tank, Vector2f position) {
-		super(tank, new Vector2f(1,1), 100, 0, 5, 500);
-		
-		
-		
-		
-		setSpeed(15);
+		super(tank, new Vector2f(1,1), 100, 0, 0.1, 500);
+		setSpeed(0.25f);
 		setSize(new Vector2f(5f, 10f));
 		setPosition(position);
 		setShape(new Rectangle(getPosition().getX()-getSize().getX()/2, getPosition().getY()-getSize().getY()/2, getSize().getX(), getSize().getY()));

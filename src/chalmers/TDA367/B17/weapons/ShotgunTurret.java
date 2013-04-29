@@ -35,7 +35,7 @@ public class ShotgunTurret extends AbstractTurret {
 			}
 			
 			projectile.setDirection(angle);
-			projectile.setSpeed(Math.abs(projectile.getSpeed() + i * 2));
+			projectile.setSpeed(Math.abs(projectile.getSpeed() * (i * 0.2f)));
 
 			tank.addProjectile(projectile);
 		}

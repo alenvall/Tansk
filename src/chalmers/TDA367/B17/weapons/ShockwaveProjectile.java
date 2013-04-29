@@ -13,8 +13,8 @@ public class ShockwaveProjectile extends AbstractProjectile {
 	private boolean activated = false;
 	
 	public ShockwaveProjectile(AbstractTank tank, Vector2f position) {
-		super(tank, new Vector2f(1,1), 100, 0, 5, 1500);
-		setSpeed(15);
+		super(tank, new Vector2f(1,1), 100, 0, 0.5, 1500);
+		setSpeed(0.2f);
 		setSize(new Vector2f(8,10));
 		setPosition(position);
 		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
