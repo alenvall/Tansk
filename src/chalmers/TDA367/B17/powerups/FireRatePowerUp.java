@@ -19,9 +19,7 @@ public class FireRatePowerUp extends AbstractPowerUp {
 
 	@Override
 	public void effect(){
-		//if the turret has been changed
 		turret = absTank.getTurret();
-
 		firerate = turret.getFireRate();
 		
 		//Increase the firerate for the current turret
@@ -36,6 +34,7 @@ public class FireRatePowerUp extends AbstractPowerUp {
 
 	@Override
 	public void updateEffect() {
+		//if the turret is changed while the powerup is active
 		if(turret != absTank.getTurret()){
 			effect();
 		}
