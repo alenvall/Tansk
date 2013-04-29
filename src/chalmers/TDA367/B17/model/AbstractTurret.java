@@ -2,8 +2,6 @@ package chalmers.TDA367.B17.model;
 
 import chalmers.TDA367.B17.controller.TanskController;
 import org.newdawn.slick.geom.Point;
-import org.newdawn.slick.geom.Shape;
-import org.newdawn.slick.geom.Transform;
 import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractTurret extends Entity {
@@ -22,7 +20,6 @@ public abstract class AbstractTurret extends Entity {
 		angle = 0;
 		spriteID = "turret";
 		this.tank = tank;
-		//Shape nonRotatedTankShape = tank.getShape().transform(Transform.createRotateTransform(-(float)Math.toRadians(getTank().getRotation())), );
 		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
 	}
 	
