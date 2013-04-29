@@ -1,16 +1,12 @@
 package chalmers.TDA367.B17.model;
 
-import org.newdawn.slick.geom.Point;
-import org.newdawn.slick.geom.Shape;
-import org.newdawn.slick.geom.Transform;
-import org.newdawn.slick.geom.Vector2f;
+import chalmers.TDA367.B17.weapons.DefaultProjectile;
+import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.TanskController;
 
 public abstract class Entity{
 	protected int id; // The id of this object
-	protected Vector2f position; // The position of the Entity
-	protected Vector2f size; // The size of the entity
 	protected boolean active;
 	protected Shape shape;
 	protected String spriteID;
@@ -26,8 +22,6 @@ public abstract class Entity{
 		active = true;
 		shape = new Point(-1, -1);
 		rotation = 0;
-		position = new Vector2f(0,0);
-		size = new Vector2f(0,0);
 		spriteID = "";
 	}
 	
@@ -39,16 +33,12 @@ public abstract class Entity{
 		return rotation;
 	}
 	
-	public Vector2f getCenter(){
-		return new Vector2f(shape.getCenterX(), shape.getCenterY());
-	}
-	
 	/**
 	 * Get the position of this entity
 	 * @return A vector containing the position
 	 */
 	public Vector2f getPosition(){
-		return position;
+		return new Vector2f(shape.getCenterX(), shape.getCenterY());
 	}
 	
 	/**
@@ -64,7 +54,7 @@ public abstract class Entity{
 	 * @return The size of this entity
 	 */
 	public Vector2f getSize(){
-		return size;
+		return new Vector2f(shape.getWidth(), shape.getHeight());
 	}
 
 
@@ -73,7 +63,7 @@ public abstract class Entity{
 	 * @param size The new size of this entity
 	 */
 	public void setSize(Vector2f size){
-		this.size = size;
+		this.shape = this.shape.transform(Transform.createScaleTransform(size.getX()/this.shape.getWidth(), size.getY()/this.shape.getHeight()));
 	}
 
 	/**
@@ -89,7 +79,10 @@ public abstract class Entity{
 	 * @param position The values for the new position
 	 */
 	public void setPosition(Vector2f position){
-		this.position = position;
+		if(this.shape instanceof Point)
+			shape.setLocation(position.x, position.y);
+		else
+			this.shape = this.shape.transform(Transform.createTranslateTransform(position.getX() - getPosition().getX(), position.getY() - getPosition().getY()));
 	}
 
 	public Shape getShape() {
@@ -109,7 +102,7 @@ public abstract class Entity{
 	 * @return The position of the entity's sprite.
 	 */
 	public Vector2f getSpritePosition(){
-		return new Vector2f(position.x - size.x/2, position.y - size.y/2);
+		return new Vector2f(getPosition().x - getShape().getWidth()/2, getPosition().y - getShape().getHeight()/2);
 	}
 
 	/**

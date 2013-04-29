@@ -8,10 +8,10 @@ import chalmers.TDA367.B17.model.Entity;
 
 public class Shield extends Entity {
 
-	public Shield(Vector2f pos) {
-		setSize(new Vector2f(15,5));
+	public Shield(Vector2f position) {
+		setSize(new Vector2f(15, 5));
 		setPosition(position);
-		setShape(new Circle(pos.x, pos.y, 100));
+		setShape(new Circle(position.x, position.y, 100));
 		setSize(new Vector2f(100,100));
 		spriteID = "shield";
 		active = true;

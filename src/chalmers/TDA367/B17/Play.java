@@ -161,8 +161,13 @@ public class Play extends BasicGameState{
 				if(entity instanceof AbstractTank){
 					entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
 					if(entSprite != null){
-						entSprite.setRotation((float) entity.getRotation());
-						entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);	
+						if(entity.getRotation()!=0){
+							entSprite.setRotation((float) entity.getRotation());
+							// draw sprite at the coordinates of the top left corner of tank when it is not rotated
+							Shape nonRotatedShape = entity.getShape().transform(Transform.createRotateTransform((float)Math.toRadians(-entity.getRotation()), entity.getPosition().x, entity.getPosition().y));
+							entSprite.draw(nonRotatedShape.getMinX(), nonRotatedShape.getMinY());
+						}else
+							entSprite.draw(entity.getShape().getMinX(), entity.getShape().getMinY());
 					}
 				} else {
 					nonPriorityEnts.add(entity);		
@@ -176,7 +181,7 @@ public class Play extends BasicGameState{
 			
 			if(entSprite != null){
 				if(nonPrioEnt instanceof AbstractTurret){
-					entSprite.setCenterOfRotation(nonPrioEnt.getCenter().x, nonPrioEnt.getCenter().y);
+					entSprite.setCenterOfRotation(((AbstractTurret) nonPrioEnt).getTurretCenter().x, ((AbstractTurret) nonPrioEnt).getTurretCenter().y);
 				}
 				entSprite.setRotation((float) nonPrioEnt.getRotation());
 				entSprite.draw(nonPrioEnt.getSpritePosition().x, nonPrioEnt.getSpritePosition().y);	

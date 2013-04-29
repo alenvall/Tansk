@@ -12,7 +12,7 @@ public class ShockwaveTurret extends AbstractTurret{
 		super(tank);
 		turretCenter = new Vector2f(22.5f, 22.5f);
 		turretLength = 42f;
-		size = new Vector2f(45f, 65f);
+		setSize(new Vector2f(45f, 65f));
 		fireRate = 3000;
 		projectileType = "";
 	}
