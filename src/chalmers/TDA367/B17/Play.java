@@ -50,9 +50,10 @@ public class Play extends BasicGameState{
 		mouseCoords = new Point();
 		
 		//POWERUPS
-		new DamagePowerUp(new Vector2f(500,200));
-		new FireRatePowerUp(new Vector2f(500,400));
-		new SpeedPowerUp(new Vector2f(500,600));
+		new DamagePowerUp(new Vector2f(500, 150));
+		new FireRatePowerUp(new Vector2f(500, 300));
+		new SpeedPowerUp(new Vector2f(500, 450));
+		new ShieldPowerUp(new Vector2f(500, 600));
 
 	//	turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
 
