@@ -85,6 +85,7 @@ public abstract class AbstractPowerUp extends Entity {
 		effect();
 		active = false;
 		effectActive = true;
+		this.destroy();
 	}
 	
 	public void deactivate(){
