@@ -13,7 +13,6 @@ public class ShockwaveSecondaryProjectile extends AbstractProjectile {
 		setSpeed(3);
 		setSize(new Vector2f(2,2));
 		setPosition(position);
-		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
 		spriteID = "proj_energy";
 	}
 }

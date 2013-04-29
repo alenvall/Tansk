@@ -17,7 +17,6 @@ public class ShockwaveProjectile extends AbstractProjectile {
 		setSpeed(15);
 		setSize(new Vector2f(8,10));
 		setPosition(position);
-		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
 		spriteID = "shockwave_proj";
 		st = (ShockwaveTurret)getTank().getTurret();
 	}

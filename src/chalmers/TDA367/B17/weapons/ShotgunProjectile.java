@@ -13,7 +13,6 @@ public class ShotgunProjectile extends AbstractProjectile {
 		setSpeed(30);
 		setSize(new Vector2f(3,6));
 		setPosition(position);
-		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
 		spriteID = "proj_shotgun";
 	}
 

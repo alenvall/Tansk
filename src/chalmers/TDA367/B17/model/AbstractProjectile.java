@@ -4,6 +4,7 @@ import java.awt.Toolkit;
 
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
+import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractProjectile extends MovableEntity {
@@ -37,6 +38,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	        e.printStackTrace();
         }
 		this.tank = tank;
+		setShape(new Rectangle(-1,-1, 1,1));
 	}
 	
 	public AbstractTank getTank(){

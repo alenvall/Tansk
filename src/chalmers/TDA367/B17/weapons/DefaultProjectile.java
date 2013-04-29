@@ -12,7 +12,6 @@ public class DefaultProjectile extends AbstractProjectile {
 		setSpeed(20);
 		setSize(new Vector2f(5f, 10f));
 		setPosition(position);
-		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
 		spriteID = "bullet";
 	}
 }

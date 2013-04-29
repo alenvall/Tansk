@@ -16,7 +16,6 @@ public class FlamethrowerProjectile extends AbstractProjectile {
 		setSpeed(15);
 		setSize(new Vector2f(5f, 10f));
 		setPosition(position);
-		setShape(new Rectangle(getPosition().getX()-getSize().getX()/2, getPosition().getY()-getSize().getY()/2, getSize().getX(), getSize().getY()));
 		spriteID = "proj_fire";
 	}
 	

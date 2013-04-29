@@ -1,9 +1,6 @@
 package chalmers.TDA367.B17.model;
 
-import org.newdawn.slick.geom.Point;
-import org.newdawn.slick.geom.Shape;
-import org.newdawn.slick.geom.Transform;
-import org.newdawn.slick.geom.Vector2f;
+import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.TanskController;
 
@@ -73,6 +70,7 @@ public abstract class Entity{
 	 * @param size The new size of this entity
 	 */
 	public void setSize(Vector2f size){
+		this.shape = this.shape.transform(Transform.createScaleTransform(size.getX()/this.shape.getWidth(), size.getY()/this.shape.getHeight()));
 		this.size = size;
 	}
 
@@ -89,6 +87,7 @@ public abstract class Entity{
 	 * @param position The values for the new position
 	 */
 	public void setPosition(Vector2f position){
+		this.shape = this.shape.transform(Transform.createTranslateTransform(position.getX()-this.position.getX(), position.getY()-this.position.getY()));
 		this.position = position;
 	}
 

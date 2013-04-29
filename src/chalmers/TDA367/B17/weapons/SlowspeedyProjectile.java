@@ -13,7 +13,6 @@ public class SlowspeedyProjectile extends AbstractProjectile {
 		setSpeed(2);
 		setSize(new Vector2f(15,5));
 		setPosition(position);
-		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
 		spriteID = "proj_energy";
 	}
 	
