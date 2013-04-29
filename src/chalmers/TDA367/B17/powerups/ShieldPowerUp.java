@@ -3,11 +3,9 @@ package chalmers.TDA367.B17.powerups;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.newdawn.slick.geom.Transform;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.model.AbstractPowerUp;
-import chalmers.TDA367.B17.weapons.ShockwaveSecondaryProjectile;
 
 public class ShieldPowerUp extends AbstractPowerUp {
 	
