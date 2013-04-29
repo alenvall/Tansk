@@ -9,7 +9,6 @@ import chalmers.TDA367.B17.model.AbstractTank;
 
 public class ShockwaveProjectile extends AbstractProjectile {
 
-	private ShockwaveTurret st;
 	private boolean activated = false;
 	
 	public ShockwaveProjectile(AbstractTank tank, Vector2f position) {
@@ -19,7 +18,6 @@ public class ShockwaveProjectile extends AbstractProjectile {
 		setPosition(position);
 		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
 		spriteID = "shockwave_proj";
-		st = (ShockwaveTurret)getTank().getTurret();
 	}
 	
 	@Override
