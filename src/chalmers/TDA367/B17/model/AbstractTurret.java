@@ -1,5 +1,9 @@
 package chalmers.TDA367.B17.model;
 
+import chalmers.TDA367.B17.controller.TanskController;
+import org.newdawn.slick.geom.Point;
+import org.newdawn.slick.geom.Shape;
+import org.newdawn.slick.geom.Transform;
 import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractTurret extends Entity {
@@ -17,8 +21,9 @@ public abstract class AbstractTurret extends Entity {
 		super();
 		angle = 0;
 		spriteID = "turret";
-		position = new Vector2f(0, 0);
 		this.tank = tank;
+		//Shape nonRotatedTankShape = tank.getShape().transform(Transform.createRotateTransform(-(float)Math.toRadians(getTank().getRotation())), );
+		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
 	}
 	
 	public AbstractTank getTank(){
@@ -35,7 +40,7 @@ public abstract class AbstractTurret extends Entity {
 
 	@Override
 	public Vector2f getSpritePosition(){
-		return new Vector2f(position.x - turretCenter.x, position.y - turretCenter.y);
+		return new Vector2f(getPosition().x - turretCenter.x, getPosition().y - turretCenter.y);
 	}
 	
 	@Override
@@ -65,8 +70,8 @@ public abstract class AbstractTurret extends Entity {
 	 */
 	public Vector2f getTurretNozzle(){
 		double turretRotation = getRotation(); 
-		float nozzleX = (float) (position.x - turretLength * Math.sin(Math.toRadians(turretRotation + 0)));
-		float nozzleY = (float) (position.y + turretLength * Math.cos(Math.toRadians(turretRotation )));
+		float nozzleX = (float) (getPosition().x - turretLength * Math.sin(Math.toRadians(turretRotation + 0)));
+		float nozzleY = (float) (getPosition().y + turretLength * Math.cos(Math.toRadians(turretRotation )));
 		
 		return new Vector2f(nozzleX, nozzleY);
 	}
@@ -87,11 +92,6 @@ public abstract class AbstractTurret extends Entity {
 	 * @return a new projectile
 	 */
 	public abstract AbstractProjectile createProjectile();
-	
-	@Override
-	public Vector2f getCenter(){
-		return turretCenter;
-	}
 
 	/**
 	 * Creates and spawns a new projectile.
@@ -102,5 +102,19 @@ public abstract class AbstractTurret extends Entity {
 		projectile.setDirection(new Vector2f(getRotation() + 90));
 		projectile.setPosition(getTurretNozzle());
 		return projectile;
+	}
+
+	@Override
+	public void update(int delta){
+		java.awt.Point mouseCoordinates = TanskController.getInstance().getMouseCoordinates();
+
+		float rotation = (float) Math.toDegrees(Math.atan2(this.getPosition().x - mouseCoordinates.x + 0, this.getPosition().y - mouseCoordinates.y + 0)* -1)+180;
+		this.setRotation(rotation);
+
+		double tankRotation = getRotation() - 90;
+		float newTurX = (float) (tank.getPosition().x + tank.getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
+		float newTurY = (float) (tank.getPosition().y - tank.getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
+
+		this.setPosition(new Vector2f(newTurX, newTurY));
 	}
 }

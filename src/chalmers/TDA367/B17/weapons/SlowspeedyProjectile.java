@@ -9,7 +9,7 @@ import chalmers.TDA367.B17.model.AbstractTank;
 public class SlowspeedyProjectile extends AbstractProjectile {
 
 	public SlowspeedyProjectile(AbstractTank tank, Vector2f position) {
-		super(tank, new Vector2f(1,1), 100, 0, 5, 3000);
+		super(tank, position, new Vector2f(1,1), 100, 0, 5, 3000);
 		setSpeed(2);
 		setSize(new Vector2f(15,5));
 		setPosition(position);

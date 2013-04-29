@@ -13,7 +13,7 @@ public class ShockwaveProjectile extends AbstractProjectile {
 	private boolean activated = false;
 	
 	public ShockwaveProjectile(AbstractTank tank, Vector2f position) {
-		super(tank, new Vector2f(1,1), 100, 0, 5, 1500);
+		super(tank, position, new Vector2f(1,1), 100, 0, 5, 1500);
 		setSpeed(15);
 		setSize(new Vector2f(8,10));
 		setPosition(position);

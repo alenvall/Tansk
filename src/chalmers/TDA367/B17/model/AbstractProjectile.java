@@ -24,7 +24,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param damage the damage this projectile does
 	 * @param duration the time in milliseconds this projectile will remain on the map
 	 */
-	public AbstractProjectile(AbstractTank tank, Vector2f velocity,
+	public AbstractProjectile(AbstractTank tank, Vector2f position, Vector2f velocity,
 			float maxSpeed, float minSpeed, double damage, int duration) {
 		super(velocity, maxSpeed, minSpeed);
 		this.damage = damage;
@@ -38,7 +38,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	        e.printStackTrace();
         }
 		this.tank = tank;
-		setShape(new Rectangle(-1,-1, 1,1));
+		setShape(new Rectangle(position.x, position.y, 1,1));
 	}
 	
 	public AbstractTank getTank(){

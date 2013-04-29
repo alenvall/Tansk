@@ -40,14 +40,6 @@ public abstract class AbstractTank extends MovableEntity {
         }
 	}
 	
-	/**
-	 * Get the position of the tank's image.
-	 * @return The position of the tank's image.
-	 */
-	public Vector2f getImagePosition(){
-		return new Vector2f(position.x - size.x/2, position.y - size.y/2);
-	}
-	
 	public double getRotation(){
 		return direction.getTheta() + 90;
 	}
@@ -122,22 +114,8 @@ public abstract class AbstractTank extends MovableEntity {
 	
 	public void update(int delta){
 		super.update(delta);
-		updateTurret();
 		timeSinceLastShot -= delta;
 	}
-
-	private void updateTurret() {
-		Point mouseCoords = TanskController.getInstance().getMouseCoordinates();
-		
-		float rotation = (float) Math.toDegrees(Math.atan2(turret.getPosition().x - mouseCoords.x + 0, turret.getPosition().y - mouseCoords.y + 0)* -1)+180;
-        turret.setRotation(rotation);  
-        
-        double tankRotation = getRotation() - 90; 
-        float newTurX = (float) (position.x + turretOffset * Math.cos(Math.toRadians(tankRotation + 180)));
-        float newTurY = (float) (position.y - turretOffset * Math.sin(Math.toRadians(tankRotation)));
-      	
-		turret.setPosition(new Vector2f(newTurX, newTurY));
-    }
 	
 	public void fireWeapon(int delta){
 		timeSinceLastShot -= delta;

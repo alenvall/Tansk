@@ -8,10 +8,9 @@ import chalmers.TDA367.B17.model.Entity;
 
 public class Shield extends Entity {
 
-	public Shield(Vector2f pos) {
-		setSize(new Vector2f(15,5));
+	public Shield(Vector2f position) {
+		setSize(new Vector2f(15, 5));
 		setPosition(position);
-		setShape(new Rectangle(getPosition().getX() - getSize().getX() / 2, getPosition().getY() - getSize().getY() / 2, getSize().getX(), getSize().getY()));
 		spriteID = "proj_energy";
 		active = true;
 	}
