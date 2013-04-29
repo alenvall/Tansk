@@ -5,6 +5,7 @@ import org.newdawn.slick.*;
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.powerups.*;
+import chalmers.TDA367.B17.terrain.BrownWall;
 import chalmers.TDA367.B17.weapons.*;
 
 import org.newdawn.slick.geom.*;
@@ -43,6 +44,9 @@ public class Play extends BasicGameState{
 		players = new ArrayList<Player>();
 		players.add(playerOne);
 		
+		Player playerTwo = new Player("Player Two");
+		players.add(playerTwo);
+		
 		map = new Image("data/map.png");
 		
 		input = gc.getInput();
@@ -53,7 +57,14 @@ public class Play extends BasicGameState{
 		new DamagePowerUp(new Vector2f(500, 150));
 		new FireRatePowerUp(new Vector2f(500, 300));
 		new SpeedPowerUp(new Vector2f(500, 450));
-		new ShieldPowerUp(new Vector2f(500, 600));
+		new ShieldPowerUp(new Vector2f(200, 300));
+		new ShieldPowerUp(new Vector2f(200, 330));
+		new ShieldPowerUp(new Vector2f(200, 360));
+		new ShieldPowerUp(new Vector2f(200, 390));
+		new ShieldPowerUp(new Vector2f(200, 420));
+		
+		//ObstacleTest
+		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
 
 	//	turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
 
