@@ -106,7 +106,6 @@ public abstract class AbstractPowerUp extends Entity {
 	public abstract void updateEffect();
 	
 	public void didCollideWith(Entity entity){
-		System.out.println("POWERUP COLLISION");
 		if(entity instanceof AbstractTank && effectActive == false){
 			activate((AbstractTank)entity);
 		}
