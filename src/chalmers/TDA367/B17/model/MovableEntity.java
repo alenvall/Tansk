@@ -12,6 +12,7 @@ public abstract class MovableEntity extends Entity {
 	private float acceleration;
 	private float friction;
 	private double lastDirectionTheta;
+	public Vector2f lastPos;
 	
 	/**
 	 * Create a new MovableEntity based on the following parameters
@@ -153,6 +154,8 @@ public abstract class MovableEntity extends Entity {
 		
 		velocity.x = velocity.x * delta;
 		velocity.y = velocity.y * delta;
+
+		lastPos = getPosition();
 		
 		setPosition(getPosition().add(velocity));
 		setShape(getShape().transform(Transform.createTranslateTransform(velocity.x, velocity.y)));
