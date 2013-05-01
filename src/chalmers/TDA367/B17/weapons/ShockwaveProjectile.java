@@ -21,13 +21,13 @@ public class ShockwaveProjectile extends AbstractProjectile {
 	
 	@Override
 	public void update(int delta){
-		if(durationTimer <= 20 && !activated){
+		if(getDurationTimer() <= 20 && !activated){
 			activated = true;
 			for(int i = 0; i < 40; i++){
 				AbstractProjectile projectile = new ShockwaveSecondaryProjectile(getTank(), new Vector2f(getPosition()));
 				projectile.setDirection(new Vector2f(getRotation() + i*9));
 				
-				tank.addProjectile(projectile);
+				getTank().addProjectile(projectile);
 			}
 		}
 		super.update(delta);
