@@ -29,6 +29,9 @@ public class Play extends BasicGameState{
 	private Input input;
 	private SpriteSheet entSprite = null;
 	
+	Player playerTwo;
+	Player playerThree;
+	Player playerFour;
 	public Play(int state) {
 		
 	}
@@ -40,12 +43,23 @@ public class Play extends BasicGameState{
 
 		controller.newGame(TanskController.SCREEN_WIDTH, TanskController.SCREEN_HEIGHT);
 
+		//Players
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
 		
-		Player playerTwo = new Player("Player Two");
+		playerTwo = new Player("Player Two");
 		players.add(playerTwo);
+		playerTwo.getTank().setPosition(new Vector2f(800, 200));
+		
+		playerThree = new Player("Player Three");
+		players.add(playerThree);
+		playerThree.getTank().setPosition(new Vector2f(800, 500));
+		
+		playerFour = new Player("Player Four");
+		players.add(playerFour);
+		playerFour.getTank().setPosition(new Vector2f(200, 500));
+		playerFour.getTank().setDirection(new Vector2f(180));
 		
 		map = new Image("data/map.png");
 		
@@ -77,30 +91,38 @@ public class Play extends BasicGameState{
 			throws SlickException {
 		if(input.isKeyDown(Input.KEY_W)){
 			playerOne.getTank().accelerate(delta);
+			playerTwo.getTank().accelerate(delta);
 		} else if (input.isKeyDown(Input.KEY_S)){
 			playerOne.getTank().reverse(delta);
+			playerTwo.getTank().reverse(delta);
 		} else {
 			playerOne.getTank().friction(delta);
+			playerTwo.getTank().friction(delta);
 		}
 
 		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
 			if(input.isKeyDown(Input.KEY_S)){
 				playerOne.getTank().turnRight(delta);
+				playerTwo.getTank().turnRight(delta);
 			} else {
 				playerOne.getTank().turnLeft(delta);
+				playerTwo.getTank().turnLeft(delta);
 			}
 		}
 
 		if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
 			if(input.isKeyDown(Input.KEY_S)){
 				playerOne.getTank().turnLeft(delta);
+				playerTwo.getTank().turnLeft(delta);
 			} else {
 				playerOne.getTank().turnRight(delta);
+				playerTwo.getTank().turnRight(delta);
 			}
 		}
 
 		if(input.isMouseButtonDown(0)){
 			playerOne.getTank().fireWeapon(delta);
+			playerTwo.getTank().fireWeapon(delta);
 		}
 		
 		if(input.isKeyDown(Input.KEY_Q)){
@@ -141,7 +163,7 @@ public class Play extends BasicGameState{
 			entity.update(delta);
 			
 			if(entity instanceof MovableEntity)
-				if(((MovableEntity) entity).getSpeed() != 0)
+				//if(((MovableEntity) entity).getSpeed() != 0)
 					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
 		}
 	}
