@@ -12,6 +12,7 @@ public class DefaultTank extends AbstractTank {
 		turretOffset = 6;
 		turret = new DefaultTurret(this);
 		spriteID = "tank";
+		setHealth(100);
 	}
 
 	@Override
