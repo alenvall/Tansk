@@ -7,7 +7,7 @@ public class Player {
 	private int playerId;
 	private int score;
 	private AbstractTank tank;
-	
+
 	/**
 	 * Create a new Player.
 	 * @param name The player's name
@@ -15,7 +15,7 @@ public class Player {
 	public Player(String name){
 		this.name = name;
 		
-		tank = new DefaultTank(new Vector2f(0,-1), 0.05f, -0.03f);
+		tank = new DefaultTank(new Vector2f(0,-1), 0.1f, -0.06f);
 	}
 
 	/**
