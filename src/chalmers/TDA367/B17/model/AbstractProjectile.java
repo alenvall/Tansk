@@ -1,7 +1,5 @@
 package chalmers.TDA367.B17.model;
 
-import java.awt.Toolkit;
-
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.Rectangle;
@@ -9,10 +7,10 @@ import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractProjectile extends MovableEntity {
 	
-	protected double damage;
-	protected int duration;
-	protected int durationTimer;
-	protected AbstractTank tank;
+	private double damage;
+	private int duration;
+	private int durationTimer;
+	private AbstractTank tank;
 	private Sound debugWallHit;
 
 
@@ -92,6 +90,18 @@ public abstract class AbstractProjectile extends MovableEntity {
 		return direction.getTheta() + 90;
 	}
 	
+	public int getDurationTimer() {
+		return durationTimer;
+	}
+
+	public void setDurationTimer(int durationTimer) {
+		this.durationTimer = durationTimer;
+	}
+
+	public void setTank(AbstractTank tank) {
+		this.tank = tank;
+	}
+	
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractProjectile || entity == getTank())
 			return;
@@ -100,6 +110,10 @@ public abstract class AbstractProjectile extends MovableEntity {
 			debugWallHit.play();
 			this.destroy();
 		}
+
+		if(entity instanceof AbstractTank){
+			damageTarget((AbstractTank)entity);
+		}
 	}
 
 
@@ -107,5 +121,11 @@ public abstract class AbstractProjectile extends MovableEntity {
 	public void destroy(){
 		super.destroy();
 		getTank().getProjectiles().remove(this);
+	}
+	
+	public void damageTarget(AbstractTank target){
+		target.recieveDamage(this);
+		debugWallHit.play();
+		this.destroy();
 	}
 }
