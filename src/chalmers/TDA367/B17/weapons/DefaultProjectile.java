@@ -12,5 +12,6 @@ public class DefaultProjectile extends AbstractProjectile {
 		setSpeed(0.35f);
 		setSize(new Vector2f(5f, 10f));
 		spriteID = "bullet";
+		setDamage(5);
 	}
 }
