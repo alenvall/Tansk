@@ -141,6 +141,9 @@ public class Play extends BasicGameState{
 		if(input.isKeyDown(Input.KEY_5)){
 			playerOne.getTank().setTurret(new ShockwaveTurret(playerOne.getTank()));
 		}
+		if(input.isKeyDown(Input.KEY_6)){
+			playerOne.getTank().setTurret(new BounceTurret(playerOne.getTank()));
+		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
 			gc.exit();
