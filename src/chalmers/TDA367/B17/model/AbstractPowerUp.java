@@ -1,16 +1,26 @@
 package chalmers.TDA367.B17.model;
 
+import org.newdawn.slick.geom.Rectangle;
+import org.newdawn.slick.geom.Vector2f;
+
 public abstract class AbstractPowerUp extends Entity {
 
 	private String name;
-	private double duration;
+	protected int duration;
+	protected int effectDuration;
+	protected boolean effectActive;
+	protected AbstractTank absTank;
+	protected String type;
 
 	/**
 	 * Create a new AbstractPowerUp.
 	 */
-	public AbstractPowerUp() {
+	public AbstractPowerUp(Vector2f position) {
 		super();
-		// TODO Auto-generated constructor stub
+		effectActive = false;
+		absTank = null;
+		Vector2f size = new Vector2f(60f, 25f);
+		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
 	}
 
 	/**
@@ -34,7 +44,7 @@ public abstract class AbstractPowerUp extends Entity {
 	 * @return the time in milliseconds that the
 	 * power up will remain on the map
 	 */
-	public double getDuration() {
+	public int getDuration() {
 		return duration;
 	}
 
@@ -43,8 +53,61 @@ public abstract class AbstractPowerUp extends Entity {
 	 * @param duration the time in milliseconds that the
 	 * power up will remain on the map
 	 */
-	public void setDuration(double duration) {
+	public void setDuration(int duration) {
 		this.duration = duration;
 	}
+	
+	public void update(int delta) {
+		if(duration != 0){
+			duration -= delta;
+			if(duration <= 0){
+				active = false;
+			}
+		}
+		
+		if(effectActive){
+			if(effectDuration > 0){
+				effectDuration -= delta;
+				updateEffect();
+			}else{
+				deactivate();
+				
+			}
+		}else if(effectActive && absTank != null && effectDuration <= 0){
+			deactivate();
+		}
+	}
+	
+	public void activate(AbstractTank absTank){
+		this.absTank = absTank;
+		absTank.setCurrentPowerUp(this);
+		effect();
+		active = false;
+		effectActive = true;
+		spriteID = "";
+	}
+	
+	public void deactivate(){
+		if(absTank == null || !absTank.isActive())
+			return;
+		updateEffect();
+		endEffect();
+		effectActive = false;
+		active = false;
+		this.destroy();
+		absTank.setCurrentPowerUp(null);
+	}
+	
+	public abstract void effect();
 
+	public abstract void endEffect();
+
+	public abstract void updateEffect();
+	
+	public void didCollideWith(Entity entity){
+		if(entity instanceof AbstractTank && effectActive == false){
+			activate((AbstractTank)entity);
+		}
+	}
+	
 }

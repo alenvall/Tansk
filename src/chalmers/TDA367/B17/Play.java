@@ -1,118 +1,88 @@
 package chalmers.TDA367.B17;
 
+import org.newdawn.slick.*;
+
+import chalmers.TDA367.B17.controller.*;
+import chalmers.TDA367.B17.model.*;
+import chalmers.TDA367.B17.powerups.*;
+import chalmers.TDA367.B17.terrain.BrownWall;
+import chalmers.TDA367.B17.weapons.*;
+
+import org.newdawn.slick.geom.*;
+import org.newdawn.slick.state.*;
 import java.awt.Point;
 import java.util.ArrayList;
-import java.util.List;
-
-import org.newdawn.slick.Color;
-import org.newdawn.slick.GameContainer;
-import org.newdawn.slick.Graphics;
-import org.newdawn.slick.Image;
-import org.newdawn.slick.Input;
-import org.newdawn.slick.SlickException;
-import org.newdawn.slick.SpriteSheet;
-
-import chalmers.TDA367.B17.controller.TanskController;
-import chalmers.TDA367.B17.model.*;
-import org.newdawn.slick.geom.Rectangle;
-import org.newdawn.slick.geom.Vector2f;
-import org.newdawn.slick.state.BasicGameState;
-import org.newdawn.slick.state.StateBasedGame;
-
-import chalmers.TDA367.B17.model.AbstractProjectile;
-import chalmers.TDA367.B17.model.AbstractTurret;
-import chalmers.TDA367.B17.model.DefaultTurret;
-import chalmers.TDA367.B17.model.FlamethrowerTurret;
-import chalmers.TDA367.B17.model.Player;
-import chalmers.TDA367.B17.model.ShotgunTurret;
-import chalmers.TDA367.B17.model.SlowspeedyTurret;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class Play extends BasicGameState{
-
-	public static final int SCREEN_WIDTH = 1024;
-	public static final int SCREEN_HEIGHT = 768;
 	
 	public ArrayList<AbstractTurret> turrets;
-	public int turretIndex;
 	
-	TanskController controller;
-	ArrayList<Player> players;
-	Player playerOne;
-
-	Entity obstacle;
-
-	Image map = null;
-	SpriteSheet tankSprite  = null;
-	SpriteSheet turretSprite = null;
-	SpriteSheet projectileSprite = null;
+	private TanskController controller;
+	private ArrayList<Player> players;
+	private Player playerOne;
+	private Entity obstacle;
+	private Image map = null;
+	private Point mouseCoords;
+	private Input input;
+	private SpriteSheet entSprite = null;
 	
-	Point mouseCoords;
-	Input input;
-	
+	Player playerTwo;
+	Player playerThree;
+	Player playerFour;
 	public Play(int state) {
 		
 	}
 
 	@Override
-	public void init(GameContainer gc, StateBasedGame sbg)
-			throws SlickException {
+	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		controller = TanskController.getInstance();
-		controller.newGame();
+
+		controller.newGame(TanskController.SCREEN_WIDTH, TanskController.SCREEN_HEIGHT);
+
+		//Players
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
 		
-		projectileSprite = new SpriteSheet("data/bullet.png", 5, 10);
-		turretSprite = new SpriteSheet("data/turret.png", 45, 65);
+		playerTwo = new Player("Player Two");
+		players.add(playerTwo);
+		playerTwo.getTank().setPosition(new Vector2f(800, 200));
+		playerTwo.getTank().setFriction(0);
+		playerTwo.getTank().setSpeed(0.25f);
+		
+		playerThree = new Player("Player Three");
+		players.add(playerThree);
+		playerThree.getTank().setPosition(new Vector2f(800, 500));
+		
+		playerFour = new Player("Player Four");
+		players.add(playerFour);
+		playerFour.getTank().setPosition(new Vector2f(200, 500));
+		
 		map = new Image("data/map.png");
 		
 		input = gc.getInput();
 		input.addMouseListener(this);
 		mouseCoords = new Point();
-		turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
-		tankSprite = new SpriteSheet("data/tank.png", 65,85);
 		
-		//Temporary to test switching between turrets
-		turrets = new ArrayList<AbstractTurret>();
-		turrets.add(new DefaultTurret());
-		turrets.add(new FlamethrowerTurret());
-		turrets.add(new ShotgunTurret());
-		turrets.add(new SlowspeedyTurret());
+		//POWERUPS
+		new DamagePowerUp(new Vector2f(500, 150));
+		new FireRatePowerUp(new Vector2f(500, 300));
+		new SpeedPowerUp(new Vector2f(500, 450));
+		new ShieldPowerUp(new Vector2f(200, 300));
 		
-		turretIndex = 0;
+		//ObstacleTest
+		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
 
-		obstacle = new Entity() {
-		};
-		obstacle.setShape(new Rectangle(75, 250, 40, 40));
+	//	turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
+
+	//	obstacle = new Entity() {};
+	//	obstacle.setShape(new Rectangle(75, 250, 40, 40));
 	}
-
-	@Override
-	public void render(GameContainer container, StateBasedGame sbg, Graphics g)
-			throws SlickException {
-		map.draw();
-//		tankSprite.draw(playerOne.getTank().getImagePosition().x, playerOne.getTank().getImagePosition().y);
-		tankSprite.drawCentered(playerOne.getTank().getPosition().x, playerOne.getTank().getPosition().y);	
-		turretSprite.draw(playerOne.getTank().getTurret().getImagePosition().x , playerOne.getTank().getTurret().getImagePosition().y);
-
-		g.setColor(Color.blue);
-		g.draw(playerOne.getTank().getShape());
-
-		g.setColor(Color.red);
-		g.draw(obstacle.getShape());
-		
-		//Render projectiles:
-		for(AbstractProjectile ap : playerOne.getTank().getProjectiles()){
-			if(ap.isActive()){
-				projectileSprite.setRotation((float)ap.getDirection().getTheta() + 90);
-				projectileSprite.drawCentered(ap.getPosition().x, ap.getPosition().y);
-			}
-		}
-		
-		debugRender(g);
-		
-	}
-
+	
 	@Override
 	public void update(GameContainer gc, StateBasedGame sbg, int delta)
 			throws SlickException {
@@ -142,11 +112,12 @@ public class Play extends BasicGameState{
 
 		if(input.isMouseButtonDown(0)){
 			playerOne.getTank().fireWeapon(delta);
+			playerTwo.getTank().fireWeapon(delta);
 		}
 		
 		if(input.isKeyDown(Input.KEY_Q)){
-			turretSprite = new SpriteSheet("data/quaketurr.png", 45, 65);
-			turretSprite.setCenterOfRotation(22.5f, 22.5f);
+			//turretSprite = new SpriteSheet("data/quaketurr.png", 45, 65);
+			//turretSprite.setCenterOfRotation(22.5f, 22.5f);
 		}
 		
 		//Go back to the menu
@@ -154,49 +125,81 @@ public class Play extends BasicGameState{
 			sbg.enterState(0);
 		}
 		
+		//Weapons
 		if(input.isKeyDown(Input.KEY_1)){
-			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().setTurret(turrets.get(0));
-			playerOne.getTank().getTurret().setPosition(temp);
-		}if(input.isKeyDown(Input.KEY_2)){
-			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().setTurret(turrets.get(1));
-			playerOne.getTank().getTurret().setPosition(temp);
-		}if(input.isKeyDown(Input.KEY_3)){
-			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().setTurret(turrets.get(2));
-			playerOne.getTank().getTurret().setPosition(temp);
-		}if(input.isKeyDown(Input.KEY_4)){
-			Vector2f temp = playerOne.getTank().getTurret().getPosition();
-			playerOne.getTank().setTurret(turrets.get(3));
-			playerOne.getTank().getTurret().setPosition(temp);
+			playerOne.getTank().setTurret(new DefaultTurret(playerOne.getTank()));
+		}
+		if(input.isKeyDown(Input.KEY_2)){
+			playerOne.getTank().setTurret(new FlamethrowerTurret(playerOne.getTank()));
+		}
+		if(input.isKeyDown(Input.KEY_3)){
+			playerOne.getTank().setTurret(new ShotgunTurret(playerOne.getTank()));
+		}
+		if(input.isKeyDown(Input.KEY_4)){
+			playerOne.getTank().setTurret(new SlowspeedyTurret(playerOne.getTank()));
+		}
+		if(input.isKeyDown(Input.KEY_5)){
+			playerOne.getTank().setTurret(new ShockwaveTurret(playerOne.getTank()));
 		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
 			gc.exit();
 		}
 		
-		controller.getWorld().update(delta);
-      
-		tankSprite.setRotation((float) (playerOne.getTank().getDirection().getTheta() + 90));	
-        turretSprite.setRotation(playerOne.getTank().getTurret().getRotation());
-        
-        // Temporary, removes projectiles that are off screen
-        List<AbstractProjectile> projs = playerOne.getTank().getProjectiles();
-        for(int i = 0; i < projs.size(); i++){
-        	AbstractProjectile proj = projs.get(i);
-        	if(proj.isActive()){
-        		proj.update(delta);
-        		if(proj.getPosition().x > SCREEN_WIDTH || proj.getPosition().x < 0 || proj.getPosition().y > SCREEN_HEIGHT|| proj.getPosition().y < 0){
-        			projs.remove(i);
-					proj.destroy();
-        		}
-        	} else {
-        		projs.remove(i);
-				proj.destroy();
-        	}
-        }
+		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
+		while(iterator.hasNext()){
+			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
+			Entity entity = entry.getValue();
+			entity.update(delta);
+			
+			if(entity instanceof MovableEntity)
+				//if(((MovableEntity) entity).getSpeed() != 0)
+					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
+		}
+	}
+	
+	@Override
+	public void render(GameContainer container, StateBasedGame sbg, Graphics g) throws SlickException {	
+		map.draw();	
 		
+		ArrayList<Entity> nonPriorityEnts = new ArrayList<Entity>();
+		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
+		while(iterator.hasNext()){
+			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
+			Entity entity = entry.getValue();
+			
+			if(!entity.getSpriteID().equals("")){
+				// Tanks have to be drawn before all other entities.
+				if(entity instanceof AbstractTank){
+					entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
+					if(entSprite != null){
+						if(entity.getRotation()!=0){
+							entSprite.setRotation((float) entity.getRotation());
+							// draw sprite at the coordinates of the top left corner of tank when it is not rotated
+							Shape nonRotatedShape = entity.getShape().transform(Transform.createRotateTransform((float)Math.toRadians(-entity.getRotation()), entity.getPosition().x, entity.getPosition().y));
+							entSprite.draw(nonRotatedShape.getMinX(), nonRotatedShape.getMinY());
+						}else
+							entSprite.draw(entity.getShape().getMinX(), entity.getShape().getMinY());
+					}
+				} else {
+					nonPriorityEnts.add(entity);		
+				}
+			}
+		}
+		
+		// Draw the rest of the other entities (non-tanks).
+		for(Entity nonPrioEnt : nonPriorityEnts){
+			entSprite = TanskController.getInstance().getImageHandler().getSprite(nonPrioEnt.getSpriteID());
+			
+			if(entSprite != null){
+				if(nonPrioEnt instanceof AbstractTurret){
+					entSprite.setCenterOfRotation(((AbstractTurret) nonPrioEnt).getTurretCenter().x, ((AbstractTurret) nonPrioEnt).getTurretCenter().y);
+				}
+				entSprite.setRotation((float) nonPrioEnt.getRotation());
+				entSprite.draw(nonPrioEnt.getSpritePosition().x, nonPrioEnt.getSpritePosition().y);	
+			}
+		}
+		debugRender(g);
 	}
 
 	@Override
@@ -209,20 +212,22 @@ public class Play extends BasicGameState{
 		g.drawString("tankPosX:   " + playerOne.getTank().getPosition().x,  10, 30);
 		g.drawString("tankPosY:   " + playerOne.getTank().getPosition().y,  10, 50);
 		g.drawString("tankAng:    " + playerOne.getTank().getRotation(),	10, 70);
-		g.drawString("tankImgAng: " + (tankSprite.getRotation()),			10, 90);
+//		g.drawString("tankImgAng: " + (tankSprite.getRotation()),			10, 90);
 
 		g.drawString("turPosX:   " + playerOne.getTank().getTurret().getPosition().x, 300, 30);
 		g.drawString("turPosY:   " + playerOne.getTank().getTurret().getPosition().y, 300, 50);
 		g.drawString("turAng:    " + playerOne.getTank().getTurret().getRotation(),	  300, 70);
-		g.drawString("turImgAng: " + turretSprite.getRotation(),		 			  300, 90);
+//		g.drawString("turImgAng: " + turretSprite.getRotation(),		 			  300, 90);
 
 		g.drawString("mouseX: " + mouseCoords.x, 530, 30);
 		g.drawString("mouseY: " + mouseCoords.y, 530, 50);
 
 		g.drawString("speed: " + Double.toString(playerOne.getTank().getSpeed()), 530, 90);
 		g.drawString("projs: " + playerOne.getTank().getProjectiles().size(), 530, 130);
+	
+	//	g.setColor(Color.blue);
+	//	g.draw(playerOne.getTank().getShape());
 
-		
 		if(!playerOne.getTank().getProjectiles().isEmpty()){
 			g.drawString("projPos: "+playerOne.getTank()
 				.getProjectiles().get(0).getPosition().x+" , "+playerOne.getTank()
