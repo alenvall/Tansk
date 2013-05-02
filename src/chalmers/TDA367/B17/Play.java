@@ -51,6 +51,8 @@ public class Play extends BasicGameState{
 		playerTwo = new Player("Player Two");
 		players.add(playerTwo);
 		playerTwo.getTank().setPosition(new Vector2f(800, 200));
+		playerTwo.getTank().setFriction(0);
+		playerTwo.getTank().setSpeed(0.25f);
 		
 		playerThree = new Player("Player Three");
 		players.add(playerThree);
@@ -59,7 +61,6 @@ public class Play extends BasicGameState{
 		playerFour = new Player("Player Four");
 		players.add(playerFour);
 		playerFour.getTank().setPosition(new Vector2f(200, 500));
-		playerFour.getTank().setDirection(new Vector2f(180));
 		
 		map = new Image("data/map.png");
 		
@@ -72,10 +73,6 @@ public class Play extends BasicGameState{
 		new FireRatePowerUp(new Vector2f(500, 300));
 		new SpeedPowerUp(new Vector2f(500, 450));
 		new ShieldPowerUp(new Vector2f(200, 300));
-		new ShieldPowerUp(new Vector2f(200, 330));
-		new ShieldPowerUp(new Vector2f(200, 360));
-		new ShieldPowerUp(new Vector2f(200, 390));
-		new ShieldPowerUp(new Vector2f(200, 420));
 		
 		//ObstacleTest
 		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
@@ -91,32 +88,25 @@ public class Play extends BasicGameState{
 			throws SlickException {
 		if(input.isKeyDown(Input.KEY_W)){
 			playerOne.getTank().accelerate(delta);
-			playerTwo.getTank().accelerate(delta);
 		} else if (input.isKeyDown(Input.KEY_S)){
 			playerOne.getTank().reverse(delta);
-			playerTwo.getTank().reverse(delta);
 		} else {
 			playerOne.getTank().friction(delta);
-			playerTwo.getTank().friction(delta);
 		}
 
 		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
 			if(input.isKeyDown(Input.KEY_S)){
 				playerOne.getTank().turnRight(delta);
-				playerTwo.getTank().turnRight(delta);
 			} else {
 				playerOne.getTank().turnLeft(delta);
-				playerTwo.getTank().turnLeft(delta);
 			}
 		}
 
 		if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
 			if(input.isKeyDown(Input.KEY_S)){
 				playerOne.getTank().turnLeft(delta);
-				playerTwo.getTank().turnLeft(delta);
 			} else {
 				playerOne.getTank().turnRight(delta);
-				playerTwo.getTank().turnRight(delta);
 			}
 		}
 
