@@ -22,7 +22,6 @@ public class BrownWall extends AbstractObstacle {
 	
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractProjectile){
-			entity.destroy();
 			debugWallHit.play();
 		}
 	}
