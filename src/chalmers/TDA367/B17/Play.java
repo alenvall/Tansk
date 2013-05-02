@@ -20,7 +20,7 @@ public class Play extends BasicGameState{
 	
 	public ArrayList<AbstractTurret> turrets;
 	
-	private TanskController controller;
+	private GameController controller;
 	private ArrayList<Player> players;
 	private Player playerOne;
 	private Entity obstacle;
@@ -39,9 +39,9 @@ public class Play extends BasicGameState{
 	@Override
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
-		controller = TanskController.getInstance();
+		controller = GameController.getInstance();
 
-		controller.newGame(TanskController.SCREEN_WIDTH, TanskController.SCREEN_HEIGHT);
+		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT);
 
 		//Players
 		playerOne = new Player("Player One");
@@ -174,7 +174,7 @@ public class Play extends BasicGameState{
 			if(!entity.getSpriteID().equals("")){
 				// Tanks have to be drawn before all other entities.
 				if(entity instanceof AbstractTank){
-					entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
+					entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
 					if(entSprite != null){
 						if(entity.getRotation()!=0){
 							entSprite.setRotation((float) entity.getRotation());
@@ -192,7 +192,7 @@ public class Play extends BasicGameState{
 		
 		// Draw the rest of the other entities (non-tanks).
 		for(Entity nonPrioEnt : nonPriorityEnts){
-			entSprite = TanskController.getInstance().getImageHandler().getSprite(nonPrioEnt.getSpriteID());
+			entSprite = GameController.getInstance().getImageHandler().getSprite(nonPrioEnt.getSpriteID());
 			
 			if(entSprite != null){
 				if(nonPrioEnt instanceof AbstractTurret){

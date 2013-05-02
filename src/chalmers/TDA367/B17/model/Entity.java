@@ -1,9 +1,7 @@
 package chalmers.TDA367.B17.model;
 
-import chalmers.TDA367.B17.weapons.DefaultProjectile;
+import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.geom.*;
-
-import chalmers.TDA367.B17.controller.TanskController;
 
 public abstract class Entity{
 	protected int id; // The id of this object
@@ -17,8 +15,8 @@ public abstract class Entity{
 	 * 
 	 */
 	public Entity(){
-		this.id = TanskController.getInstance().getWorld().generateID();
-		TanskController.getInstance().getWorld().addEntity(this);
+		this.id = GameController.getInstance().getWorld().generateID();
+		GameController.getInstance().getWorld().addEntity(this);
 		active = true;
 		shape = new Point(-1, -1);
 		rotation = 0;
@@ -113,7 +111,7 @@ public abstract class Entity{
 	public void didCollideWith(Entity entity){}
 
 	public void destroy(){
-		TanskController.getInstance().getWorld().removeEntity(this);
+		GameController.getInstance().getWorld().removeEntity(this);
 	}
 	
 	public String getSpriteID(){

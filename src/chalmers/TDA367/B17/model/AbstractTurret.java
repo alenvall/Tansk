@@ -1,6 +1,6 @@
 package chalmers.TDA367.B17.model;
 
-import chalmers.TDA367.B17.controller.TanskController;
+import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.geom.Point;
 import org.newdawn.slick.geom.Vector2f;
 
@@ -103,7 +103,7 @@ public abstract class AbstractTurret extends Entity {
 
 	@Override
 	public void update(int delta){
-		java.awt.Point mouseCoordinates = TanskController.getInstance().getMouseCoordinates();
+		java.awt.Point mouseCoordinates = GameController.getInstance().getMouseCoordinates();
 
 		float rotation = (float) Math.toDegrees(Math.atan2(this.getPosition().x - mouseCoordinates.x + 0, this.getPosition().y - mouseCoordinates.y + 0)* -1)+180;
 		this.setRotation(rotation);

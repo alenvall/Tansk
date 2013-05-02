@@ -1,11 +1,10 @@
 package chalmers.TDA367.B17;
 
+import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.AppGameContainer;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.state.StateBasedGame;
-
-import chalmers.TDA367.B17.controller.TanskController;
 
 public class Game extends StateBasedGame {
 
@@ -32,7 +31,7 @@ public class Game extends StateBasedGame {
 		app.setTargetFrameRate(60);
 		app.setMaximumLogicUpdateInterval(500);
 		app.setMinimumLogicUpdateInterval(5);
-		app.setDisplayMode(TanskController.SCREEN_WIDTH, TanskController.SCREEN_HEIGHT, false);
+		app.setDisplayMode(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, false);
 		
 		app.start();
   }

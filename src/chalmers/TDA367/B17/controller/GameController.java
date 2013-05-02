@@ -4,27 +4,27 @@ import java.awt.*;
 
 import chalmers.TDA367.B17.model.World;
 
-public class TanskController {
+public class GameController {
 
 	public static final int SCREEN_WIDTH = 1024;
 	public static final int SCREEN_HEIGHT = 768;
 	public static final String DATA_FOLDER = "data";
 	
-	private static TanskController instance;
+	private static GameController instance;
 	private World world;
 	private ImageHandler imgHandler;
 	
 	private Point mouseCoordinates;
 
-	private TanskController() {
+	private GameController() {
 		mouseCoordinates = new Point();
 		imgHandler = new ImageHandler();
 		imgHandler.loadAllImages(DATA_FOLDER);
 	}
 	
-	public static TanskController getInstance(){
+	public static GameController getInstance(){
 		if(instance==null)
-			instance = new TanskController();
+			instance = new GameController();
 		
 		return instance;
 	}

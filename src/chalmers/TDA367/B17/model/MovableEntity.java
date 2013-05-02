@@ -1,6 +1,6 @@
 package chalmers.TDA367.B17.model;
 
-import chalmers.TDA367.B17.controller.TanskController;
+import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.geom.*;
 
 public abstract class MovableEntity extends Entity {
@@ -202,7 +202,7 @@ public abstract class MovableEntity extends Entity {
 	public void update(int delta){
 		move(delta);
 
-		if(getPosition().getX()<0 || getPosition().getX()> TanskController.getInstance().getWorld().getSize().width || getPosition().getY()<0 || getPosition().getY()> TanskController.getInstance().getWorld().getSize().height)
+		if(getPosition().getX()<0 || getPosition().getX()> GameController.getInstance().getWorld().getSize().width || getPosition().getY()<0 || getPosition().getY()> GameController.getInstance().getWorld().getSize().height)
 			destroy();
 	}
 }
