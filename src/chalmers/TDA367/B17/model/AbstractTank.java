@@ -129,8 +129,20 @@ public abstract class AbstractTank extends MovableEntity {
 	@Override
 	public void didCollideWith(Entity entity){
 		if(entity instanceof MapBounds || entity instanceof AbstractTank || entity instanceof AbstractObstacle){
-			setPosition(lastPos);
-			setSpeed(-getSpeed());
+			/*if(entity instanceof AbstractTank){
+				if(Math.abs(((AbstractTank)entity).getSpeed()) > Math.abs(getSpeed())){
+					setSpeed(-getSpeed());
+				}else if(Math.abs(((AbstractTank)entity).getSpeed()) < Math.abs(getSpeed())){
+					((AbstractTank)entity).setSpeed(-((AbstractTank)entity).getSpeed());
+				}else{
+					((AbstractTank)entity).setSpeed(-((AbstractTank)entity).getSpeed());
+					setSpeed(-getSpeed());
+				}
+			}*/
+			if(lastPos != getPosition()){
+				setPosition(lastPos);
+				setSpeed(-getSpeed());
+			}
 			if(lastDir != getDirection().getTheta()){
 				setDirection(new Vector2f(lastDir));
 			}
