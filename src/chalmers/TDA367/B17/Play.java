@@ -5,6 +5,7 @@ import org.newdawn.slick.*;
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.powerups.*;
+import chalmers.TDA367.B17.terrain.BrownWall;
 import chalmers.TDA367.B17.weapons.*;
 
 import org.newdawn.slick.geom.*;
@@ -28,6 +29,9 @@ public class Play extends BasicGameState{
 	private Input input;
 	private SpriteSheet entSprite = null;
 	
+	Player playerTwo;
+	Player playerThree;
+	Player playerFour;
 	public Play(int state) {
 		
 	}
@@ -39,9 +43,24 @@ public class Play extends BasicGameState{
 
 		controller.newGame(TanskController.SCREEN_WIDTH, TanskController.SCREEN_HEIGHT);
 
+		//Players
 		playerOne = new Player("Player One");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
+		
+		playerTwo = new Player("Player Two");
+		players.add(playerTwo);
+		playerTwo.getTank().setPosition(new Vector2f(800, 200));
+		playerTwo.getTank().setFriction(0);
+		playerTwo.getTank().setSpeed(0.25f);
+		
+		playerThree = new Player("Player Three");
+		players.add(playerThree);
+		playerThree.getTank().setPosition(new Vector2f(800, 500));
+		
+		playerFour = new Player("Player Four");
+		players.add(playerFour);
+		playerFour.getTank().setPosition(new Vector2f(200, 500));
 		
 		map = new Image("data/map.png");
 		
@@ -53,7 +72,10 @@ public class Play extends BasicGameState{
 		new DamagePowerUp(new Vector2f(500, 150));
 		new FireRatePowerUp(new Vector2f(500, 300));
 		new SpeedPowerUp(new Vector2f(500, 450));
-		new ShieldPowerUp(new Vector2f(500, 600));
+		new ShieldPowerUp(new Vector2f(200, 300));
+		
+		//ObstacleTest
+		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
 
 	//	turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
 
@@ -90,6 +112,7 @@ public class Play extends BasicGameState{
 
 		if(input.isMouseButtonDown(0)){
 			playerOne.getTank().fireWeapon(delta);
+			playerTwo.getTank().fireWeapon(delta);
 		}
 		
 		if(input.isKeyDown(Input.KEY_Q)){
@@ -130,7 +153,7 @@ public class Play extends BasicGameState{
 			entity.update(delta);
 			
 			if(entity instanceof MovableEntity)
-				if(((MovableEntity) entity).getSpeed() != 0)
+				//if(((MovableEntity) entity).getSpeed() != 0)
 					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
 		}
 	}
@@ -150,8 +173,13 @@ public class Play extends BasicGameState{
 				if(entity instanceof AbstractTank){
 					entSprite = TanskController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
 					if(entSprite != null){
-						entSprite.setRotation((float) entity.getRotation());
-						entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);	
+						if(entity.getRotation()!=0){
+							entSprite.setRotation((float) entity.getRotation());
+							// draw sprite at the coordinates of the top left corner of tank when it is not rotated
+							Shape nonRotatedShape = entity.getShape().transform(Transform.createRotateTransform((float)Math.toRadians(-entity.getRotation()), entity.getPosition().x, entity.getPosition().y));
+							entSprite.draw(nonRotatedShape.getMinX(), nonRotatedShape.getMinY());
+						}else
+							entSprite.draw(entity.getShape().getMinX(), entity.getShape().getMinY());
 					}
 				} else {
 					nonPriorityEnts.add(entity);		
@@ -165,7 +193,7 @@ public class Play extends BasicGameState{
 			
 			if(entSprite != null){
 				if(nonPrioEnt instanceof AbstractTurret){
-					entSprite.setCenterOfRotation(nonPrioEnt.getCenter().x, nonPrioEnt.getCenter().y);
+					entSprite.setCenterOfRotation(((AbstractTurret) nonPrioEnt).getTurretCenter().x, ((AbstractTurret) nonPrioEnt).getTurretCenter().y);
 				}
 				entSprite.setRotation((float) nonPrioEnt.getRotation());
 				entSprite.draw(nonPrioEnt.getSpritePosition().x, nonPrioEnt.getSpritePosition().y);	

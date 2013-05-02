@@ -1,15 +1,11 @@
 package chalmers.TDA367.B17.model;
 
-import java.awt.Point;
-import java.awt.Toolkit;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.*;
-
-import chalmers.TDA367.B17.controller.TanskController;
 
 public abstract class AbstractTank extends MovableEntity {
 
@@ -21,13 +17,15 @@ public abstract class AbstractTank extends MovableEntity {
 	protected float turretOffset;
 	private List<AbstractProjectile> projectiles;
 	public boolean fire = true;
-	protected int timeSinceLastShot = 0;
+	protected int timeSinceLastShot;
+	public int lastDelta;
+	public double lastDir = 270;
 	
 	private Sound debugWallHit = null;
 	
 	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed) {
 		super(velocity, maxSpeed, minSpeed);
-		turnSpeed = 3f;
+		turnSpeed = 0.15f;
 		projectiles = new ArrayList<AbstractProjectile>();
 		currentPowerUp = null;
 		spriteID = "turret";
@@ -38,14 +36,6 @@ public abstract class AbstractTank extends MovableEntity {
 	        // TODO Auto-generated catch block
 	        e.printStackTrace();
         }
-	}
-	
-	/**
-	 * Get the position of the tank's image.
-	 * @return The position of the tank's image.
-	 */
-	public Vector2f getImagePosition(){
-		return new Vector2f(position.x - size.x/2, position.y - size.y/2);
 	}
 	
 	public double getRotation(){
@@ -101,11 +91,13 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 
 	public void turnLeft(int delta){
-		setDirection(getDirection().add(-turnSpeed * delta/60 * (Math.abs(getSpeed())*0.2f + 0.7)));
+		lastDir = getDirection().getTheta();
+		setDirection(getDirection().add(-turnSpeed * delta * (Math.abs(getSpeed())*0.2f + 0.7)));
 	}
 	
 	public void turnRight(int delta){
-		setDirection(getDirection().add(turnSpeed * delta/60 * (Math.abs(getSpeed())*0.2f + 0.7)));
+		lastDir = getDirection().getTheta();
+		setDirection(getDirection().add(turnSpeed * delta * (Math.abs(getSpeed())*0.2f + 0.7)));
 	}
 
 	public float getTurretOffset() {
@@ -121,23 +113,10 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 	
 	public void update(int delta){
+		lastDelta = delta;
 		super.update(delta);
-		updateTurret();
 		timeSinceLastShot -= delta;
 	}
-
-	private void updateTurret() {
-		Point mouseCoords = TanskController.getInstance().getMouseCoordinates();
-		
-		float rotation = (float) Math.toDegrees(Math.atan2(turret.getPosition().x - mouseCoords.x + 0, turret.getPosition().y - mouseCoords.y + 0)* -1)+180;
-        turret.setRotation(rotation);  
-        
-        double tankRotation = getRotation() - 90; 
-        float newTurX = (float) (position.x + turretOffset * Math.cos(Math.toRadians(tankRotation + 180)));
-        float newTurY = (float) (position.y - turretOffset * Math.sin(Math.toRadians(tankRotation)));
-      	
-		turret.setPosition(new Vector2f(newTurX, newTurY));
-    }
 	
 	public void fireWeapon(int delta){
 		timeSinceLastShot -= delta;
@@ -149,14 +128,33 @@ public abstract class AbstractTank extends MovableEntity {
 
 	@Override
 	public void didCollideWith(Entity entity){
-		if(entity instanceof AbstractProjectile){
-			AbstractProjectile projectile = (AbstractProjectile)entity;
-			if(projectile.getTank() != this){
-			//	Toolkit.getDefaultToolkit().beep();
+		if(entity instanceof MapBounds || entity instanceof AbstractTank || entity instanceof AbstractObstacle){
+			/*if(entity instanceof AbstractTank){
+				if(Math.abs(((AbstractTank)entity).getSpeed()) > Math.abs(getSpeed())){
+					setSpeed(-getSpeed());
+				}else if(Math.abs(((AbstractTank)entity).getSpeed()) < Math.abs(getSpeed())){
+					((AbstractTank)entity).setSpeed(-((AbstractTank)entity).getSpeed());
+				}else{
+					((AbstractTank)entity).setSpeed(-((AbstractTank)entity).getSpeed());
+					setSpeed(-getSpeed());
+				}
+			}*/
+			if(lastPos != getPosition()){
+				setPosition(lastPos);
+				setSpeed(-getSpeed());
 			}
-		}else if(entity instanceof MapBounds){
-			setSpeed(-getSpeed());
-			debugWallHit.play();
+			if(lastDir != getDirection().getTheta()){
+				setDirection(new Vector2f(lastDir));
+			}
+		}
+	}
+	
+	public void recieveDamage(AbstractProjectile ap){
+		setHealth(getHealth() - ap.getDamage());
+		if(getHealth() <= 0){
+			fire = false;
+			getTurret().destroy();
+			destroy(); //TODO for now...
 		}
 	}
 }

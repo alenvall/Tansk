@@ -1,5 +1,6 @@
 package chalmers.TDA367.B17.weapons;
 
+import org.newdawn.slick.geom.Point;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.model.AbstractProjectile;
@@ -13,7 +14,6 @@ public class DefaultTurret extends AbstractTurret {
 		super(tank);
 		turretCenter = new Vector2f(22.5f, 22.5f);
 		turretLength = 42f;
-		size = new Vector2f(45f, 65f);
 		fireRate = 200;
 		projectileType = "default";
 	}

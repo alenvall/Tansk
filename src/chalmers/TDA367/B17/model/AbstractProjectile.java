@@ -1,7 +1,5 @@
 package chalmers.TDA367.B17.model;
 
-import java.awt.Toolkit;
-
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.Rectangle;
@@ -9,10 +7,10 @@ import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractProjectile extends MovableEntity {
 	
-	protected double damage;
-	protected int duration;
-	protected int durationTimer;
-	protected AbstractTank tank;
+	private double damage;
+	private int duration;
+	private int durationTimer;
+	private AbstractTank tank;
 	private Sound debugWallHit;
 
 
@@ -24,7 +22,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param damage the damage this projectile does
 	 * @param duration the time in milliseconds this projectile will remain on the map
 	 */
-	public AbstractProjectile(AbstractTank tank, Vector2f velocity,
+	public AbstractProjectile(AbstractTank tank, Vector2f position, Vector2f velocity,
 			float maxSpeed, float minSpeed, double damage, int duration) {
 		super(velocity, maxSpeed, minSpeed);
 		this.damage = damage;
@@ -38,7 +36,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	        e.printStackTrace();
         }
 		this.tank = tank;
-		setShape(new Rectangle(-1,-1, 1,1));
+		setShape(new Rectangle(position.x, position.y, 1,1));
 	}
 	
 	public AbstractTank getTank(){
@@ -92,20 +90,42 @@ public abstract class AbstractProjectile extends MovableEntity {
 		return direction.getTheta() + 90;
 	}
 	
-public void didCollideWith(Entity entity){
-	if(entity instanceof AbstractProjectile || entity == getTank())
-		return;
-
-	if(entity instanceof MapBounds){
-		debugWallHit.play();
-		this.destroy();
+	public int getDurationTimer() {
+		return durationTimer;
 	}
-}
+
+	public void setDurationTimer(int durationTimer) {
+		this.durationTimer = durationTimer;
+	}
+
+	public void setTank(AbstractTank tank) {
+		this.tank = tank;
+	}
+	
+	public void didCollideWith(Entity entity){
+		if(entity instanceof AbstractProjectile || entity == getTank())
+			return;
+
+		if(entity instanceof MapBounds){
+			debugWallHit.play();
+			this.destroy();
+		}
+
+		if(entity instanceof AbstractTank){
+			damageTarget((AbstractTank)entity);
+		}
+	}
 
 
 	@Override
 	public void destroy(){
 		super.destroy();
 		getTank().getProjectiles().remove(this);
+	}
+	
+	public void damageTarget(AbstractTank target){
+		target.recieveDamage(this);
+		debugWallHit.play();
+		this.destroy();
 	}
 }

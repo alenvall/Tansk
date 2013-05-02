@@ -8,10 +8,10 @@ import chalmers.TDA367.B17.model.AbstractTank;
 public class DefaultProjectile extends AbstractProjectile {
 
 	public DefaultProjectile(AbstractTank tank, Vector2f position) {
-		super(tank, new Vector2f(1,1), 100, 0, 5, 0);
-		setSpeed(20);
+		super(tank, position, new Vector2f(1,1), 100, 0, 0.35, 10000);
+		setSpeed(0.35f);
 		setSize(new Vector2f(5f, 10f));
-		setPosition(position);
 		spriteID = "bullet";
+		setDamage(5);
 	}
 }

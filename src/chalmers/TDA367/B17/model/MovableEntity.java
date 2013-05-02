@@ -1,5 +1,6 @@
 package chalmers.TDA367.B17.model;
 
+import chalmers.TDA367.B17.controller.TanskController;
 import org.newdawn.slick.geom.*;
 
 public abstract class MovableEntity extends Entity {
@@ -11,6 +12,7 @@ public abstract class MovableEntity extends Entity {
 	private float acceleration;
 	private float friction;
 	private double lastDirectionTheta;
+	public Vector2f lastPos;
 	
 	/**
 	 * Create a new MovableEntity based on the following parameters
@@ -23,8 +25,8 @@ public abstract class MovableEntity extends Entity {
 		this.direction = direction;
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
-		this.acceleration = maxSpeed*0.1f;
-		this.friction = maxSpeed*0.1f;
+		this.acceleration = maxSpeed*0.001f;
+		this.friction = maxSpeed*0.001f;
 		this.lastDirectionTheta = direction.getTheta();
 	}
 	
@@ -150,8 +152,10 @@ public abstract class MovableEntity extends Entity {
 		Vector2f tmp = new Vector2f(direction);
 		Vector2f velocity = tmp.scale(speed);
 		
-		velocity.x = velocity.x * delta/60;
-		velocity.y = velocity.y * delta/60;
+		velocity.x = velocity.x * delta;
+		velocity.y = velocity.y * delta;
+
+		lastPos = getPosition();
 		
 		setPosition(getPosition().add(velocity));
 		setShape(getShape().transform(Transform.createTranslateTransform(velocity.x, velocity.y)));
@@ -162,7 +166,7 @@ public abstract class MovableEntity extends Entity {
 	 * @param delta hmm...
 	 */
 	public void accelerate(int delta){
-		setSpeed(speed + acceleration * delta/60);
+		setSpeed(speed + acceleration * delta);
 	}
 	
 	/**
@@ -171,12 +175,12 @@ public abstract class MovableEntity extends Entity {
 	 */
 	public void friction(int delta){ //TODO fix the name of this method (friction)
 		//if the speed after deceleration is greater than zero the speed is decreased
-		if(speed-friction * delta/60 > 0){
-			setSpeed(speed - friction * delta/60);
+		if(speed-friction * delta > 0){
+			setSpeed(speed - friction * delta);
 			
 		//if the speed after deceleration is less than zero the speed is increased
-		}else if(speed+friction * delta/60 < 0){
-			setSpeed(speed + friction * delta/60); //TODO Make sure there are no possible bugs
+		}else if(speed+friction * delta < 0){
+			setSpeed(speed + friction * delta); //TODO Make sure there are no possible bugs
 		}else{
 			setSpeed(0);
 		}
@@ -187,7 +191,7 @@ public abstract class MovableEntity extends Entity {
 	 * @param delta 
 	 */
 	public void reverse(int delta){
-			setSpeed(speed - friction * delta/60);
+			setSpeed(speed - friction * delta);
 	}
 
 	/**
@@ -197,5 +201,8 @@ public abstract class MovableEntity extends Entity {
 	 */
 	public void update(int delta){
 		move(delta);
+
+		if(getPosition().getX()<0 || getPosition().getX()> TanskController.getInstance().getWorld().getSize().width || getPosition().getY()<0 || getPosition().getY()> TanskController.getInstance().getWorld().getSize().height)
+			destroy();
 	}
 }
