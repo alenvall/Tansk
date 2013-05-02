@@ -5,6 +5,8 @@ import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.terrain.BrownWall;
+
 public abstract class AbstractProjectile extends MovableEntity {
 	
 	private double damage;
@@ -103,15 +105,12 @@ public abstract class AbstractProjectile extends MovableEntity {
 	}
 	
 	public void didCollideWith(Entity entity){
-		if(entity instanceof AbstractProjectile || entity == getTank())
+		if(entity instanceof AbstractProjectile || entity == getTank()){
 			return;
-
-		if(entity instanceof MapBounds){
+		}else if(entity instanceof MapBounds || entity instanceof BrownWall){
 			debugWallHit.play();
 			this.destroy();
-		}
-
-		if(entity instanceof AbstractTank){
+		}else if(entity instanceof AbstractTank){
 			damageTarget((AbstractTank)entity);
 		}
 	}
