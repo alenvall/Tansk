@@ -7,6 +7,8 @@ import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.*;
 
+import chalmers.TDA367.B17.weapons.DefaultTurret;
+
 public abstract class AbstractTank extends MovableEntity {
 
 	private String name;
@@ -20,16 +22,19 @@ public abstract class AbstractTank extends MovableEntity {
 	protected int timeSinceLastShot;
 	public int lastDelta;
 	public double lastDir = 270;
+	private Player player;
 	
 	private Sound debugWallHit = null;
 	
-	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed) {
+	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed, Player player) {
 		super(velocity, maxSpeed, minSpeed);
 		turnSpeed = 0.15f;
 		projectiles = new ArrayList<AbstractProjectile>();
 		currentPowerUp = null;
 		spriteID = "turret";
 
+		this.player = player;
+		
 		try {
 			debugWallHit = new Sound("data/wall.wav");
         } catch (SlickException e) {
@@ -152,10 +157,17 @@ public abstract class AbstractTank extends MovableEntity {
 	public void recieveDamage(AbstractProjectile ap){
 		setHealth(getHealth() - ap.getDamage());
 		if(getHealth() <= 0){
-			fire = false;
-			getTurret().destroy();
-			destroy(); //TODO for now...
+			tankDeath();
 		}
+	}
+	
+	public void tankDeath(){
+		player.tankDeath();
+		fire = false;
+		active = false;
+		this.destroy();
+		getTurret().destroy();
+		player.setTank(null);
 	}
 }
 
