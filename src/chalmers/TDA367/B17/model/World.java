@@ -1,6 +1,6 @@
 package chalmers.TDA367.B17.model;
 
-import java.awt.*;
+import java.awt.Dimension;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,7 +55,7 @@ public class World {
 		return entities;
 	}
 
-	public void checkCollisionsFor(MovableEntity movableEntity){
+	public void checkCollisionsFor(Entity movableEntity){
 		Iterator<Entry<Integer, Entity>> iterator = entities.entrySet().iterator();
 		while(iterator.hasNext()){
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
