@@ -20,7 +20,6 @@ public class TankSpawner{
 	public static TankSpawner getInstance(){
 		if(instance==null){
 			instance = new TankSpawner();
-			System.out.println("instance != null");
 		}
 		
 		return instance;
