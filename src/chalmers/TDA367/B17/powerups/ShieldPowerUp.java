@@ -15,7 +15,7 @@ public class ShieldPowerUp extends AbstractPowerUp {
 	}
 	
 	private void createShield(){
-		shield = new Shield(absTank.getPosition());
+		shield = new Shield(absTank.getPosition(), absTank);
 	}
 	
 	private void moveShield(){
@@ -34,7 +34,11 @@ public class ShieldPowerUp extends AbstractPowerUp {
 
 	@Override
 	public void updateEffect() {
-		moveShield();
+		if(!shield.isActive() && effectActive){
+			deactivate();
+		}else if(shield.isActive()){
+			moveShield();
+		}
 	}
 
 }
