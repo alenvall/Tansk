@@ -4,7 +4,9 @@ import org.newdawn.slick.*;
 
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
-import chalmers.TDA367.B17.powerups.*;
+import chalmers.TDA367.B17.spawnpoints.PowerUpSpawnPoint;
+import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
+import chalmers.TDA367.B17.spawnpoints.TankSpawner;
 import chalmers.TDA367.B17.terrain.BrownWall;
 import chalmers.TDA367.B17.weapons.*;
 
@@ -29,9 +31,10 @@ public class Play extends BasicGameState{
 	private Input input;
 	private SpriteSheet entSprite = null;
 	
-	Player playerTwo;
-	Player playerThree;
-	Player playerFour;
+	private Player playerTwo;
+	private Player playerThree;
+	private Player playerFour;
+	
 	public Play(int state) {
 		
 	}
@@ -68,14 +71,19 @@ public class Play extends BasicGameState{
 		input.addMouseListener(this);
 		mouseCoords = new Point();
 		
-		//POWERUPS
-		new DamagePowerUp(new Vector2f(500, 150));
-		new FireRatePowerUp(new Vector2f(500, 300));
-		new SpeedPowerUp(new Vector2f(500, 450));
-		new ShieldPowerUp(new Vector2f(200, 300));
-		
 		//ObstacleTest
 		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
+		
+		//PowerUpSpawnPoints
+		new PowerUpSpawnPoint(new Vector2f(250, 100), 10000, "damage");
+		new PowerUpSpawnPoint(new Vector2f(250, 500), 10000, "");
+		new PowerUpSpawnPoint(new Vector2f(500, 100), 10000, "");
+		
+		//TankSpawnPoints
+		new TankSpawnPoint(new Vector2f(100, 100));
+		new TankSpawnPoint(new Vector2f(900, 100));
+		new TankSpawnPoint(new Vector2f(100, 500));
+		new TankSpawnPoint(new Vector2f(900, 500));
 
 	//	turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
 
@@ -87,32 +95,41 @@ public class Play extends BasicGameState{
 	public void update(GameContainer gc, StateBasedGame sbg, int delta)
 			throws SlickException {
 		if(input.isKeyDown(Input.KEY_W)){
-			playerOne.getTank().accelerate(delta);
+			if(playerOne.getTank() != null)
+				playerOne.getTank().accelerate(delta);
 		} else if (input.isKeyDown(Input.KEY_S)){
+			if(playerOne.getTank() != null)
 			playerOne.getTank().reverse(delta);
 		} else {
+			if(playerOne.getTank() != null)
 			playerOne.getTank().friction(delta);
 		}
 
 		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
 			if(input.isKeyDown(Input.KEY_S)){
+				if(playerOne.getTank() != null)
 				playerOne.getTank().turnRight(delta);
 			} else {
+				if(playerOne.getTank() != null)
 				playerOne.getTank().turnLeft(delta);
 			}
 		}
 
 		if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
 			if(input.isKeyDown(Input.KEY_S)){
+				if(playerOne.getTank() != null)
 				playerOne.getTank().turnLeft(delta);
 			} else {
+				if(playerOne.getTank() != null)
 				playerOne.getTank().turnRight(delta);
 			}
 		}
 
 		if(input.isMouseButtonDown(0)){
-			playerOne.getTank().fireWeapon(delta);
-			playerTwo.getTank().fireWeapon(delta);
+			if(playerOne.getTank() != null)
+				playerOne.getTank().fireWeapon(delta);
+			if(playerTwo.getTank() != null)
+				playerTwo.getTank().fireWeapon(delta);
 		}
 		
 		if(input.isKeyDown(Input.KEY_Q)){
@@ -127,37 +144,48 @@ public class Play extends BasicGameState{
 		
 		//Weapons
 		if(input.isKeyDown(Input.KEY_1)){
-			playerOne.getTank().setTurret(new DefaultTurret(playerOne.getTank()));
+			if(playerOne.getTank() != null)
+				playerOne.getTank().setTurret(new DefaultTurret(playerOne.getTank()));
 		}
 		if(input.isKeyDown(Input.KEY_2)){
-			playerOne.getTank().setTurret(new FlamethrowerTurret(playerOne.getTank()));
+			if(playerOne.getTank() != null)
+				playerOne.getTank().setTurret(new FlamethrowerTurret(playerOne.getTank()));
 		}
 		if(input.isKeyDown(Input.KEY_3)){
-			playerOne.getTank().setTurret(new ShotgunTurret(playerOne.getTank()));
+			if(playerOne.getTank() != null)
+				playerOne.getTank().setTurret(new ShotgunTurret(playerOne.getTank()));
 		}
 		if(input.isKeyDown(Input.KEY_4)){
-			playerOne.getTank().setTurret(new SlowspeedyTurret(playerOne.getTank()));
+			if(playerOne.getTank() != null)
+				playerOne.getTank().setTurret(new SlowspeedyTurret(playerOne.getTank()));
 		}
 		if(input.isKeyDown(Input.KEY_5)){
-			playerOne.getTank().setTurret(new ShockwaveTurret(playerOne.getTank()));
+			if(playerOne.getTank() != null)
+				playerOne.getTank().setTurret(new ShockwaveTurret(playerOne.getTank()));
 		}
 		if(input.isKeyDown(Input.KEY_6)){
-			playerOne.getTank().setTurret(new BounceTurret(playerOne.getTank()));
+			if(playerOne.getTank() != null)
+				playerOne.getTank().setTurret(new BounceTurret(playerOne.getTank()));
 		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
 			gc.exit();
 		}
 		
+		// TODO Update for tankspawner
+		TankSpawner.getInstance().update(delta);
+		
 		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
 		while(iterator.hasNext()){
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
 			Entity entity = entry.getValue();
+			
 			entity.update(delta);
 			
 			if(entity instanceof MovableEntity)
-				//if(((MovableEntity) entity).getSpeed() != 0)
-					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
+				controller.getWorld().checkCollisionsFor((MovableEntity)entity);
+			if(entity instanceof AbstractSpawnPoint)
+				controller.getWorld().checkCollisionsFor(entity);
 		}
 	}
 	
@@ -211,7 +239,7 @@ public class Play extends BasicGameState{
 	}
 
 	public void debugRender(Graphics g){
-		g.setColor(Color.black);
+		/*g.setColor(Color.black);
 		g.drawString("tankPosX:   " + playerOne.getTank().getPosition().x,  10, 30);
 		g.drawString("tankPosY:   " + playerOne.getTank().getPosition().y,  10, 50);
 		g.drawString("tankAng:    " + playerOne.getTank().getRotation(),	10, 70);
@@ -235,7 +263,7 @@ public class Play extends BasicGameState{
 			g.drawString("projPos: "+playerOne.getTank()
 				.getProjectiles().get(0).getPosition().x+" , "+playerOne.getTank()
 				.getProjectiles().get(0).getPosition().y, 530, 110);
-		}
+		}*/
 	}
 
 	public void mouseMoved(int oldx, int oldy, int newx, int newy){
