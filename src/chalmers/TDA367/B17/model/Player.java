@@ -2,11 +2,19 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.spawnpoints.TankSpawner;
+import chalmers.TDA367.B17.tanks.DefaultTank;
+
 public class Player {
 	private String name;
 	private int playerId;
 	private int score;
 	private AbstractTank tank;
+	private int lives;
+	private int respawnTimer;
+	private int respawnTime;
+	public boolean tankDead;
+	public String tankType;
 
 	/**
 	 * Create a new Player.
@@ -14,8 +22,10 @@ public class Player {
 	 */
 	public Player(String name){
 		this.name = name;
-		
-		tank = new DefaultTank(new Vector2f(0,-1), 0.1f, -0.06f);
+		this.lives = 3;
+		tankType = "default";
+		respawnTime = 5000;
+		setTank(new DefaultTank(new Vector2f(0,-1), 0.1f, -0.06f, this));
 	}
 
 	/**
@@ -50,6 +60,26 @@ public class Player {
 		return score;
 	}
 	
+	public int getLives() {
+		return lives;
+	}
+
+	public void setLives(int lives) {
+		this.lives = lives;
+	}
+
+	public int getRespawnTimer() {
+		return respawnTimer;
+	}
+
+	public void setRespawnTimer(int respawnTimer) {
+		this.respawnTimer = respawnTimer;
+	}
+
+	public void setTank(AbstractTank tank) {
+		this.tank = tank;
+	}
+
 	/**
 	 * Set the players name.
 	 * @param name The new name
@@ -72,5 +102,20 @@ public class Player {
 	 */
 	public void setScore(int score){
 		this.score = score;
+	}
+	
+	
+	public void tankDeath(){
+		setLives(getLives() - 1);
+		tankDead = true;
+		spawnTank();
+	}
+	
+	
+	public void spawnTank(){
+		if(getLives() > 0){
+			this.respawnTimer = respawnTime;
+			TankSpawner.getInstance().addPlayer(this);
+		}
 	}
 }
