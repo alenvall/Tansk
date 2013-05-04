@@ -75,8 +75,8 @@ public class Play extends BasicGameState{
 		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
 		
 		//PowerUpSpawnPoints
-		new PowerUpSpawnPoint(new Vector2f(250, 100), 10000, "damage");
-		new PowerUpSpawnPoint(new Vector2f(250, 500), 10000, "");
+		new PowerUpSpawnPoint(new Vector2f(250, 100), 10000, "shield");
+		new PowerUpSpawnPoint(new Vector2f(250, 500), 10000, "speed");
 		new PowerUpSpawnPoint(new Vector2f(500, 100), 10000, "");
 		
 		//TankSpawnPoints
