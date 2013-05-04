@@ -90,9 +90,9 @@ public abstract class AbstractPowerUp extends Entity {
 	public void deactivate(){
 		if(absTank == null || !absTank.isActive())
 			return;
+		effectActive = false;
 		updateEffect();
 		endEffect();
-		effectActive = false;
 		active = false;
 		this.destroy();
 		absTank.setCurrentPowerUp(null);
