@@ -163,7 +163,8 @@ public abstract class AbstractTank extends MovableEntity {
 	
 	public void tankDeath(){
 		player.tankDeath();
-		getCurrentPowerUp().deactivate();
+		if(getCurrentPowerUp() != null)
+			getCurrentPowerUp().deactivate();
 		fire = false;
 		active = false;
 		this.destroy();
