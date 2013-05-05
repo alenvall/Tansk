@@ -6,7 +6,6 @@ import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.spawnpoints.PowerUpSpawnPoint;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
-import chalmers.TDA367.B17.spawnpoints.TankSpawner;
 import chalmers.TDA367.B17.terrain.BrownWall;
 import chalmers.TDA367.B17.weapons.*;
 
@@ -43,8 +42,8 @@ public class Play extends BasicGameState{
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		controller = GameController.getInstance();
-
-		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT);
+		
+		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 1, 1, 5000, 500000, 1500000);
 
 		//Players
 		playerOne = new Player("Player One");
@@ -172,8 +171,11 @@ public class Play extends BasicGameState{
 			gc.exit();
 		}
 		
-		// TODO Update for tankspawner
-		TankSpawner.getInstance().update(delta);
+		//Update for tankspawner
+		controller.getWorld().getTankSpawner().update(delta);
+		
+		//Update for gameconditions
+		controller.gameConditions.update(delta);
 		
 		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
 		while(iterator.hasNext()){
