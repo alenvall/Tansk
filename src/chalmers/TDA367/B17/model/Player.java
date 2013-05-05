@@ -25,9 +25,10 @@ public class Player {
 		GameController.getInstance().gameConditions.addPlayer(this);
 		this.name = name;
 		tankType = "default";
-		respawnTime = 5000;
 		setTank(new DefaultTank(new Vector2f(0,-1), this));
 		active = true;
+		setLives(GameController.getInstance().gameConditions.getPlayerLives());
+		setRespawnTime(GameController.getInstance().gameConditions.getSpawnTime());
 	}
 
 	/**
@@ -108,7 +109,6 @@ public class Player {
 	
 	
 	public void tankDeath(){
-		setLives(getLives() - 1);
 		tankDead = true;
 		spawnTank();
 	}
@@ -116,6 +116,7 @@ public class Player {
 	
 	public void spawnTank(){
 		if(getLives() > 0){
+			setLives(getLives() - 1);
 			this.respawnTimer = respawnTime;
 			GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
 		}else{
@@ -129,5 +130,13 @@ public class Player {
 
 	public void setActive(boolean active) {
 		this.active = active;
+	}
+
+	public int getRespawnTime() {
+		return respawnTime;
+	}
+
+	public void setRespawnTime(int respawnTime) {
+		this.respawnTime = respawnTime;
 	}
 }
