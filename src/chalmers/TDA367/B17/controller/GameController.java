@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.controller;
 
 import java.awt.*;
 
+import chalmers.TDA367.B17.model.GameConditions;
 import chalmers.TDA367.B17.model.World;
 
 public class GameController {
@@ -13,6 +14,8 @@ public class GameController {
 	private static GameController instance;
 	private World world;
 	private ImageHandler imgHandler;
+	
+	public GameConditions gameConditions;
 	
 	private Point mouseCoordinates;
 
@@ -29,9 +32,13 @@ public class GameController {
 		return instance;
 	}
 	
-	public void newGame(int width, int height){
+	public void newGame(int width, int height, int scoreLimit, int rounds, 
+			int playerLives, int spawnTime, int roundTime, int gameTime){
 		world = new World(new Dimension(width, height));
 		world.init();
+		gameConditions = new GameConditions();
+		gameConditions.init(scoreLimit, rounds, 
+				playerLives, spawnTime, roundTime, gameTime);
 	}
 	
 	public World getWorld(){
