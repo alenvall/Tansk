@@ -42,8 +42,8 @@ public class Play extends BasicGameState{
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		controller = GameController.getInstance();
-		
-		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 1, 1, 5000, 500000, 1500000);
+
+		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 1, 3, 5000, 500000, 1500000);
 
 		//Players
 		playerOne = new Player("Player One");
