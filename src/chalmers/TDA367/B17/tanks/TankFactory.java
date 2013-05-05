@@ -11,9 +11,9 @@ public class TankFactory {
 
 	public static AbstractTank getPowerUp(Player player){
 		if(player.tankType.equals("default")){
-			return new DefaultTank(new Vector2f(0,-1), 0.1f, -0.06f, player);
+			return new DefaultTank(new Vector2f(0,-1), player);
 		}else{
-			return new DefaultTank(new Vector2f(0,-1), 0.1f, -0.06f, player);
+			return new DefaultTank(new Vector2f(0,-1), player);
 		}
 	}
 

@@ -8,22 +8,17 @@ import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.weapons.DefaultTurret;
 
 public class DefaultTank extends AbstractTank {
+	//The default maxSpeed of DefaultTank
+	public static final double DEFAULT_MAXSPEED = 0.1;
+	//The default minSpeed of DefaultTank
+	public static final double DEFAULT_MINSPEED = -0.06;
 
-	public DefaultTank(Vector2f direction, float maxSpeed, float minSpeed, Player player) {
-		super(direction, maxSpeed, minSpeed, player);
+	public DefaultTank(Vector2f direction, Player player) {
+		super(direction, (float)DEFAULT_MAXSPEED, (float)DEFAULT_MINSPEED, player);
 		setShape(new Rectangle(100, 150, 65, 85));
 		turretOffset = 6;
 		turret = new DefaultTurret(this);
 		spriteID = "tank";
 		setHealth(100);
-	}
-
-	@Override
-//	public void didCollideWith(Entity entity){
-//		Toolkit.getDefaultToolkit().beep();
-//}
-	
-	public String getSpriteID(){
-		return spriteID;
 	}
 }

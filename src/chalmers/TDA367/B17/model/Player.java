@@ -25,7 +25,7 @@ public class Player {
 		this.lives = 3;
 		tankType = "default";
 		respawnTime = 5000;
-		setTank(new DefaultTank(new Vector2f(0,-1), 0.1f, -0.06f, this));
+		setTank(new DefaultTank(new Vector2f(0,-1), this));
 	}
 
 	/**
