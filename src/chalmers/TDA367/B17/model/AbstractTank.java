@@ -7,8 +7,6 @@ import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.*;
 
-import chalmers.TDA367.B17.weapons.DefaultTurret;
-
 public abstract class AbstractTank extends MovableEntity {
 
 	private String name;
