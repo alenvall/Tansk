@@ -5,16 +5,20 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
+
 public class World {
 	
 	private Map<Integer, Entity> entities;
 	private Dimension size;
+	
+	private TankSpawner tankSpawner;
 	
 	private int latestID;
 	
 	public World(Dimension size) {
 		this.size = size;
 		this.entities = new ConcurrentHashMap<Integer, Entity>();
+		this.tankSpawner = new TankSpawner();
 	}
 
 	public void init(){
@@ -76,5 +80,13 @@ public class World {
 
 	public Dimension getSize() {
 		return size;
+	}
+
+	public TankSpawner getTankSpawner() {
+		return tankSpawner;
+	}
+
+	public void setTankSpawner(TankSpawner tankSpawner) {
+		this.tankSpawner = tankSpawner;
 	}
 }
