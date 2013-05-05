@@ -2,7 +2,7 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Vector2f;
 
-import chalmers.TDA367.B17.spawnpoints.TankSpawner;
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.tanks.DefaultTank;
 
 public class Player {
@@ -15,17 +15,19 @@ public class Player {
 	private int respawnTime;
 	public boolean tankDead;
 	public String tankType;
+	public boolean active;
 
 	/**
 	 * Create a new Player.
 	 * @param name The player's name
 	 */
 	public Player(String name){
+		GameController.getInstance().gameConditions.addPlayer(this);
 		this.name = name;
-		this.lives = 3;
 		tankType = "default";
 		respawnTime = 5000;
 		setTank(new DefaultTank(new Vector2f(0,-1), this));
+		active = true;
 	}
 
 	/**
@@ -115,7 +117,17 @@ public class Player {
 	public void spawnTank(){
 		if(getLives() > 0){
 			this.respawnTimer = respawnTime;
-			TankSpawner.getInstance().addPlayer(this);
+			GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
+		}else{
+			setActive(false);
 		}
+	}
+
+	public boolean isActive() {
+		return active;
+	}
+
+	public void setActive(boolean active) {
+		this.active = active;
 	}
 }
