@@ -43,7 +43,7 @@ public class Play extends BasicGameState{
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		controller = GameController.getInstance();
 
-		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 1, 3, 5000, 500000, 1500000);
+		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 2, 1, 5000, 500000, 1500000);
 
 		//Players
 		playerOne = new Player("Player One");
@@ -52,17 +52,19 @@ public class Play extends BasicGameState{
 		
 		playerTwo = new Player("Player Two");
 		players.add(playerTwo);
+		/*
 		playerTwo.getTank().setPosition(new Vector2f(800, 200));
 		playerTwo.getTank().setFriction(0);
 		playerTwo.getTank().setSpeed(0.25f);
+		*/
 		
 		playerThree = new Player("Player Three");
 		players.add(playerThree);
-		playerThree.getTank().setPosition(new Vector2f(800, 500));
+		//playerThree.getTank().setPosition(new Vector2f(800, 500));
 		
 		playerFour = new Player("Player Four");
 		players.add(playerFour);
-		playerFour.getTank().setPosition(new Vector2f(200, 500));
+		//playerFour.getTank().setPosition(new Vector2f(200, 500));
 		
 		map = new Image("data/map.png");
 		
@@ -88,6 +90,10 @@ public class Play extends BasicGameState{
 
 	//	obstacle = new Entity() {};
 	//	obstacle.setShape(new Rectangle(75, 250, 40, 40));
+		
+		for(Player p : players){
+			p.spawnTank();
+		}
 	}
 	
 	@Override
@@ -193,7 +199,7 @@ public class Play extends BasicGameState{
 	
 	@Override
 	public void render(GameContainer container, StateBasedGame sbg, Graphics g) throws SlickException {	
-		map.draw();	
+		map.draw();
 		
 		ArrayList<Entity> nonPriorityEnts = new ArrayList<Entity>();
 		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
@@ -232,6 +238,17 @@ public class Play extends BasicGameState{
 				entSprite.draw(nonPrioEnt.getSpritePosition().x, nonPrioEnt.getSpritePosition().y);	
 			}
 		}
+		
+		if(controller.gameConditions.isGameOver()){
+			g.drawString("Game Over!", 500, 300);
+			g.drawString("Winner: " + controller.gameConditions.getWinningPlayer().getName(), 500, 400);
+			int i = 0;
+			for(Player p : controller.gameConditions.getPlayers()){
+				i++;
+				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
+			}
+		}
+		
 		debugRender(g);
 	}
 
