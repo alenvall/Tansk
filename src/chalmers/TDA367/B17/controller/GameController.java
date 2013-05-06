@@ -25,6 +25,10 @@ public class GameController {
 		imgHandler.loadAllImages(DATA_FOLDER);
 	}
 	
+	public static enum RenderLayer{
+		TOP, MIDDLE, BOTTOM
+	}
+	
 	public static GameController getInstance(){
 		if(instance==null)
 			instance = new GameController();

@@ -7,6 +7,8 @@ import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.*;
 
+import chalmers.TDA367.B17.controller.GameController;
+
 public abstract class AbstractTank extends MovableEntity {
 
 	private String name;
@@ -30,6 +32,7 @@ public abstract class AbstractTank extends MovableEntity {
 		projectiles = new ArrayList<AbstractProjectile>();
 		currentPowerUp = null;
 		spriteID = "turret";
+		renderLayer = GameController.RenderLayer.MIDDLE;
 
 		this.player = player;
 		

@@ -201,43 +201,29 @@ public class Play extends BasicGameState{
 	public void render(GameContainer container, StateBasedGame sbg, Graphics g) throws SlickException {	
 		map.draw();
 		
-		ArrayList<Entity> nonPriorityEnts = new ArrayList<Entity>();
+		// Render the entities in three layers, bottom, middle and top
+		ArrayList<Entity> bottomLayerEnts = new ArrayList<Entity>();
+		ArrayList<Entity> middleLayerEnts = new ArrayList<Entity>();
+		ArrayList<Entity> topLayerEnts = new ArrayList<Entity>();
+
 		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
 		while(iterator.hasNext()){
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
 			Entity entity = entry.getValue();
 			
 			if(!entity.getSpriteID().equals("")){
-				// Tanks have to be drawn before all other entities.
-				if(entity instanceof AbstractTank){
-					entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
-					if(entSprite != null){
-						if(entity.getRotation()!=0){
-							entSprite.setRotation((float) entity.getRotation());
-							// draw sprite at the coordinates of the top left corner of tank when it is not rotated
-							Shape nonRotatedShape = entity.getShape().transform(Transform.createRotateTransform((float)Math.toRadians(-entity.getRotation()), entity.getPosition().x, entity.getPosition().y));
-							entSprite.draw(nonRotatedShape.getMinX(), nonRotatedShape.getMinY());
-						}else
-							entSprite.draw(entity.getShape().getMinX(), entity.getShape().getMinY());
-					}
-				} else {
-					nonPriorityEnts.add(entity);		
-				}
+				if(entity.getRenderLayer() == GameController.RenderLayer.BOTTOM)
+					bottomLayerEnts.add(entity);
+				else if(entity.getRenderLayer() == GameController.RenderLayer.MIDDLE)
+					middleLayerEnts.add(entity);
+				else if(entity.getRenderLayer() == GameController.RenderLayer.TOP)
+					topLayerEnts.add(entity);
 			}
 		}
 		
-		// Draw the rest of the other entities (non-tanks).
-		for(Entity nonPrioEnt : nonPriorityEnts){
-			entSprite = GameController.getInstance().getImageHandler().getSprite(nonPrioEnt.getSpriteID());
-			
-			if(entSprite != null){
-				if(nonPrioEnt instanceof AbstractTurret){
-					entSprite.setCenterOfRotation(((AbstractTurret) nonPrioEnt).getTurretCenter().x, ((AbstractTurret) nonPrioEnt).getTurretCenter().y);
-				}
-				entSprite.setRotation((float) nonPrioEnt.getRotation());
-				entSprite.draw(nonPrioEnt.getSpritePosition().x, nonPrioEnt.getSpritePosition().y);	
-			}
-		}
+		renderEntities(bottomLayerEnts);
+		renderEntities(middleLayerEnts);
+		renderEntities(topLayerEnts);
 		
 		if(controller.gameConditions.isGameOver()){
 			g.drawString("Game Over!", 500, 300);
@@ -252,11 +238,37 @@ public class Play extends BasicGameState{
 		debugRender(g);
 	}
 
+	private void renderEntities(ArrayList<Entity> entities){
+		for(Entity entity : entities){
+			entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
+			
+			if(entSprite != null){
+				if(entity instanceof AbstractTank){
+					entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
+					if(entity.getRotation()!=0){
+							entSprite.setRotation((float) entity.getRotation());
+							// draw sprite at the coordinates of the top left corner of tank when it is not rotated
+							Shape nonRotatedShape = entity.getShape().transform(Transform.createRotateTransform((float)Math.toRadians(-entity.getRotation()), entity.getPosition().x, entity.getPosition().y));
+							entSprite.draw(nonRotatedShape.getMinX(), nonRotatedShape.getMinY());
+					} else {
+						entSprite.draw(entity.getShape().getMinX(), entity.getShape().getMinY());
+					}
+				} else {
+					if(entity instanceof AbstractTurret){
+						entSprite.setCenterOfRotation(((AbstractTurret) entity).getTurretCenter().x, ((AbstractTurret) entity).getTurretCenter().y);
+					}
+					entSprite.setRotation((float) entity.getRotation());
+					entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);						
+				}
+			}
+		}
+	}
+	
 	@Override
 	public int getID() {
 		return 1;
 	}
-
+	
 	public void debugRender(Graphics g){
 		/*g.setColor(Color.black);
 		g.drawString("tankPosX:   " + playerOne.getTank().getPosition().x,  10, 30);

@@ -21,6 +21,7 @@ public abstract class AbstractTurret extends Entity {
 		spriteID = "turret";
 		this.tank = tank;
 		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
+		renderLayer = GameController.RenderLayer.TOP;
 	}
 	
 	public AbstractTank getTank(){

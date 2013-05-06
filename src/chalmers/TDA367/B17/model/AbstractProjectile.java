@@ -5,6 +5,7 @@ import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.terrain.BrownWall;
 
 public abstract class AbstractProjectile extends MovableEntity {
@@ -39,6 +40,7 @@ public abstract class AbstractProjectile extends MovableEntity {
         }
 		this.tank = tank;
 		setShape(new Rectangle(position.x, position.y, 1,1));
+		renderLayer = GameController.RenderLayer.TOP;
 	}
 	
 	public AbstractTank getTank(){

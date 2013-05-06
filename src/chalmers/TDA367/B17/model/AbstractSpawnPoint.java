@@ -2,6 +2,8 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
+
 public abstract class AbstractSpawnPoint extends Entity{
 	
 	private boolean spawnable;
@@ -9,6 +11,7 @@ public abstract class AbstractSpawnPoint extends Entity{
 	public AbstractSpawnPoint(Vector2f position) {
 		setPosition(position);
 		spawnable = false;
+		renderLayer = GameController.RenderLayer.BOTTOM;
 	}
 	
 	public boolean isSpawnable(){
