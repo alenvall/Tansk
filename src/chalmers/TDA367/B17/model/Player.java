@@ -16,17 +16,18 @@ public class Player {
 	public boolean tankDead;
 	public String tankType;
 	public boolean active;
+	public boolean eliminated;
 
 	/**
 	 * Create a new Player.
 	 * @param name The player's name
 	 */
 	public Player(String name){
-		GameController.getInstance().gameConditions.addPlayer(this);
 		this.name = name;
 		tankType = "default";
-		setTank(new DefaultTank(new Vector2f(0,-1), this));
 		active = true;
+		eliminated = false;
+		GameController.getInstance().gameConditions.addPlayer(this);
 		setLives(GameController.getInstance().gameConditions.getPlayerLives());
 		setRespawnTime(GameController.getInstance().gameConditions.getSpawnTime());
 	}
@@ -110,18 +111,22 @@ public class Player {
 	
 	public void tankDeath(){
 		tankDead = true;
-		spawnTank();
+		setLives(getLives() - 1);
+		if(getLives() > 0){
+			spawnTank();
+		}else{
+			eliminated = true;
+		}
 	}
 	
 	
 	public void spawnTank(){
-		if(getLives() > 0){
-			setLives(getLives() - 1);
-			this.respawnTimer = respawnTime;
-			GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
-		}else{
-			setActive(false);
+		if(tank != null){
+			tank.destroy();
+			tank = null;
 		}
+		GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
+		this.respawnTimer = respawnTime;
 	}
 
 	public boolean isActive() {
