@@ -21,7 +21,7 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 	}
 	
 	public void spawnTank(Player player) {
-		AbstractTank tank = TankFactory.getPowerUp(player);
+		AbstractTank tank = TankFactory.getTank(player);
 		player.setTank(tank);
 		tank.setPosition(getPosition());
 		tank.setDirection(new Vector2f(getRotation()));
