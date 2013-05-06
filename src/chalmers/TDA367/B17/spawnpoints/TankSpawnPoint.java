@@ -25,6 +25,7 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 		player.setTank(tank);
 		tank.setPosition(getPosition());
 		tank.setDirection(new Vector2f(getRotation()));
+		tank.lastDir = tank.getRotation();
 	}
 	
 	@Override
