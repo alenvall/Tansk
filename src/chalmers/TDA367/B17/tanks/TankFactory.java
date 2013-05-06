@@ -9,7 +9,7 @@ public class TankFactory {
 
 	private TankFactory() {}
 
-	public static AbstractTank getPowerUp(Player player){
+	public static AbstractTank getTank(Player player){
 		if(player.tankType.equals("default")){
 			return new DefaultTank(new Vector2f(0,-1), player);
 		}else{
