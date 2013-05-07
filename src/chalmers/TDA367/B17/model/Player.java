@@ -1,9 +1,6 @@
 package chalmers.TDA367.B17.model;
 
-import org.newdawn.slick.geom.Vector2f;
-
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.tanks.DefaultTank;
 
 public class Player {
 	private String name;
@@ -112,6 +109,7 @@ public class Player {
 	public void tankDeath(){
 		tankDead = true;
 		setLives(getLives() - 1);
+		setTank(null);
 		if(getLives() > 0){
 			spawnTank();
 		}else{
