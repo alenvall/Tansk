@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17;
+package chalmers.TDA367.B17.states;
 
 import org.newdawn.slick.*;
 

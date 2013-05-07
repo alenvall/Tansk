@@ -1,7 +1,7 @@
-package chalmers.TDA367.B17;
+package chalmers.TDA367.B17.states;
 
 import java.io.IOException;
-
+import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Input;
@@ -10,11 +10,13 @@ import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
+import chalmers.TDA367.B17.Game;
 import chalmers.TDA367.B17.network.GameServer;
 
 public class Host extends BasicGameState{
 	
 	private Rectangle startServer;
+	private boolean running = false;
 	private int state;
 	
 	public Host(int state) {
@@ -29,8 +31,16 @@ public class Host extends BasicGameState{
 	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
+		g.setColor(Color.white);
 		g.drawString("Start", 150, 140);
 		g.draw(startServer);
+		if(running){
+			g.setColor(Color.blue);
+			g.drawString("Running!", 120, 180);
+		} else {
+			g.setColor(Color.red);
+			g.drawString("Not running.", 120, 180);
+		}
 	}
 
 	@Override
@@ -43,7 +53,10 @@ public class Host extends BasicGameState{
 			if(input.isMousePressed(0)){
 				System.out.println("Starting server!");
 				try {
-	                new GameServer();
+	                GameServer server = new GameServer();
+	                running = true;
+					((Server) sbg.getState(Game.SERVER)).setServer(server);
+					sbg.enterState(Game.SERVER);
                 } catch (IOException e) {
 	                System.out.println("Failed to start server!");
 	                e.printStackTrace();

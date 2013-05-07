@@ -1,19 +1,25 @@
 package chalmers.TDA367.B17.network;
 
 import java.io.IOException;
+import java.util.ArrayList;
+
+import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.network.Common.*;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.minlog.Log;
 
 public class GameClient {
 	private Client client;
-
+	private ClientListener listener;
+	private ArrayList<Entity> entityList;
+	private boolean isEntityListUpdated = false;
+	
 	public GameClient(){
 //		Log.set(Log.LEVEL_DEBUG);
 		
 		client = new Client();
 		Common.register(client);
-		ClientListener listener = new ClientListener();
+		listener = new ClientListener(this);
 		listener.init(client);
 		client.addListener(listener);
 		
@@ -36,4 +42,35 @@ public class GameClient {
 		msgPacket.message = msg;
 		client.sendTCP(msgPacket);
 	}
+
+	public boolean isConnected() {
+		if(listener != null){
+			return listener.isConnected();
+		}
+		return false;
+    }
+
+	public void requestEntities() {
+	    Pck3_EntityListRequest packet = new Pck3_EntityListRequest();
+	    client.sendTCP(packet);	    
+    }
+
+	public void setEntityList(ArrayList<Entity> entityList) {
+	    this.entityList = entityList;
+		setEntityListUpdated(true);
+    }
+
+	public ArrayList<Entity> getEntityList() {
+	    setEntityListUpdated(false);
+		return this.entityList;
+    }
+
+	public boolean isEntityListUpdated() {
+	    return isEntityListUpdated;
+    }
+
+	public void setEntityListUpdated(boolean isEntityListUpdated) {
+	    this.isEntityListUpdated = isEntityListUpdated;
+    }
+	
 }

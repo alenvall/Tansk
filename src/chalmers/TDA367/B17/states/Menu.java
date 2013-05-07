@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17;
+package chalmers.TDA367.B17.states;
 
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
@@ -7,6 +7,8 @@ import org.newdawn.slick.SlickException;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
+
+import chalmers.TDA367.B17.Game;
 
 public class Menu extends BasicGameState{
 	

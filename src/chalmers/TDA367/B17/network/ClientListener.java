@@ -4,10 +4,18 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.minlog.Log;
+
+import chalmers.TDA367.B17.network.Common.Pck4_EntityList;
 import chalmers.TDA367.B17.network.Common.*;
 
 public class ClientListener extends Listener {
 	public Client client;
+	private boolean isConnected;
+	private GameClient owner;
+	
+	public ClientListener(GameClient owner){
+		this.owner = owner;
+	}
 	
 	public void init(Client client){
 		this.client = client;
@@ -33,6 +41,7 @@ public class ClientListener extends Listener {
 				Pck2_Message mpacket = new Pck2_Message();
 				mpacket.message = "Player connected!";
 				client.sendTCP(mpacket);
+				isConnected = true;
 			} else {
 				c.close();
 			}
@@ -42,5 +51,14 @@ public class ClientListener extends Listener {
 			String message = ((Pck2_Message) packet).message;
 			Log.info(message);
 		}
+		
+		if(packet instanceof Pck4_EntityList){
+			Log.info("[CLIENT] Received entity list.");
+			owner.setEntityList(((Pck4_EntityList) packet).entityList);
+		}
 	}
+
+	public boolean isConnected() {
+	    return isConnected;
+    }
 }

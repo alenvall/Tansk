@@ -1,9 +1,10 @@
-package chalmers.TDA367.B17;
+package chalmers.TDA367.B17.states;
 
 import org.newdawn.slick.*;
 import org.newdawn.slick.geom.*;
 import org.newdawn.slick.state.*;
 import chalmers.TDA367.B17.network.*;
+import chalmers.TDA367.B17.Game;
 
 public class Join extends BasicGameState{
 	
@@ -42,6 +43,8 @@ public class Join extends BasicGameState{
 				System.out.println("Attempting to join server!");
 				client = new GameClient();
 				client.Connect(600000, "127.0.0.1", Common.port, Common.port);
+				((Client) sbg.getState(Game.CLIENT)).setClient(client);
+				sbg.enterState(Game.CLIENT);
 			}
 		}
 		
