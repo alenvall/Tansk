@@ -42,11 +42,11 @@ public class PowerUpSpawnPoint extends AbstractSpawnPoint{
 	@Override
 	public void update(int delta){
 		if(spawnRate != 0){
-		spawnTimer -= delta;
-		if(spawnTimer <= 0 && isSpawnable()){
-			spawnTimer = spawnRate;
-			spawnEntity();
-		}
+			spawnTimer -= delta;
+			if(spawnTimer <= 0 && isSpawnable()){
+				spawnTimer = spawnRate;
+				spawnEntity();
+			}
 		}else if(isSpawnable()){
 			spawnEntity();
 		}
