@@ -24,7 +24,7 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 		AbstractTank tank = TankFactory.getTank(player);
 		player.setTank(tank);
 		tank.setPosition(getPosition());
-		tank.setDirection(getDirection());
+		tank.setDirection(new Vector2f(getRotation()));
 		tank.lastDir = tank.getDirection().getTheta();
 	}
 	
