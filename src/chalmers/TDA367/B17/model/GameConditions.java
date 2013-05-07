@@ -19,6 +19,10 @@ public class GameConditions {
 	
 	private boolean gameOver;
 	
+	//Used for delay between rounds
+	private int delayTimer;
+	private boolean delaying;
+	
 	private int eliminatedPlayerCount = 0;
 	
 	private Player winningPlayer;
@@ -50,6 +54,7 @@ public class GameConditions {
 		eliminatedPlayerCount = 0;
 		
 		for(Player p : players){
+			p.setRespawnTime(100);
 			p.eliminated = false;
 			p.setActive(true);
 			if(p.getTank() != null){
@@ -67,7 +72,16 @@ public class GameConditions {
 	}
 	
 	public void update(int delta){
-		if(!gameOver){
+		if(delaying){
+			delayTimer-=delta;
+			if(delayTimer <= 0){
+				//Start a new round when the delay is over
+				newRound();
+				delaying = false;
+			}
+		}
+		
+		if(!gameOver && !delaying){
 			gameTimer -= delta;
 			roundTimer -= delta;
 			
@@ -99,13 +113,9 @@ public class GameConditions {
 					gameOver = true;
 					gameOver();
 				}else{
-					//If the game isn't over, a new round begins
-					try {
-						Thread.sleep(5000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-					newRound();
+					//When the round is over, 
+					//start a timer for a delay between rounds
+					newRoundDelayTimer(5000);
 				}
 			}
 			
@@ -116,6 +126,19 @@ public class GameConditions {
 			}
 		}
 		
+	}
+	
+	public int getDelayTimer() {
+		return delayTimer;
+	}
+
+	public boolean isDelaying() {
+		return delaying;
+	}
+
+	public void newRoundDelayTimer(int time){
+		delaying = true;
+		delayTimer = time;
 	}
 	
 	public void gameOver(){
