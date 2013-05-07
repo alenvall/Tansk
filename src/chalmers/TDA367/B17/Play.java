@@ -91,9 +91,8 @@ public class Play extends BasicGameState{
 	//	obstacle = new Entity() {};
 	//	obstacle.setShape(new Rectangle(75, 250, 40, 40));
 		
-		for(Player p : players){
-			p.spawnTank();
-		}
+		//Start a new round
+		controller.gameConditions.newRoundDelayTimer(3000);
 	}
 	
 	@Override

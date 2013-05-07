@@ -23,7 +23,8 @@ public class GameConditions {
 	private int delayTimer;
 	private boolean delaying;
 	
-	private int eliminatedPlayerCount = 0;
+	//keeps track of the amount of eliminated players
+	private int eliminatedPlayerCount;
 	
 	private Player winningPlayer;
 	private Player roundWinner;
@@ -43,7 +44,7 @@ public class GameConditions {
 		this.gameTimer = gameTime;
 		this.roundTime = roundTime;
 		this.roundTimer = roundTime;
-		roundCounter = 1;
+		roundCounter = 0;
 	}
 	
 	public void newRound(){
@@ -66,21 +67,9 @@ public class GameConditions {
 		
 		setPlayerSpawnTime();
 		setPlayerLives();
-		
-		System.out.println("New round!");
-		//TODO Implement funcionality for starting a new round
 	}
 	
 	public void update(int delta){
-		if(delaying){
-			delayTimer-=delta;
-			if(delayTimer <= 0){
-				//Start a new round when the delay is over
-				newRound();
-				delaying = false;
-			}
-		}
-		
 		if(!gameOver && !delaying){
 			gameTimer -= delta;
 			roundTimer -= delta;
@@ -125,7 +114,15 @@ public class GameConditions {
 				
 			}
 		}
-		
+
+		if(delaying){
+			delayTimer-=delta;
+			if(delayTimer <= 0){
+				//Start a new round when the delay is over
+				newRound();
+				delaying = false;
+			}
+		}
 	}
 	
 	public int getDelayTimer() {
