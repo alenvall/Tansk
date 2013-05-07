@@ -11,7 +11,7 @@ public abstract class AbstractSpawnPoint extends Entity{
 	public AbstractSpawnPoint(Vector2f position) {
 		setPosition(position);
 		spawnable = false;
-		renderLayer = GameController.RenderLayer.BOTTOM;
+		renderLayer = GameController.RenderLayer.FIRST;
 	}
 	
 	public boolean isSpawnable(){

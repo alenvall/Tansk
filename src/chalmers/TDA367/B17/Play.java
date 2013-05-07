@@ -202,9 +202,10 @@ public class Play extends BasicGameState{
 		map.draw();
 		
 		// Render the entities in three layers, bottom, middle and top
-		ArrayList<Entity> bottomLayerEnts = new ArrayList<Entity>();
-		ArrayList<Entity> middleLayerEnts = new ArrayList<Entity>();
-		ArrayList<Entity> topLayerEnts = new ArrayList<Entity>();
+		ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
+		ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
+		ArrayList<Entity> thirdLayerEnts = new ArrayList<Entity>();
+		ArrayList<Entity> fourthLayerEnts = new ArrayList<Entity>();
 
 		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
 		while(iterator.hasNext()){
@@ -212,18 +213,21 @@ public class Play extends BasicGameState{
 			Entity entity = entry.getValue();
 			
 			if(!entity.getSpriteID().equals("")){
-				if(entity.getRenderLayer() == GameController.RenderLayer.BOTTOM)
-					bottomLayerEnts.add(entity);
-				else if(entity.getRenderLayer() == GameController.RenderLayer.MIDDLE)
-					middleLayerEnts.add(entity);
-				else if(entity.getRenderLayer() == GameController.RenderLayer.TOP)
-					topLayerEnts.add(entity);
+				if(entity.getRenderLayer() == GameController.RenderLayer.FIRST)
+					firstLayerEnts.add(entity);
+				else if(entity.getRenderLayer() == GameController.RenderLayer.SECOND)
+					secondLayerEnts.add(entity);
+				else if(entity.getRenderLayer() == GameController.RenderLayer.THIRD)
+					thirdLayerEnts.add(entity);
+				else if(entity.getRenderLayer() == GameController.RenderLayer.FOURTH)
+					fourthLayerEnts.add(entity);
 			}
 		}
 		
-		renderEntities(bottomLayerEnts);
-		renderEntities(middleLayerEnts);
-		renderEntities(topLayerEnts);
+		renderEntities(firstLayerEnts);
+		renderEntities(secondLayerEnts);
+		renderEntities(thirdLayerEnts);
+		renderEntities(fourthLayerEnts);
 		
 		if(controller.gameConditions.isGameOver()){
 			g.drawString("Game Over!", 500, 300);

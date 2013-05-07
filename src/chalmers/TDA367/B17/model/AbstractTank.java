@@ -32,7 +32,7 @@ public abstract class AbstractTank extends MovableEntity {
 		projectiles = new ArrayList<AbstractProjectile>();
 		currentPowerUp = null;
 		spriteID = "turret";
-		renderLayer = GameController.RenderLayer.MIDDLE;
+		renderLayer = GameController.RenderLayer.SECOND;
 
 		this.player = player;
 		

@@ -23,7 +23,7 @@ public abstract class Entity{
 		shape = new Point(-1, -1);
 		rotation = 0;
 		spriteID = "";
-		renderLayer = GameController.RenderLayer.TOP;
+		renderLayer = GameController.RenderLayer.FOURTH;
 	}
 	
 	public RenderLayer getRenderLayer(){

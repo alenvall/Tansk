@@ -40,7 +40,7 @@ public abstract class AbstractProjectile extends MovableEntity {
         }
 		this.tank = tank;
 		setShape(new Rectangle(position.x, position.y, 1,1));
-		renderLayer = GameController.RenderLayer.TOP;
+		renderLayer = GameController.RenderLayer.FOURTH;
 	}
 	
 	public AbstractTank getTank(){

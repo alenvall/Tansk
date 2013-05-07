@@ -26,7 +26,7 @@ public class GameController {
 	}
 	
 	public static enum RenderLayer{
-		TOP, MIDDLE, BOTTOM
+		FIRST, SECOND, THIRD, FOURTH
 	}
 	
 	public static GameController getInstance(){

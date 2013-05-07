@@ -23,7 +23,7 @@ public abstract class AbstractPowerUp extends Entity {
 		absTank = null;
 		Vector2f size = new Vector2f(60f, 25f);
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
-		renderLayer = GameController.RenderLayer.MIDDLE;
+		renderLayer = GameController.RenderLayer.THIRD;
 	}
 
 	/**
