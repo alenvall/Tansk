@@ -11,18 +11,24 @@ public class Game extends StateBasedGame {
 	public static final String NAME = "Tansk!";
 	public static final int MENU = 0;
 	public static final int PLAY = 1;
+	public static final int HOST = 2;
+	public static final int JOIN = 3;
 
 	public Game(String name) {
 		super(name);
-		this.addState(new Menu(MENU));
-		this.addState(new Play(PLAY));
 	}
 
 	@Override
 	public void initStatesList(GameContainer gc) throws SlickException {
+		this.addState(new Menu(MENU));
+		this.addState(new Play(PLAY));
+		this.addState(new Host(HOST));
+		this.addState(new Join(JOIN));
+		
 		this.getState(MENU).init(gc, this);
 		this.getState(PLAY).init(gc, this);
-		this.enterState(PLAY);
+		this.getState(HOST).init(gc, this);
+		this.getState(JOIN).init(gc, this);
 	}
 
 	public static void main(String[] args) throws SlickException {

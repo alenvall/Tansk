@@ -1,6 +1,7 @@
 package chalmers.TDA367.B17.network;
 
 import java.io.IOException;
+import chalmers.TDA367.B17.network.Common.*;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.minlog.Log;
 
@@ -8,7 +9,7 @@ public class GameClient {
 	private Client client;
 
 	public GameClient(){
-		Log.set(Log.LEVEL_DEBUG);
+//		Log.set(Log.LEVEL_DEBUG);
 		
 		client = new Client();
 		Common.register(client);
@@ -28,5 +29,11 @@ public class GameClient {
 	        e.printStackTrace();
 	        client.stop();
         }
+	}
+	
+	public void MessageToServer(String msg){
+		Pck2_Message msgPacket = new Pck2_Message();
+		msgPacket.message = msg;
+		client.sendTCP(msgPacket);
 	}
 }

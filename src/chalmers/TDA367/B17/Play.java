@@ -33,9 +33,11 @@ public class Play extends BasicGameState{
 	private Player playerTwo;
 	private Player playerThree;
 	private Player playerFour;
+
+	private int state;
 	
 	public Play(int state) {
-		
+		this.state = state;
 	}
 
 	@Override
@@ -276,7 +278,7 @@ public class Play extends BasicGameState{
 	
 	@Override
 	public int getID() {
-		return 1;
+		return this.state;
 	}
 	
 	public void debugRender(Graphics g){

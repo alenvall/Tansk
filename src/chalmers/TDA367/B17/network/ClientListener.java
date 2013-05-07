@@ -31,7 +31,7 @@ public class ClientListener extends Listener {
 			
 			if(answer){
 				Pck2_Message mpacket = new Pck2_Message();
-				mpacket.message = "Msg";
+				mpacket.message = "Player connected!";
 				client.sendTCP(mpacket);
 			} else {
 				c.close();
