@@ -229,6 +229,12 @@ public class Play extends BasicGameState{
 		renderEntities(thirdLayerEnts);
 		renderEntities(fourthLayerEnts);
 		
+		//Cool timer
+		if(controller.gameConditions.isDelaying()){
+			if(controller.gameConditions.getDelayTimer() > 0)
+				g.drawString("Round starts in: " + (controller.gameConditions.getDelayTimer()/1000 + 1) + "seconds!", 500, 400);
+		}
+		
 		if(controller.gameConditions.isGameOver()){
 			g.drawString("Game Over!", 500, 300);
 			g.drawString("Winner: " + controller.gameConditions.getWinningPlayer().getName(), 500, 400);
