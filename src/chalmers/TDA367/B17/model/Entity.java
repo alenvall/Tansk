@@ -38,6 +38,10 @@ public abstract class Entity{
 		return rotation;
 	}
 	
+	public void setRotation(double rotation){
+		this.rotation = rotation;
+	}
+	
 	/**
 	 * Get the position of this entity
 	 * @return A vector containing the position

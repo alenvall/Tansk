@@ -21,7 +21,7 @@ public abstract class AbstractTank extends MovableEntity {
 	public boolean fire = true;
 	protected int timeSinceLastShot;
 	public int lastDelta;
-	public double lastDir = 270;
+	public double lastDir;
 	private Player player;
 	
 	private Sound debugWallHit = null;
