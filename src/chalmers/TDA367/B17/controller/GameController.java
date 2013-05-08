@@ -15,8 +15,8 @@ public class GameController {
 	private World world;
 	private ImageHandler imgHandler;
 	
-	public GameConditions gameConditions;
-	
+	private GameConditions gameConditions;
+
 	private Point mouseCoordinates;
 
 	private GameController() {
@@ -60,5 +60,12 @@ public class GameController {
 	public void setMouseCoordinates(int x, int y){
 		mouseCoordinates.setLocation(x, y);
 	}
+	
+	public GameConditions getGameConditions() {
+		return gameConditions;
+	}
 
+	public void setGameConditions(GameConditions gameConditions) {
+		this.gameConditions = gameConditions;
+	}
 }

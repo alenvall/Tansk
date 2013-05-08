@@ -52,19 +52,12 @@ public class Play extends BasicGameState{
 		
 		playerTwo = new Player("Player Two");
 		players.add(playerTwo);
-		/*
-		playerTwo.getTank().setPosition(new Vector2f(800, 200));
-		playerTwo.getTank().setFriction(0);
-		playerTwo.getTank().setSpeed(0.25f);
-		*/
 		
 		playerThree = new Player("Player Three");
 		players.add(playerThree);
-		//playerThree.getTank().setPosition(new Vector2f(800, 500));
 		
 		playerFour = new Player("Player Four");
 		players.add(playerFour);
-		//playerFour.getTank().setPosition(new Vector2f(200, 500));
 		
 		map = new Image("data/map.png");
 		
@@ -81,7 +74,8 @@ public class Play extends BasicGameState{
 		new PowerUpSpawnPoint(new Vector2f(500, 100), 10000, "");
 		
 		//TankSpawnPoints
-		new TankSpawnPoint(new Vector2f(100, 100));
+		TankSpawnPoint tsp = new TankSpawnPoint(new Vector2f(100, 100));
+		tsp.setRotation(315);
 		new TankSpawnPoint(new Vector2f(900, 100));
 		new TankSpawnPoint(new Vector2f(100, 500));
 		new TankSpawnPoint(new Vector2f(900, 500));
@@ -92,7 +86,7 @@ public class Play extends BasicGameState{
 	//	obstacle.setShape(new Rectangle(75, 250, 40, 40));
 		
 		//Start a new round
-		controller.gameConditions.newRoundDelayTimer(3000);
+		controller.getGameConditions().newRoundDelayTimer(3000);
 	}
 	
 	@Override
@@ -179,8 +173,8 @@ public class Play extends BasicGameState{
 		//Update for tankspawner
 		controller.getWorld().getTankSpawner().update(delta);
 		
-		//Update for gameconditions
-		controller.gameConditions.update(delta);
+		//Update for getGameConditions()
+		controller.getGameConditions().update(delta);
 		
 		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
 		while(iterator.hasNext()){
@@ -229,17 +223,17 @@ public class Play extends BasicGameState{
 		renderEntities(fourthLayerEnts);
 		
 		//Cool timer
-		if(controller.gameConditions.isDelaying()){
-			if(controller.gameConditions.getDelayTimer() > 0)
+		if(controller.getGameConditions().isDelaying()){
+			if(controller.getGameConditions().getDelayTimer() > 0)
 				g.drawString("Round starts in: " + 
-			(controller.gameConditions.getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+			(controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
 		}
 		
-		if(controller.gameConditions.isGameOver()){
+		if(controller.getGameConditions().isGameOver()){
 			g.drawString("Game Over!", 500, 300);
-			g.drawString("Winner: " + controller.gameConditions.getWinningPlayer().getName(), 500, 400);
+			g.drawString("Winner: " + controller.getGameConditions().getWinningPlayer().getName(), 500, 400);
 			int i = 0;
-			for(Player p : controller.gameConditions.getPlayers()){
+			for(Player p : controller.getGameConditions().getPlayers()){
 				i++;
 				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
 			}

@@ -24,9 +24,9 @@ public class Player {
 		tankType = "default";
 		active = true;
 		eliminated = false;
-		GameController.getInstance().gameConditions.addPlayer(this);
-		setLives(GameController.getInstance().gameConditions.getPlayerLives());
-		setRespawnTime(GameController.getInstance().gameConditions.getSpawnTime());
+		GameController.getInstance().getGameConditions().addPlayer(this);
+		setLives(GameController.getInstance().getGameConditions().getPlayerLives());
+		setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
 	}
 
 	/**
