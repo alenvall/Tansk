@@ -13,8 +13,7 @@ public abstract class Entity{
 	protected RenderLayer renderLayer;
 
 	/**
-	 * 
-	 * 
+	 * Create a new Entity.
 	 */
 	public Entity(){
 		this.id = GameController.getInstance().getWorld().generateID();
@@ -30,14 +29,26 @@ public abstract class Entity{
 		return renderLayer;
 	}
 	
+	/**
+	 * Returns true of the object is active.
+	 * @return True if active
+	 */
 	public boolean isActive(){
 		return active;
 	}
 	
+	/**
+	 * Return the rotation of this entity.
+	 * @return The rotation
+	 */
 	public double getRotation(){
 		return rotation;
 	}
 	
+	/**
+	 * Set the rotation of this entity
+	 * @param rotation The new rotation
+	 */
 	public void setRotation(double rotation){
 		this.rotation = rotation;
 	}
@@ -101,7 +112,11 @@ public abstract class Entity{
 	public void setShape(Shape shape) {
 		this.shape = shape;
 	}
-
+	
+	/**
+	 * Used for updating the the entity.
+	 * @param delta The time that has passed since the last update
+	 */
 	public void update(int delta){
 		
 	}
@@ -125,6 +140,10 @@ public abstract class Entity{
 		GameController.getInstance().getWorld().removeEntity(this);
 	}
 	
+	/**
+	 * Return the spriteID of this object.
+	 * @return The spriteID
+	 */
 	public String getSpriteID(){
 		return spriteID;
 	}
