@@ -98,12 +98,13 @@ public class GameConditions {
 				
 				//Check if it's the last round
 				if(roundCounter >= rounds){
-					//The game is over.
+					//The game is over if the current round exceeds 
+					//the total amount of rounds.
 					gameOver = true;
 					gameOver();
 				}else{
-					//When the round is over, 
-					//start a timer for a delay between rounds
+					//When the round is over, start a
+					//timer with a fixed delay between rounds
 					newRoundDelayTimer(5000);
 				}
 			}
