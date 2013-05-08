@@ -5,7 +5,9 @@ import java.util.List;
 
 public class GameConditions {
 	
+	//The amount of score it will take for a player to win.
 	private int scoreLimit;
+	
 	private int rounds;
 	private int playerLives;
 	//The time it takes for tanks to spawn (in milliseconds)
@@ -17,6 +19,7 @@ public class GameConditions {
 	//How long each game should last
 	private int gameTimer;
 	
+	//Determines of the game is over.
 	private boolean gameOver;
 	
 	//Used for delay between rounds
@@ -26,16 +29,31 @@ public class GameConditions {
 	//keeps track of the amount of eliminated players
 	private int eliminatedPlayerCount;
 	
+	//The winner of the game.
 	private Player winningPlayer;
+	//The winner of the latest round.
 	private Player roundWinner;
 	
+	//A list of all the players.
 	private List<Player> players;
 
+	/**
+	 * Create a new GameConditions object.
+	 */
 	public GameConditions() {
 		players = new ArrayList<Player>();
 		gameOver = false;
 	}
 	
+	/**
+	 * Initiates the object's variables.
+	 * @param scoreLimit The score-limit of the game.
+	 * @param rounds The number of rounds that will be played.
+	 * @param playerLives The number of lives each player has.
+	 * @param spawnTime The spawn-time of the tanks.
+	 * @param roundTime The time of each round.
+	 * @param gameTime The maximum time the game will continue on for.
+	 */
 	public void init(int scoreLimit, int rounds, int playerLives, int spawnTime, int roundTime, int gameTime){
 		this.scoreLimit = scoreLimit;
 		this.rounds = rounds;
@@ -47,6 +65,10 @@ public class GameConditions {
 		roundCounter = 0;
 	}
 	
+	/**
+	 * Start a new round, reseting player lives and spawn new tanks.
+	 * Also increases the roundCounter and resets the roundTimer.
+	 */
 	public void newRound(){
 		roundWinner = null;
 		roundCounter += 1;
@@ -110,9 +132,11 @@ public class GameConditions {
 			}
 			
 			//Winning by score
-			//TODO How score should be awarded
-			if(true){
-				
+			for(Player p: players){
+				if(p.getScore() >= scoreLimit){
+					gameOver = true;
+					winningPlayer = p;
+				}
 			}
 		}
 
@@ -126,19 +150,34 @@ public class GameConditions {
 		}
 	}
 	
+	/**
+	 * Get the timer of the delay.
+	 * @return The delay timer
+	 */
 	public int getDelayTimer() {
 		return delayTimer;
 	}
 
+	/**
+	 * Get the timer of the delay.
+	 * @return The delay timer
+	 */
 	public boolean isDelaying() {
 		return delaying;
 	}
 
+	/**
+	 * Start a new delaytimer.
+	 * @param Time of the new delay
+	 */
 	public void newRoundDelayTimer(int time){
 		delaying = true;
 		delayTimer = time;
 	}
 	
+	/**
+	 * Determines the winning player.
+	 */
 	public void gameOver(){
 		if(gameOver){
 			//Checking who's got the highest score
@@ -151,6 +190,10 @@ public class GameConditions {
 		}
 	}
 	
+	/**
+	 * Returns the player with the highest score.
+	 * return Player with the highest score
+	 */
 	public Player getHigestScoringPlayer(){
 		Player player = players.get(0);
 		for(int i = 0; i < players.size(); i++){
@@ -162,6 +205,9 @@ public class GameConditions {
 		return player;
 	}
 	
+	/**
+	 * Increments every player's score.
+	 */
 	public void incrementPlayerScores(){
 		for(Player p : players){
 			if(p.isActive())
@@ -169,74 +215,141 @@ public class GameConditions {
 		}
 	}
 	
+	/**
+	 * Set the spawn time of every player to the preset spawn-time.
+	 */
 	public void setPlayerSpawnTime(){
 		for(Player p : players){
 			p.setRespawnTime(this.spawnTime);
 		}
 	}
 	
+	/**
+	 * Set the lives of every player to the preset lives.
+	 */
 	public void setPlayerLives(){
 		for(int i = 0; i < players.size(); i++){
 			players.get(i).setLives(this.playerLives);
 		}
 	}
 
+	/**
+	 * Return the score of a player at an index.
+	 * @param index The index of the player.
+	 * @return The score of the player at index.
+	 */
 	public int getPlayerScoreAtIndex(int index){
 		return players.get(index).getScore();
 	}
 	
+	/**
+	 * Add a player to the playerList.
+	 * @param player The player you want to add
+	 */
 	public void addPlayer(Player player){
 		players.add(player);
 	}
 
+	/**
+	 * Return the score-limit.
+	 * @return The score-limit
+	 */
 	public int getScoreLimit() {
 		return scoreLimit;
 	}
 
+	/**
+	 * Set the score-limit.
+	 * @param scoreLimit The new score-limit
+	 */
 	public void setScoreLimit(int scoreLimit) {
 		this.scoreLimit = scoreLimit;
 	}
-
+	
+	/**
+	 * Return the number of the current round.
+	 * @return The number of the current round
+	 */
 	public int getRoundCounter() {
 		return roundCounter;
 	}
 
+	/**
+	 * Set the round-counter to a number.
+	 * @param roundCounter The new number of the round
+	 */
 	public void setRoundCounter(int roundCounter) {
 		this.roundCounter = roundCounter;
 	}
 
+	/**
+	 * Checks if the game is over.
+	 * @return True if the game is over
+	 */
 	public boolean isGameOver() {
 		return gameOver;
 	}
-
+	
+	/**
+	 * Set the state of gameOver.
+	 * @param gameOver What gameOver should be set to (true/false)
+	 */
 	public void setGameOver(boolean gameOver) {
 		this.gameOver = gameOver;
 	}
 
+	/**
+	 * Return the winner of the latest round.
+	 * @return The winner of the latest round
+	 */
 	public Player getRoundWinner() {
 		return roundWinner;
 	}
 
+	/**
+	 * Set the winner of the round.
+	 * @param roundWinner The winner of the latest round
+	 */
 	public void setRoundWinner(Player roundWinner) {
 		this.roundWinner = roundWinner;
 	}
 
+	/**
+	 * The number of rounds that will be played.
+	 * @return The number of round that will be played
+	 */
 	public int getRounds() {
 		return rounds;
 	}
 
+	/**
+	 * Return the default lives of each player at the start of each round.
+	 * @return The default lives of each player
+	 */
 	public int getPlayerLives() {
 		return playerLives;
 	}
 
+	/**
+	 * Return the spawn-time of every player.
+	 * @return The spawn of every player
+	 */
 	public int getSpawnTime() {
 		return spawnTime;
 	}
 
+	/**
+	 * Return the winning player.
+	 * @return The winning player
+	 */
 	public Player getWinningPlayer() {
 		return winningPlayer;
 	}
 
+	/**
+	 * Return a list of all the players.
+	 * @return A list of all the players
+	 */
 	public List<Player> getPlayers() {
 		return players;
 	}
