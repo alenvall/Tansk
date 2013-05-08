@@ -48,9 +48,11 @@ public class TankSpawner{
 	}
 	
 	public void getTankSpawnPoint(Player player){
-		for(TankSpawnPoint tsp : tankSpawnPoints){
-			if(tsp.isSpawnable()){
-				tsp.spawnTank(player);
+		while(true){
+			int index = (int)(Math.random()*4);
+			TankSpawnPoint tmp = tankSpawnPoints.get(index);
+			if(tmp.isSpawnable()){
+				tmp.spawnTank(player);
 				break;
 			}
 		}
