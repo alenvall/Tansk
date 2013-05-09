@@ -61,22 +61,42 @@ public class Player {
 		return score;
 	}
 	
+	/**
+	 * Return the lives of this player.
+	 * @return The lives of this player
+	 */
 	public int getLives() {
 		return lives;
 	}
 
+	/**
+	 * Set the lives of this player.
+	 * @param lives Next value of lives
+	 */
 	public void setLives(int lives) {
 		this.lives = lives;
 	}
 
+	/**
+	 * Return the respawn-timer.
+	 * @return The respawn-timer.
+	 */
 	public int getRespawnTimer() {
 		return respawnTimer;
 	}
 
+	/**
+	 * Set the respawn-timer.
+	 * @param respawnTimer The new respawn-timer.
+	 */
 	public void setRespawnTimer(int respawnTimer) {
 		this.respawnTimer = respawnTimer;
 	}
 
+	/**
+	 * Set the new tank.
+	 * @param tank The new tank
+	 */
 	public void setTank(AbstractTank tank) {
 		this.tank = tank;
 	}
@@ -105,7 +125,9 @@ public class Player {
 		this.score = score;
 	}
 	
-	
+	/**
+	 * Runs when the tank dies. Decreases lives and call for spawntank.
+	 */
 	public void tankDeath(){
 		tankDead = true;
 		setLives(getLives() - 1);
@@ -117,7 +139,9 @@ public class Player {
 		}
 	}
 	
-	
+	/**
+	 * Starts a new respawn-timer and adds it to the TankSpawner to respawn.
+	 */
 	public void spawnTank(){
 		if(tank != null){
 			tank.destroy();
@@ -127,18 +151,34 @@ public class Player {
 		this.respawnTimer = respawnTime;
 	}
 
+	/**
+	 * Checks if the player is active.
+	 * @return True if active
+	 */
 	public boolean isActive() {
 		return active;
 	}
 
+	/**
+	 * Set active to true or false.
+	 * @param active The new state
+	 */
 	public void setActive(boolean active) {
 		this.active = active;
 	}
 
+	/**
+	 * Return the spawn-time.
+	 * @return The spawn-time
+	 */
 	public int getRespawnTime() {
 		return respawnTime;
 	}
 
+	/**
+	 * Set the respawn-time of this player.
+	 * @param respawnTime The new respawn-time.
+	 */
 	public void setRespawnTime(int respawnTime) {
 		this.respawnTime = respawnTime;
 	}

@@ -8,7 +8,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class World {
 	
+	//A map holding all entities with an ID
 	private Map<Integer, Entity> entities;
+	//The size of the map (world)
 	private Dimension size;
 	
 	private TankSpawner tankSpawner;

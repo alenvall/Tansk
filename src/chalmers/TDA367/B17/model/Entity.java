@@ -114,7 +114,7 @@ public abstract class Entity{
 	}
 	
 	/**
-	 * Used for updating the the entity.
+	 * Used for updating this entity.
 	 * @param delta The time that has passed since the last update
 	 */
 	public void update(int delta){

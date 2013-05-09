@@ -11,7 +11,9 @@ import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 
 public class TankSpawner{
 	
+	//A list of all the TankSpawnPoints
 	private List<TankSpawnPoint> tankSpawnPoints;
+	//A list of all the players that wish to spawn.
 	private List<Player> playerList;
 	
 	public TankSpawner(){
@@ -19,6 +21,10 @@ public class TankSpawner{
 		playerList = new ArrayList<Player>();
 	}
 	
+	/**
+	 * Used for updating the TankSpawner object.
+	 * @param delta The time that has passed since the last update
+	 */
 	public void update(int delta){
 		for(int i = 0; i < playerList.size(); i++){
 			Player p = playerList.get(i);
@@ -33,21 +39,33 @@ public class TankSpawner{
 					if(entity instanceof TankSpawnPoint)
 						controller.getWorld().checkCollisionsFor(entity);
 				}
-				getTankSpawnPoint(p);
+				newTankRandSpawnPoint(p);
 				playerList.remove(i);
 			}
 		}
 	}
 	
+	/**
+	 * Add a TankSpawnPoint to the tankSpawnPoints list.
+	 * @param tankSpawnPoint The TankSpawnPoint to add
+	 */
 	public void addTankSpawnPoint(TankSpawnPoint tankSpawnPoint){
 		tankSpawnPoints.add(tankSpawnPoint);
 	}
 	
+	/**
+	 * Add a Player to the player list.
+	 * @param player The player to add
+	 */
 	public void addPlayer(Player player){
 		playerList.add(player);
 	}
 	
-	public void getTankSpawnPoint(Player player){
+	/**
+	 * Spawn a new tank at a random available spawnpoint.
+	 * @param player The player to spawn for
+	 */
+	public void newTankRandSpawnPoint(Player player){
 		if(!(GameController.getInstance().getGameConditions().getPlayers().size() > tankSpawnPoints.size())){
 			while(true){
 				int index = (int)(Math.random()*(GameController.getInstance().getGameConditions().getPlayers().size()));

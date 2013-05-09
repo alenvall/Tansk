@@ -7,8 +7,9 @@ public class GameConditions {
 	
 	//The amount of score it will take for a player to win.
 	private int scoreLimit;
-	
+	//The amount of rounds that will be played.
 	private int rounds;
+	//The lives of each player.
 	private int playerLives;
 	//The time it takes for tanks to spawn (in milliseconds)
 	private int spawnTime;

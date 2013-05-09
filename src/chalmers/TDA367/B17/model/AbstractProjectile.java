@@ -90,22 +90,39 @@ public abstract class AbstractProjectile extends MovableEntity {
 		super.update(delta);
 	}
 	
+	/**
+	 * Return the rotation of the projectile.
+	 * @return The rotation
+	 */
 	public double getRotation(){
 		return direction.getTheta() + 90;
 	}
 	
+	/**
+	 * Return the duration-timer of this projectile.
+	 * @return The duration-timer
+	 */
 	public int getDurationTimer() {
 		return durationTimer;
 	}
 
+	/**
+	 * Set the duration timer to a new one.
+	 * @param durationTimer The new duration-timer
+	 */
 	public void setDurationTimer(int durationTimer) {
 		this.durationTimer = durationTimer;
 	}
 
+	/**
+	 * Set the tank of this projectile.
+	 * @param tank The tank
+	 */
 	public void setTank(AbstractTank tank) {
 		this.tank = tank;
 	}
 	
+	@Override
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractProjectile || entity == getTank()){
 			return;
@@ -124,6 +141,10 @@ public abstract class AbstractProjectile extends MovableEntity {
 		getTank().getProjectiles().remove(this);
 	}
 	
+	/**
+	 * Deal damage to a target tank.
+	 * @param target The target tank
+	 */
 	public void damageTarget(AbstractTank target){
 		target.recieveDamage(this);
 		debugWallHit.play();
