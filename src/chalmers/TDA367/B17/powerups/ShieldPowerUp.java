@@ -41,4 +41,7 @@ public class ShieldPowerUp extends AbstractPowerUp {
 		}
 	}
 
+	public Shield getShield(){
+		return shield;
+	}
 }

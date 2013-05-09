@@ -8,6 +8,7 @@ import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.Player;
+import chalmers.TDA367.B17.powerups.ShieldPowerUp;
 import chalmers.TDA367.B17.tanks.TankFactory;
 
 public class TankSpawnPoint extends AbstractSpawnPoint {
@@ -26,6 +27,10 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 		tank.setPosition(getPosition());
 		tank.setDirection(new Vector2f(getRotation()+90));
 		tank.setLastDir(tank.getDirection().getTheta());
+		ShieldPowerUp tmp = new ShieldPowerUp(new Vector2f(0,0));
+		tmp.getShield().setHealth(9999);
+		tmp.setDuration(3000);
+		tmp.activate(tank);
 	}
 	
 	@Override
