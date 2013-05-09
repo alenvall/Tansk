@@ -60,6 +60,7 @@ public abstract class AbstractPowerUp extends Entity {
 		this.duration = duration;
 	}
 	
+	@Override
 	public void update(int delta) {
 		if(duration != 0){
 			duration -= delta;
@@ -81,6 +82,11 @@ public abstract class AbstractPowerUp extends Entity {
 		}
 	}
 	
+	/**
+	 * Run to activate the powerup for a specific tank. The powerup will no
+	 * longer be rendered. 
+	 * @param absTank The tank that will receive the effect
+	 */
 	public void activate(AbstractTank absTank){
 		this.absTank = absTank;
 		absTank.setCurrentPowerUp(this);
@@ -90,6 +96,10 @@ public abstract class AbstractPowerUp extends Entity {
 		spriteID = "";
 	}
 	
+	/**
+	 * Run to deactivate the powerup. The powerup will be removed from the 
+	 * tank and the effect will wear off.
+	 */
 	public void deactivate(){
 		if(absTank == null || !absTank.isActive())
 			return;
@@ -101,12 +111,22 @@ public abstract class AbstractPowerUp extends Entity {
 		absTank.setCurrentPowerUp(null);
 	}
 	
+	/**
+	 * Runs at the activation of the powerup.
+	 */
 	public abstract void effect();
 
+	/**
+	 * Runs at the deactivation of the powerup.
+	 */
 	public abstract void endEffect();
 
+	/**
+	 * Runs every update, includes what will happen during the effect.
+	 */
 	public abstract void updateEffect();
 	
+	@Override
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractTank && effectActive == false){
 			activate((AbstractTank)entity);
