@@ -15,16 +15,14 @@ public abstract class AbstractTank extends MovableEntity {
 	private double health;
 	private AbstractPowerUp currentPowerUp;
 	private float turnSpeed; // How many degrees the tank will turn each update
-	protected AbstractTurret turret;
-	protected float turretOffset;
+	private AbstractTurret turret;
+	private float turretOffset;
 	private List<AbstractProjectile> projectiles;
-	public boolean fire = true;
-	protected int timeSinceLastShot;
-	public int lastDelta;
-	public double lastDir;
+	//Used to determine if the turret can fire or not
+	private boolean fire;
+	private int timeSinceLastShot;
+	private double lastDir;
 	private Player player;
-	
-	private Sound debugWallHit = null;
 	
 	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed, Player player) {
 		super(velocity, maxSpeed, minSpeed);
@@ -33,15 +31,9 @@ public abstract class AbstractTank extends MovableEntity {
 		currentPowerUp = null;
 		spriteID = "turret";
 		renderLayer = GameController.RenderLayer.SECOND;
-
-		this.player = player;
 		
-		try {
-			debugWallHit = new Sound("data/wall.wav");
-        } catch (SlickException e) {
-	        // TODO Auto-generated catch block
-	        e.printStackTrace();
-        }
+		fire = true;
+		this.player = player;
 	}
 	
 	public double getRotation(){
@@ -92,7 +84,8 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 
 	public void setTurret(AbstractTurret turret) {
-		getTurret().destroy();
+		if(getTurret() != null)
+			getTurret().destroy();
 		this.turret = turret;
 	}
 
@@ -119,7 +112,6 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 	
 	public void update(int delta){
-		lastDelta = delta;
 		super.update(delta);
 		timeSinceLastShot -= delta;
 	}
@@ -135,17 +127,13 @@ public abstract class AbstractTank extends MovableEntity {
 	@Override
 	public void didCollideWith(Entity entity){
 		if(entity instanceof MapBounds || entity instanceof AbstractTank || entity instanceof AbstractObstacle){
-			/*if(entity instanceof AbstractTank){
+			if(entity instanceof AbstractTank){
+				/*
 				if(Math.abs(((AbstractTank)entity).getSpeed()) > Math.abs(getSpeed())){
 					setSpeed(-getSpeed());
-				}else if(Math.abs(((AbstractTank)entity).getSpeed()) < Math.abs(getSpeed())){
-					((AbstractTank)entity).setSpeed(-((AbstractTank)entity).getSpeed());
-				}else{
-					((AbstractTank)entity).setSpeed(-((AbstractTank)entity).getSpeed());
-					setSpeed(-getSpeed());
-				}
-			}*/
-			if(lastPos != getPosition()){
+				}*/
+			}
+			if(!lastPos.equals(getPosition())){
 				setPosition(lastPos);
 				setSpeed(-getSpeed());
 			}
@@ -172,9 +160,23 @@ public abstract class AbstractTank extends MovableEntity {
 	@Override
 	public void destroy(){
 		super.destroy();
+		if(getCurrentPowerUp() != null)
+			getCurrentPowerUp().deactivate();
 		fire = false;
 		active = false;
 		getTurret().destroy();
+	}
+
+	public double getLastDir() {
+		return lastDir;
+	}
+
+	public void setLastDir(double lastDir) {
+		this.lastDir = lastDir;
+	}
+
+	public void setTurretOffset(float turretOffset) {
+		this.turretOffset = turretOffset;
 	}
 }
 

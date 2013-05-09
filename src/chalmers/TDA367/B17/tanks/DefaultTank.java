@@ -16,8 +16,8 @@ public class DefaultTank extends AbstractTank {
 	public DefaultTank(Vector2f direction, Player player) {
 		super(direction, (float)DEFAULT_MAXSPEED, (float)DEFAULT_MINSPEED, player);
 		setShape(new Rectangle(100, 150, 65, 85));
-		turretOffset = 6;
-		turret = new DefaultTurret(this);
+		setTurretOffset(6);
+		setTurret(new DefaultTurret(this));
 		spriteID = "tank";
 		setHealth(100);
 	}
