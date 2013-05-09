@@ -7,7 +7,8 @@ import chalmers.TDA367.B17.model.*;
 public class SpeedPowerUp extends AbstractPowerUp {
 	
 	private final int MULTIPLIER = 2;
-	private float tmpSpeed;
+	private float tmpMaxSpeed;
+	private float tmpMinSpeed;
 
 	public SpeedPowerUp(Vector2f position) {
 		super(position);
@@ -17,13 +18,16 @@ public class SpeedPowerUp extends AbstractPowerUp {
 
 	@Override
 	public void effect() {
-		tmpSpeed = absTank.getMaxSpeed();
+		tmpMaxSpeed = absTank.getMaxSpeed();
+		tmpMinSpeed = absTank.getMinSpeed();
 		absTank.setMaxSpeed(absTank.getMaxSpeed()*MULTIPLIER);
+		absTank.setMinSpeed(absTank.getMinSpeed()*MULTIPLIER);
 	}
 
 	@Override
 	public void endEffect() {
-		absTank.setMaxSpeed(tmpSpeed);
+		absTank.setMaxSpeed(tmpMaxSpeed);
+		absTank.setMinSpeed(tmpMinSpeed);
 	}
 
 	@Override
