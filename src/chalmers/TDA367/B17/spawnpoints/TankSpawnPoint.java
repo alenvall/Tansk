@@ -37,9 +37,9 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 		tank.setDirection(new Vector2f(getRotation()+90));
 		tank.setLastDir(tank.getDirection().getTheta());
 		
-		// Adds a shield for protection during the first 3 seconds.
+		// Adds a shield for protection that lasts 3 seconds.
 		ShieldPowerUp tmp = new ShieldPowerUp(new Vector2f(0,0));
-		tmp.setDuration(3000);
+		tmp.setEffectDuration(3000);
 		tmp.activate(tank);
 		tmp.getShield().setHealth(9999);
 	}

@@ -60,6 +60,22 @@ public abstract class AbstractPowerUp extends Entity {
 		this.duration = duration;
 	}
 	
+	/**
+	 * Get the remaining time the effect is active.
+	 * @return The remaining time on the effect
+	 */
+	public int getEffectDuration() {
+		return effectDuration;
+	}
+
+	/**
+	 * Set the time the effect should last for.
+	 * @param effectDuration The time in milliseconds the effect should last for
+	 */
+	public void setEffectDuration(int effectDuration) {
+		this.effectDuration = effectDuration;
+	}
+
 	@Override
 	public void update(int delta) {
 		if(duration != 0){
