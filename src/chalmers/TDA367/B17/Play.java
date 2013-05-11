@@ -76,9 +76,12 @@ public class Play extends BasicGameState{
 		//TankSpawnPoints
 		TankSpawnPoint tsp = new TankSpawnPoint(new Vector2f(100, 100));
 		tsp.setRotation(315);
-		new TankSpawnPoint(new Vector2f(900, 100));
-		new TankSpawnPoint(new Vector2f(100, 500));
-		new TankSpawnPoint(new Vector2f(900, 500));
+		tsp = new TankSpawnPoint(new Vector2f(900, 100));
+		tsp.setRotation(45);
+		tsp = new TankSpawnPoint(new Vector2f(100, 650));
+		tsp.setRotation(225);
+		tsp = new TankSpawnPoint(new Vector2f(900, 650));
+		tsp.setRotation(135);
 
 	//	turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
 
