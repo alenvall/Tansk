@@ -71,7 +71,8 @@ public class Play extends BasicGameState{
 		//PowerUpSpawnPoints
 		new PowerUpSpawnPoint(new Vector2f(250, 100), 10000, "shield");
 		new PowerUpSpawnPoint(new Vector2f(250, 500), 10000, "speed");
-		new PowerUpSpawnPoint(new Vector2f(500, 100), 10000, "");
+		new PowerUpSpawnPoint(new Vector2f(500, 100), 10000, "damage");
+		new PowerUpSpawnPoint(new Vector2f(500, 250), 10000, "firerate");
 		
 		//TankSpawnPoints
 		TankSpawnPoint tsp = new TankSpawnPoint(new Vector2f(100, 100));
