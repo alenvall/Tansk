@@ -134,8 +134,7 @@ public class Play extends BasicGameState{
 		}
 		
 		if(input.isKeyDown(Input.KEY_Q)){
-			//turretSprite = new SpriteSheet("data/quaketurr.png", 45, 65);
-			//turretSprite.setCenterOfRotation(22.5f, 22.5f);
+			playerOne.getTank().setSpriteID("tank_red");
 		}
 		
 		//Go back to the menu
