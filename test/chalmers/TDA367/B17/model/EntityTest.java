@@ -34,5 +34,18 @@ public class EntityTest {
 		assertTrue(entity.getPosition().x == 12 && 
 				entity.getPosition().y == 34);
 	}
-
+	
+	@Test
+	public void testIsActive(){
+		Entity entity = new EntityMock();
+		entity.active = false;
+		assertTrue(!entity.isActive());
+	}
+	
+	@Test
+	public void testSetRotation(){
+		Entity entity = new EntityMock();
+		entity.setRotation(180);
+		assertTrue((entity.getRotation())==(180.0));
+	}
 }
