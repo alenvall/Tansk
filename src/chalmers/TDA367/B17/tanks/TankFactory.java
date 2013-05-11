@@ -10,7 +10,7 @@ public class TankFactory {
 	private TankFactory() {}
 
 	public static AbstractTank getTank(Player player){
-		if(player.tankType.equals("default")){
+		if(player.getTankType().equals("default")){
 			return new DefaultTank(new Vector2f(0,-1), player);
 		}else{
 			return new DefaultTank(new Vector2f(0,-1), player);

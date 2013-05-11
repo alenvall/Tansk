@@ -105,10 +105,18 @@ public abstract class Entity{
 			this.shape = this.shape.transform(Transform.createTranslateTransform(position.getX() - getPosition().getX(), position.getY() - getPosition().getY()));
 	}
 
+	/**
+	 * Get the shape of this entity.
+	 * @return The shape
+	 */
 	public Shape getShape() {
 		return shape;
 	}
 
+	/**
+	 * Set the shape of this entity.
+	 * @param shape The new shape
+	 */
 	public void setShape(Shape shape) {
 		this.shape = shape;
 	}
@@ -136,15 +144,26 @@ public abstract class Entity{
 	 */
 	public void didCollideWith(Entity entity){}
 
+	/**
+	 * Remove this entity from the World.
+	 */
 	public void destroy(){
 		GameController.getInstance().getWorld().removeEntity(this);
 	}
 	
 	/**
-	 * Return the spriteID of this object.
+	 * Return the spriteID of this entity.
 	 * @return The spriteID
 	 */
 	public String getSpriteID(){
 		return spriteID;
+	}
+
+	/**
+	 * Set the spriteID of this entity.
+	 * @param spriteID The new spriteID
+	 */
+	public void setSpriteID(String spriteID) {
+		this.spriteID = spriteID;
 	}
 }

@@ -10,10 +10,9 @@ public class Player {
 	private int lives;
 	private int respawnTimer;
 	private int respawnTime;
-	public boolean tankDead;
-	public String tankType;
-	public boolean active;
-	public boolean eliminated;
+	private String tankType;
+	private boolean active;
+	private boolean eliminated;
 
 	/**
 	 * Create a new Player.
@@ -129,7 +128,6 @@ public class Player {
 	 * Runs when the tank dies. Decreases lives and call for spawntank.
 	 */
 	public void tankDeath(){
-		tankDead = true;
 		setLives(getLives() - 1);
 		setTank(null);
 		if(getLives() > 0){
@@ -181,5 +179,29 @@ public class Player {
 	 */
 	public void setRespawnTime(int respawnTime) {
 		this.respawnTime = respawnTime;
+	}
+
+	/**
+	 * Check if this player has been eliminated.
+	 * @return True if the tank have zero lives
+	 */
+	public boolean isEliminated() {
+		return eliminated;
+	}
+
+	/**
+	 * Set this player to be eliminated.
+	 * @param eliminated The new state of eliminated
+	 */
+	public void setEliminated(boolean eliminated) {
+		this.eliminated = eliminated;
+	}
+
+	/**
+	 * Get the tank-type of this player.
+	 * @return The tank-type
+	 */
+	public String getTankType() {
+		return tankType;
 	}
 }

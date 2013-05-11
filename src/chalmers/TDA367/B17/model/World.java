@@ -17,12 +17,19 @@ public class World {
 	
 	private int latestID;
 	
+	/**
+	 * Create a new World.
+	 * @param size The size of the world
+	 */
 	public World(Dimension size) {
 		this.size = size;
 		this.entities = new ConcurrentHashMap<Integer, Entity>();
 		this.tankSpawner = new TankSpawner();
 	}
 
+	/**
+	 * Initiate the world, giving it a MapBounds for border collision.
+	 */
 	public void init(){
 		new MapBounds(getSize());
 	}
@@ -61,33 +68,54 @@ public class World {
 		return entities;
 	}
 
-	public void checkCollisionsFor(Entity movableEntity){
+	/**
+	 * Checks for collision between all entities that the world contains. Calls
+	 * the objects respective "didCollideWith"-methods if any entities intersects.
+	 * @param paramEntity The entity to check collision for
+	 */
+	public void checkCollisionsFor(Entity paramEntity){
 		Iterator<Entry<Integer, Entity>> iterator = entities.entrySet().iterator();
 		while(iterator.hasNext()){
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
 			Entity entity = entry.getValue();
 
-			if(entity!=movableEntity && entity.getShape().intersects(movableEntity.getShape())){
-				movableEntity.didCollideWith(entity);
+			if(entity!=paramEntity && entity.getShape().intersects(paramEntity.getShape())){
+				paramEntity.didCollideWith(entity);
 				// prevent double method calls
 				if(!(entity instanceof MovableEntity))
-					entity.didCollideWith(movableEntity);
+					entity.didCollideWith(paramEntity);
 			}
 		}
 	}
 
+	/**
+	 * Remove an entity from the world.
+	 * @param entity The entity to be removed
+	 */
 	public void removeEntity(Entity entity){
 		entities.remove(entity.getId());
 	}
 
+	/**
+	 * Get the size of the world.
+	 * @return The size of the world
+	 */
 	public Dimension getSize() {
 		return size;
 	}
 
+	/**
+	 * Get the TankSpawner of this world.
+	 * @return The TankSpawner of this world
+	 */
 	public TankSpawner getTankSpawner() {
 		return tankSpawner;
 	}
 
+	/**
+	 * Set the TankSpawner of this world.
+	 * @param tankSpawner The new TankSpawner
+	 */
 	public void setTankSpawner(TankSpawner tankSpawner) {
 		this.tankSpawner = tankSpawner;
 	}
