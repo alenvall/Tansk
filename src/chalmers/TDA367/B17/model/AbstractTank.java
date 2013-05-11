@@ -3,8 +3,6 @@ package chalmers.TDA367.B17.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.newdawn.slick.SlickException;
-import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.GameController;
