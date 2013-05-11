@@ -18,7 +18,7 @@ public class DefaultTank extends AbstractTank {
 		setShape(new Rectangle(100, 150, 65, 80));
 		setTurretOffset(6);
 		setTurret(new DefaultTurret(this));
-		spriteID = "newtankimage";
+		spriteID = "tank_blue";
 		setHealth(100);
 	}
 }

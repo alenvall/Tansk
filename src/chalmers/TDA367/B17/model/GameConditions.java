@@ -79,7 +79,7 @@ public class GameConditions {
 		
 		for(Player p : players){
 			p.setRespawnTime(100);
-			p.eliminated = false;
+			p.setEliminated(false);
 			p.setActive(true);
 			if(p.getTank() != null){
 				p.getTank().destroy();
@@ -104,7 +104,7 @@ public class GameConditions {
 			
 			//Check whether all players have been eliminated
 			for(int i = 0; i < players.size(); i++){
-				if(players.get(i).isActive() && players.get(i).eliminated == true){
+				if(players.get(i).isActive() && players.get(i).isEliminated()){
 					players.get(i).setActive(false);
 					incrementPlayerScores();
 					eliminatedPlayerCount++;
