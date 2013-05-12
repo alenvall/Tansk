@@ -44,7 +44,6 @@ public class ShockwaveSecondaryProjectile extends AbstractProjectile {
 			int tmp = shockproj.tankDamaged(getTank());
 			if(tmp <= 5){
 				damageTarget((AbstractTank)entity);
-				System.out.println(tmp);
 			}
 		}
 	}
