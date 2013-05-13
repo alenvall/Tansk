@@ -9,6 +9,11 @@ public class FlamethrowerPickup extends AbstractWeaponPickup{
 
 	public FlamethrowerPickup(Vector2f position, AbstractTank tank) {
 		super(position);
-		this.turret = new FlamethrowerTurret(tank);
+	}
+	
+	@Override
+	public void activate(AbstractTank absTank){
+		super.activate(absTank);
+		absTank.setTurret(new FlamethrowerTurret(absTank));
 	}
 }

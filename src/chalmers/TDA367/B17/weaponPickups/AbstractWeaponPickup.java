@@ -4,14 +4,12 @@ import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.model.AbstractTank;
-import chalmers.TDA367.B17.model.AbstractTurret;
 import chalmers.TDA367.B17.model.Entity;
 
 public abstract class AbstractWeaponPickup extends Entity{
 	private String name;
 	protected AbstractTank absTank;
 	protected String type;
-	protected AbstractTurret turret;
 
 	/**
 	 * Create a new AbstractPowerUp.
@@ -30,10 +28,6 @@ public abstract class AbstractWeaponPickup extends Entity{
 	public String getName() {
 		return name;
 	}
-	
-	public AbstractTurret getTurret(){
-		return turret;
-	}
 
 	/**
 	 * Set the name of this power up.
@@ -48,7 +42,6 @@ public abstract class AbstractWeaponPickup extends Entity{
 	}
 	public void activate(AbstractTank absTank){
 		this.absTank = absTank;
-		absTank.setTurret(this.getTurret());
 		spriteID = "";
 		this.destroy();
 	}
