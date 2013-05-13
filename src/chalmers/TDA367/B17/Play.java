@@ -4,9 +4,14 @@ import org.newdawn.slick.*;
 
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
+import chalmers.TDA367.B17.powerups.DamagePowerUp;
+import chalmers.TDA367.B17.powerups.FireRatePowerUp;
+import chalmers.TDA367.B17.powerups.ShieldPowerUp;
+import chalmers.TDA367.B17.powerups.SpeedPowerUp;
 import chalmers.TDA367.B17.spawnpoints.PowerUpSpawnPoint;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.terrain.BrownWall;
+import chalmers.TDA367.B17.weaponPickups.*;
 import chalmers.TDA367.B17.weapons.*;
 
 import org.newdawn.slick.geom.*;
@@ -64,6 +69,13 @@ public class Play extends BasicGameState{
 		input = gc.getInput();
 		input.addMouseListener(this);
 		mouseCoords = new Point();
+
+		//POWERUPS
+		new DamagePowerUp(new Vector2f(500, 150));
+		new FireRatePowerUp(new Vector2f(500, 300));
+		new SpeedPowerUp(new Vector2f(500, 450));
+		new ShieldPowerUp(new Vector2f(200, 300));
+		new FlamethrowerPickup(new Vector2f(400, 300), playerOne.getTank());
 		
 		//ObstacleTest
 		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
@@ -149,6 +161,7 @@ public class Play extends BasicGameState{
 			if(playerOne.getTank() != null)
 				playerOne.getTank().setTurret(new DefaultTurret(playerOne.getTank()));
 		}
+		/*
 		if(input.isKeyDown(Input.KEY_2)){
 			if(playerOne.getTank() != null)
 				playerOne.getTank().setTurret(new FlamethrowerTurret(playerOne.getTank()));
@@ -169,7 +182,7 @@ public class Play extends BasicGameState{
 			if(playerOne.getTank() != null)
 				playerOne.getTank().setTurret(new BounceTurret(playerOne.getTank()));
 		}
-		
+		*/
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
 			gc.exit();
 		}
