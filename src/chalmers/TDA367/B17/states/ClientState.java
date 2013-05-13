@@ -118,31 +118,12 @@ public class ClientState extends BasicGameState {
 	private void sendClientInput(Input input) {
 		if(isConnected){
 			Pck4_ClientInput pck = new Pck4_ClientInput();
-			if(input.isKeyDown(Input.KEY_W))
-				pck.W_pressed = true;
-			else
-				pck.W_pressed = false;	
+			pck.W_pressed = input.isKeyDown(Input.KEY_W);
+			pck.A_pressed = input.isKeyDown(Input.KEY_A);
+			pck.S_pressed = input.isKeyDown(Input.KEY_S);
+			pck.D_pressed = input.isKeyDown(Input.KEY_D);
+			pck.LMB_pressed = input.isKeyDown(Input.MOUSE_LEFT_BUTTON);
 			
-			if(input.isKeyDown(Input.KEY_A))
-				pck.A_pressed = true;
-			else
-				pck.A_pressed = false;	
-			
-			if(input.isKeyDown(Input.KEY_S))
-				pck.S_pressed = true;
-			else
-				pck.S_pressed = false;
-			
-			if(input.isKeyDown(Input.KEY_D))
-				pck.D_pressed = true;
-			else
-				pck.D_pressed = false;		
-			
-			if(input.isMouseButtonDown(0))
-				pck.LMB_pressed = true;
-			else
-				pck.LMB_pressed = false;
-	
 			if(((AbstractTank) controller.getWorld().getEntity(currentTankID)) != null){
 				AbstractTurret playerTurret = ((AbstractTank) controller.getWorld().getEntity(currentTankID)).getTurret();
 				pck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
