@@ -163,7 +163,6 @@ public class ServerState extends BasicGameState {
 				if(player.getTank() != null){
 					if(pressedKeys.get(Player.INPT_W)){
 						player.getTank().accelerate(delta);
-		                GameController.getInstance().getConsole().addMsg(player.getName() + " is pressing W");
 					} else if (pressedKeys.get(Player.INPT_S)){
 						player.getTank().reverse(delta);
 					} else {
