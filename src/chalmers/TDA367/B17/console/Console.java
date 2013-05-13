@@ -3,35 +3,56 @@ package chalmers.TDA367.B17.console;
 import java.util.ArrayList;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.Graphics;
-import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.Tansk;
 
 /** A simple graphical text output console */
 public class Console {
-	private final static int NUMBER_OF_MESSAGES = 10;
-	private final static int SCREEN_OFFSETX = 10;
-	private final static int CONSOLE_WIDTH = 450;
+	private int posX;
+	private int posY;
+	private int width;
+	private int height;
+	private int totalY;
+	private int numberOfMessages;
+	
+//	private final static int NUMBER_OF_MESSAGES = 20;
+//	private final static int SCREEN_OFFSETX = 10;
+//	private final static int CONSOLE_WIDTH = 450;
+	
 	private final static int TIMESTAMP_OFFSET = 8;
 	private final static int MESSAGE_OFFSETY = 5;
-	private final static int ROW_SPACE = 18;
 	private final static int MESSAGE_OFFSETX = 93;
+//	private final static int ROW_SPACE = 18;
+	private final static int ROW_HEIGHT = 18;
 	
-	private static int consolePosY = 0;
-	private static int consoleSizeY = 0;
-	private static int totalY = 0;
+//	private int consolePosY = 0;
+//	private int consoleSizeY = 0;
 		
-	private static Console instance;
 	private ArrayList<ConsoleMessage> messages;
+	private OutputLevel outputLevel;
 	
 	/**
-	 * Create a new console
+	 * Create a new console at the given position and size
+	 * @param posX
+	 * @param posY
+	 * @param width
+	 * @param height
+	 * @param initialOutputLevel
 	 */
-	private Console(){
+	public Console(int posX, int posY, int width, int height, OutputLevel initialOutputLevel){
 		messages = new ArrayList<ConsoleMessage>();
+		this.posX = posX;
+		this.posY = posY;
+		this.width = width;
+		this.height = height;
+		outputLevel = initialOutputLevel;
+		
+		numberOfMessages = (height-2*MESSAGE_OFFSETY) / (ROW_HEIGHT);
+		totalY = posY + height;
 		
 		// calculate the offset from the bottom of the screen depending on the max number of messages (more messages = bigger console)
-		consoleSizeY = 2*MESSAGE_OFFSETY+NUMBER_OF_MESSAGES*ROW_SPACE;
-		consolePosY = GameController.SCREEN_HEIGHT - consoleSizeY - 10;
-		totalY = consolePosY + consoleSizeY;
+		// consoleSizeY = 2*MESSAGE_OFFSETY+NUMBER_OF_MESSAGES*ROW_SPACE;
+		// consolePosY = Tansk.SCREEN_HEIGHT - consoleSizeY - 10;
+		// totalY = consolePosY + consoleSizeY;	
 	}
 	
 	/**
@@ -42,42 +63,44 @@ public class Console {
 		ERROR, 
 		/**	Yellow text color	 */
 		INFO, 
-		/**	Green text color	 */
-		SUCCESS, 
 		/**	White text color	 */
 		STANDARD
 	}
 	
 	/**
-	 * Return the an instance of the singleton Console
-	 * @return instance An instance of the Console
+	 * Output level
 	 */
-	public static Console getInstance(){
-		if(instance == null)
-			instance = new Console();
-		
-		return instance;
+	public static enum OutputLevel{
+		/** Only outputs error messages */
+		ERROR,
+		/** Only outputs error and info messages */
+		INFO,
+		/** Outputs  all messages */
+		ALL
 	}
-	
+		
 	/**
 	 * Add a console message to the console and remove the oldest message if the max number of messages is reached 
 	 * @param conMessage The console message to add
 	 */
-	public static void addMsg(ConsoleMessage conMessage){
-		ArrayList<ConsoleMessage> messages = Console.getInstance().getMessages();
-		
+	public void addMsg(ConsoleMessage conMessage){
 		// remove of the oldest message if the number of messages exceeds max
-		if(messages.size() >= NUMBER_OF_MESSAGES){
-			messages.remove(0);
+
+		MsgLevel msgLevel = conMessage.getMessageLevel();
+		
+		if((outputLevel == OutputLevel.ALL) || ((outputLevel == OutputLevel.INFO) && (msgLevel != MsgLevel.STANDARD)) || ((outputLevel == OutputLevel.ERROR) && (msgLevel == MsgLevel.ERROR))){
+			if(messages.size() >= numberOfMessages){
+				messages.remove(0);
+			}
+			messages.add(conMessage);
 		}
-		messages.add(conMessage);
 	}
 	
 	/**
 	 * Add a standard message to the console and remove the oldest message if the max number of messages is reached 
-	 * @param message The mesage to add
+	 * @param message The message to add
 	 */
-	public static void addMsg(String message){
+	public void addMsg(String message){
 		addMsg(new ConsoleMessage(message, MsgLevel.STANDARD));
 	}
 		
@@ -86,41 +109,47 @@ public class Console {
 	 * @param message The message
 	 * @param msgLevel The message level
 	 */
-	public static void addMsg(String message, MsgLevel msgLevel){
+	public void addMsg(String message, MsgLevel msgLevel){
 		addMsg(new ConsoleMessage(message, msgLevel));
+	}
+	
+	/**
+	 * Set the output level for the console
+	 * @param outputLevel The output level to set to
+	 */
+	public void setOutputLevel(OutputLevel outputLvl){
+		outputLevel = outputLvl;
 	}
 
 	/**
 	 * Render the messages on the given Graphics object
 	 * @param graphics The graphics object to render the messages on
 	 */
-	public static void renderMessages(Graphics graphics) {	
-	ArrayList<ConsoleMessage> messages = Console.getInstance().getMessages();
+	public void renderMessages(Graphics graphics) {	
 		// draw the console "window"
 		graphics.setColor(Color.white);
-		graphics.drawRect(SCREEN_OFFSETX, consolePosY, CONSOLE_WIDTH, consoleSizeY);
-		
+		graphics.drawRect(posX, posY, width, height);
+					
 		if(!messages.isEmpty()){
 			// draw the oldest message above the newer messages
 			for(int i = 0; i < messages.size(); i++){
 				ConsoleMessage currentMsg = messages.get(i);
-				
+				MsgLevel msgLevel = currentMsg.getMessageLevel();
+		
 				// draw the timestamp of the message
 				graphics.setColor(Color.white);
-				graphics.drawString("[" + currentMsg.getTimestamp() + "] ", SCREEN_OFFSETX + TIMESTAMP_OFFSET, totalY -  ROW_SPACE*(messages.size()-i) - 10 + MESSAGE_OFFSETY);
+				graphics.drawString("[" + currentMsg.getTimestamp() + "] ", posX + TIMESTAMP_OFFSET, totalY - ROW_HEIGHT*(messages.size()-i) - 10 + MESSAGE_OFFSETY);
 				
 				// set the color of the text depending on the message level
-				if(currentMsg.getMessageLevel() == MsgLevel.ERROR)
+				if(msgLevel == MsgLevel.ERROR)
 					graphics.setColor(Color.red);
-				if(currentMsg.getMessageLevel() == MsgLevel.INFO)
+				if(msgLevel == MsgLevel.INFO)
 					graphics.setColor(Color.yellow);
-				if(currentMsg.getMessageLevel() == MsgLevel.SUCCESS)
-					graphics.setColor(Color.green);
-				if(currentMsg.getMessageLevel() == MsgLevel.STANDARD)
+				if(msgLevel == MsgLevel.STANDARD)
 					graphics.setColor(Color.white);
 				
 				// draw the message
-				graphics.drawString(currentMsg.getMessage(), SCREEN_OFFSETX + TIMESTAMP_OFFSET + MESSAGE_OFFSETX, totalY -  ROW_SPACE*(messages.size()-i) - 10 + MESSAGE_OFFSETY);
+				graphics.drawString(currentMsg.getMessage(), posX + TIMESTAMP_OFFSET + MESSAGE_OFFSETX, totalY - ROW_HEIGHT*(messages.size()-i) - MESSAGE_OFFSETY);
 			}
 			graphics.setColor(Color.white);
 		}
@@ -137,7 +166,7 @@ public class Console {
 	 * Return a list of the messages
 	 * @return The messages
 	 */
-	private ArrayList<ConsoleMessage> getMessages(){
+	public ArrayList<ConsoleMessage> getMessages(){
 		return messages;
 	}
 }
