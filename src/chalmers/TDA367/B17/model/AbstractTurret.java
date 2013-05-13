@@ -1,6 +1,5 @@
 package chalmers.TDA367.B17.model;
 
-import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.geom.Point;
 import org.newdawn.slick.geom.Vector2f;
 
@@ -10,23 +9,23 @@ public abstract class AbstractTurret extends Entity {
 	protected float turretLength;
 	protected int fireRate;
 	protected String projectileType;
-	protected AbstractTank tank;
+//	protected AbstractTank tank;
 
 	/**
 	 * Create a new AbstractTurret.
 	 */
-	public AbstractTurret(AbstractTank tank) {
-		super();
+	public AbstractTurret(int id) {
+		super(id);
 		angle = 0;
 		spriteID = "turret";
-		this.tank = tank;
-		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
-		renderLayer = GameController.RenderLayer.THIRD;
+//		this.tank = tank;
+//		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
+		renderLayer = RenderLayer.THIRD;
 	}
 	
-	public AbstractTank getTank(){
-		return tank;
-	}
+//	public AbstractTank getTank(){
+//		return tank;
+//	}
 
 	/**
 	 * Get the fire rate.
@@ -44,7 +43,7 @@ public abstract class AbstractTurret extends Entity {
 	@Override
 	public double getRotation() {
 	    return angle;
-    }
+    }	
 
 	/**
 	 * Set the rotation angle of the turret.
@@ -95,24 +94,20 @@ public abstract class AbstractTurret extends Entity {
 	 * Creates and spawns a new projectile.
 	 * @return the new projectile
 	 */
-	public AbstractProjectile spawnNewProjectile(){
+//	public AbstractProjectile spawnNewProjectile(){
+	public void spawnNewProjectile(){
 		AbstractProjectile projectile = createProjectile();
 		projectile.setDirection(new Vector2f(getRotation() + 90));
 		projectile.setPosition(getTurretNozzle());
-		return projectile;
+//		return projectile;
 	}
 
-	@Override
-	public void update(int delta){
-		java.awt.Point mouseCoordinates = GameController.getInstance().getMouseCoordinates();
-
-		float rotation = (float) Math.toDegrees(Math.atan2(this.getPosition().x - mouseCoordinates.x + 0, this.getPosition().y - mouseCoordinates.y + 0)* -1)+180;
-		this.setRotation(rotation);
-
-		double tankRotation = tank.getRotation() - 90;
-		float newTurX = (float) (tank.getPosition().x + tank.getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
-		float newTurY = (float) (tank.getPosition().y - tank.getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
-
-		this.setPosition(new Vector2f(newTurX, newTurY));
-	}
+	// moved func. to AbstractTank
+//	public void update(int delta){
+//		double tankRotation = tank.getRotation() - 90;
+//		float newTurX = (float) (tank.getPosition().x + tank.getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
+//		float newTurY = (float) (tank.getPosition().y - tank.getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
+//
+//		this.setPosition(new Vector2f(newTurX, newTurY));
+//	}
 }

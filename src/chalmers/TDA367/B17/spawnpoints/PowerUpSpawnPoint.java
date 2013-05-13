@@ -3,6 +3,7 @@ package chalmers.TDA367.B17.spawnpoints;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.Entity;
@@ -14,8 +15,8 @@ public class PowerUpSpawnPoint extends AbstractSpawnPoint{
 	private int spawnRate;
 	private int spawnTimer;
 	
-	public PowerUpSpawnPoint(Vector2f position, int spawnRate, String type) {
-		super(position);
+	public PowerUpSpawnPoint(int id, Vector2f position, int spawnRate, String type) {
+		super(id, position);
 		this.type = type;
 		spriteID = "powerup_spawnpoint";
 		
@@ -24,6 +25,7 @@ public class PowerUpSpawnPoint extends AbstractSpawnPoint{
 		
 		Vector2f size = new Vector2f(23f, 23f);
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 	
 	public String getType() {

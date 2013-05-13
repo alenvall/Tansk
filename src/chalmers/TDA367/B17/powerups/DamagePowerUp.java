@@ -13,8 +13,8 @@ public class DamagePowerUp extends AbstractPowerUp{
 	private final int MULTIPLIER = 2;
 	private List<AbstractProjectile> projectiles;
 	
-	public DamagePowerUp(Vector2f position) {
-		super(position);
+	public DamagePowerUp(int id, Vector2f position) {
+		super(id, position);
 		effectDuration = 7000;
 		projectiles = new ArrayList<AbstractProjectile>();
 		spriteID = "damage_powerup";
@@ -28,11 +28,12 @@ public class DamagePowerUp extends AbstractPowerUp{
 
 	@Override
 	public void updateEffect() {
-		for(AbstractProjectile ap : absTank.getProjectiles()){
-			if(!projectiles.contains(ap)){
-				ap.setDamage(ap.getDamage()*MULTIPLIER);
-				projectiles.add(ap);
-			}
-		}
+//	TODO: fix so that it no longer uses getProjectiles	
+//		for(AbstractProjectile ap : absTank.getProjectiles()){
+//			if(!projectiles.contains(ap)){
+//				ap.setDamage(ap.getDamage()*MULTIPLIER);
+//				projectiles.add(ap);
+//			}
+//		}
 	}
 }

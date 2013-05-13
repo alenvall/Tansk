@@ -4,25 +4,26 @@ import java.awt.Dimension;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-
+import chalmers.TDA367.B17.console.Console.MsgLevel;
+import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.network.Network.Pck6_CreateTank;
+import chalmers.TDA367.B17.states.ServerState;
 
 public class World {
-	
 	private Map<Integer, Entity> entities;
 	private Dimension size;
-	
 	private TankSpawner tankSpawner;
+	private boolean serverWorld = false;
 	
-	private int latestID;
-	
-	public World(Dimension size) {
+	public World(Dimension size, boolean serverWorld) {
 		this.size = size;
+		this.serverWorld = serverWorld;
 		this.entities = new ConcurrentHashMap<Integer, Entity>();
 		this.tankSpawner = new TankSpawner();
 	}
 
 	public void init(){
-		new MapBounds(getSize());
+//		new MapBounds(getSize());
 	}
 
 	/**
@@ -31,24 +32,26 @@ public class World {
 	 */
 	public void addEntity(Entity newEntity){
 		entities.put(newEntity.getId(), newEntity);
+		if(serverWorld){
+			GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): " + newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+			if(newEntity instanceof AbstractTank){
+				AbstractTank tank = (AbstractTank) newEntity;
+				Pck6_CreateTank packet = new Pck6_CreateTank();
+				packet.id = tank.getId();
+				packet.velocity = tank.getDirection();
+				
+				ServerState.getInstance().sendToAll(packet);
+			}
+		}
 	}
 	
 	/**
 	 * Get an entity from the World.
 	 * @param id The id of the requested entity
-	 * @return entity.
+	 * @return entity
 	 */
 	public Entity getEntity(int id){
 		return entities.get(id);
-	}
-	
-	/**
-	 * Generate a new ID.
-	 * @return The ID
-	 */
-	public int generateID(){
-		latestID += 1;
-		return latestID;
 	}
 	
 	/**

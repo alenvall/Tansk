@@ -9,8 +9,8 @@ public class SpeedPowerUp extends AbstractPowerUp {
 	private final int MULTIPLIER = 2;
 	private float tmpSpeed;
 
-	public SpeedPowerUp(Vector2f position) {
-		super(position);
+	public SpeedPowerUp(int id, Vector2f position) {
+		super(id, position);
 		effectDuration = 7000;
 		spriteID = "speed_powerup";
 	}

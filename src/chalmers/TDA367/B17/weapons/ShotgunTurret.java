@@ -1,15 +1,15 @@
 package chalmers.TDA367.B17.weapons;
 
 import org.newdawn.slick.geom.Vector2f;
-
+import chalmers.TDA367.B17.states.*;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class ShotgunTurret extends AbstractTurret {
 
-	public ShotgunTurret(AbstractTank tank) {
-		super(tank);
+	public ShotgunTurret(int id) {
+		super(id);
 		turretCenter = new Vector2f(22.5f, 22.5f);
 		turretLength = 42f;
 		setSize(new Vector2f(45f, 65f));
@@ -19,13 +19,14 @@ public class ShotgunTurret extends AbstractTurret {
 
 	@Override
 	public AbstractProjectile createProjectile() {
-		return new ShotgunProjectile(getTank(), getTurretNozzle());
+		return new ShotgunProjectile(ServerState.getInstance().generateID(), getTurretNozzle());
 	}
 
 	@Override
 	public void fireWeapon(int delta, AbstractTank tank) {
 		for(int i = -8; i < 8; i++){
-			AbstractProjectile projectile = spawnNewProjectile();
+//			AbstractProjectile projectile = spawnNewProjectile();
+			AbstractProjectile projectile = createProjectile();
 			Vector2f angle;
 			
 			if(i%2 == 0){
@@ -37,7 +38,7 @@ public class ShotgunTurret extends AbstractTurret {
 			projectile.setDirection(angle);
 			projectile.setSpeed(Math.abs(projectile.getSpeed() * (i * 0.2f)));
 
-			tank.addProjectile(projectile);
+//			tank.addProjectile(projectile);
 		}
 	}
 	

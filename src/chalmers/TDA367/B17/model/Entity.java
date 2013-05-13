@@ -1,7 +1,6 @@
 package chalmers.TDA367.B17.model;
 
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.controller.GameController.RenderLayer;
 import org.newdawn.slick.geom.*;
 
 public abstract class Entity{
@@ -10,20 +9,26 @@ public abstract class Entity{
 	protected Shape shape;
 	protected String spriteID;
 	private double rotation;
-	protected RenderLayer renderLayer;
+	protected RenderLayer renderLayer;	
+	
+	public static enum RenderLayer{
+		FIRST, SECOND, THIRD, FOURTH
+	}
+	
 
 	/**
 	 * 
 	 * 
 	 */
-	public Entity(){
-		this.id = GameController.getInstance().getWorld().generateID();
-		GameController.getInstance().getWorld().addEntity(this);
+	public Entity(int id){
+		this.id = id;
+//		this.id = GameController.getInstance().getWorld().generateID();
+//		GameController.getInstance().getWorld().addEntity(this);
 		active = true;
 		shape = new Point(-1, -1);
 		rotation = 0;
 		spriteID = "";
-		renderLayer = GameController.RenderLayer.FOURTH;
+		renderLayer = RenderLayer.FOURTH;
 	}
 	
 	public RenderLayer getRenderLayer(){

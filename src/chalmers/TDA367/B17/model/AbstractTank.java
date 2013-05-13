@@ -2,46 +2,40 @@ package chalmers.TDA367.B17.model;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.*;
 
-import chalmers.TDA367.B17.controller.GameController;
-
 public abstract class AbstractTank extends MovableEntity {
-
 	private String name;
 	private double health;
 	private AbstractPowerUp currentPowerUp;
 	private float turnSpeed; // How many degrees the tank will turn each update
 	protected AbstractTurret turret;
 	protected float turretOffset;
-	private List<AbstractProjectile> projectiles;
+//	private List<AbstractProjectile> projectiles;
 	public boolean fire = true;
 	protected int timeSinceLastShot;
 	public int lastDelta;
 	public double lastDir = 270;
-	private Player player;
 	
-	private Sound debugWallHit = null;
+//	private Sound debugWallHit = null;
 	
-	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed, Player player) {
-		super(velocity, maxSpeed, minSpeed);
+	public AbstractTank(int id, Vector2f velocity, float maxSpeed, float minSpeed) {
+		super(id, velocity, maxSpeed, minSpeed);
 		turnSpeed = 0.15f;
-		projectiles = new ArrayList<AbstractProjectile>();
+//		projectiles = new ArrayList<AbstractProjectile>();
 		currentPowerUp = null;
 		spriteID = "turret";
-		renderLayer = GameController.RenderLayer.SECOND;
+		renderLayer = RenderLayer.SECOND;
 
-		this.player = player;
+//		this.player = player;
 		
-		try {
-			debugWallHit = new Sound("data/wall.wav");
-        } catch (SlickException e) {
-	        // TODO Auto-generated catch block
-	        e.printStackTrace();
-        }
+//		try {
+//			debugWallHit = new Sound("data/wall.wav");
+//        } catch (SlickException e) {
+//	        e.printStackTrace();
+//        }
 	}
 	
 	public double getRotation(){
@@ -110,18 +104,24 @@ public abstract class AbstractTank extends MovableEntity {
 	    return turretOffset;
     }
 	
-	public List<AbstractProjectile> getProjectiles(){
-		return projectiles;
-	}
+//	public List<AbstractProjectile> getProjectiles(){
+//		return projectiles;
+//	}
 	
-	public void addProjectile(AbstractProjectile projectile){
-		projectiles.add(projectile);
-	}
+//	public void addProjectile(AbstractProjectile projectile){
+//		projectiles.add(projectile);
+//	}
 	
 	public void update(int delta){
 		lastDelta = delta;
 		super.update(delta);
 		timeSinceLastShot -= delta;
+		
+		// moved here from AbstractTurret
+		double tankRotation = getRotation() - 90;
+		float newTurX = (float) (getPosition().x + getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
+		float newTurY = (float) (getPosition().y - getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
+		turret.setPosition(new Vector2f(newTurX, newTurY));
 	}
 	
 	public void fireWeapon(int delta){
@@ -166,7 +166,7 @@ public abstract class AbstractTank extends MovableEntity {
 		if(getCurrentPowerUp() != null)
 			getCurrentPowerUp().deactivate();
 		this.destroy();
-		player.tankDeath();
+//		player.tankDeath();
 	}
 	
 	@Override

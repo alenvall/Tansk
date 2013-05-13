@@ -11,8 +11,8 @@ public class FireRatePowerUp extends AbstractPowerUp {
 	private AbstractTurret turret;
 	private int firerate;
 	
-	public FireRatePowerUp(Vector2f position) {
-		super(position);
+	public FireRatePowerUp(int id, Vector2f position) {
+		super(id, position);
 		effectDuration = 7000;
 		spriteID = "firerate_powerup";
 	}

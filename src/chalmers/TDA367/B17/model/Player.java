@@ -1,8 +1,12 @@
 package chalmers.TDA367.B17.model;
 
-import chalmers.TDA367.B17.controller.GameController;
+import java.awt.Point;
+import java.util.ArrayList;
+import com.esotericsoftware.kryonet.Connection;
+import chalmers.TDA367.B17.states.ServerState;
 
 public class Player {
+	private int id;
 	private String name;
 	private int playerId;
 	private int score;
@@ -14,20 +18,35 @@ public class Player {
 	public String tankType;
 	public boolean active;
 	public boolean eliminated;
+	private Connection connection;
+	private ArrayList<Boolean> inputStatuses;
+	private Point mouseCoords;
 
 	/**
 	 * Create a new Player.
 	 * @param name The player's name
 	 */
-	public Player(String name){
+	public Player(Connection connection, String name){
+		this.connection = connection;
+		this.id = connection.getID();
 		this.name = name;
 		tankType = "default";
 		active = true;
 		eliminated = false;
-		GameController.getInstance().gameConditions.addPlayer(this);
-		setLives(GameController.getInstance().gameConditions.getPlayerLives());
-		setRespawnTime(GameController.getInstance().gameConditions.getSpawnTime());
+		inputStatuses = new ArrayList<Boolean>();
+		for(int i = 0; i < 6; i++){
+			inputStatuses.add(false);
+		}
+		
+		mouseCoords = new Point();
+//		GameController.getInstance().gameConditions.addPlayer(this);
 	}
+	
+	public static int INPT_W = 0;
+	public static int INPT_A = 1;
+	public static int INPT_S = 2;
+	public static int INPT_D = 3;
+	public static int INPT_LMB = 4;
 
 	/**
 	 * Get the players tank.
@@ -123,7 +142,7 @@ public class Player {
 			tank.destroy();
 			tank = null;
 		}
-		GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
+		ServerState.getInstance().addPlayer(this);
 		this.respawnTimer = respawnTime;
 	}
 
@@ -142,4 +161,33 @@ public class Player {
 	public void setRespawnTime(int respawnTime) {
 		this.respawnTime = respawnTime;
 	}
+
+	public int getId() {
+	    return id;
+    }
+
+	public Connection getConnection() {
+	    return connection;
+    }
+
+	public void setConnection(Connection connection) {
+	    this.connection = connection;
+    }
+
+	public void setInputStatus(int key, boolean pressed) {
+	    inputStatuses.set(key, pressed);
+    }
+
+	public ArrayList<Boolean> getInput(){
+		return inputStatuses;
+	}
+
+	public void setMouseCoordinates(int mouseX, int mouseY) {
+		mouseCoords.x = mouseX;
+		mouseCoords.y = mouseY;
+    }
+
+	public Point getMouseCoordinates() {
+	    return mouseCoords;
+    }
 }

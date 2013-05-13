@@ -3,17 +3,15 @@ package chalmers.TDA367.B17.states;
 import org.newdawn.slick.*;
 import org.newdawn.slick.geom.*;
 import org.newdawn.slick.state.*;
-import chalmers.TDA367.B17.network.*;
-import chalmers.TDA367.B17.Game;
+import chalmers.TDA367.B17.Tansk;
 
-public class Join extends BasicGameState{
+public class JoinMenu extends BasicGameState{
 	
 	private Rectangle joinServer;
 	private Rectangle sendMsg;
 	private int state;
-	private GameClient client;
 	
-	public Join(int state) {
+	public JoinMenu(int state) {
 		this.state = state;
 	}
 
@@ -41,21 +39,18 @@ public class Join extends BasicGameState{
 		if(x > 100 && x < 250 && y > 125 && y < 175){
 			if(input.isMousePressed(0)){
 				System.out.println("Attempting to join server!");
-				client = new GameClient();
-				client.Connect(600000, "127.0.0.1", Common.port, Common.port);
-				((Client) sbg.getState(Game.CLIENT)).setClient(client);
-				sbg.enterState(Game.CLIENT);
+				sbg.enterState(Tansk.CLIENT);
 			}
 		}
 		
-		if(x > 100 && x < 250 && y > 225 && y < 275){
-			if(input.isMousePressed(0)){
-				if(client != null){
-					System.out.println("Attempting to send message to server!");
-					client.MessageToServer("Hey!");
-				}
-			}
-		}
+//		if(x > 100 && x < 250 && y > 225 && y < 275){
+//			if(input.isMousePressed(0)){
+//				if(client != null){
+//					System.out.println("Attempting to send message to server!");
+//					client.MessageToServer("Hey!");
+//				}
+//			}
+//		}
 	}
 
 	@Override

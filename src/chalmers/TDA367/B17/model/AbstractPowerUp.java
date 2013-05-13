@@ -3,8 +3,6 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
-import chalmers.TDA367.B17.controller.GameController;
-
 public abstract class AbstractPowerUp extends Entity {
 
 	private String name;
@@ -17,13 +15,13 @@ public abstract class AbstractPowerUp extends Entity {
 	/**
 	 * Create a new AbstractPowerUp.
 	 */
-	public AbstractPowerUp(Vector2f position) {
-		super();
+	public AbstractPowerUp(int id, Vector2f position) {
+		super(id);
 		effectActive = false;
 		absTank = null;
 		Vector2f size = new Vector2f(60f, 25f);
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
-		renderLayer = GameController.RenderLayer.THIRD;
+		renderLayer = RenderLayer.THIRD;
 	}
 
 	/**

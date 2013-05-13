@@ -8,20 +8,21 @@ import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 
 public class Shield extends Entity {
-	
-	private double health;
-	private AbstractTank absTank;
 
-	public Shield(Vector2f position, AbstractTank absTank) {
+	private double health;
+//	private AbstractTank absTank;
+
+	public Shield(int id, Vector2f position, AbstractTank absTank) {
+		super(id);
 		setSize(new Vector2f(15, 5));
 		setPosition(position);
 		setShape(new Circle(position.x, position.y, 100));
 		setSize(new Vector2f(100,100));
 		spriteID = "shield";
 		active = true;
-		
+
 		this.health = 50;
-		this.absTank = absTank;
+//		this.absTank = absTank;
 	}
 
 	public double getHealth() {
@@ -33,15 +34,16 @@ public class Shield extends Entity {
 	}
 
 	public void didCollideWith(Entity entity){
-		if(entity instanceof AbstractProjectile){
-			if(!(((AbstractProjectile)entity).getTank() == absTank)){
-				setHealth(getHealth() - ((AbstractProjectile)entity).getDamage());
-				((AbstractProjectile)entity).destroy();
-				
-				if(getHealth() <= 0){
-					active = false;
-				}
-			}
-		}
+//		TODO: fix so that it no longer requires absTank, mayde do the check in World?
+//		if(entity instanceof AbstractProjectile){
+//			if(!(((AbstractProjectile)entity).getTank() == absTank)){
+//				setHealth(getHealth() - ((AbstractProjectile)entity).getDamage());
+//				((AbstractProjectile)entity).destroy();
+//				
+//				if(getHealth() <= 0){
+//					active = false;
+//				}
+//			}
+//		}
 	}
 }

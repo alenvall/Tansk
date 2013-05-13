@@ -20,8 +20,8 @@ public abstract class MovableEntity extends Entity {
 	 * @param maxSpeed The maximum speed of this object
 	 * @param minSpeed The minimum speed of this object
 	 */
-	public MovableEntity(Vector2f direction, float maxSpeed, float minSpeed) {
-		super();
+	public MovableEntity(int id, Vector2f direction, float maxSpeed, float minSpeed) {
+		super(id);
 		this.direction = direction;
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;

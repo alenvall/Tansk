@@ -8,7 +8,7 @@ import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
-import chalmers.TDA367.B17.Game;
+import chalmers.TDA367.B17.Tansk;
 
 public class Menu extends BasicGameState{
 	
@@ -53,7 +53,7 @@ public class Menu extends BasicGameState{
 		
 		if(x > 100 && x < 250 && y > 125 && y < 175){
 			if(input.isMouseButtonDown(0)){
-				sbg.enterState(Game.PLAY);
+//				sbg.enterState(Tansk.PLAY);
 			}
 		}
 		
@@ -65,13 +65,13 @@ public class Menu extends BasicGameState{
 		
 		if(x > 100 && x < 250 && y > 325 && y < 375){
 			if(input.isMouseButtonDown(0)){
-				sbg.enterState(Game.HOST);
+				sbg.enterState(Tansk.HOST);
 			}
 		}		
 		
 		if(x > 100 && x < 250 && y > 425 && y < 475){
 			if(input.isMouseButtonDown(0)){
-				sbg.enterState(Game.JOIN);
+				sbg.enterState(Tansk.JOIN);
 			}
 		}
 	}

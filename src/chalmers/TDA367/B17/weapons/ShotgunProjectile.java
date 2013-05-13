@@ -7,8 +7,8 @@ import chalmers.TDA367.B17.model.AbstractTank;
 
 public class ShotgunProjectile extends AbstractProjectile {
 
-	public ShotgunProjectile(AbstractTank tank, Vector2f position) {
-		super(tank, position, new Vector2f(1,1), 100, 0, 5, 350);
+	public ShotgunProjectile(int id, Vector2f position) {
+		super(id, position, new Vector2f(1,1), 100, 0, 5, 350);
 		setSpeed(0.35f);
 		setSize(new Vector2f(3,6));
 		setPosition(position);
