@@ -9,6 +9,7 @@ public class FlamethrowerPickup extends AbstractWeaponPickup{
 
 	public FlamethrowerPickup(Vector2f position, AbstractTank tank) {
 		super(position);
+		spriteID = "FlamethrowerIcon";
 	}
 	
 	@Override
