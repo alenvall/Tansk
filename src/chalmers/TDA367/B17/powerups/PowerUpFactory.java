@@ -17,21 +17,25 @@ public class PowerUpFactory {
 			return new ShieldPowerUp(position);
 		}else if(powup.equals("speed")){
 			return new SpeedPowerUp(position);
+		}else if(powup.equals("health")){
+			return new HealthPowerUp(position);
 		}else{
 			return getRandomPowerUp(position);
 		}
 	}
 	
 	public static AbstractPowerUp getRandomPowerUp(Vector2f position){
-		int rand = (int)(Math.random()*4);
+		int rand = (int)(Math.random()*5);
 		if(rand == 1){
 			return new DamagePowerUp(position);
 		}else if(rand == 2){
 			return new FireRatePowerUp(position);
 		}else if(rand == 3){
 			return new ShieldPowerUp(position);
-		}else{
+		}else if(rand == 4){
 			return new SpeedPowerUp(position);
+		}else{
+			return new HealthPowerUp(position);
 		}
 	}
 }
