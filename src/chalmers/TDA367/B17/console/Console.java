@@ -3,7 +3,6 @@ package chalmers.TDA367.B17.console;
 import java.util.ArrayList;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.Graphics;
-import chalmers.TDA367.B17.Tansk;
 
 /** A simple graphical text output console */
 public class Console {
