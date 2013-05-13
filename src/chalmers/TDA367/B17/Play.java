@@ -72,6 +72,10 @@ public class Play extends BasicGameState{
 
 		//WeaponPickups
 		new FlamethrowerPickup(new Vector2f(400, 300), playerOne.getTank());
+		new ShotgunPickup(new Vector2f(500, 300), playerOne.getTank());
+		new ShockwavePickup(new Vector2f(600, 300), playerOne.getTank());
+		new BouncePickup(new Vector2f(700, 300), playerOne.getTank());
+		new SlowspeedyPickup(new Vector2f(800, 300), playerOne.getTank());
 		
 		//ObstacleTest
 		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
@@ -153,11 +157,12 @@ public class Play extends BasicGameState{
 		}
 		
 		//Weapons
+		/*
 		if(input.isKeyDown(Input.KEY_1)){
 			if(playerOne.getTank() != null)
 				playerOne.getTank().setTurret(new DefaultTurret(playerOne.getTank()));
 		}
-		/*
+		
 		if(input.isKeyDown(Input.KEY_2)){
 			if(playerOne.getTank() != null)
 				playerOne.getTank().setTurret(new FlamethrowerTurret(playerOne.getTank()));
