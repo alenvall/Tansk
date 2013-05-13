@@ -3,6 +3,8 @@ package chalmers.TDA367.B17.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import chalmers.TDA367.B17.controller.GameController;
+
 public class GameConditions {
 	
 	//The amount of score it will take for a player to win.
@@ -76,6 +78,12 @@ public class GameConditions {
 		roundTimer = roundTime;
 		
 		eliminatedPlayerCount = 0;
+		
+		for(Entity entity : GameController.getInstance().getWorld().getEntities().values()){
+			if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUp){
+				entity.destroy();
+			}
+		}
 		
 		for(Player p : players){
 			p.setRespawnTime(100);
