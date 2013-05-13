@@ -204,7 +204,8 @@ public class ClientState extends BasicGameState {
 //			}
 			
 			if(packet instanceof Pck100_WorldState){
-				updateClientWorld((Pck100_WorldState) packet);
+				if(isConnected)
+					updateClientWorld((Pck100_WorldState) packet);
 			}
 		}
     }			
