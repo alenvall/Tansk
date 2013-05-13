@@ -148,6 +148,10 @@ public abstract class AbstractTank extends MovableEntity {
 			if(lastPos != getPosition()){
 				setPosition(lastPos);
 				setSpeed(-getSpeed());
+				double tankRotation = getRotation() - 90;
+				float newTurX = (float) (getPosition().x + getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
+				float newTurY = (float) (getPosition().y - getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
+				turret.setPosition(new Vector2f(newTurX, newTurY));
 			}
 			if(lastDir != getDirection().getTheta()){
 				setDirection(new Vector2f(lastDir));
