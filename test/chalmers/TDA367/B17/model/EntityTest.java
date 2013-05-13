@@ -2,6 +2,10 @@ package chalmers.TDA367.B17.model;
 
 import static org.junit.Assert.*;
 
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.newdawn.slick.geom.Vector2f;
 
@@ -47,5 +51,32 @@ public class EntityTest {
 		Entity entity = new EntityMock();
 		entity.setRotation(180);
 		assertTrue((entity.getRotation())==(180.0));
+	}
+	
+	@Test
+	public void testSetSpriteID(){
+		Entity entity = new EntityMock();
+		entity.setSpriteID("test_sprite");
+		assertTrue(entity.getSpriteID().equals("test_sprite"));
+	}
+	
+	@BeforeClass
+	public static void beforeClass(){
+		System.out.println("Before class!");
+	}
+	
+	@AfterClass
+	public static void afterClass(){
+		System.out.println("After class!");
+	}
+	
+	@Before
+	public void before(){
+		System.out.println("Before");
+	}
+	
+	@After
+	public void after(){
+		System.out.println("After");
 	}
 }

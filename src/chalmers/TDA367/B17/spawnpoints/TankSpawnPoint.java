@@ -48,9 +48,6 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 	public void update(int delta){
 		setSpawnable(true);
 	}
-
-	@Override
-	public void spawnEntity() {}
 	
 	@Override
 	public void didCollideWith(Entity entity){

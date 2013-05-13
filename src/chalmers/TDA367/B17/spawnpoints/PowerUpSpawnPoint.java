@@ -34,7 +34,6 @@ public class PowerUpSpawnPoint extends AbstractSpawnPoint{
 		this.type = type;
 	}
 	
-	@Override
 	public void spawnEntity(){
 		PowerUpFactory.getPowerUp(getType(), getPosition());
 	}

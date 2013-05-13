@@ -70,6 +70,7 @@ public class GameConditions {
 	
 	/**
 	 * Start a new round, reseting player lives and spawn new tanks.
+	 * Removes all tanks and power-ups on the map.
 	 * Also increases the roundCounter and resets the roundTimer.
 	 */
 	public void newRound(){
@@ -100,6 +101,10 @@ public class GameConditions {
 		setPlayerLives();
 	}
 	
+	/**
+	 * Updates timers and checks if any player has won.
+	 * @param delta The time since the last update in milliseconds
+	 */
 	public void update(int delta){
 		if(!gameOver && !delaying){
 			gameTimer -= delta;

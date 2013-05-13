@@ -24,6 +24,10 @@ public abstract class AbstractTurret extends Entity {
 		renderLayer = GameController.RenderLayer.THIRD;
 	}
 	
+	/**
+	 * Get the tank of this turret.
+	 * @return The tank
+	 */
 	public AbstractTank getTank(){
 		return tank;
 	}
@@ -41,6 +45,7 @@ public abstract class AbstractTurret extends Entity {
 		return new Vector2f(getPosition().x - turretCenter.x, getPosition().y - turretCenter.y);
 	}
 	
+	@Override
 	public double getRotation() {
 	    return rotation;
     }
