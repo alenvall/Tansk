@@ -42,11 +42,11 @@ public class Player {
 //		GameController.getInstance().gameConditions.addPlayer(this);
 	}
 	
-	public static int INPT_W = 0;
-	public static int INPT_A = 1;
-	public static int INPT_S = 2;
-	public static int INPT_D = 3;
-	public static int INPT_LMB = 4;
+	public static final int INPT_W = 0;
+	public static final int INPT_A = 1;
+	public static final int INPT_S = 2;
+	public static final int INPT_D = 3;
+	public static final int INPT_LMB = 4;
 
 	/**
 	 * Get the players tank.
