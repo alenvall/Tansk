@@ -244,16 +244,13 @@ public class ServerState extends BasicGameState {
 		int y = 100;
 		for(Player player : playerList){
 			AbstractTank tank = new DefaultTank(generateID(), new Vector2f(0,-1));
+			tank.setPosition(new Vector2f(x, y));
 			player.setTank(tank);
-	    	Pck7_TankID tankPck = new Pck7_TankID();
+	    	
+			Pck7_TankID tankPck = new Pck7_TankID();
 	    	tankPck.tankID = player.getTank().getId();
 	    	player.getConnection().sendTCP(tankPck);
 	    	
-			Pck101_TankUpdate pck = new Pck101_TankUpdate();
-			pck.entityID = tank.getId();
-			pck.tankPosition = new Vector2f(x, y);
-			pck.tankDirection = tank.getDirection();
-			sendToAll(pck);
 			x+=100;
 			y+=100;
 		}
