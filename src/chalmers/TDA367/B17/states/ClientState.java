@@ -33,9 +33,8 @@ public class ClientState extends BasicGameState {
 	private Image map = null;
 	private SpriteSheet entSprite;
 	private String playerName;
-	
-	private int currentTankID = 0;
-	
+	private int currentTankID;
+		
 	private ClientState(int state){
 		this.state = state;
 		controller = GameController.getInstance();
@@ -110,11 +109,48 @@ public class ClientState extends BasicGameState {
 	}	
 	
 	@Override
-    public void update(GameContainer container, StateBasedGame game, int delta) throws SlickException {
+    public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		processPackets();
 		
+		sendClientInput(gc.getInput());
     }
 	
+	private void sendClientInput(Input input) {
+		if(isConnected){
+			Pck4_ClientInput pck = new Pck4_ClientInput();
+			if(input.isKeyDown(Input.KEY_W))
+				pck.W_pressed = true;
+			else
+				pck.W_pressed = false;	
+			
+			if(input.isKeyDown(Input.KEY_A))
+				pck.A_pressed = true;
+			else
+				pck.A_pressed = false;	
+			
+			if(input.isKeyDown(Input.KEY_S))
+				pck.S_pressed = true;
+			else
+				pck.S_pressed = false;
+			
+			if(input.isKeyDown(Input.KEY_D))
+				pck.D_pressed = true;
+			else
+				pck.D_pressed = false;		
+			
+			if(input.isMouseButtonDown(0))
+				pck.LMB_pressed = true;
+			else
+				pck.LMB_pressed = false;
+	
+			if(((AbstractTank) controller.getWorld().getEntity(currentTankID)) != null){
+				AbstractTurret playerTurret = ((AbstractTank) controller.getWorld().getEntity(currentTankID)).getTurret();
+				pck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
+			}
+			client.sendTCP(pck);
+		}
+    }
+
 	public void processPackets() {
 		Packet packet;
 		while ((packet = packetQueue.poll()) != null) {
@@ -156,18 +192,43 @@ public class ClientState extends BasicGameState {
 //				}
 //			}
 			
-			if(packet instanceof Pck101_TankUpdate){
-				Pck101_TankUpdate pck = (Pck101_TankUpdate) packet;
-				((AbstractTank)controller.getWorld().getEntity(pck.entityID)).setPosition(pck.position);
-				((AbstractTank)controller.getWorld().getEntity(pck.entityID)).setDirection(pck.direction);
-			}
+//			if(packet instanceof Pck101_TankUpdate){
+//				Pck101_TankUpdate pck = (Pck101_TankUpdate) packet;
+//				((AbstractTank)controller.getWorld().getEntity(pck.entityID)).setPosition(pck.position);
+//				((AbstractTank)controller.getWorld().getEntity(pck.entityID)).setDirection(pck.direction);
+//			}
 			
-			if(packet instanceof Pck102_TurretUpdate){
-				Pck102_TurretUpdate pck = (Pck102_TurretUpdate) packet;
-				((AbstractTurret)controller.getWorld().getEntity(pck.entityID)).setPosition(pck.position);
+//			if(packet instanceof Pck102_TurretUpdate){
+//				Pck102_TurretUpdate pck = (Pck102_TurretUpdate) packet;
+//				((AbstractTurret)controller.getWorld().getEntity(pck.entityID)).setPosition(pck.position);
+//			}
+			
+			if(packet instanceof Pck100_WorldState){
+				updateClientWorld((Pck100_WorldState) packet);
 			}
 		}
     }			
+
+	private void updateClientWorld(Pck100_WorldState worldState) {
+		for(EntityPacket pck : worldState.updatePackets){
+			if(pck instanceof Pck101_TankUpdate){
+				Pck101_TankUpdate packet = (Pck101_TankUpdate) pck;
+				AbstractTank tank = (AbstractTank) controller.getWorld().getEntity(packet.entityID);
+				tank.setPosition(packet.tankPosition);
+				tank.setDirection(packet.tankDirection);
+				AbstractTurret turret = tank.getTurret();
+				turret.setPosition(packet.turretPosition);
+				turret.setRotation(packet.turretAngle);
+			}
+
+//			if(pck instanceof Pck102_TurretUpdate){
+//				AbstractTurret turret = (AbstractTurret) controller.getWorld().getEntity(pck.entityID);
+//				turret.setPosition(((Pck102_TurretUpdate)pck).position);
+//				turret.setRotation(((Pck102_TurretUpdate)pck).angle);
+//			}
+			
+		}
+    }
 
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
@@ -235,25 +296,25 @@ public class ClientState extends BasicGameState {
 		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 545);
 	}
 
-	@Override
-    public void mousePressed(int button, int x, int y) {
-		if(button == 0){
-			Pck4_ClientInput input = new Pck4_ClientInput();
-			input.pressed = true;
-			input.keyCode = Input.MOUSE_LEFT_BUTTON;
-			client.sendTCP(input);
-		}
-	}
+//	@Override
+//    public void mousePressed(int button, int x, int y) {
+//		if(button == 0){
+//			Pck4_ClientInput input = new Pck4_ClientInput();
+//			input.pressed = true;
+//			input.keyCode = Input.MOUSE_LEFT_BUTTON;
+//			client.sendTCP(input);
+//		}
+//	}
 
-	@Override
-    public void mouseReleased(int button, int x, int y) {
-		if(button == 0){
-			Pck4_ClientInput input = new Pck4_ClientInput();
-			input.pressed = false;
-			input.keyCode = Input.MOUSE_LEFT_BUTTON;
-			client.sendTCP(input);
-		}
-	}
+//	@Override
+//    public void mouseReleased(int button, int x, int y) {
+//		if(button == 0){
+//			Pck4_ClientInput input = new Pck4_ClientInput();
+//			input.pressed = false;
+//			input.keyCode = Input.MOUSE_LEFT_BUTTON;
+//			client.sendTCP(input);
+//		}
+//	}
 
 //	@Override
 //    public void mouseMoved(int oldx, int oldy, int newx, int newy) {
@@ -277,24 +338,24 @@ public class ClientState extends BasicGameState {
 //		}
 //    }
 
-	@Override
-    public void keyPressed(int key, char c) {
-		if((key == Input.KEY_W) || (key == Input.KEY_A) || (key == Input.KEY_S) || (key == Input.KEY_D))
-			sendKey(key, true);
-    }
-
-	@Override
-    public void keyReleased(int key, char c) {
-		if((key == Input.KEY_W) || (key == Input.KEY_A) || (key == Input.KEY_S) || (key == Input.KEY_D))
-			sendKey(key, false); 
-    }
-
-    private void sendKey(int keyCode, boolean pressed) {
-    	Pck4_ClientInput input = new Pck4_ClientInput();
-	   	input.pressed = pressed;
-	   	input.keyCode = keyCode;
-	   	client.sendTCP(input);
-    }
+//	@Override
+//    public void keyPressed(int key, char c) {
+//		if((key == Input.KEY_W) || (key == Input.KEY_A) || (key == Input.KEY_S) || (key == Input.KEY_D))
+//			sendKey(key, true);
+//    }
+//
+//	@Override
+//    public void keyReleased(int key, char c) {
+//		if((key == Input.KEY_W) || (key == Input.KEY_A) || (key == Input.KEY_S) || (key == Input.KEY_D))
+//			sendKey(key, false); 
+//    }
+//
+//    private void sendKey(int keyCode, boolean pressed) {
+//    	Pck4_ClientInput input = new Pck4_ClientInput();
+//	   	input.pressed = pressed;
+//	   	input.keyCode = keyCode;
+//	   	client.sendTCP(input);
+//    }
     
 	public String getPlayerName() {
 	    return playerName;

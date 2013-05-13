@@ -18,8 +18,7 @@ import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.network.Network.*;
 import chalmers.TDA367.B17.network.*;
-import chalmers.TDA367.B17.tanks.DefaultTank;
-import chalmers.TDA367.B17.weapons.DefaultTurret;
+import chalmers.TDA367.B17.tanks.*;
 
 public class ServerState extends BasicGameState {
 	private int state;
@@ -199,12 +198,13 @@ public class ServerState extends BasicGameState {
 				}
 			}
 			
-			ArrayList<Float> turretAngles = new ArrayList<Float>();
-			ArrayList<Integer> turretIDs = new ArrayList<Integer>();
+//			ArrayList<Float> turretAngles = new ArrayList<Float>();
+//			ArrayList<Integer> turretIDs = new ArrayList<Integer>();
 			
-			Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
-			while(iterator.hasNext()){
-				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
+			
+			Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
+			while(updateIterator.hasNext()){
+				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) updateIterator.next();
 				Entity entity = entry.getValue();
 				
 				entity.update(delta);
@@ -213,31 +213,47 @@ public class ServerState extends BasicGameState {
 					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
 				if(entity instanceof AbstractSpawnPoint)
 					controller.getWorld().checkCollisionsFor(entity);
+
+			}			
+			
+			Pck100_WorldState worldState = new Pck100_WorldState();
+			worldState.updatePackets = new ArrayList<EntityPacket>();
+			
+			Iterator<Entry<Integer, Entity>> packetIterator = controller.getWorld().getEntities().entrySet().iterator();
+			while(packetIterator.hasNext()){
+				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) packetIterator.next();
+				Entity entity = entry.getValue();
 				
-				if(entity instanceof AbstractTurret){
-					AbstractTurret turret = (AbstractTurret) entity;
-//					GameController.getInstance().getConsole().addMsg(Double.toString(turret.getRotation()));
-					turretAngles.add((float) turret.getRotation());
-					turretIDs.add(turret.getId());
-					Pck102_TurretUpdate pck = new Pck102_TurretUpdate();
-					pck.entityID = turret.getId();
-					pck.position = turret.getPosition();
-					sendToAll(pck);
-				}
 				if(entity instanceof AbstractTank){
 					AbstractTank tank = (AbstractTank) entity;
 					Pck101_TankUpdate pck = new Pck101_TankUpdate();
 					pck.entityID = tank.getId();
-					pck.position = tank.getPosition();
-					pck.direction = tank.getDirection();
-					sendToAll(pck);
+					pck.tankPosition = tank.getPosition();
+					pck.tankDirection = tank.getDirection();
+					pck.turretPosition = tank.getTurret().getPosition();
+					pck.turretAngle = (float) tank.getTurret().getRotation();
+//					sendToAll(pck);
+					worldState.updatePackets.add(pck);
 				}
+				
+//				if(entity instanceof AbstractTurret){
+//					AbstractTurret turret = (AbstractTurret) entity;
+//					turretAngles.add((float) turret.getRotation());
+//					turretIDs.add(turret.getId());
+//					Pck102_TurretUpdate pck = new Pck102_TurretUpdate();
+//					pck.entityID = turret.getId();
+//					pck.position = turret.getPosition();
+//					pck.angle = (float) turret.getRotation();
+//					sendToAll(pck);
+//					worldState.updatePackets.add(pck);
+//				}
 			}	
+			sendToAll(worldState);
 			
-			Pck8_TurretAngleUpdate pck = new Pck8_TurretAngleUpdate();
-			pck.turretAngles = turretAngles;
-			pck.turretIDs = turretIDs;
-			sendToAll(pck);
+//			Pck8_TurretAngleUpdate pck = new Pck8_TurretAngleUpdate();
+//			pck.turretAngles = turretAngles;
+//			pck.turretIDs = turretIDs;
+//			sendToAll(pck);
 		}
     }
 	
@@ -254,8 +270,8 @@ public class ServerState extends BasicGameState {
 	    	
 			Pck101_TankUpdate pck = new Pck101_TankUpdate();
 			pck.entityID = tank.getId();
-			pck.position = new Vector2f(x, y);
-			pck.direction = tank.getDirection();
+			pck.tankPosition = new Vector2f(x, y);
+			pck.tankDirection = tank.getDirection();
 			sendToAll(pck);
 			x+=100;
 			y+=100;
@@ -305,60 +321,44 @@ public class ServerState extends BasicGameState {
 		    }
 		    
 		    if(packet instanceof Pck4_ClientInput){
-		    	updatePlayerButtons((Pck4_ClientInput) packet);
+		    	if(gameStarted)
+		    		receiveClientInput((Pck4_ClientInput) packet);
  		    }
 		    
-		    if(packet instanceof Pck5_ClientTurretAngle){
-		    	updateTurretAngle((Pck5_ClientTurretAngle) packet);
+//		    if(packet instanceof Pck5_ClientTurretAngle){
+//		    	updateTurretAngle((Pck5_ClientTurretAngle) packet);
 //		    	GameController.getInstance().getConsole().addMsg(Float.toString(((Pck5_ClientTurretAngle) packet).angle));
- 		    }
+// 		    }
 	   	}
     }
 	
-	private void updateTurretAngle(Pck5_ClientTurretAngle packet) {
-	    getPlayer(packet.getConnection()).getTank().getTurret().setRotation(packet.angle);
+//	private void updateTurretAngle(Pck5_ClientTurretAngle packet) {
+//	    getPlayer(packet.getConnection()).getTank().getTurret().setRotation(packet.angle);
 //	    GameController.getInstance().getConsole().addMsg(Double.toString(getPlayer(packet.getConnection()).getTank().getTurret().getRotation()));
-    }
+//    }
 
-	private void updatePlayerButtons(Pck4_ClientInput key) {
-    	if(key.pressed){
-            switch (key.keyCode) {
-                case Input.KEY_W:
-                   getPlayer(key.getConnection()).setInputStatus(Player.INPT_W, true);
-                   break;
-                case Input.KEY_A:
-                    getPlayer(key.getConnection()).setInputStatus(Player.INPT_A, true);
-                   break;
-                case Input.KEY_S:
-                    getPlayer(key.getConnection()).setInputStatus(Player.INPT_S, true);
-                	break;
-                case Input.KEY_D:
-                    getPlayer(key.getConnection()).setInputStatus(Player.INPT_D, true);
-                    break;                
-                case Input.MOUSE_LEFT_BUTTON:
-                	getPlayer(key.getConnection()).setInputStatus(Player.INPT_LMB, true);
-                	break;
-            }
-    	}    		    	
-    	if(!key.pressed){
-            switch (key.keyCode) {
-                case Input.KEY_W:
-                   getPlayer(key.getConnection()).setInputStatus(Player.INPT_W, false);
-                   break;
-                case Input.KEY_A:
-                    getPlayer(key.getConnection()).setInputStatus(Player.INPT_A, false);
-                   break;
-                case Input.KEY_S:
-                    getPlayer(key.getConnection()).setInputStatus(Player.INPT_S, false);
-                	break;
-                case Input.KEY_D:
-                    getPlayer(key.getConnection()).setInputStatus(Player.INPT_D, false);
-                	break;                
-                case Input.MOUSE_LEFT_BUTTON:
-                	getPlayer(key.getConnection()).setInputStatus(Player.INPT_LMB, false);
-                	break;
-            }
-    	}
+	private void receiveClientInput(Pck4_ClientInput pck) {
+		if(pck.W_pressed)
+			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_W, true);
+		else
+			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_W, false);
+
+		if(pck.A_pressed)
+			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_A, true);
+		else
+			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_A, false);
+		
+		if(pck.S_pressed)
+			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_S, true);
+		else
+			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_S, false);
+		
+		if(pck.D_pressed)
+			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_D, true);
+		else
+			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_D, false);
+
+		getPlayer(pck.getConnection()).getTank().getTurret().setRotation(pck.turretNewAngle);
     }
 
 	@Override
