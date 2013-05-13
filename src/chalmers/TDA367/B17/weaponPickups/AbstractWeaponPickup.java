@@ -17,7 +17,7 @@ public abstract class AbstractWeaponPickup extends Entity{
 	public AbstractWeaponPickup(Vector2f position) {
 		super();
 		absTank = null;
-		Vector2f size = new Vector2f(64f, 64f);
+		Vector2f size = new Vector2f(60f, 25f);
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
 	}
 
