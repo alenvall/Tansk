@@ -70,11 +70,7 @@ public class Play extends BasicGameState{
 		input.addMouseListener(this);
 		mouseCoords = new Point();
 
-		//POWERUPS
-		new DamagePowerUp(new Vector2f(500, 150));
-		new FireRatePowerUp(new Vector2f(500, 300));
-		new SpeedPowerUp(new Vector2f(500, 450));
-		new ShieldPowerUp(new Vector2f(200, 300));
+		//WeaponPickups
 		new FlamethrowerPickup(new Vector2f(400, 300), playerOne.getTank());
 		
 		//ObstacleTest
