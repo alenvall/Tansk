@@ -7,8 +7,11 @@ import java.util.*;
 import java.util.Map.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.newdawn.slick.*;
+import org.newdawn.slick.geom.Shape;
+import org.newdawn.slick.geom.Transform;
 import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.state.*;
+
 import com.esotericsoftware.kryonet.*;
 import com.esotericsoftware.minlog.Log;
 import chalmers.TDA367.B17.*;
@@ -16,6 +19,7 @@ import chalmers.TDA367.B17.console.*;
 import chalmers.TDA367.B17.console.Console.*;
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
+import chalmers.TDA367.B17.model.Entity.RenderLayer;
 import chalmers.TDA367.B17.network.Network.*;
 import chalmers.TDA367.B17.network.*;
 import chalmers.TDA367.B17.tanks.*;
@@ -34,6 +38,7 @@ public class ServerState extends BasicGameState {
 	
 	private boolean gameStarted = false;
 	private int latestID = 0;
+	private SpriteSheet entSprite;
 	
 	private ServerState(int state) {
 	    this.state = state;
@@ -155,25 +160,10 @@ public class ServerState extends BasicGameState {
 //				playerTurret.setRotation(rotation);
 				
 				ArrayList<Boolean> pressedKeys = player.getInput();
-/*				if(pressedKeys.get(Player.INPT_W)){
-	                GameController.getInstance().getConsole().addMsg(player.getName() + " is pressing W");
-				}
-				if(pressedKeys.get(Player.INPT_A)){
-	                GameController.getInstance().getConsole().addMsg(player.getName() + " is pressing A");
-				}
-				if(pressedKeys.get(Player.INPT_S)){
-	                GameController.getInstance().getConsole().addMsg(player.getName() + " is pressing S");
-				}
-				if(pressedKeys.get(Player.INPT_D)){
-	                GameController.getInstance().getConsole().addMsg(player.getName() + " is pressing D");
-				}
-				if(pressedKeys.get(Player.INPT_LMB)){
-	                GameController.getInstance().getConsole().addMsg(player.getName() + " is pressing LMB");
-				}
-*/
 				if(player.getTank() != null){
 					if(pressedKeys.get(Player.INPT_W)){
 						player.getTank().accelerate(delta);
+		                GameController.getInstance().getConsole().addMsg(player.getName() + " is pressing W");
 					} else if (pressedKeys.get(Player.INPT_S)){
 						player.getTank().reverse(delta);
 					} else {
@@ -197,11 +187,7 @@ public class ServerState extends BasicGameState {
 					}
 				}
 			}
-			
-//			ArrayList<Float> turretAngles = new ArrayList<Float>();
-//			ArrayList<Integer> turretIDs = new ArrayList<Integer>();
-			
-			
+						
 			Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
 			while(updateIterator.hasNext()){
 				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) updateIterator.next();
@@ -249,11 +235,6 @@ public class ServerState extends BasicGameState {
 //				}
 			}	
 			sendToAll(worldState);
-			
-//			Pck8_TurretAngleUpdate pck = new Pck8_TurretAngleUpdate();
-//			pck.turretAngles = turretAngles;
-//			pck.turretIDs = turretIDs;
-//			sendToAll(pck);
 		}
     }
 	
@@ -363,6 +344,33 @@ public class ServerState extends BasicGameState {
 
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		if(controller.getWorld().getEntities() != null){
+			ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
+			ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
+			ArrayList<Entity> thirdLayerEnts = new ArrayList<Entity>();
+			ArrayList<Entity> fourthLayerEnts = new ArrayList<Entity>();
+
+			Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
+			while(iterator.hasNext()){
+				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
+				Entity entity = entry.getValue();
+				
+				if(!entity.getSpriteID().equals("")){
+					if(entity.getRenderLayer() == RenderLayer.FIRST)
+						firstLayerEnts.add(entity);
+					else if(entity.getRenderLayer() == RenderLayer.SECOND)
+						secondLayerEnts.add(entity);
+					else if(entity.getRenderLayer() == RenderLayer.THIRD)
+						thirdLayerEnts.add(entity);
+					else if(entity.getRenderLayer() == RenderLayer.FOURTH)
+						fourthLayerEnts.add(entity);
+				}
+			}
+			renderEntities(firstLayerEnts, g);
+			renderEntities(secondLayerEnts, g);
+			renderEntities(thirdLayerEnts, g);
+			renderEntities(fourthLayerEnts, g);
+		}
 		controller.getConsole().renderMessages(g);
 		g.drawString("Players: " + playerList.size(), 18, 500);
 		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 520);
@@ -380,6 +388,21 @@ public class ServerState extends BasicGameState {
 			g.setColor(Color.red);
 		g.drawString("Run!", 415, 530);
 		g.drawRect(410, 525, 50, 30);
+		g.setColor(Color.white);
+	
+		
+    }
+	
+	private void renderEntities(ArrayList<Entity> entities, Graphics g){
+		g.setColor(Color.yellow);
+		for(Entity entity : entities){
+			if(entity instanceof AbstractTurret){
+				g.drawOval(entity.getPosition().x-10, entity.getPosition().y-10, 20, 20);
+				g.drawLine(entity.getPosition().x, entity.getPosition().y, ((AbstractTurret)entity).getTurretNozzle().x, ((AbstractTurret)entity).getTurretNozzle().y);
+			} else {
+				g.draw(entity.getShape());
+			}
+		}
 		g.setColor(Color.white);
 	}
 	
