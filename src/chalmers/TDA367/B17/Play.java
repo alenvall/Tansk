@@ -6,6 +6,7 @@ import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.powerups.*;
 import chalmers.TDA367.B17.terrain.BrownWall;
+import chalmers.TDA367.B17.weaponPickups.*;
 import chalmers.TDA367.B17.weapons.*;
 
 import org.newdawn.slick.geom.*;
@@ -73,6 +74,7 @@ public class Play extends BasicGameState{
 		new FireRatePowerUp(new Vector2f(500, 300));
 		new SpeedPowerUp(new Vector2f(500, 450));
 		new ShieldPowerUp(new Vector2f(200, 300));
+		new FlamethrowerPickup(new Vector2f(400, 300), playerOne.getTank());
 		
 		//ObstacleTest
 		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
@@ -129,6 +131,7 @@ public class Play extends BasicGameState{
 		if(input.isKeyDown(Input.KEY_1)){
 			playerOne.getTank().setTurret(new DefaultTurret(playerOne.getTank()));
 		}
+		/*
 		if(input.isKeyDown(Input.KEY_2)){
 			playerOne.getTank().setTurret(new FlamethrowerTurret(playerOne.getTank()));
 		}
@@ -144,7 +147,7 @@ public class Play extends BasicGameState{
 		if(input.isKeyDown(Input.KEY_6)){
 			playerOne.getTank().setTurret(new BounceTurret(playerOne.getTank()));
 		}
-		
+		*/
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
 			gc.exit();
 		}
