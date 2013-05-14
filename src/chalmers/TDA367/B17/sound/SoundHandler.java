@@ -1,25 +1,24 @@
 package chalmers.TDA367.B17.sound;
 
 
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.newdawn.slick.SlickException;
+import org.newdawn.slick.Sound;
+
 import chalmers.TDA367.B17.event.GameEvent;
 
 public class SoundHandler {
-
-	private static SoundHandler instance;
-
-	private SoundHandler() {
-		// TODO Load and store sound effects for later use (?)
-	}
+	
+	private Map<String, Sound> sounds;
 
 	/**
-	 * Get the SoundHandler instance.
-	 * @return the instance of SoundHandler
+	 * Create a new SoundHandler.
 	 */
-	public static SoundHandler getInstance() {
-		if(instance==null)
-			instance = new SoundHandler();
-
-		return instance;
+	public SoundHandler(){
+		sounds = new HashMap<String, Sound>();
 	}
 
 	/**
@@ -27,6 +26,28 @@ public class SoundHandler {
 	 * @param event a GameEvent
 	 */
 	public void handleEvent(GameEvent event){
-		// TODO Implement
+		if(event.getEventType().equals("TANK_DEATH_EVENT")) {
+			sounds.get("Tank_Destroyed").play();
+		}
+	}
+	
+	public void loadEverySound(String directory){
+		File folder = new File(directory);
+		File[] listOfFiles = folder.listFiles();
+
+		for(File file : listOfFiles) {
+			if(file.isFile()) {
+				if(file.getName().contains(".wav")){
+					try {						
+	                    Sound sound = new Sound(directory + "/" + file.getName());
+	                    sounds.put(file.getName().substring(0, file.getName().lastIndexOf('.')), sound);
+                    } catch (SlickException e) {
+                    	System.out.println("SoundHandler: Failed to load sound!");
+	                    e.printStackTrace();
+                    }
+				}
+			}
+		}
+        System.out.println("SoundHandler: Loaded sound.");
 	}
 }

@@ -4,6 +4,7 @@ import java.awt.*;
 
 import chalmers.TDA367.B17.model.GameConditions;
 import chalmers.TDA367.B17.model.World;
+import chalmers.TDA367.B17.sound.SoundHandler;
 
 public class GameController {
 
@@ -14,6 +15,7 @@ public class GameController {
 	private static GameController instance;
 	private World world;
 	private ImageHandler imgHandler;
+	private SoundHandler soundHandler;
 	
 	private GameConditions gameConditions;
 
@@ -23,6 +25,8 @@ public class GameController {
 		mouseCoordinates = new Point();
 		imgHandler = new ImageHandler();
 		imgHandler.loadAllImages(DATA_FOLDER);
+		soundHandler = new SoundHandler();
+		soundHandler.loadEverySound(DATA_FOLDER);
 	}
 	
 	public static enum RenderLayer{
@@ -67,5 +71,9 @@ public class GameController {
 
 	public void setGameConditions(GameConditions gameConditions) {
 		this.gameConditions = gameConditions;
+	}
+	
+	public SoundHandler getSoundHandler(){
+		return soundHandler;
 	}
 }
