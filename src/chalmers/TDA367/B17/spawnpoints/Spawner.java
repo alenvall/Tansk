@@ -15,10 +15,10 @@ import chalmers.TDA367.B17.weaponPickups.WeaponFactory;
 public class Spawner {
 	
 	//The time between each powerup spawn.
-	private int powerupSpawnTime = 5000;
+	private int powerupSpawnTime = 10000;
 
 	//The time between each weapon spawn.
-	private int weaponSpawnTime = 5000;
+	private int weaponSpawnTime = 15000;
 	
 	private int powerupTimer;
 	private int weaponTimer;
@@ -57,7 +57,7 @@ public class Spawner {
 			}
 			
 	
-			if(weaponSpawnTime > 0 && powerupCount < GameController.getInstance().getGameConditions().getWeaponLimit()){
+			if(weaponSpawnTime > 0 && weaponCount < GameController.getInstance().getGameConditions().getWeaponLimit()){
 				if(weaponTimer <= 0){
 					weaponTimer = weaponSpawnTime;
 					Vector2f p = null;
