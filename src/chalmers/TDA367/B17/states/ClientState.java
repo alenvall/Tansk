@@ -23,6 +23,7 @@ import chalmers.TDA367.B17.tanks.DefaultTank;
 import chalmers.TDA367.B17.weapons.DefaultProjectile;
 
 public class ClientState extends BasicGameState {
+	private static final int UPDATE_INTERVAL = 20;
 	private int state;
 	private static ClientState instance;
 	private GameController controller;
@@ -39,6 +40,9 @@ public class ClientState extends BasicGameState {
 	private boolean mapLoaded;
 	private ClientButtons clientButtons;
 	private int delta;
+	private int frameCounter;
+	private int timeSinceLastUpdate;
+	private int updates;
 		
 	private ClientState(int state){
 		this.state = state;
@@ -116,16 +120,21 @@ public class ClientState extends BasicGameState {
 	
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
+		frameCounter++;
 		this.delta = delta;
 		if((isConnected) && (!mapLoaded)){
 			MapLoader.createEntities("whatever");
 			mapLoaded = true;
 		}
-		
-		sendClientInput(gc.getInput());
 		processPackets();
-
-    }
+		
+		timeSinceLastUpdate -= delta;
+		if(timeSinceLastUpdate <= 0 && isConnected){
+			sendClientInput(gc.getInput());
+			timeSinceLastUpdate = UPDATE_INTERVAL;
+			updates++;
+		}
+	}
 	
 	private void sendClientInput(Input input) {
 		if(isConnected){
@@ -282,7 +291,9 @@ public class ClientState extends BasicGameState {
 	}
 	
 	public void debugRender(Graphics g){
-		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 545);
+		g.drawString("Frame: " + frameCounter, 18, 440);
+		g.drawString("Updates: " + updates, 18, 420);
+		g.drawString("Diff: " + (frameCounter-updates), 18, 460);
 	}
     
 	public String getPlayerName() {

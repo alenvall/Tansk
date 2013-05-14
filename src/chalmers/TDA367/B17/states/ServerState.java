@@ -22,6 +22,7 @@ import chalmers.TDA367.B17.network.*;
 import chalmers.TDA367.B17.tanks.*;
 
 public class ServerState extends BasicGameState {
+	private static final int UPDATE_INTERVAL = 20;
 	private int state;
 	private static ServerState instance;
 	private GameController controller;
@@ -36,6 +37,9 @@ public class ServerState extends BasicGameState {
 	private boolean gameStarted = false;
 	private int latestID = 0;
 	private int deltaTime;
+	private int frameCounter;
+	private int timeSinceLastUpdate;
+	private int updates;
 	
 	private ServerState(int state) {
 	    this.state = state;
@@ -150,6 +154,7 @@ public class ServerState extends BasicGameState {
 	
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
+		frameCounter++;
 		this.deltaTime = delta;
 		processPackets();
 		
@@ -174,10 +179,15 @@ public class ServerState extends BasicGameState {
 			// Update for tankspawner & gameconditions
 //			controller.getWorld().getTankSpawner().update(delta, playerList);
 //			gameConditions.update(delta);
-
-			updatePlayerTanks(delta);
-			updateWorld(delta);
-			updateClients();
+			
+			timeSinceLastUpdate -= delta;
+			if(timeSinceLastUpdate <= 0){
+				updatePlayerTanks(delta);
+				updateWorld(delta);
+				updateClients();
+				timeSinceLastUpdate = UPDATE_INTERVAL;
+				updates++;
+			}
 		}
     }
 
@@ -377,6 +387,9 @@ public class ServerState extends BasicGameState {
 		g.drawString("Run!", 415, 530);
 		g.drawRect(410, 525, 50, 30);
 		g.setColor(Color.white);
+		g.drawString("Frame: " + frameCounter, 18, 440);
+		g.drawString("Updates: " + updates, 18, 420);
+		g.drawString("Diff: " + (frameCounter-updates), 18, 460);
     }
 	
 	private void renderEntities(ArrayList<Entity> entities, Graphics g){
