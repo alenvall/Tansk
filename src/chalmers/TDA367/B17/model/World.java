@@ -14,7 +14,6 @@ public class World {
 	private Dimension size;
 	private TankSpawner tankSpawner;
 	private boolean serverWorld = false;
-	Entity entity;
 	
 	public World(Dimension size, boolean serverWorld) {
 		this.size = size;
@@ -33,14 +32,31 @@ public class World {
 	 */
 	public void addEntity(Entity newEntity){
 		if(serverWorld){
-			GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): " + newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+			GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
 			Pck9_EntityCreated packet = new Pck9_EntityCreated();
 			packet.entityID = newEntity.getId();
 			packet.identifier = newEntity.getClass().getSimpleName();
-			ServerState.getInstance().sendToAll(packet);
+//			ServerState.getInstance().sendToAll(packet);
 			ServerState.getInstance().addToClientQueue(packet);
 		}
 		entities.put(newEntity.getId(), newEntity);
+	}
+
+	public void removeEntity(Entity entity){
+		removeEntity(entity.getId());
+	}	
+	
+	public void removeEntity(int id){
+		if(serverWorld){
+			Entity deadEntity = getEntity(id);
+			GameController.getInstance().getConsole().addMsg("Destroyed (ID" + deadEntity.getId() + "): "+  deadEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+			Pck8_EntityDestroyed pck = new Pck8_EntityDestroyed();
+			pck.entityID = id;
+//			ServerState.getInstance().sendToAll(pck);
+			ServerState.getInstance().addToClientQueue(pck);
+		}
+		
+		entities.remove(id);
 	}
 	
 	/**
@@ -73,28 +89,6 @@ public class World {
 					entity.didCollideWith(movableEntity);
 			}
 		}
-	}
-
-	public void removeEntity(Entity entity){
-		removeEntity(entity.getId());
-	}	
-	
-	public void removeEntity(int id){
-		if(serverWorld){
-			try{
-				entity = getEntity(id);
-				String msg = "Destroyed (ID" + id + "): " + entity.getClass().getSimpleName();
-				GameController.getInstance().getConsole().addMsg(msg, MsgLevel.STANDARD);
-			} catch (java.lang.NullPointerException e){
-				GameController.getInstance().getConsole().addMsg("Shiiiiet (ID" + id + ")", MsgLevel.ERROR);
-			}
-			Pck8_EntityDestroyed pck = new Pck8_EntityDestroyed();
-			pck.entityID = id;
-			ServerState.getInstance().sendToAll(pck);
-			ServerState.getInstance().addToClientQueue(pck);
-		}
-		
-		entities.remove(id);
 	}
 
 	public Dimension getSize() {

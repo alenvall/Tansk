@@ -11,5 +11,4 @@ public class AbstractObstacle extends Entity {
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
 		renderLayer = RenderLayer.FIRST;
 	}
-
 }
