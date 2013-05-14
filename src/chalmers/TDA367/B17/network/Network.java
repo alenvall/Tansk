@@ -22,6 +22,7 @@ public class Network {
 		kryo.register(Vector2f.class);
 		kryo.register(Pck7_TankID.class);
 		kryo.register(ArrayList.class);
+		kryo.register(Pck8_EntityDestroyed.class);
 		kryo.register(Pck100_WorldState.class);
 		kryo.register(Pck101_TankUpdate.class);
 		kryo.register(Pck102_TurretUpdate.class);
@@ -41,8 +42,8 @@ public class Network {
 	
 	public static class EntityPacket extends Packet{
 		public int entityID;
-	}
-	
+	}	
+		
 	public static class Pck0_JoinRequest extends Packet{
 		public String playerName;
 	}
@@ -79,8 +80,10 @@ public class Network {
 	
 	public static class Pck7_TankID extends Packet{
 		public int tankID;
-	}
+	}	
 	
+	public static class Pck8_EntityDestroyed extends EntityPacket{
+	}
 	
 	public static class Pck100_WorldState extends Packet {
 		public ArrayList<EntityPacket> updatePackets;
