@@ -11,8 +11,8 @@ public class DefaultTurret extends AbstractTurret {
 	
 	public DefaultTurret(AbstractTank tank) {
 		super(tank);
-		turretCenter = new Vector2f(22.5f, 22.5f);
-		turretLength = 42f;
+		turretCenter = new Vector2f(11.25f, 11.25f);
+		turretLength = 21f;
 		fireRate = 200;
 		projectileType = "default";
 	}
