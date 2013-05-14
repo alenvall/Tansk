@@ -86,7 +86,8 @@ public class World {
 			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
 			Entity entity = entry.getValue();
 
-			if(entity!=paramEntity && entity.getShape().intersects(paramEntity.getShape())){
+			if(entity!=paramEntity && (entity.getShape().intersects(paramEntity.getShape())
+					|| (entity.getShape().contains(paramEntity.getShape()) && !(entity instanceof MapBounds)))){
 				paramEntity.didCollideWith(entity);
 				// prevent double method calls
 				if(!(entity instanceof MovableEntity))
