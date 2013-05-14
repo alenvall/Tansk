@@ -35,7 +35,7 @@ public class ServerState extends BasicGameState {
 	
 	private boolean gameStarted = false;
 	private int latestID = 0;
-	private int delta;
+	private int deltaTime;
 	
 	private ServerState(int state) {
 	    this.state = state;
@@ -128,9 +128,29 @@ public class ServerState extends BasicGameState {
         }
 	}
 	
+	// only used for debug
+	private void startGame() {
+		gameStarted = true;
+		int x = 100;
+		for(Player player : playerList){
+			AbstractTank tank = new DefaultTank(generateID());
+			tank.setPosition(new Vector2f(x, 100));
+			player.setTank(tank);
+	    	
+			Pck7_TankID tankPck = new Pck7_TankID();
+	    	tankPck.tankID = player.getTank().getId();
+	    	player.getConnection().sendTCP(tankPck);
+	    	
+			x+=100;
+		}
+		// Start a new round
+//		gameConditions.init(10, 2, 1, 5000, 500000, 1500000);
+//		gameConditions.newRoundDelayTimer(3000);
+    }
+	
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
-		this.delta = delta;
+		this.deltaTime = delta;
 		processPackets();
 		
 		if(gc.getInput().isKeyPressed(Input.KEY_SPACE)){
@@ -151,116 +171,14 @@ public class ServerState extends BasicGameState {
 		}
 		
 		if(gameStarted){
-			// Update for tankspawner
+			// Update for tankspawner & gameconditions
 //			controller.getWorld().getTankSpawner().update(delta, playerList);
-			
-			// Update for gameconditions
 //			gameConditions.update(delta);
 
-			for(Player player : playerList){		
-				ArrayList<Boolean> pressedKeys = player.getInput();
-				if(player.getTank() != null){
-					if(pressedKeys.get(Player.INPT_W)){
-						player.getTank().accelerate(delta);
-					} else if (pressedKeys.get(Player.INPT_S)){
-						player.getTank().reverse(delta);
-					} else {
-						player.getTank().friction(delta);
-					}
-					
-					if(pressedKeys.get(Player.INPT_A) && !pressedKeys.get(Player.INPT_D)){
-						if(pressedKeys.get(Player.INPT_S)){
-							player.getTank().turnRight(delta);
-						} else {
-							player.getTank().turnLeft(delta);
-						}
-					}
-					
-					if(pressedKeys.get(Player.INPT_D) && !pressedKeys.get(Player.INPT_A)){
-						if(pressedKeys.get(Player.INPT_S)){
-							player.getTank().turnLeft(delta);
-						} else {
-							player.getTank().turnRight(delta);
-						}
-					}
-					
-					if(pressedKeys.get(Player.INPT_LMB)){
-						player.getTank().fireWeapon(delta);
-//						GameController.getInstance().getConsole().addMsg(player.getName() + " is firing!");
-					}	
-				}
-			}
-			
-
-			Pck100_WorldState worldState = new Pck100_WorldState();
-			worldState.updatePackets = new ArrayList<EntityPacket>();
-			
-			Dimension worldSize = GameController.getInstance().getWorld().getSize();
-			
-			Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
-			while(updateIterator.hasNext()){
-				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) updateIterator.next();
-				Entity entity = entry.getValue();
-				
-				entity.update(delta);
-				
-				if(entity instanceof MovableEntity){
-					float x = entity.getPosition().getX();
-					float y = entity.getPosition().getY();
-					
-					if((x < 0) || (x > worldSize.width) || (y < 0) || (y > worldSize.height)){
-						entity.destroy();
-					} else {
-						controller.getWorld().checkCollisionsFor((MovableEntity)entity);
-						
-						if(entity instanceof AbstractTank){
-							AbstractTank tank = (AbstractTank) entity;
-							Pck101_TankUpdate pck = new Pck101_TankUpdate();
-							pck.entityID = tank.getId();
-							pck.tankPosition = tank.getPosition();
-							pck.tankDirection = tank.getDirection();
-							pck.turretPosition = tank.getTurret().getPosition();
-							pck.turretAngle = (float) tank.getTurret().getRotation();
-							worldState.updatePackets.add(pck);
-						}
-						
-						if(entity instanceof AbstractProjectile){
-							AbstractProjectile proj = (AbstractProjectile) entity;
-							Pck102_ProjectileUpdate pck = new Pck102_ProjectileUpdate();
-							pck.entityID = proj.getId();
-							pck.projPosition = proj.getPosition();
-							pck.projDirection = proj.getDirection();
-							worldState.updatePackets.add(pck);
-						}
-					}
-				}
-				if(entity instanceof AbstractSpawnPoint)
-					controller.getWorld().checkCollisionsFor(entity);
-			}			
-//			sendToAll(worldState);
-			addToClientQueue(worldState);
+			updatePlayerTanks(delta);
+			updateWorld(delta);
 			updateClients();
 		}
-    }
-	
-	// only used for debug
-	private void startGame() {
-		gameStarted = true;
-		int x = 100;
-		for(Player player : playerList){
-			AbstractTank tank = new DefaultTank(generateID());
-			tank.setPosition(new Vector2f(x, 100));
-			player.setTank(tank);
-	    	
-			Pck7_TankID tankPck = new Pck7_TankID();
-	    	tankPck.tankID = player.getTank().getId();
-	    	player.getConnection().sendTCP(tankPck);
-	    	
-			x+=100;
-		}
-		// Start a new round
-//		gameConditions.init(10, 2, 1, 5000, 500000, 1500000);
-//		gameConditions.newRoundDelayTimer(3000);
     }
 
 	public void processPackets() {
@@ -315,6 +233,92 @@ public class ServerState extends BasicGameState {
 		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_LMB, pck.LMB_pressed);
     }
 	
+	public void updatePlayerTanks(int delta){
+		for(Player player : playerList){		
+			ArrayList<Boolean> pressedKeys = player.getInput();
+			if(player.getTank() != null){
+				if(pressedKeys.get(Player.INPT_W)){
+					player.getTank().accelerate(delta);
+				} else if (pressedKeys.get(Player.INPT_S)){
+					player.getTank().reverse(delta);
+				} else {
+					player.getTank().friction(delta);
+				}
+				
+				if(pressedKeys.get(Player.INPT_A) && !pressedKeys.get(Player.INPT_D)){
+					if(pressedKeys.get(Player.INPT_S)){
+						player.getTank().turnRight(delta);
+					} else {
+						player.getTank().turnLeft(delta);
+					}
+				}
+				
+				if(pressedKeys.get(Player.INPT_D) && !pressedKeys.get(Player.INPT_A)){
+					if(pressedKeys.get(Player.INPT_S)){
+						player.getTank().turnLeft(delta);
+					} else {
+						player.getTank().turnRight(delta);
+					}
+				}
+				
+				if(pressedKeys.get(Player.INPT_LMB)){
+					player.getTank().fireWeapon(delta);
+//					GameController.getInstance().getConsole().addMsg(player.getName() + " is firing!");
+				}	
+			}
+		}
+	}
+	
+	public void updateWorld(int delta){
+		Pck100_WorldState worldState = new Pck100_WorldState();
+		worldState.updatePackets = new ArrayList<EntityPacket>();
+		
+		Dimension worldSize = GameController.getInstance().getWorld().getSize();
+		
+		Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
+		while(updateIterator.hasNext()){
+			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) updateIterator.next();
+			Entity entity = entry.getValue();
+			
+			entity.update(delta);
+			
+			if(entity instanceof MovableEntity){
+				float x = entity.getPosition().getX();
+				float y = entity.getPosition().getY();
+				
+				if((x < 0) || (x > worldSize.width) || (y < 0) || (y > worldSize.height)){
+					entity.destroy();
+				} else {
+					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
+					
+					if(entity instanceof AbstractTank){
+						AbstractTank tank = (AbstractTank) entity;
+						Pck101_TankUpdate pck = new Pck101_TankUpdate();
+						pck.entityID = tank.getId();
+						pck.tankPosition = tank.getPosition();
+						pck.tankDirection = tank.getDirection();
+						pck.turretPosition = tank.getTurret().getPosition();
+						pck.turretAngle = (float) tank.getTurret().getRotation();
+						worldState.updatePackets.add(pck);
+					}
+					
+					if(entity instanceof AbstractProjectile){
+						AbstractProjectile proj = (AbstractProjectile) entity;
+						Pck102_ProjectileUpdate pck = new Pck102_ProjectileUpdate();
+						pck.entityID = proj.getId();
+						pck.projPosition = proj.getPosition();
+						pck.projDirection = proj.getDirection();
+						worldState.updatePackets.add(pck);
+					}
+				}
+			}
+			if(entity instanceof AbstractSpawnPoint)
+				controller.getWorld().checkCollisionsFor(entity);
+		}			
+//		sendToAll(worldState);
+		addToClientQueue(worldState);
+	}
+		
 	public void addToClientQueue(Packet packet){
 		clientPacketQueue.add(packet);
 	}
@@ -333,7 +337,7 @@ public class ServerState extends BasicGameState {
 
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
-		g.drawString("Delta: " + delta, 18, 480);
+		g.drawString("Delta: " + deltaTime, 18, 480);
 		if(controller.getWorld().getEntities() != null){
 			ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
 			ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
