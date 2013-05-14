@@ -244,18 +244,18 @@ public class ServerState extends BasicGameState {
 		    	controller.getConsole().addMsg(pck.playerName + " attempting to connect..", MsgLevel.INFO);
 		    	Pck1_LoginAnswer responsePacket = new Pck1_LoginAnswer();
 		    	
-//		    	if(!gameStarted){
+		    	if(!gameStarted){
 			    	Player newPlayer = new Player(packet.getConnection(), pck.playerName);
 			    	newPlayer.setLives(gameConditions.getPlayerLives());
 			    	newPlayer.setRespawnTime(gameConditions.getSpawnTime());
 			    	
 			    	playerList.add(newPlayer);
 			    	responsePacket.accepted = true;
-//		    	} else {
-//		    		responsePacket.accepted = false;
-//		    		responsePacket.reason = "Game started.";
-//		    		GameController.getInstance().getConsole().addMsg(pck.playerName + " kicked, game has started.", MsgLevel.INFO);
-//		    	}
+		    	} else {
+		    		responsePacket.accepted = false;
+		    		responsePacket.reason = "Game started.";
+		    		GameController.getInstance().getConsole().addMsg(pck.playerName + " kicked, game has started.", MsgLevel.INFO);
+		    	}
 			   	packet.getConnection().sendTCP(responsePacket);
 		    }
 		    
@@ -339,8 +339,6 @@ public class ServerState extends BasicGameState {
 		g.drawString("Run!", 415, 530);
 		g.drawRect(410, 525, 50, 30);
 		g.setColor(Color.white);
-	
-		
     }
 	
 	private void renderEntities(ArrayList<Entity> entities, Graphics g){
