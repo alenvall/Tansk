@@ -34,7 +34,7 @@ public class World {
 	public void addEntity(Entity newEntity){
 		entities.put(newEntity.getId(), newEntity);
 		if(serverWorld){
-			GameController.getInstance().getConsole().addMsg(" (ID" + newEntity.getId() + "): " + newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+			GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): " + newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
 			if(newEntity instanceof AbstractTank){
 				AbstractTank tank = (AbstractTank) newEntity;
 				Pck6_CreateTank packet = new Pck6_CreateTank();
