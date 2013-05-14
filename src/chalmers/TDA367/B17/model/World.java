@@ -5,6 +5,8 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
+import chalmers.TDA367.B17.spawnpoints.Spawner;
+
 
 public class World {
 	
@@ -13,8 +15,12 @@ public class World {
 	//The size of the map (world)
 	private Dimension size;
 	
+	//A spawner that spawns/respawns tanks.
 	private TankSpawner tankSpawner;
 	
+	//A spawner that spawns powerup and weapons.
+	private Spawner spawner;
+
 	private int latestID;
 	
 	/**
@@ -25,6 +31,7 @@ public class World {
 		this.size = size;
 		this.entities = new ConcurrentHashMap<Integer, Entity>();
 		this.tankSpawner = new TankSpawner();
+		spawner = new Spawner();
 	}
 
 	/**
@@ -118,5 +125,13 @@ public class World {
 	 */
 	public void setTankSpawner(TankSpawner tankSpawner) {
 		this.tankSpawner = tankSpawner;
+	}
+	
+	/**
+	 * Get the spawner of this world.
+	 * @return The spawner
+	 */
+	public Spawner getSpawner() {
+		return spawner;
 	}
 }

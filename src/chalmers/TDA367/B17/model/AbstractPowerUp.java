@@ -24,6 +24,10 @@ public abstract class AbstractPowerUp extends Entity {
 		Vector2f size = new Vector2f(35f, 35f);
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
 		renderLayer = GameController.RenderLayer.THIRD;
+
+		//Increase the powerup count
+		GameController.getInstance().getWorld().getSpawner().setPowerupCount
+		(GameController.getInstance().getWorld().getSpawner().getPowerupCount() + 1);
 	}
 
 	/**
@@ -110,6 +114,9 @@ public abstract class AbstractPowerUp extends Entity {
 		active = false;
 		effectActive = true;
 		spriteID = "";
+		//Decrease the powerup count
+		GameController.getInstance().getWorld().getSpawner().setPowerupCount
+		(GameController.getInstance().getWorld().getSpawner().getPowerupCount() - 1);
 	}
 	
 	/**

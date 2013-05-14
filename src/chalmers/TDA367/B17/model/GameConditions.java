@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
 
 public class GameConditions {
 	
@@ -39,6 +40,12 @@ public class GameConditions {
 	
 	//A list of all the players.
 	private List<Player> players;
+	
+	//The maximum amount of powerups that can be out at a time.
+	private int powerupLimit = 10;
+	
+	//The maximum amount of weapons that can be out at a time.
+	private int weaponLimit = 10;
 
 	/**
 	 * Create a new GameConditions object.
@@ -79,9 +86,15 @@ public class GameConditions {
 		roundTimer = roundTime;
 		
 		eliminatedPlayerCount = 0;
+
+		//Reset the powerup count
+		GameController.getInstance().getWorld().getSpawner().setPowerupCount(0);
+		//Reset the weapon count
+		GameController.getInstance().getWorld().getSpawner().setWeaponCount(0);
 		
 		for(Entity entity : GameController.getInstance().getWorld().getEntities().values()){
-			if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUp){
+			if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUp
+					|| entity instanceof AbstractWeaponPickup){
 				entity.destroy();
 			}
 		}
@@ -366,5 +379,37 @@ public class GameConditions {
 	 */
 	public List<Player> getPlayers() {
 		return players;
+	}
+
+	/**
+	 * Get the maximum amount of powerups that can be out at once.
+	 * @return The powerup limit
+	 */
+	public int getPowerupLimit() {
+		return powerupLimit;
+	}
+
+	/**
+	 * Set the maximum amount of powerups that can be out at once.
+	 * @param powerupLimit The new powerup limit
+	 */
+	public void setPowerupLimit(int powerupLimit) {
+		this.powerupLimit = powerupLimit;
+	}
+	
+	/**
+	 * Get the maximum amount of weapons that can be out at once.
+	 * @return The weapon limit
+	 */
+	public int getWeaponLimit() {
+		return weaponLimit;
+	}
+
+	/**
+	 * Set the maximum amount of weapons that can be out at once.
+	 * @param powerupLimit The new weapon limit
+	 */
+	public void setWeaponLimit(int weaponLimit) {
+		this.weaponLimit = weaponLimit;
 	}
 }

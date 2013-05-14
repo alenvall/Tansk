@@ -71,21 +71,25 @@ public class Play extends BasicGameState{
 		mouseCoords = new Point();
 
 		//WeaponPickups
-		new FlamethrowerPickup(new Vector2f(400, 300), playerOne.getTank());
-		new ShotgunPickup(new Vector2f(500, 300), playerOne.getTank());
-		new ShockwavePickup(new Vector2f(600, 300), playerOne.getTank());
-		new BouncePickup(new Vector2f(700, 300), playerOne.getTank());
-		new SlowspeedyPickup(new Vector2f(800, 300), playerOne.getTank());
+		/*
+		new FlamethrowerPickup(new Vector2f(400, 300));
+		new ShotgunPickup(new Vector2f(500, 300));
+		new ShockwavePickup(new Vector2f(600, 300));
+		new BouncePickup(new Vector2f(700, 300));
+		new SlowspeedyPickup(new Vector2f(800, 300));
+		*/
 		
 		//ObstacleTest
 		new BrownWall(new Vector2f(150, 50), new Vector2f(700, 600));
 		
 		//PowerUpSpawnPoints
+		/*
 		new PowerUpSpawnPoint(new Vector2f(250, 100), 10000, "shield");
 		new PowerUpSpawnPoint(new Vector2f(250, 500), 10000, "speed");
 		new PowerUpSpawnPoint(new Vector2f(500, 100), 10000, "damage");
 		new PowerUpSpawnPoint(new Vector2f(500, 250), 10000, "firerate");
 		new PowerUpSpawnPoint(new Vector2f(750, 500), 10000, "health");
+		*/
 		
 		//TankSpawnPoints
 		TankSpawnPoint tsp = new TankSpawnPoint(new Vector2f(100, 100));
@@ -190,6 +194,8 @@ public class Play extends BasicGameState{
 		
 		//Update for tankspawner
 		controller.getWorld().getTankSpawner().update(delta);
+		
+		controller.getWorld().getSpawner().update(delta);
 		
 		//Update for getGameConditions()
 		controller.getGameConditions().update(delta);

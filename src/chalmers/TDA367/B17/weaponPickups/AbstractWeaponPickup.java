@@ -3,6 +3,7 @@ package chalmers.TDA367.B17.weaponPickups;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 
@@ -19,6 +20,10 @@ public abstract class AbstractWeaponPickup extends Entity{
 		absTank = null;
 		Vector2f size = new Vector2f(40f, 40f);
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
+
+		//Increase the weapon count
+		GameController.getInstance().getWorld().getSpawner().setWeaponCount
+		(GameController.getInstance().getWorld().getSpawner().getWeaponCount() + 1);
 	}
 
 	/**
@@ -44,7 +49,12 @@ public abstract class AbstractWeaponPickup extends Entity{
 		this.absTank = absTank;
 		spriteID = "";
 		this.destroy();
+
+		//Decrease the weapon count
+		GameController.getInstance().getWorld().getSpawner().setWeaponCount
+		(GameController.getInstance().getWorld().getSpawner().getWeaponCount() - 1);
 	}
+	
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractTank){
 			activate((AbstractTank)entity);
