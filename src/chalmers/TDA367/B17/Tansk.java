@@ -12,7 +12,7 @@ public class Tansk extends StateBasedGame {
 	public static final String DATA_FOLDER = "data";
 	public static final String NAME = "Tansk!";
 	public static final int MENU = 0;
-//	public static final int PLAY = 1;
+	public static final int PLAY = 5;
 	public static final int HOST = 1;
 	public static final int JOIN = 2;
 	public static final int CLIENT = 3;
@@ -25,7 +25,7 @@ public class Tansk extends StateBasedGame {
 	@Override
 	public void initStatesList(GameContainer gc) throws SlickException {
 		this.addState(new Menu(MENU));
-//		this.addState(new Play(PLAY));
+		this.addState(new Play(PLAY));
 		this.addState(new HostMenu(HOST));
 		this.addState(new JoinMenu(JOIN));
 //		this.addState(new ClientState(CLIENT));

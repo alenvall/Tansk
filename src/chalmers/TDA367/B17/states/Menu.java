@@ -53,7 +53,7 @@ public class Menu extends BasicGameState{
 		
 		if(x > 100 && x < 250 && y > 125 && y < 175){
 			if(input.isMouseButtonDown(0)){
-//				sbg.enterState(Tansk.PLAY);
+				sbg.enterState(Tansk.PLAY);
 			}
 		}
 		

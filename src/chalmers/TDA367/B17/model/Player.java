@@ -35,7 +35,20 @@ public class Player {
 		for(int i = 0; i < 6; i++){
 			inputStatuses.add(false);
 		}
-//		GameController.getInstance().gameConditions.addPlayer(this);
+	}
+	
+	// only for single(Play)er state..
+	public Player(String name){
+		this.connection = null;
+		this.id = 0;
+		this.name = name;
+		tankType = "default";
+		active = true;
+		eliminated = false;
+		inputStatuses = new ArrayList<Boolean>();
+		for(int i = 0; i < 6; i++){
+			inputStatuses.add(false);
+		}
 	}
 	
 	public static final int INPT_W = 0;
