@@ -1,6 +1,7 @@
 package chalmers.TDA367.B17.model;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.controller.GameController.RenderLayer;
 import org.newdawn.slick.geom.*;
 
 public abstract class Entity{
@@ -9,10 +10,10 @@ public abstract class Entity{
 	protected Shape shape;
 	protected String spriteID;
 	private double rotation;
+	protected RenderLayer renderLayer;
 
 	/**
-	 * 
-	 * 
+	 * Create a new Entity.
 	 */
 	public Entity(){
 		this.id = GameController.getInstance().getWorld().generateID();
@@ -21,14 +22,35 @@ public abstract class Entity{
 		shape = new Point(-1, -1);
 		rotation = 0;
 		spriteID = "";
+		renderLayer = GameController.RenderLayer.FOURTH;
 	}
 	
+	public RenderLayer getRenderLayer(){
+		return renderLayer;
+	}
+	
+	/**
+	 * Returns true of the object is active.
+	 * @return True if active
+	 */
 	public boolean isActive(){
 		return active;
 	}
 	
+	/**
+	 * Return the rotation of this entity.
+	 * @return The rotation
+	 */
 	public double getRotation(){
 		return rotation;
+	}
+	
+	/**
+	 * Set the rotation of this entity
+	 * @param rotation The new rotation
+	 */
+	public void setRotation(double rotation){
+		this.rotation = rotation;
 	}
 	
 	/**
@@ -83,14 +105,26 @@ public abstract class Entity{
 			this.shape = this.shape.transform(Transform.createTranslateTransform(position.getX() - getPosition().getX(), position.getY() - getPosition().getY()));
 	}
 
+	/**
+	 * Get the shape of this entity.
+	 * @return The shape
+	 */
 	public Shape getShape() {
 		return shape;
 	}
 
+	/**
+	 * Set the shape of this entity.
+	 * @param shape The new shape
+	 */
 	public void setShape(Shape shape) {
 		this.shape = shape;
 	}
-
+	
+	/**
+	 * Used for updating this entity.
+	 * @param delta The time that has passed since the last update
+	 */
 	public void update(int delta){
 		
 	}
@@ -110,11 +144,26 @@ public abstract class Entity{
 	 */
 	public void didCollideWith(Entity entity){}
 
+	/**
+	 * Remove this entity from the World.
+	 */
 	public void destroy(){
 		GameController.getInstance().getWorld().removeEntity(this);
 	}
 	
+	/**
+	 * Return the spriteID of this entity.
+	 * @return The spriteID
+	 */
 	public String getSpriteID(){
 		return spriteID;
+	}
+
+	/**
+	 * Set the spriteID of this entity.
+	 * @param spriteID The new spriteID
+	 */
+	public void setSpriteID(String spriteID) {
+		this.spriteID = spriteID;
 	}
 }

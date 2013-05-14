@@ -11,6 +11,10 @@ public class FireRatePowerUp extends AbstractPowerUp {
 	private AbstractTurret turret;
 	private int firerate;
 	
+	/**
+	 * Create a new FireRatePowerUp at a position.
+	 * @param position The position of this powerup
+	 */
 	public FireRatePowerUp(Vector2f position) {
 		super(position);
 		effectDuration = 7000;

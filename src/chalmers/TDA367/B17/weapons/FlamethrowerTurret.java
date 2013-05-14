@@ -6,10 +6,13 @@ import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.AbstractTurret;
 
+
 public class FlamethrowerTurret extends AbstractTurret {
-		
+	private static int DEFAULT_AMMO = 500;
+	private int ammoLeft;
 	public FlamethrowerTurret(AbstractTank tank)  {
 		super(tank);
+		ammoLeft = DEFAULT_AMMO;
 		turretCenter = new Vector2f(22.5f, 22.5f);
 		turretLength = 42f;
 		setSize(new Vector2f(45f, 65f));
@@ -24,7 +27,13 @@ public class FlamethrowerTurret extends AbstractTurret {
 
 	@Override
 	public void fireWeapon(int delta, AbstractTank tank){
-		for(int i = 0; i < 2; i++)
+		for(int i = 0; i < 2; i++){
 			tank.addProjectile(spawnNewProjectile());
+			if(ammoLeft>0){
+				ammoLeft--;
+			}else{
+				tank.setTurret(new DefaultTurret(getTank()));
+			}
+		}
 	}
 }

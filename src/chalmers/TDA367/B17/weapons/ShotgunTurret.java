@@ -35,15 +35,10 @@ public class ShotgunTurret extends AbstractTurret {
 			}
 			
 			projectile.setDirection(angle);
-			projectile.setSpeed(Math.abs(projectile.getSpeed() * (i * 0.2f)));
+			//The spawned projectiles have different speed.
+			projectile.setSpeed(Math.abs(projectile.getSpeed() - (i * 0.025f)));
 
 			tank.addProjectile(projectile);
 		}
 	}
-	
-	/*
-	 * Should fireWeapon be moved to AbstractTurret?
-	 * Would make some things easier.
-	 */
-
 }

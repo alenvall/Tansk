@@ -5,6 +5,11 @@ import org.newdawn.slick.geom.Rectangle;
 import java.awt.*;
 
 public class MapBounds extends Entity {
+	
+	/**
+	 * Create a new MapBounds object. 
+	 * This entity is used to check collision with the edge of the map.
+	 */
 	public MapBounds(Dimension size) {
 		super();
 		setShape(new Rectangle(-1, -1, size.width+2, size.height+1));
