@@ -33,7 +33,6 @@ public class World {
 	 */
 	public void addEntity(Entity newEntity){
 		entities.put(newEntity.getId(), newEntity);
-		GameController.getInstance().getConsole().addMsg(Boolean.toString(serverWorld));
 		if(serverWorld){
 			GameController.getInstance().getConsole().addMsg(" (ID" + newEntity.getId() + "): " + newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
 			if(newEntity instanceof AbstractTank){
