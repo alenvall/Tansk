@@ -22,12 +22,11 @@ public abstract class MovableEntity extends Entity {
 	 */
 	public MovableEntity(Vector2f direction, float maxSpeed, float minSpeed) {
 		super();
-		this.direction = direction;
+		setDirection(direction);
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
 		this.acceleration = maxSpeed*0.001f;
 		this.friction = maxSpeed*0.001f;
-		this.lastDirectionTheta = direction.getTheta();
 	}
 	
 	/**
