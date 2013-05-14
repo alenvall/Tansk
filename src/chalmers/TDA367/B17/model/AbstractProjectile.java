@@ -1,8 +1,5 @@
 package chalmers.TDA367.B17.model;
 
-import org.newdawn.slick.SlickException;
-import org.newdawn.slick.Sound;
-import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 import chalmers.TDA367.B17.terrain.BrownWall;
 
@@ -11,8 +8,6 @@ public abstract class AbstractProjectile extends MovableEntity {
 	private double damage;
 	private int duration;
 	private int durationTimer;
-	private Sound debugWallHit;
-
 
 	/**
 	 * Create a new AbstractProjectile.
@@ -29,11 +24,6 @@ public abstract class AbstractProjectile extends MovableEntity {
 		this.duration = duration;
 		this.durationTimer = duration;
 		spriteID = "bullet";
-		try {
-	        debugWallHit = new Sound("data/bullet.wav");
-        } catch (SlickException e) {
-	        e.printStackTrace();
-        }
 		renderLayer = RenderLayer.FOURTH;
 	}
 	
@@ -99,7 +89,6 @@ public abstract class AbstractProjectile extends MovableEntity {
 //			return;
 //		}else if(entity instanceof MapBounds || entity instanceof BrownWall){
 		if(entity instanceof MapBounds || entity instanceof BrownWall){
-			debugWallHit.play();
 			this.destroy();
 		}else if(entity instanceof AbstractTank){
 			damageTarget((AbstractTank)entity);
@@ -115,7 +104,6 @@ public abstract class AbstractProjectile extends MovableEntity {
 	
 	public void damageTarget(AbstractTank target){
 		target.recieveDamage(this);
-		debugWallHit.play();
 		this.destroy();
 	}
 }

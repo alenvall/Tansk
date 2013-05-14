@@ -38,7 +38,7 @@ public class World {
 			packet.entityID = newEntity.getId();
 			packet.identifier = newEntity.getClass().getSimpleName();
 			ServerState.getInstance().sendToAll(packet);
-//			ServerState.getInstance().addToClientQueue(packet);
+			ServerState.getInstance().addToClientQueue(packet);
 		}
 		entities.put(newEntity.getId(), newEntity);
 	}
@@ -91,7 +91,7 @@ public class World {
 			Pck8_EntityDestroyed pck = new Pck8_EntityDestroyed();
 			pck.entityID = id;
 			ServerState.getInstance().sendToAll(pck);
-//			ServerState.getInstance().addToClientQueue(pck);
+			ServerState.getInstance().addToClientQueue(pck);
 		}
 		
 		entities.remove(id);

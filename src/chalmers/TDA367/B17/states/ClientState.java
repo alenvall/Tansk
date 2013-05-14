@@ -199,8 +199,7 @@ public class ClientState extends BasicGameState {
 	private void updateClientWorld(Pck100_WorldState worldState) {
 		for(EntityPacket pck : worldState.updatePackets){
 			if(pck instanceof Pck101_TankUpdate){
-				Pck101_TankUpdate packet = (Pck101_TankUpdate) pck;
-				Entity ent = controller.getWorld().getEntity(packet.entityID);
+				Pck101_TankUpdate packet = (Pck101_TankUpdate) pck;;
 				AbstractTank tank = (AbstractTank) controller.getWorld().getEntity(packet.entityID);
 				tank.setPosition(packet.tankPosition);
 				tank.setDirection(packet.tankDirection);

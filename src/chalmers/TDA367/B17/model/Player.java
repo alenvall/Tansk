@@ -132,7 +132,6 @@ public class Player {
 		}
 	}
 	
-	
 	public void spawnTank(){
 		if(tank != null){
 			tank.destroy();

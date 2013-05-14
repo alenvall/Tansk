@@ -240,9 +240,9 @@ public class ServerState extends BasicGameState {
 				if(entity instanceof AbstractSpawnPoint)
 					controller.getWorld().checkCollisionsFor(entity);
 			}			
-			sendToAll(worldState);
-//			addToClientQueue(worldState);
-//			updateClients();
+//			sendToAll(worldState);
+			addToClientQueue(worldState);
+			updateClients();
 		}
     }
 	
@@ -330,12 +330,14 @@ public class ServerState extends BasicGameState {
 	
 	private void updateClients(){
 		if(server != null){
-			for(Packet packet : clientPacketQueue)
+			for(Packet packet : clientPacketQueue){
 				for(Player player : playerList){
 					if(player != null)
 						server.sendToTCP(player.getConnection().getID(), packet);
 				}
+			}
 		}
+		clientPacketQueue = new ArrayList<Network.Packet>();
 	}
 
 	@Override

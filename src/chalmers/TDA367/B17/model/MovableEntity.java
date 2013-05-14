@@ -1,6 +1,5 @@
 package chalmers.TDA367.B17.model;
 
-import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.geom.*;
 
 public abstract class MovableEntity extends Entity {

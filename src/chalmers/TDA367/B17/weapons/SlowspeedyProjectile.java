@@ -3,7 +3,6 @@ package chalmers.TDA367.B17.weapons;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.model.AbstractProjectile;
-import chalmers.TDA367.B17.model.AbstractTank;
 
 public class SlowspeedyProjectile extends AbstractProjectile {
 
