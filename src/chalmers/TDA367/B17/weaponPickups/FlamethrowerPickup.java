@@ -7,7 +7,7 @@ import chalmers.TDA367.B17.weapons.FlamethrowerTurret;
 
 public class FlamethrowerPickup extends AbstractWeaponPickup{
 
-	public FlamethrowerPickup(Vector2f position, AbstractTank tank) {
+	public FlamethrowerPickup(Vector2f position) {
 		super(position);
 		spriteID = "FlamethrowerIcon";
 	}

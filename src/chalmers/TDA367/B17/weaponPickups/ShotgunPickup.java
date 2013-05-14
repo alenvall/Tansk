@@ -7,7 +7,7 @@ import chalmers.TDA367.B17.weapons.ShotgunTurret;
 
 public class ShotgunPickup extends AbstractWeaponPickup{
 
-	public ShotgunPickup(Vector2f position, AbstractTank tank) {
+	public ShotgunPickup(Vector2f position) {
 		super(position);
 		spriteID = "ShotgunIcon";
 	}

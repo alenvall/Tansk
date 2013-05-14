@@ -7,7 +7,7 @@ import chalmers.TDA367.B17.weapons.ShockwaveTurret;
 
 public class ShockwavePickup extends AbstractWeaponPickup{
 
-	public ShockwavePickup(Vector2f position, AbstractTank tank) {
+	public ShockwavePickup(Vector2f position) {
 		super(position);
 		spriteID = "ShockwaveIcon";
 	}

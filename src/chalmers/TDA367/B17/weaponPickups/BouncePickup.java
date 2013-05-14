@@ -7,7 +7,7 @@ import chalmers.TDA367.B17.weapons.BounceTurret;
 
 public class BouncePickup extends AbstractWeaponPickup{
 
-	public BouncePickup(Vector2f position, AbstractTank tank) {
+	public BouncePickup(Vector2f position) {
 		super(position);
 		spriteID = "BounceGunIcon";
 	}
