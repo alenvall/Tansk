@@ -12,8 +12,8 @@ public class BounceTurret extends AbstractTurret {
 	
 	public BounceTurret(AbstractTank tank) {
 		super(tank);
-		turretCenter = new Vector2f(22.5f, 22.5f);
-		turretLength = 42f;
+		turretCenter = new Vector2f(16.875f, 16.875f);
+		turretLength = 31.5f;
 		fireRate = 200;
 		projectileType = "default";
 	}
