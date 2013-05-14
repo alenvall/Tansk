@@ -7,8 +7,14 @@ public class SoundHandler {
 
 	private static SoundHandler instance;
 
-	private SoundHandler() {}
+	private SoundHandler() {
+		// TODO Load and store sound effects for later use (?)
+	}
 
+	/**
+	 * Get the SoundHandler instance.
+	 * @return the instance of SoundHandler
+	 */
 	public static SoundHandler getInstance() {
 		if(instance==null)
 			instance = new SoundHandler();
@@ -16,7 +22,11 @@ public class SoundHandler {
 		return instance;
 	}
 
+	/**
+	 * Play sound related to an event.
+	 * @param event a GameEvent
+	 */
 	public void handleEvent(GameEvent event){
-
+		// TODO Implement
 	}
 }
