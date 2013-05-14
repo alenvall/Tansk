@@ -28,6 +28,11 @@ public class SoundHandler {
 	public void handleEvent(GameEvent event){
 		if(event.getEventType().equals("TANK_DEATH_EVENT")) {
 			sounds.get("Tank_Destroyed").play();
+		}else if(event.getEventType().equals("DEFAULTTURRET_FIRE_EVENT")){
+			Sound tmp = sounds.get("DefaultWeapon_Firing");
+			tmp.play(3, 150);
+		}else if(event.getEventType().equals("TANK_HIT_EVENT")){
+			sounds.get("Tank_Hit").play();
 		}
 	}
 	

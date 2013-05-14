@@ -207,9 +207,7 @@ public class Play extends BasicGameState{
 			
 			entity.update(delta);
 			
-			if(entity instanceof MovableEntity)
-				controller.getWorld().checkCollisionsFor((MovableEntity)entity);
-			if(entity instanceof AbstractSpawnPoint)
+			if(entity instanceof MovableEntity || entity instanceof AbstractSpawnPoint)
 				controller.getWorld().checkCollisionsFor(entity);
 		}
 	}

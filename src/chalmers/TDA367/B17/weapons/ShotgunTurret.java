@@ -10,9 +10,8 @@ public class ShotgunTurret extends AbstractTurret {
 
 	public ShotgunTurret(AbstractTank tank) {
 		super(tank);
-		turretCenter = new Vector2f(22.5f, 22.5f);
-		turretLength = 42f;
-		setSize(new Vector2f(45f, 65f));
+		turretCenter = new Vector2f(16.875f, 16.875f);
+		turretLength = 31.5f;
 		fireRate = 1000;
 		projectileType = "shotgun";
 	}

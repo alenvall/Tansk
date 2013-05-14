@@ -13,8 +13,8 @@ public class FlamethrowerTurret extends AbstractTurret {
 	public FlamethrowerTurret(AbstractTank tank)  {
 		super(tank);
 		ammoLeft = DEFAULT_AMMO;
-		turretCenter = new Vector2f(22.5f, 22.5f);
-		turretLength = 42f;
+		turretCenter = new Vector2f(16.875f, 16.875f);
+		turretLength = 31.5f;
 		setSize(new Vector2f(45f, 65f));
 		fireRate = 33;
 		projectileType = "fire";

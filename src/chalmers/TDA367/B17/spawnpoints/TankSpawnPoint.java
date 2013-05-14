@@ -21,7 +21,7 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 		super(position);
 		GameController.getInstance().getWorld().getTankSpawner().addTankSpawnPoint(this);
 		spriteID = "tank_spawnpoint";
-		Vector2f size = new Vector2f(65f, 85f);
+		Vector2f size = new Vector2f(40f, 55f);
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
 	}
 	
