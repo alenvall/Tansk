@@ -36,6 +36,7 @@ public class ClientState extends BasicGameState {
 	private int currentTankID;
 	private boolean mapLoaded;
 	private ClientButtons clientButtons;
+	private int delta;
 		
 	private ClientState(int state){
 		this.state = state;
@@ -113,6 +114,7 @@ public class ClientState extends BasicGameState {
 	
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
+		this.delta = delta;
 		if((isConnected) && (!mapLoaded)){
 			MapLoader.createEntities("whatever");
 			mapLoaded = true;
@@ -211,6 +213,7 @@ public class ClientState extends BasicGameState {
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
 		if(isConnected){
 			g.drawImage(map, 0, 0);
+			g.drawString("Delta: " + delta, 18, 400);
 			if(controller.getWorld().getEntities() != null){
 				ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
 				ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();

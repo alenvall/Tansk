@@ -35,6 +35,7 @@ public class ServerState extends BasicGameState {
 	
 	private boolean gameStarted = false;
 	private int latestID = 0;
+	private int delta;
 	
 	private ServerState(int state) {
 	    this.state = state;
@@ -130,7 +131,8 @@ public class ServerState extends BasicGameState {
 	
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
-		processPackets();	
+		this.delta = delta;
+		processPackets();
 		
 		if(gc.getInput().isKeyPressed(Input.KEY_SPACE)){
 			controller.getConsole().clearMessages();
@@ -295,6 +297,7 @@ public class ServerState extends BasicGameState {
 
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		g.drawString("Delta: " + delta, 18, 480);
 		if(controller.getWorld().getEntities() != null){
 			ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
 			ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
