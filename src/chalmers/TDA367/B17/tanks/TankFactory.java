@@ -1,7 +1,5 @@
 package chalmers.TDA367.B17.tanks;
 
-import org.newdawn.slick.geom.Vector2f;
-
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.states.ServerState;

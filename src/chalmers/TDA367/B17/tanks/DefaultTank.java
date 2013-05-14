@@ -2,14 +2,9 @@ package chalmers.TDA367.B17.tanks;
 
 import org.newdawn.slick.geom.Point;
 import org.newdawn.slick.geom.Rectangle;
-import org.newdawn.slick.geom.Vector2f;
-
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractTank;
-import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.weapons.DefaultTurret;
-
-import chalmers.TDA367.B17.states.*;
 
 public class DefaultTank extends AbstractTank {
 	//The default maxSpeed of DefaultTank
