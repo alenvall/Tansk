@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.model;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.controller.GameController.RenderLayer;
+import chalmers.TDA367.B17.event.GameEvent;
 import org.newdawn.slick.geom.*;
 
 public abstract class Entity{
@@ -11,6 +12,8 @@ public abstract class Entity{
 	protected String spriteID;
 	private double rotation;
 	protected RenderLayer renderLayer;
+
+	public static final String ENTITY_REMOVED_EVENT = "ENTITY_REMOVED_EVENT";
 
 	/**
 	 * Create a new Entity.
@@ -149,6 +152,7 @@ public abstract class Entity{
 	 */
 	public void destroy(){
 		GameController.getInstance().getWorld().removeEntity(this);
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, ENTITY_REMOVED_EVENT));
 	}
 	
 	/**

@@ -6,6 +6,7 @@ import java.util.List;
 import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.event.GameEvent;
 
 public abstract class AbstractTank extends MovableEntity {
 
@@ -21,6 +22,8 @@ public abstract class AbstractTank extends MovableEntity {
 	private int timeSinceLastShot;
 	private double lastDir;
 	private Player player;
+	
+	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
 	
 	/**
 	 * Create a new AbstractTank.
@@ -202,6 +205,7 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 	
 	public void tankDeath(){
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, TANK_DEATH_EVENT));
 		if(getCurrentPowerUp() != null)
 			getCurrentPowerUp().deactivate();
 		this.destroy();
