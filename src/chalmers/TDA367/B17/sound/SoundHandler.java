@@ -29,6 +29,9 @@ public class SoundHandler {
 		if(event.getEventType().equals("TANK_DEATH_EVENT")) {
 			sounds.get("Tank_Destroyed").play();
 		}
+		if(event.getEventType().equals("DEFAULTTURRET_FIRE_EVENT")){
+			sounds.get("DefaultWeapon_Firing");
+		}
 	}
 	
 	public void loadEverySound(String directory){
