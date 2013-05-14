@@ -45,8 +45,8 @@ public class Tansk extends StateBasedGame {
 		AppGameContainer app = new AppGameContainer(new Tansk(NAME));
 
 		app.setTargetFrameRate(60);
-		app.setMaximumLogicUpdateInterval(100);
-		app.setMinimumLogicUpdateInterval(40);
+		app.setMaximumLogicUpdateInterval(30);
+		app.setMinimumLogicUpdateInterval(30);
 		app.setDisplayMode(SCREEN_WIDTH, SCREEN_HEIGHT, false);
 		
 		app.start();
