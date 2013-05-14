@@ -13,6 +13,11 @@ public class DefaultTank extends AbstractTank {
 	//The default minSpeed of DefaultTank
 	public static final double DEFAULT_MINSPEED = -0.04;
 
+	/**
+	 * Create a new DefaultTank.
+	 * @param direction The direction the tank will face.
+	 * @param player The owner of this tank.
+	 */
 	public DefaultTank(Vector2f direction, Player player) {
 		super(direction, (float)DEFAULT_MAXSPEED, (float)DEFAULT_MINSPEED, player);
 		setShape(new Rectangle(100, 150, 65, 80));

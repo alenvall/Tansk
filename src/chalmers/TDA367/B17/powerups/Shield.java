@@ -9,9 +9,16 @@ import chalmers.TDA367.B17.model.Entity;
 
 public class Shield extends Entity {
 	
+	//The health of this shield.
 	private double health;
+	
 	private AbstractTank absTank;
 
+	/**
+	 * Create a new shield for a tank.
+	 * @param position The position of this shield
+	 * @param absTank The tank that will receive the shield
+	 */
 	public Shield(Vector2f position, AbstractTank absTank) {
 		setSize(new Vector2f(15, 5));
 		setPosition(position);
@@ -24,14 +31,23 @@ public class Shield extends Entity {
 		this.absTank = absTank;
 	}
 
+	/**
+	 * Get the health of this shield.
+	 * @return The health
+	 */
 	public double getHealth() {
 		return health;
 	}
 
+	/**
+	 * Set the health of this shield.
+	 * @param health The new health
+	 */
 	public void setHealth(double health) {
 		this.health = health;
 	}
 
+	@Override
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractProjectile){
 			if(!(((AbstractProjectile)entity).getTank() == absTank)){

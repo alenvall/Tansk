@@ -10,6 +10,10 @@ public class SpeedPowerUp extends AbstractPowerUp {
 	private float tmpMaxSpeed;
 	private float tmpMinSpeed;
 
+	/**
+	 * Create a new SpeedPowerUp at a position.
+	 * @param position The position of this powerup
+	 */
 	public SpeedPowerUp(Vector2f position) {
 		super(position);
 		effectDuration = 7000;

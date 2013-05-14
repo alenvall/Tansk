@@ -10,9 +10,16 @@ import chalmers.TDA367.B17.model.AbstractProjectile;
 
 public class DamagePowerUp extends AbstractPowerUp{
 
+	//The damage multiplier
 	private final int MULTIPLIER = 2;
+	
+	//The tank's projectiles
 	private List<AbstractProjectile> projectiles;
 	
+	/**
+	 * Create a new damage powerup at a position.
+	 * @param position The position of this powerup
+	 */
 	public DamagePowerUp(Vector2f position) {
 		super(position);
 		effectDuration = 7000;
