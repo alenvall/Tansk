@@ -330,12 +330,6 @@ public class ServerState extends BasicGameState {
 		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 520);
 		g.drawString("LAN IP: " + ipAddress, 18, 545);
 		
-		int y = 390;
-		for(Player player : playerList){
-			g.drawString(player.getMouseCoordinates().x + " " + player.getMouseCoordinates().y, 18, y);
-			y+=20;
-		}
-		
 		if(gameStarted)
 			g.setColor(Color.green);
 		else

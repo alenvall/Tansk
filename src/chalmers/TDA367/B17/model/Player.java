@@ -1,6 +1,5 @@
 package chalmers.TDA367.B17.model;
 
-import java.awt.Point;
 import java.util.ArrayList;
 import com.esotericsoftware.kryonet.Connection;
 import chalmers.TDA367.B17.states.ServerState;
@@ -20,7 +19,6 @@ public class Player {
 	public boolean eliminated;
 	private Connection connection;
 	private ArrayList<Boolean> inputStatuses;
-	private Point mouseCoords;
 
 	/**
 	 * Create a new Player.
@@ -37,8 +35,6 @@ public class Player {
 		for(int i = 0; i < 6; i++){
 			inputStatuses.add(false);
 		}
-		
-		mouseCoords = new Point();
 //		GameController.getInstance().gameConditions.addPlayer(this);
 	}
 	
@@ -181,13 +177,4 @@ public class Player {
 	public ArrayList<Boolean> getInput(){
 		return inputStatuses;
 	}
-
-	public void setMouseCoordinates(int mouseX, int mouseY) {
-		mouseCoords.x = mouseX;
-		mouseCoords.y = mouseY;
-    }
-
-	public Point getMouseCoordinates() {
-	    return mouseCoords;
-    }
 }
