@@ -25,7 +25,6 @@ public class ServerState extends BasicGameState {
 	private int state;
 	private static ServerState instance;
 	private GameController controller;
-	private ImageHandler imgHandler;
 	private ConcurrentLinkedQueue<Packet> packetQueue;
 	
 	private Server server;
@@ -55,7 +54,6 @@ public class ServerState extends BasicGameState {
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
 		gc.setAlwaysRender(true);
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
-		imgHandler = new ImageHandler();
 		
 		clientPacketQueue = new ArrayList<Packet>();
 		gameConditions = new GameConditions();
@@ -69,7 +67,6 @@ public class ServerState extends BasicGameState {
 		
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		controller.getWorld().init();
-//		imgHandler.loadAllImages(Tansk.DATA_FOLDER);
 		MapLoader.createEntities("whatever");
 		
 		Log.set(Log.LEVEL_INFO);
