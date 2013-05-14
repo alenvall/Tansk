@@ -24,19 +24,23 @@ public class BounceProjectile extends AbstractProjectile {
 			return;
 		}else if(entity instanceof MapBounds){
 			MapBounds tmpMapBounds = (MapBounds)entity;
-			if(Math.abs(getPosition().x - tmpMapBounds.getShape().getX()) < 5 || 
-					Math.abs(getPosition().x - tmpMapBounds.getShape().getWidth()) < 5){
+			if(Math.abs(getPosition().x - tmpMapBounds.getShape().getX()) < 1 || 
+					Math.abs(getPosition().x - tmpMapBounds.getShape().getWidth()) < 1){
 			setDirection(new Vector2f(-getDirection().x, getDirection().y));
+			setPosition(getPosition().add(new Vector2f(getDirection()).scale(3)));
 			}else if(true){
 			setDirection(new Vector2f(getDirection().x, -getDirection().y));
+			setPosition(getPosition().add(new Vector2f(getDirection()).scale(3)));
 			}
 		}else if(entity instanceof BrownWall){
 			BrownWall tmpBrownWall = (BrownWall)entity;
-			if(Math.abs(getPosition().x - tmpBrownWall.getShape().getX()) < 5 || 
-					Math.abs(getPosition().x - tmpBrownWall.getShape().getWidth()) < 5){
+			if(Math.abs(getPosition().x - tmpBrownWall.getShape().getX()) < 1 || 
+					Math.abs(getPosition().x - tmpBrownWall.getShape().getWidth()) < 1){
 			setDirection(new Vector2f(-getDirection().x, getDirection().y));
+			setPosition(getPosition().add(new Vector2f(getDirection()).scale(3)));
 			}else if(true){
 			setDirection(new Vector2f(getDirection().x, -getDirection().y));
+			setPosition(getPosition().add(new Vector2f(getDirection()).scale(3)));
 			}
 		}else if(entity instanceof AbstractTank){
 			damageTarget((AbstractTank)entity);
