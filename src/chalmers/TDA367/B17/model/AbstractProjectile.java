@@ -22,9 +22,9 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param damage the damage this projectile does
 	 * @param duration the time in milliseconds this projectile will remain on the map
 	 */
-	public AbstractProjectile(int id, Vector2f position, Vector2f velocity,
+	public AbstractProjectile(int id, Vector2f velocity,
 			float maxSpeed, float minSpeed, double damage, int duration) {
-		super(id, velocity, maxSpeed, minSpeed);
+		super(id, maxSpeed, minSpeed);
 		this.damage = damage;
 		this.duration = duration;
 		this.durationTimer = duration;
@@ -34,7 +34,6 @@ public abstract class AbstractProjectile extends MovableEntity {
         } catch (SlickException e) {
 	        e.printStackTrace();
         }
-		setShape(new Rectangle(position.x, position.y, 1,1));
 		renderLayer = RenderLayer.FOURTH;
 	}
 	

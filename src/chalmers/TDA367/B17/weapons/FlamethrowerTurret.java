@@ -19,8 +19,10 @@ public class FlamethrowerTurret extends AbstractTurret {
 	}
 	
 	@Override
-	public AbstractProjectile createProjectile() {
-		return new FlamethrowerProjectile(ServerState.getInstance().generateID(), getTurretNozzle());
+	public AbstractProjectile createProjectile() {	
+		FlamethrowerProjectile proj = new FlamethrowerProjectile(ServerState.getInstance().generateID());
+		proj.setPosition(getTurretNozzle());
+		return proj;
 	}
 
 	@Override

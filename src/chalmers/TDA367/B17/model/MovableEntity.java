@@ -16,13 +16,12 @@ public abstract class MovableEntity extends Entity {
 	
 	/**
 	 * Create a new MovableEntity based on the following parameters
-	 * @param direction The default direction this object is facing
 	 * @param maxSpeed The maximum speed of this object
 	 * @param minSpeed The minimum speed of this object
 	 */
-	public MovableEntity(int id, Vector2f direction, float maxSpeed, float minSpeed) {
+	public MovableEntity(int id, float maxSpeed, float minSpeed) {
 		super(id);
-		this.direction = direction;
+		this.direction = new Vector2f(0,-1);
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
 		this.acceleration = maxSpeed*0.001f;
@@ -202,10 +201,10 @@ public abstract class MovableEntity extends Entity {
 	public void update(int delta){
 		move(delta);
 
-		if(getPosition().getX()<0 || getPosition().getX()> 
-		GameController.getInstance().getWorld().getSize().width 
-		|| getPosition().getY()<0 || getPosition().getY()> 
-		GameController.getInstance().getWorld().getSize().height)
-			destroy();
+//		if(getPosition().getX()<0 || getPosition().getX()> 
+//		GameController.getInstance().getWorld().getSize().width 
+//		|| getPosition().getY()<0 || getPosition().getY()> 
+//		GameController.getInstance().getWorld().getSize().height)
+//			destroy();
 	}
 }

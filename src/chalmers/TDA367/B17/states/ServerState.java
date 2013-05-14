@@ -32,6 +32,7 @@ public class ServerState extends BasicGameState {
 	private GameConditions gameConditions;
 	private ArrayList<Player> playerList;
 	private String ipAddress;
+	private ArrayList<Packet> clientPacketQueue;
 	
 	private boolean gameStarted = false;
 	private int latestID = 0;
@@ -56,6 +57,7 @@ public class ServerState extends BasicGameState {
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		imgHandler = new ImageHandler();
 		
+		clientPacketQueue = new ArrayList<Packet>();
 		gameConditions = new GameConditions();
 		playerList = new ArrayList<Player>();
 		ipAddress = "N/A";
@@ -184,12 +186,19 @@ public class ServerState extends BasicGameState {
 							player.getTank().turnRight(delta);
 						}
 					}
+					
+					if(pressedKeys.get(Player.INPT_LMB)){
+						player.getTank().fireWeapon(delta);
+//						GameController.getInstance().getConsole().addMsg(player.getName() + " is firing!");
+					}	
 				}
 			}
 			
 
 			Pck100_WorldState worldState = new Pck100_WorldState();
 			worldState.updatePackets = new ArrayList<EntityPacket>();
+			
+			Dimension worldSize = GameController.getInstance().getWorld().getSize();
 			
 			Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
 			while(updateIterator.hasNext()){
@@ -198,23 +207,42 @@ public class ServerState extends BasicGameState {
 				
 				entity.update(delta);
 				
-				if(entity instanceof MovableEntity)
-					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
+				if(entity instanceof MovableEntity){
+					float x = entity.getPosition().getX();
+					float y = entity.getPosition().getY();
+					
+					if((x < 0) || (x > worldSize.width) || (y < 0) || (y > worldSize.height)){
+						entity.destroy();
+					} else {
+						controller.getWorld().checkCollisionsFor((MovableEntity)entity);
+						
+						if(entity instanceof AbstractTank){
+							AbstractTank tank = (AbstractTank) entity;
+							Pck101_TankUpdate pck = new Pck101_TankUpdate();
+							pck.entityID = tank.getId();
+							pck.tankPosition = tank.getPosition();
+							pck.tankDirection = tank.getDirection();
+							pck.turretPosition = tank.getTurret().getPosition();
+							pck.turretAngle = (float) tank.getTurret().getRotation();
+							worldState.updatePackets.add(pck);
+						}
+						
+						if(entity instanceof AbstractProjectile){
+							AbstractProjectile proj = (AbstractProjectile) entity;
+							Pck102_ProjectileUpdate pck = new Pck102_ProjectileUpdate();
+							pck.entityID = proj.getId();
+							pck.projPosition = proj.getPosition();
+							pck.projDirection = proj.getDirection();
+							worldState.updatePackets.add(pck);
+						}
+					}
+				}
 				if(entity instanceof AbstractSpawnPoint)
 					controller.getWorld().checkCollisionsFor(entity);
-				
-				if(entity instanceof AbstractTank){
-					AbstractTank tank = (AbstractTank) entity;
-					Pck101_TankUpdate pck = new Pck101_TankUpdate();
-					pck.entityID = tank.getId();
-					pck.tankPosition = tank.getPosition();
-					pck.tankDirection = tank.getDirection();
-					pck.turretPosition = tank.getTurret().getPosition();
-					pck.turretAngle = (float) tank.getTurret().getRotation();
-					worldState.updatePackets.add(pck);
-				}
 			}			
 			sendToAll(worldState);
+//			addToClientQueue(worldState);
+//			updateClients();
 		}
     }
 	
@@ -223,7 +251,7 @@ public class ServerState extends BasicGameState {
 		gameStarted = true;
 		int x = 100;
 		for(Player player : playerList){
-			AbstractTank tank = new DefaultTank(generateID(), new Vector2f(0,-1));
+			AbstractTank tank = new DefaultTank(generateID());
 			tank.setPosition(new Vector2f(x, 100));
 			player.setTank(tank);
 	    	
@@ -293,7 +321,22 @@ public class ServerState extends BasicGameState {
 		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_A, pck.A_pressed);
 		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_S, pck.S_pressed);
 		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_D, pck.D_pressed);
+		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_LMB, pck.LMB_pressed);
     }
+	
+	public void addToClientQueue(Packet packet){
+		clientPacketQueue.add(packet);
+	}
+	
+	private void updateClients(){
+		if(server != null){
+			for(Packet packet : clientPacketQueue)
+				for(Player player : playerList){
+					if(player != null)
+						server.sendToTCP(player.getConnection().getID(), packet);
+				}
+		}
+	}
 
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
@@ -383,7 +426,8 @@ public class ServerState extends BasicGameState {
 	public void sendToAll(Packet packet) {
 		if(server != null){
 			for(Player player : playerList){
-				server.sendToTCP(player.getConnection().getID(), packet);
+				if(player != null)
+					server.sendToTCP(player.getConnection().getID(), packet);
 			}
 		}
     }	

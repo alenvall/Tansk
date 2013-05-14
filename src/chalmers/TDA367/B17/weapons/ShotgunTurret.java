@@ -18,8 +18,10 @@ public class ShotgunTurret extends AbstractTurret {
 	}
 
 	@Override
-	public AbstractProjectile createProjectile() {
-		return new ShotgunProjectile(ServerState.getInstance().generateID(), getTurretNozzle());
+	public AbstractProjectile createProjectile() {	
+		ShotgunProjectile proj = new ShotgunProjectile(ServerState.getInstance().generateID());
+		proj.setPosition(getTurretNozzle());
+		return proj;
 	}
 
 	@Override

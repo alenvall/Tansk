@@ -19,7 +19,9 @@ public class BounceTurret extends AbstractTurret {
 
 	@Override
 	public AbstractProjectile createProjectile() {
-		return new BounceProjectile(ServerState.getInstance().generateID(), getTurretNozzle());
+		BounceProjectile proj = new BounceProjectile(ServerState.getInstance().generateID());
+		proj.setPosition(getTurretNozzle());
+		return proj;
 	}
 
 	@Override

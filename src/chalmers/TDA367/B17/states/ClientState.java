@@ -17,8 +17,10 @@ import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.*;
 import chalmers.TDA367.B17.network.*;
+import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
 import chalmers.TDA367.B17.network.Network.*;
 import chalmers.TDA367.B17.tanks.DefaultTank;
+import chalmers.TDA367.B17.weapons.DefaultProjectile;
 
 public class ClientState extends BasicGameState {
 	private int state;
@@ -120,9 +122,9 @@ public class ClientState extends BasicGameState {
 			mapLoaded = true;
 		}
 		
-		processPackets();
-		
 		sendClientInput(gc.getInput());
+		processPackets();
+
     }
 	
 	private void sendClientInput(Input input) {
@@ -172,12 +174,7 @@ public class ClientState extends BasicGameState {
 				GameController.getInstance().getConsole().addMsg(message, MsgLevel.INFO);
 				Log.info(message);
 			}	
-			
-			if(packet instanceof Pck6_CreateTank){
-				Pck6_CreateTank pck = (Pck6_CreateTank) packet;
-				new DefaultTank(pck.id, pck.velocity);
-			}
-			
+						
 			if(packet instanceof Pck7_TankID){
 				Pck7_TankID pck = (Pck7_TankID) packet;
 				currentTankID = pck.tankID;
@@ -186,6 +183,10 @@ public class ClientState extends BasicGameState {
 			if(packet instanceof Pck8_EntityDestroyed){
 				Pck8_EntityDestroyed pck = (Pck8_EntityDestroyed) packet;
 				controller.getWorld().removeEntity(pck.entityID);
+			}
+			if(packet instanceof Pck9_EntityCreated){
+				Pck9_EntityCreated pck = (Pck9_EntityCreated) packet;
+				createClientEntity(pck.entityID, pck.identifier);
 			}
 					
 			if(packet instanceof Pck100_WorldState){
@@ -199,12 +200,21 @@ public class ClientState extends BasicGameState {
 		for(EntityPacket pck : worldState.updatePackets){
 			if(pck instanceof Pck101_TankUpdate){
 				Pck101_TankUpdate packet = (Pck101_TankUpdate) pck;
+				Entity ent = controller.getWorld().getEntity(packet.entityID);
 				AbstractTank tank = (AbstractTank) controller.getWorld().getEntity(packet.entityID);
 				tank.setPosition(packet.tankPosition);
 				tank.setDirection(packet.tankDirection);
 				AbstractTurret turret = tank.getTurret();
 				turret.setPosition(packet.turretPosition);
 				turret.setRotation(packet.turretAngle);
+			}
+			if(pck instanceof Pck102_ProjectileUpdate){
+				Pck102_ProjectileUpdate packet = (Pck102_ProjectileUpdate) pck;
+				AbstractProjectile proj = (AbstractProjectile) controller.getWorld().getEntity(packet.entityID);
+				if(proj != null){
+					proj.setPosition(packet.projPosition);
+					proj.setDirection(packet.projDirection);
+				}
 			}
 		}
     }
@@ -352,4 +362,16 @@ public class ClientState extends BasicGameState {
 			this.stateChanged = stateChanged;
 		}
 	}
+	
+	private void createClientEntity(int entityID, String identifier) {
+	    switch(identifier){
+	    	case "DefaultTank":
+				new DefaultTank(entityID);
+				break;
+	    	case "DefaultProjectile":
+				new DefaultProjectile(entityID);
+				break;
+	    }
+	    
+    }
 }

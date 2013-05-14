@@ -6,6 +6,8 @@ import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.*;
 
+import chalmers.TDA367.B17.controller.GameController;
+
 public abstract class AbstractTank extends MovableEntity {
 	private String name;
 	private double health;
@@ -21,8 +23,8 @@ public abstract class AbstractTank extends MovableEntity {
 	
 //	private Sound debugWallHit = null;
 	
-	public AbstractTank(int id, Vector2f velocity, float maxSpeed, float minSpeed) {
-		super(id, velocity, maxSpeed, minSpeed);
+	public AbstractTank(int id, float maxSpeed, float minSpeed) {
+		super(id, maxSpeed, minSpeed);
 		turnSpeed = 0.15f;
 //		projectiles = new ArrayList<AbstractProjectile>();
 		currentPowerUp = null;

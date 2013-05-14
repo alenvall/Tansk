@@ -1,5 +1,6 @@
 package chalmers.TDA367.B17.weapons;
 
+import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
@@ -22,7 +23,10 @@ public class DefaultTurret extends AbstractTurret {
 
 	@Override
 	public AbstractProjectile createProjectile() {
-		return new DefaultProjectile(ServerState.getInstance().generateID(), getTurretNozzle());
+		DefaultProjectile proj = new DefaultProjectile(ServerState.getInstance().generateID());
+		proj.setPosition(getTurretNozzle());
+		proj.setShape(new Rectangle(getTurretNozzle().x, getTurretNozzle().y, 1,1));
+		return proj;
 	}
 
 	@Override

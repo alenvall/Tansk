@@ -18,14 +18,14 @@ public class Network {
 		kryo.register(Pck3_ServerMessage.class);
 		kryo.register(Pck4_ClientInput.class);
 		kryo.register(Pck5_ClientTurretAngle.class);
-		kryo.register(Pck6_CreateTank.class);
 		kryo.register(Vector2f.class);
 		kryo.register(Pck7_TankID.class);
 		kryo.register(ArrayList.class);
 		kryo.register(Pck8_EntityDestroyed.class);
 		kryo.register(Pck100_WorldState.class);
 		kryo.register(Pck101_TankUpdate.class);
-		kryo.register(Pck102_TurretUpdate.class);
+		kryo.register(Pck102_ProjectileUpdate.class);
+		kryo.register(Pck9_EntityCreated.class);
 	}
 	
 	public static class Packet{
@@ -72,18 +72,17 @@ public class Network {
 	public static class Pck5_ClientTurretAngle extends Packet{
         public float turretNewAngle;
 	}	
-	
-	public static class Pck6_CreateTank extends Packet{
-		public int id;
-		public Vector2f velocity;
-	}	
-	
+		
 	public static class Pck7_TankID extends Packet{
 		public int tankID;
 	}	
 	
-	public static class Pck8_EntityDestroyed extends EntityPacket{
+	public static class Pck8_EntityDestroyed extends EntityPacket {
 	}
+
+	public static class Pck9_EntityCreated extends EntityPacket {
+		public String identifier;
+	}	
 	
 	public static class Pck100_WorldState extends Packet {
 		public ArrayList<EntityPacket> updatePackets;
@@ -96,8 +95,8 @@ public class Network {
 		public float turretAngle;
 	}	
 	
-	public static class Pck102_TurretUpdate extends EntityPacket{
-		public Vector2f position;
-		public float angle;
-	}	
+	public static class Pck102_ProjectileUpdate extends EntityPacket{
+		public Vector2f projPosition;
+		public Vector2f projDirection;
+	}
 }

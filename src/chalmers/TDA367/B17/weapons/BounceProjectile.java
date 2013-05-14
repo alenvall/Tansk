@@ -10,11 +10,10 @@ import chalmers.TDA367.B17.terrain.BrownWall;
 
 public class BounceProjectile extends AbstractProjectile {
 	
-	public BounceProjectile(int id, Vector2f position) {
-		super(id, position, new Vector2f(1,1), 100, -100, 5, 3000);
+	public BounceProjectile(int id) {
+		super(id, new Vector2f(1,1), 100, -100, 5, 3000);
 		setSpeed(0.25f);
 		setSize(new Vector2f(5f, 10f));
-		setPosition(position);
 		spriteID = "proj_fire";
 	}
 	

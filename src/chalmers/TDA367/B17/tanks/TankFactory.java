@@ -12,9 +12,9 @@ public class TankFactory {
 
 	public static AbstractTank getTank(Player player){
 		if(player.tankType.equals("default")){
-			return new DefaultTank(ServerState.getInstance().generateID(), new Vector2f(0,-1));
+			return new DefaultTank(ServerState.getInstance().generateID());
 		}else{
-			return new DefaultTank(ServerState.getInstance().generateID(), new Vector2f(0,-1));
+			return new DefaultTank(ServerState.getInstance().generateID());
 		}
 	}
 

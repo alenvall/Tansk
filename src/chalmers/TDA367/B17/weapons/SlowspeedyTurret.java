@@ -30,7 +30,9 @@ public class SlowspeedyTurret extends AbstractTurret {
 
 	@Override
 	public AbstractProjectile createProjectile() {
-		return new SlowspeedyProjectile(ServerState.getInstance().generateID(), getTurretNozzle());
+		SlowspeedyProjectile proj = new SlowspeedyProjectile(ServerState.getInstance().generateID());
+		proj.setPosition(getTurretNozzle());
+		return proj;
 	}
 
 }

@@ -17,8 +17,8 @@ public class DefaultTank extends AbstractTank {
 	//The default minSpeed of DefaultTank
 	public static final double DEFAULT_MINSPEED = -0.04;
 
-	public DefaultTank(int id, Vector2f direction) {
-		super(id, direction, (float)DEFAULT_MAXSPEED, (float)DEFAULT_MINSPEED);
+	public DefaultTank(int id) {
+		super(id, (float)DEFAULT_MAXSPEED, (float)DEFAULT_MINSPEED);
 		setShape(new Rectangle(100, 150, 65, 85));
 		turretOffset = 6;
 		turret = new DefaultTurret(1000+id);

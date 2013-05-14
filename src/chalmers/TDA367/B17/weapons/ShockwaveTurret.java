@@ -19,8 +19,10 @@ public class ShockwaveTurret extends AbstractTurret{
 	}
 
 	@Override
-	public AbstractProjectile createProjectile() {
-		return new ShockwaveProjectile(ServerState.getInstance().generateID(), getTurretNozzle());
+	public AbstractProjectile createProjectile() {	
+		ShockwaveProjectile proj = new ShockwaveProjectile(ServerState.getInstance().generateID());
+		proj.setPosition(getTurretNozzle());
+		return proj;
 	}
 	
 	@Override
