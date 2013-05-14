@@ -55,7 +55,6 @@ public class ClientState extends BasicGameState {
 		gc.setAlwaysRender(true);
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		imgHandler = new ImageHandler();
-		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		
 		clientButtons = new ClientButtons();
 		map = new Image("data/map.png");
@@ -65,6 +64,7 @@ public class ClientState extends BasicGameState {
 	@Override
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
+		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		
 		packetQueue = new ConcurrentLinkedQueue<Packet>();
 		client = new Client();
@@ -179,6 +179,11 @@ public class ClientState extends BasicGameState {
 			if(packet instanceof Pck7_TankID){
 				Pck7_TankID pck = (Pck7_TankID) packet;
 				currentTankID = pck.tankID;
+			}		
+			
+			if(packet instanceof Pck8_EntityDestroyed){
+				Pck8_EntityDestroyed pck = (Pck8_EntityDestroyed) packet;
+				controller.getWorld().removeEntity(pck.entityID);
 			}
 					
 			if(packet instanceof Pck100_WorldState){

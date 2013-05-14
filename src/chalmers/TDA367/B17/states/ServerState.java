@@ -54,7 +54,6 @@ public class ServerState extends BasicGameState {
 		gc.setAlwaysRender(true);
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		imgHandler = new ImageHandler();
-		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		
 		gameConditions = new GameConditions();
 		playerList = new ArrayList<Player>();
@@ -64,6 +63,7 @@ public class ServerState extends BasicGameState {
 	@Override
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
+		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		controller.getWorld().init();
 		imgHandler.loadAllImages(Tansk.DATA_FOLDER);
 		MapLoader.createEntities("whatever");
@@ -92,10 +92,16 @@ public class ServerState extends BasicGameState {
 				if(getPlayer(connection) != null){
 			    	String msg = getPlayer(connection).getName() + " disconnected.";
 					controller.getConsole().addMsg(msg, MsgLevel.INFO);
-			    	Pck3_ServerMessage welcomeMsg = new Pck3_ServerMessage();
-			    	welcomeMsg.message = msg;
-			    	server.sendToAllExceptTCP(connection.getID(), welcomeMsg);
-					Log.info("[SERVER] " + msg);
+			    	Pck3_ServerMessage disconnectedMsg = new Pck3_ServerMessage();
+			    	disconnectedMsg.message = msg;
+			    	server.sendToAllExceptTCP(connection.getID(), disconnectedMsg);
+			    	
+			    	Player lostPlayer = getPlayer(connection);
+			    	controller.getWorld().removeEntity(lostPlayer.getTank().getTurret());
+			    	controller.getWorld().removeEntity(lostPlayer.getTank());
+			    	playerList.remove(lostPlayer);
+					
+			    	Log.info("[SERVER] " + msg);
 				} else {
 					GameController.getInstance().getConsole().addMsg("Player disconnected.", MsgLevel.INFO);
 					Log.info("[SERVER] Unkown player has  disconnected.");
@@ -238,18 +244,18 @@ public class ServerState extends BasicGameState {
 		    	controller.getConsole().addMsg(pck.playerName + " attempting to connect..", MsgLevel.INFO);
 		    	Pck1_LoginAnswer responsePacket = new Pck1_LoginAnswer();
 		    	
-		    	if(!gameStarted){
+//		    	if(!gameStarted){
 			    	Player newPlayer = new Player(packet.getConnection(), pck.playerName);
 			    	newPlayer.setLives(gameConditions.getPlayerLives());
 			    	newPlayer.setRespawnTime(gameConditions.getSpawnTime());
 			    	
 			    	playerList.add(newPlayer);
 			    	responsePacket.accepted = true;
-		    	} else {
-		    		responsePacket.accepted = false;
-		    		responsePacket.reason = "Game started.";
-		    		GameController.getInstance().getConsole().addMsg(pck.playerName + " kicked, game has started.", MsgLevel.INFO);
-		    	}
+//		    	} else {
+//		    		responsePacket.accepted = false;
+//		    		responsePacket.reason = "Game started.";
+//		    		GameController.getInstance().getConsole().addMsg(pck.playerName + " kicked, game has started.", MsgLevel.INFO);
+//		    	}
 			   	packet.getConnection().sendTCP(responsePacket);
 		    }
 		    
@@ -379,8 +385,11 @@ public class ServerState extends BasicGameState {
 	}
 
 	public void sendToAll(Packet packet) {
-		if(server != null)
-			server.sendToAllTCP(packet);    
+		if(server != null){
+			for(Player player : playerList){
+				server.sendToTCP(player.getConnection().getID(), packet);
+			}
+		}
     }	
 	
 	public int generateID(){

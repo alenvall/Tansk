@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import chalmers.TDA367.B17.console.Console.MsgLevel;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.network.Network.Pck6_CreateTank;
+import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
 import chalmers.TDA367.B17.states.ServerState;
 
 public class World {
@@ -32,8 +33,9 @@ public class World {
 	 */
 	public void addEntity(Entity newEntity){
 		entities.put(newEntity.getId(), newEntity);
+		GameController.getInstance().getConsole().addMsg(Boolean.toString(serverWorld));
 		if(serverWorld){
-			GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): " + newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+			GameController.getInstance().getConsole().addMsg(" (ID" + newEntity.getId() + "): " + newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
 			if(newEntity instanceof AbstractTank){
 				AbstractTank tank = (AbstractTank) newEntity;
 				Pck6_CreateTank packet = new Pck6_CreateTank();
@@ -78,7 +80,18 @@ public class World {
 	}
 
 	public void removeEntity(Entity entity){
-		entities.remove(entity.getId());
+		removeEntity(entity.getId());
+	}	
+	
+	public void removeEntity(int id){
+		if(serverWorld){
+			GameController.getInstance().getConsole().addMsg("Destroyed (ID" + id + "): " + getEntity(id).getClass().getSimpleName(), MsgLevel.STANDARD);
+			Pck8_EntityDestroyed pck = new Pck8_EntityDestroyed();
+			pck.entityID = id;
+			ServerState.getInstance().sendToAll(pck);
+		}
+		
+		entities.remove(id);
 	}
 
 	public Dimension getSize() {
