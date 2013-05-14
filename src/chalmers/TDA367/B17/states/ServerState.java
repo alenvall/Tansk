@@ -69,7 +69,7 @@ public class ServerState extends BasicGameState {
 		
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		controller.getWorld().init();
-		imgHandler.loadAllImages(Tansk.DATA_FOLDER);
+//		imgHandler.loadAllImages(Tansk.DATA_FOLDER);
 		MapLoader.createEntities("whatever");
 		
 		Log.set(Log.LEVEL_INFO);
@@ -297,12 +297,6 @@ public class ServerState extends BasicGameState {
 		    	welcomeMsg.message = msg;
 		    	server.sendToAllExceptTCP(packet.getConnection().getID(), welcomeMsg);
 				Log.info(msg);
-		    }
-
-		    if(packet instanceof Pck3_ServerMessage){
-				String message = ((Pck3_ServerMessage) packet).message;
-				controller.getConsole().addMsg(message, MsgLevel.INFO);
-				Log.info(message);
 		    }
 		    
 		    if(packet instanceof Pck4_ClientInput){
