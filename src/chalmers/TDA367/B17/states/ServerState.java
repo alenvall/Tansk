@@ -148,7 +148,6 @@ public class ServerState extends BasicGameState {
 			
 			// Update for gameconditions
 //			gameConditions.update(delta);
-			
 
 			for(Player player : playerList){		
 				ArrayList<Boolean> pressedKeys = player.getInput();
@@ -178,7 +177,11 @@ public class ServerState extends BasicGameState {
 					}
 				}
 			}
-						
+			
+
+			Pck100_WorldState worldState = new Pck100_WorldState();
+			worldState.updatePackets = new ArrayList<EntityPacket>();
+			
 			Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
 			while(updateIterator.hasNext()){
 				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) updateIterator.next();
@@ -190,16 +193,6 @@ public class ServerState extends BasicGameState {
 					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
 				if(entity instanceof AbstractSpawnPoint)
 					controller.getWorld().checkCollisionsFor(entity);
-
-			}			
-			
-			Pck100_WorldState worldState = new Pck100_WorldState();
-			worldState.updatePackets = new ArrayList<EntityPacket>();
-			
-			Iterator<Entry<Integer, Entity>> packetIterator = controller.getWorld().getEntities().entrySet().iterator();
-			while(packetIterator.hasNext()){
-				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) packetIterator.next();
-				Entity entity = entry.getValue();
 				
 				if(entity instanceof AbstractTank){
 					AbstractTank tank = (AbstractTank) entity;
@@ -211,7 +204,7 @@ public class ServerState extends BasicGameState {
 					pck.turretAngle = (float) tank.getTurret().getRotation();
 					worldState.updatePackets.add(pck);
 				}
-			}	
+			}			
 			sendToAll(worldState);
 		}
     }
@@ -280,25 +273,17 @@ public class ServerState extends BasicGameState {
 		    		receiveClientInput((Pck4_ClientInput) packet);
  		    }
 		    
-//		    if(packet instanceof Pck5_ClientTurretAngle){
-//		    	updateTurretAngle((Pck5_ClientTurretAngle) packet);
-//		    	GameController.getInstance().getConsole().addMsg(Float.toString(((Pck5_ClientTurretAngle) packet).angle));
-// 		    }
+		    if(packet instanceof Pck5_ClientTurretAngle){
+		    	getPlayer(packet.getConnection()).getTank().getTurret().setRotation(((Pck5_ClientTurretAngle) packet).turretNewAngle);
+ 		    }
 	   	}
     }
-	
-//	private void updateTurretAngle(Pck5_ClientTurretAngle packet) {
-//	    getPlayer(packet.getConnection()).getTank().getTurret().setRotation(packet.angle);
-//	    GameController.getInstance().getConsole().addMsg(Double.toString(getPlayer(packet.getConnection()).getTank().getTurret().getRotation()));
-//    }
 
 	private void receiveClientInput(Pck4_ClientInput pck) {
 		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_W, pck.W_pressed);
 		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_A, pck.A_pressed);
 		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_S, pck.S_pressed);
 		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_D, pck.D_pressed);
-
-		getPlayer(pck.getConnection()).getTank().getTurret().setRotation(pck.turretNewAngle);
     }
 
 	@Override

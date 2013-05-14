@@ -34,6 +34,8 @@ public class ClientState extends BasicGameState {
 	private SpriteSheet entSprite;
 	private String playerName;
 	private int currentTankID;
+	private boolean mapLoaded;
+	private ClientButtons clientButtons;
 		
 	private ClientState(int state){
 		this.state = state;
@@ -55,6 +57,7 @@ public class ClientState extends BasicGameState {
 		imgHandler = new ImageHandler();
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		
+		clientButtons = new ClientButtons();
 		map = new Image("data/map.png");
 		playerName = "Nisse" + Math.round(Math.random() * 1000);
     }
@@ -102,7 +105,6 @@ public class ClientState extends BasicGameState {
 		
 		controller.getWorld().init();
 		imgHandler.loadAllImages(Tansk.DATA_FOLDER);
-		MapLoader.createEntities("whatever");
 
 		input = gc.getInput();   
 		input.addKeyListener(this);
@@ -111,6 +113,11 @@ public class ClientState extends BasicGameState {
 	
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
+		if((isConnected) && (!mapLoaded)){
+			MapLoader.createEntities("whatever");
+			mapLoaded = true;
+		}
+		
 		processPackets();
 		
 		sendClientInput(gc.getInput());
@@ -118,18 +125,26 @@ public class ClientState extends BasicGameState {
 	
 	private void sendClientInput(Input input) {
 		if(isConnected){
-			Pck4_ClientInput pck = new Pck4_ClientInput();
-			pck.W_pressed = input.isKeyDown(Input.KEY_W);
-			pck.A_pressed = input.isKeyDown(Input.KEY_A);
-			pck.S_pressed = input.isKeyDown(Input.KEY_S);
-			pck.D_pressed = input.isKeyDown(Input.KEY_D);
-			pck.LMB_pressed = input.isKeyDown(Input.MOUSE_LEFT_BUTTON);
-			
-			if(((AbstractTank) controller.getWorld().getEntity(currentTankID)) != null){
-				AbstractTurret playerTurret = ((AbstractTank) controller.getWorld().getEntity(currentTankID)).getTurret();
-				pck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
+			// only update button if they have changed
+			if(clientButtons.isStateChanged()){
+				Pck4_ClientInput buttonPck = new Pck4_ClientInput();
+				buttonPck.W_pressed = clientButtons.button_W_pressed;
+				buttonPck.A_pressed = clientButtons.button_A_pressed;
+				buttonPck.S_pressed = clientButtons.button_S_pressed;
+				buttonPck.D_pressed = clientButtons.button_D_pressed;
+				buttonPck.LMB_pressed = clientButtons.button_LMB_pressed;
+
+				client.sendTCP(buttonPck);
+				clientButtons.setStateChanged(false);
 			}
-			client.sendTCP(pck);
+			
+			// always update angle
+			if(((AbstractTank) controller.getWorld().getEntity(currentTankID)) != null){
+				Pck5_ClientTurretAngle anglePck = new Pck5_ClientTurretAngle();
+				AbstractTurret playerTurret = ((AbstractTank) controller.getWorld().getEntity(currentTankID)).getTurret();
+				anglePck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
+				client.sendTCP(anglePck);
+			}
 		}
     }
 
@@ -165,14 +180,6 @@ public class ClientState extends BasicGameState {
 				Pck7_TankID pck = (Pck7_TankID) packet;
 				currentTankID = pck.tankID;
 			}
-			
-//			if(packet instanceof Pck8_TurretAngleUpdate){
-//				Pck8_TurretAngleUpdate pck = (Pck8_TurretAngleUpdate) packet;
-//				for(int i = 0; i < pck.turretIDs.size(); i++){
-//					GameController.getInstance().getConsole().addMsg(Double.toString(pck.turretAngles.get(i)));
-//					((AbstractTurret)controller.getWorld().getEntity(pck.turretIDs.get(i))).setRotation(pck.turretAngles.get(i));
-//				}
-//			}
 					
 			if(packet instanceof Pck100_WorldState){
 				if(isConnected)
@@ -260,25 +267,6 @@ public class ClientState extends BasicGameState {
 	public void debugRender(Graphics g){
 		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 545);
 	}
-
-//	@Override
-//    public void keyPressed(int key, char c) {
-//		if((key == Input.KEY_W) || (key == Input.KEY_A) || (key == Input.KEY_S) || (key == Input.KEY_D))
-//			sendKey(key, true);
-//    }
-//
-//	@Override
-//    public void keyReleased(int key, char c) {
-//		if((key == Input.KEY_W) || (key == Input.KEY_A) || (key == Input.KEY_S) || (key == Input.KEY_D))
-//			sendKey(key, false); 
-//    }
-//
-//    private void sendKey(int keyCode, boolean pressed) {
-//    	Pck4_ClientInput input = new Pck4_ClientInput();
-//	   	input.pressed = pressed;
-//	   	input.keyCode = keyCode;
-//	   	client.sendTCP(input);
-//    }
     
 	public String getPlayerName() {
 	    return playerName;
@@ -288,4 +276,72 @@ public class ClientState extends BasicGameState {
     public int getID() {
 	    return this.state;
     }
+	
+	@Override
+	public void mousePressed(int button, int x, int y) {
+		clientButtons.stateChanged = true;	
+		clientButtons.button_LMB_pressed = true;			
+	}
+	
+	@Override
+	public void mouseReleased(int button, int x, int y) {
+		clientButtons.stateChanged = true;	
+		clientButtons.button_LMB_pressed = false;					
+	}
+		
+	@Override
+    public void keyPressed(int key, char c) {
+		clientButtons.stateChanged = true;
+		switch(key){
+			case Input.KEY_W:
+				clientButtons.button_W_pressed = true;
+				break;
+			case Input.KEY_A:
+				clientButtons.button_A_pressed = true;
+				break;
+			case Input.KEY_S:
+				clientButtons.button_S_pressed = true;
+				break;
+			case Input.KEY_D:
+				clientButtons.button_D_pressed = true;
+				break;
+		}
+    }
+
+	@Override
+    public void keyReleased(int key, char c) {
+		clientButtons.stateChanged = true;
+		switch(key){
+			case Input.KEY_W:
+				clientButtons.button_W_pressed = false;
+				break;
+			case Input.KEY_A:
+				clientButtons.button_A_pressed = false;
+				break;
+			case Input.KEY_S:
+				clientButtons.button_S_pressed = false;
+				break;
+			case Input.KEY_D:
+				clientButtons.button_D_pressed = false;
+				break;
+		}
+    }
+	
+	public static class ClientButtons{
+		public boolean button_W_pressed;
+		public boolean button_A_pressed;
+		public boolean button_S_pressed;
+		public boolean button_D_pressed;
+		public boolean button_LMB_pressed;
+
+		private boolean stateChanged;
+		
+		public boolean isStateChanged(){
+			return stateChanged;
+		}
+		
+		public void setStateChanged(boolean stateChanged){
+			this.stateChanged = stateChanged;
+		}
+	}
 }

@@ -13,9 +13,9 @@ import chalmers.TDA367.B17.states.*;
 
 public class DefaultTank extends AbstractTank {
 	//The default maxSpeed of DefaultTank
-	public static final double DEFAULT_MAXSPEED = 0.1;
+	public static final double DEFAULT_MAXSPEED = 0.07;
 	//The default minSpeed of DefaultTank
-	public static final double DEFAULT_MINSPEED = -0.06;
+	public static final double DEFAULT_MINSPEED = -0.04;
 
 	public DefaultTank(int id, Vector2f direction) {
 		super(id, direction, (float)DEFAULT_MAXSPEED, (float)DEFAULT_MINSPEED);

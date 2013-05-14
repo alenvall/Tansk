@@ -17,11 +17,10 @@ public class Network {
 		kryo.register(Pck2_ClientConfirmJoin.class);
 		kryo.register(Pck3_ServerMessage.class);
 		kryo.register(Pck4_ClientInput.class);
-//		kryo.register(Pck5_ClientTurretAngle.class);
+		kryo.register(Pck5_ClientTurretAngle.class);
 		kryo.register(Pck6_CreateTank.class);
 		kryo.register(Vector2f.class);
 		kryo.register(Pck7_TankID.class);
-//		kryo.register(Pck8_TurretAngleUpdate.class);
 		kryo.register(ArrayList.class);
 		kryo.register(Pck100_WorldState.class);
 		kryo.register(Pck101_TankUpdate.class);
@@ -60,24 +59,18 @@ public class Network {
 	public static class Pck3_ServerMessage extends Packet{
 		public String message;
 	}	
-	
-//	public static class Pck4_ClientInput extends Packet{
-//        public boolean pressed;
-//        public int keyCode;
-//	}
-	
+		
 	public static class Pck4_ClientInput extends Packet{
 		public boolean W_pressed;
 		public boolean A_pressed;
 		public boolean S_pressed;
 		public boolean D_pressed;
 		public boolean LMB_pressed;
-        public float turretNewAngle;
 	}
 	
-//	public static class Pck5_ClientTurretAngle extends Packet{
-//        public float angle;
-//	}	
+	public static class Pck5_ClientTurretAngle extends Packet{
+        public float turretNewAngle;
+	}	
 	
 	public static class Pck6_CreateTank extends Packet{
 		public int id;
@@ -88,10 +81,6 @@ public class Network {
 		public int tankID;
 	}
 	
-//	public static class Pck8_TurretAngleUpdate extends Packet{
-//		public ArrayList<Float> turretAngles;
-//		public ArrayList<Integer> turretIDs;
-//	}
 	
 	public static class Pck100_WorldState extends Packet {
 		public ArrayList<EntityPacket> updatePackets;
