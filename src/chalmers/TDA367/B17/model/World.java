@@ -5,6 +5,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.sound.SoundHandler;
 import chalmers.TDA367.B17.spawnpoints.Spawner;
@@ -138,6 +139,6 @@ public class World {
 	}
 
 	public void handleEvent(GameEvent event){
-		SoundHandler.getInstance().handleEvent(event);
+		GameController.getInstance().getSoundHandler().handleEvent(event);
 	}
 }

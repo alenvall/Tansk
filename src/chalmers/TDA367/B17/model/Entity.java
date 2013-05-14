@@ -13,7 +13,7 @@ public abstract class Entity{
 	private double rotation;
 	protected RenderLayer renderLayer;
 
-	public static final String ENTITY_DESTROYED_EVENT = "ENTITY_DESTROYED_EVENT";
+	public static final String ENTITY_REMOVED_EVENT = "ENTITY_REMOVED_EVENT";
 
 	/**
 	 * Create a new Entity.
@@ -152,7 +152,7 @@ public abstract class Entity{
 	 */
 	public void destroy(){
 		GameController.getInstance().getWorld().removeEntity(this);
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, ENTITY_DESTROYED_EVENT));
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, ENTITY_REMOVED_EVENT));
 	}
 	
 	/**
