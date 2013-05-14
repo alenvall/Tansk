@@ -63,12 +63,13 @@ public class ServerState extends BasicGameState {
 	@Override
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
+		
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		controller.getWorld().init();
 		imgHandler.loadAllImages(Tansk.DATA_FOLDER);
 		MapLoader.createEntities("whatever");
 		
-		Log.set(Log.LEVEL_DEBUG);
+		Log.set(Log.LEVEL_INFO);
 		packetQueue = new ConcurrentLinkedQueue<Packet>();
 		server = new Server();
 		Network.register(server);
