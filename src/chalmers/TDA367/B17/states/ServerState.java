@@ -7,11 +7,8 @@ import java.util.*;
 import java.util.Map.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.newdawn.slick.*;
-import org.newdawn.slick.geom.Shape;
-import org.newdawn.slick.geom.Transform;
 import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.state.*;
-
 import com.esotericsoftware.kryonet.*;
 import com.esotericsoftware.minlog.Log;
 import chalmers.TDA367.B17.*;
@@ -38,7 +35,6 @@ public class ServerState extends BasicGameState {
 	
 	private boolean gameStarted = false;
 	private int latestID = 0;
-	private SpriteSheet entSprite;
 	
 	private ServerState(int state) {
 	    this.state = state;
@@ -154,11 +150,7 @@ public class ServerState extends BasicGameState {
 //			gameConditions.update(delta);
 			
 
-			for(Player player : playerList){
-//				AbstractTurret playerTurret = player.getTank().getTurret();
-//				float rotation = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - player.getMouseCoordinates().x + 0, playerTurret.getPosition().y - player.getMouseCoordinates().y + 0)* -1)+180;
-//				playerTurret.setRotation(rotation);
-				
+			for(Player player : playerList){		
 				ArrayList<Boolean> pressedKeys = player.getInput();
 				if(player.getTank() != null){
 					if(pressedKeys.get(Player.INPT_W)){
@@ -217,33 +209,20 @@ public class ServerState extends BasicGameState {
 					pck.tankDirection = tank.getDirection();
 					pck.turretPosition = tank.getTurret().getPosition();
 					pck.turretAngle = (float) tank.getTurret().getRotation();
-//					sendToAll(pck);
 					worldState.updatePackets.add(pck);
 				}
-				
-//				if(entity instanceof AbstractTurret){
-//					AbstractTurret turret = (AbstractTurret) entity;
-//					turretAngles.add((float) turret.getRotation());
-//					turretIDs.add(turret.getId());
-//					Pck102_TurretUpdate pck = new Pck102_TurretUpdate();
-//					pck.entityID = turret.getId();
-//					pck.position = turret.getPosition();
-//					pck.angle = (float) turret.getRotation();
-//					sendToAll(pck);
-//					worldState.updatePackets.add(pck);
-//				}
 			}	
 			sendToAll(worldState);
 		}
     }
 	
+	// only used for debug
 	private void startGame() {
 		gameStarted = true;
 		int x = 100;
-		int y = 100;
 		for(Player player : playerList){
 			AbstractTank tank = new DefaultTank(generateID(), new Vector2f(0,-1));
-			tank.setPosition(new Vector2f(x, y));
+			tank.setPosition(new Vector2f(x, 100));
 			player.setTank(tank);
 	    	
 			Pck7_TankID tankPck = new Pck7_TankID();
@@ -251,7 +230,6 @@ public class ServerState extends BasicGameState {
 	    	player.getConnection().sendTCP(tankPck);
 	    	
 			x+=100;
-			y+=100;
 		}
 		// Start a new round
 //		gameConditions.init(10, 2, 1, 5000, 500000, 1500000);
@@ -315,25 +293,10 @@ public class ServerState extends BasicGameState {
 //    }
 
 	private void receiveClientInput(Pck4_ClientInput pck) {
-		if(pck.W_pressed)
-			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_W, true);
-		else
-			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_W, false);
-
-		if(pck.A_pressed)
-			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_A, true);
-		else
-			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_A, false);
-		
-		if(pck.S_pressed)
-			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_S, true);
-		else
-			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_S, false);
-		
-		if(pck.D_pressed)
-			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_D, true);
-		else
-			getPlayer(pck.getConnection()).setInputStatus(Player.INPT_D, false);
+		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_W, pck.W_pressed);
+		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_A, pck.A_pressed);
+		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_S, pck.S_pressed);
+		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_D, pck.D_pressed);
 
 		getPlayer(pck.getConnection()).getTank().getTurret().setRotation(pck.turretNewAngle);
     }

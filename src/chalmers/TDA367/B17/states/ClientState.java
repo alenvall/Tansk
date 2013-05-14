@@ -91,6 +91,7 @@ public class ClientState extends BasicGameState {
 		client.start();
 		
 		try {
+//	        client.connect(600000, "83.254.32.240", Network.PORT, Network.PORT);
 	        client.connect(600000, "127.0.0.1", Network.PORT, Network.PORT);
         } catch (IOException e) {
         	Log.info("[CLIENT] Failed to connect!");
@@ -172,18 +173,7 @@ public class ClientState extends BasicGameState {
 //					((AbstractTurret)controller.getWorld().getEntity(pck.turretIDs.get(i))).setRotation(pck.turretAngles.get(i));
 //				}
 //			}
-			
-//			if(packet instanceof Pck101_TankUpdate){
-//				Pck101_TankUpdate pck = (Pck101_TankUpdate) packet;
-//				((AbstractTank)controller.getWorld().getEntity(pck.entityID)).setPosition(pck.position);
-//				((AbstractTank)controller.getWorld().getEntity(pck.entityID)).setDirection(pck.direction);
-//			}
-			
-//			if(packet instanceof Pck102_TurretUpdate){
-//				Pck102_TurretUpdate pck = (Pck102_TurretUpdate) packet;
-//				((AbstractTurret)controller.getWorld().getEntity(pck.entityID)).setPosition(pck.position);
-//			}
-			
+					
 			if(packet instanceof Pck100_WorldState){
 				if(isConnected)
 					updateClientWorld((Pck100_WorldState) packet);
@@ -202,13 +192,6 @@ public class ClientState extends BasicGameState {
 				turret.setPosition(packet.turretPosition);
 				turret.setRotation(packet.turretAngle);
 			}
-
-//			if(pck instanceof Pck102_TurretUpdate){
-//				AbstractTurret turret = (AbstractTurret) controller.getWorld().getEntity(pck.entityID);
-//				turret.setPosition(((Pck102_TurretUpdate)pck).position);
-//				turret.setRotation(((Pck102_TurretUpdate)pck).angle);
-//			}
-			
 		}
     }
 
@@ -277,48 +260,6 @@ public class ClientState extends BasicGameState {
 	public void debugRender(Graphics g){
 		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 545);
 	}
-
-//	@Override
-//    public void mousePressed(int button, int x, int y) {
-//		if(button == 0){
-//			Pck4_ClientInput input = new Pck4_ClientInput();
-//			input.pressed = true;
-//			input.keyCode = Input.MOUSE_LEFT_BUTTON;
-//			client.sendTCP(input);
-//		}
-//	}
-
-//	@Override
-//    public void mouseReleased(int button, int x, int y) {
-//		if(button == 0){
-//			Pck4_ClientInput input = new Pck4_ClientInput();
-//			input.pressed = false;
-//			input.keyCode = Input.MOUSE_LEFT_BUTTON;
-//			client.sendTCP(input);
-//		}
-//	}
-
-//	@Override
-//    public void mouseMoved(int oldx, int oldy, int newx, int newy) {
-//		Pck5_ClientTurretAngle input = new Pck5_ClientTurretAngle();
-//		if(((AbstractTank) controller.getWorld().getEntity(currentTankID)) != null){
-//			AbstractTurret playerTurret = ((AbstractTank) controller.getWorld().getEntity(currentTankID)).getTurret();
-//			input.angle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - newx + 0, playerTurret.getPosition().y - newy + 0)* -1)+180;
-//		
-//			client.sendTCP(input);
-//		}
-//	}
-
-//	@Override
-//    public void mouseDragged(int oldx, int oldy, int newx, int newy) {
-//		Pck5_ClientTurretAngle input = new Pck5_ClientTurretAngle();
-//		if(((AbstractTank) controller.getWorld().getEntity(currentTankID)) != null){
-//			AbstractTurret playerTurret = ((AbstractTank) controller.getWorld().getEntity(currentTankID)).getTurret();
-//			input.angle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - newx + 0, playerTurret.getPosition().y - newy + 0)* -1)+180;
-//		
-//			client.sendTCP(input);
-//		}
-//    }
 
 //	@Override
 //    public void keyPressed(int key, char c) {
