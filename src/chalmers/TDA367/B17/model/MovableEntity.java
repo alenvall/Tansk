@@ -43,7 +43,7 @@ public abstract class MovableEntity extends Entity {
 	 * @return The direction of this object
 	 */
 	public Vector2f getDirection(){
-		return direction;
+		return direction.copy();
 	}
 	
 	/**
@@ -52,7 +52,7 @@ public abstract class MovableEntity extends Entity {
 	 * @param newDirection The new direction
 	 */
 	public void setDirection(Vector2f newDirection){
-		this.direction = newDirection;
+		this.direction = newDirection.copy();
 		setShape(getShape().transform(Transform.createRotateTransform((float)Math.toRadians(newDirection.getTheta()-lastDirectionTheta), getShape().getCenterX(), getShape().getCenterY())));
 		lastDirectionTheta = newDirection.getTheta();
 	}
