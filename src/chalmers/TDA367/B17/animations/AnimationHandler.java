@@ -14,12 +14,20 @@ import chalmers.TDA367.B17.controller.GameController;
 
 public class AnimationHandler {
 
+	//A list containing all active animations.
 	private Map<Vector2f, Animation> animations;
 	
+	/**
+	 * Create a new AnimationHandler.
+	 */
 	public AnimationHandler() {
 		animations = new ConcurrentHashMap<Vector2f, Animation>();
 	}
 	
+	/**
+	 * Create a new explosion animation.
+	 * @param pos The position
+	 */
 	public void newExplosion(Vector2f pos){
 		//Animation #1
 		Image[] frames = new Image[90];
@@ -40,7 +48,10 @@ public class AnimationHandler {
 		animations.put(pos, a);
 	}
 	
-	public void updateAnimations(){
+	/**
+	 * Render all active animations.
+	 */
+	public void renderAnimations(){
 		Iterator<Entry<Vector2f, Animation>> iterator = animations.entrySet().iterator();
 		while(iterator.hasNext()){
 			Map.Entry<Vector2f, Animation> entry = (Entry<Vector2f, Animation>) iterator.next();

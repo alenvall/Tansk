@@ -263,7 +263,7 @@ public class Play extends BasicGameState{
 			}
 		}
 		
-		controller.getAnimationHandler().updateAnimations();
+		controller.getAnimationHandler().renderAnimations();
 		debugRender(g);
 	}
 
