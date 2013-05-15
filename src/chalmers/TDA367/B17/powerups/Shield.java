@@ -22,11 +22,8 @@ public class Shield extends Entity {
 	 * @param duration The duration of the shield (0 for unlimited time)
 	 */
 	public Shield(AbstractTank absTank, int duration) {
-		setSize(new Vector2f(15, 5));
 		Vector2f position = absTank.getPosition();
-		setPosition(position);
 		setShape(new Circle(position.x, position.y, 100));
-		setSize(new Vector2f(100,100));
 		spriteID = "shield";
 		active = true;
 
