@@ -33,8 +33,7 @@ public class SoundHandler {
 			Vector2f tmpPos = event.getSource().getSpritePosition();
 			GameController.getInstance().getAnimationHandler().newExplosion(new Vector2f(tmpPos.x-24, tmpPos.y-31));
 		}else if(event.getEventType().equals("DEFAULTTURRET_FIRE_EVENT")){
-			Sound tmp = sounds.get("DefaultWeapon_Firing2");
-			tmp.play(3, 125);
+			sounds.get("Default_Firing").play();
 		}else if(event.getEventType().equals("TANK_HIT_EVENT")){
 			sounds.get("Tank_Hit").play();
 		}else if(event.getEventType().equals("FLAMETHROWER_EVENT")){
