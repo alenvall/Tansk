@@ -7,6 +7,7 @@ import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.powerups.Shield;
 
 public abstract class AbstractTank extends MovableEntity {
 
@@ -22,7 +23,9 @@ public abstract class AbstractTank extends MovableEntity {
 	private int timeSinceLastShot;
 	private double lastDir;
 	private Player player;
-	private static double MAX_HEALTH = 100;
+	private static final double MAX_HEALTH = 100;
+	public static final double MAX_SHIELD_HEALTH = 50;
+	private Shield shield;
 	
 	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
 	
@@ -238,6 +241,18 @@ public abstract class AbstractTank extends MovableEntity {
 
 	public void setTurretOffset(float turretOffset) {
 		this.turretOffset = turretOffset;
+	}
+	
+	public double getMaxShieldHealth(){
+		return MAX_SHIELD_HEALTH;
+	}
+	
+	public Shield getShield(){
+		return shield;
+	}
+	
+	public void setShield(Shield shield){
+		this.shield = shield;
 	}
 }
 

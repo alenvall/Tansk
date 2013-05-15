@@ -271,9 +271,8 @@ public class Play extends BasicGameState{
 		controller.getAnimationHandler().renderAnimations();
 		debugRender(g);
 		if(playerOne.getTank() != null){
-			if(playerOne.getTank().getCurrentPowerUp() != null && playerOne.getTank().getCurrentPowerUp().getClass() == ShieldPowerUp.class){
-				Shield shield = ((ShieldPowerUp)playerOne.getTank().getCurrentPowerUp()).getShield();
-				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), shield.getHealth()/shield.getMaxHealth(), g);
+			if(playerOne.getTank().getShield() != null && playerOne.getTank().getShield().getHealth() <= 100){
+				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), playerOne.getTank().getShield().getHealth()/playerOne.getTank().getMaxShieldHealth(), g);
 			}else{
 				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), 0, g);
 			}

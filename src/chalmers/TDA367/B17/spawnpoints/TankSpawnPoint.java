@@ -8,6 +8,7 @@ import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.Player;
+import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.powerups.ShieldPowerUp;
 import chalmers.TDA367.B17.tanks.TankFactory;
 
@@ -38,10 +39,9 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 		tank.setLastDir(tank.getDirection().getTheta());
 		
 		// Adds a shield for protection that lasts 3 seconds.
-		ShieldPowerUp tmp = new ShieldPowerUp(new Vector2f(0,0));
-		tmp.setEffectDuration(3000);
-		tmp.activate(tank);
-		tmp.getShield().setHealth(9999);
+		Shield tmp = new Shield(tank, 3000);
+		tmp.setHealth(9999);
+		tank.setShield(tmp);
 	}
 	
 	@Override

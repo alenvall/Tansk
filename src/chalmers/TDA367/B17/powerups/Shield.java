@@ -9,47 +9,48 @@ import chalmers.TDA367.B17.model.Entity;
 
 public class Shield extends Entity {
 	
-	//The health of this shield.
-	private double health;
-	private double MAX_HEALTH = 50;
-	
 	private AbstractTank absTank;
+	
+	private double health;
+	
+	private int duration;
+	private boolean countDuration = true;
 
 	/**
 	 * Create a new shield for a tank.
-	 * @param position The position of this shield
 	 * @param absTank The tank that will receive the shield
+	 * @param duration The duration of the shield (0 for unlimited time)
 	 */
-	public Shield(Vector2f position, AbstractTank absTank) {
+	public Shield(AbstractTank absTank, int duration) {
 		setSize(new Vector2f(15, 5));
+		Vector2f position = absTank.getPosition();
 		setPosition(position);
 		setShape(new Circle(position.x, position.y, 100));
 		setSize(new Vector2f(100,100));
 		spriteID = "shield";
 		active = true;
-		
-		this.health = 50;
-		this.absTank = absTank;
-	}
 
-	/**
-	 * Get the health of this shield.
-	 * @return The health
-	 */
-	public double getHealth() {
-		return health;
+		this.absTank = absTank;
+		setHealth(absTank.getMaxShieldHealth());
+		
+		if(duration <= 0){
+			countDuration = false;
+		}
+		this.duration = duration;
 	}
 	
-	public double getMaxHealth(){
-		return MAX_HEALTH;
-	}
-
-	/**
-	 * Set the health of this shield.
-	 * @param health The new health
-	 */
-	public void setHealth(double health) {
-		this.health = health;
+	@Override
+	public void update(int delta){
+		if(countDuration){
+			duration -= delta;
+		}
+		
+		setPosition(absTank.getPosition());
+		
+		if(getHealth() <= 0 || (duration <= 0 && countDuration)){
+			absTank.setShield(null);
+			destroy();
+		}
 	}
 
 	@Override
@@ -58,11 +59,15 @@ public class Shield extends Entity {
 			if(!(((AbstractProjectile)entity).getTank() == absTank)){
 				setHealth(getHealth() - ((AbstractProjectile)entity).getDamage());
 				((AbstractProjectile)entity).destroy();
-				
-				if(getHealth() <= 0){
-					active = false;
-				}
 			}
 		}
+	}
+
+	public double getHealth() {
+		return health;
+	}
+
+	public void setHealth(double health) {
+		this.health = health;
 	}
 }
