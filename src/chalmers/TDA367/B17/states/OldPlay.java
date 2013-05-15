@@ -19,26 +19,21 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class Play extends BasicGameState{
+public class OldPlay extends BasicGameState{
 	
 	public ArrayList<AbstractTurret> turrets;
-	
-//	private GameController controller;
 	private ArrayList<Player> players;
 	private Player playerOne;
 	private Image map = null;
 	private Input input;
 	private SpriteSheet entSprite = null;
-	
 	private int state;
-
 	private GameController controller;
-
 	private ImageHandler imgHandler;
 
 	private int delta;
 	
-	public Play(int state) {
+	public OldPlay(int state) {
 	    this.state = state;
 		controller = GameController.getInstance();
 		controller.setConsole(new Console(10, 565, 450, 192, OutputLevel.ALL));
