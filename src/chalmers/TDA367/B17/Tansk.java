@@ -28,17 +28,8 @@ public class Tansk extends StateBasedGame {
 		this.addState(new Play(PLAY));
 		this.addState(new HostMenu(HOST));
 		this.addState(new JoinMenu(JOIN));
-//		this.addState(new ClientState(CLIENT));
 		this.addState(ClientState.getInstance());
-//		this.addState(new ServerState(SERVER));
 		this.addState(ServerState.getInstance());
-		
-//		this.getState(MENU).init(gc, this);
-//		this.getState(PLAY).init(gc, this);
-//		this.getState(HOST).init(gc, this);
-//		this.getState(JOIN).init(gc, this);
-//		this.getState(CLIENT).init(gc, this);
-//		this.getState(SERVER).init(gc, this);
 	}
 
 	public static void main(String[] args) throws SlickException {

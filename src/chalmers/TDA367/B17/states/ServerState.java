@@ -151,12 +151,7 @@ public class ServerState extends BasicGameState {
 		this.deltaTime = delta;
 		processPackets();
 		checkDisconnectedPlayers();
-		
-		if(gc.getInput().isKeyPressed(Input.KEY_SPACE)){
-			controller.getConsole().clearMessages();
-//			sendMessageToClients("Server says hello!");
-		}
-		
+				
 		if(!gameStarted){
 			Input input = gc.getInput();
 			int x = input.getMouseX();
@@ -286,7 +281,6 @@ public class ServerState extends BasicGameState {
 				
 				if(pressedKeys.get(Player.INPT_LMB)){
 					player.getTank().fireWeapon(delta);
-//					GameController.getInstance().getConsole().addMsg(player.getName() + " is firing!");
 				}	
 			}
 		}
@@ -338,7 +332,6 @@ public class ServerState extends BasicGameState {
 			if(entity instanceof AbstractSpawnPoint)
 				controller.getWorld().checkCollisionsFor(entity);
 		}			
-//		sendToAll(worldState);
 		addToAllClientsQueue(worldState);
 	}
 		
@@ -371,7 +364,6 @@ public class ServerState extends BasicGameState {
 		clientPacketQueue = new ArrayList<Network.Packet>();
 	}
 	
-
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
 		g.drawString("Delta: " + deltaTime, 18, 480);

@@ -101,7 +101,6 @@ public class ClientState extends BasicGameState {
 		client.start();
 		
 		try {
-//	        client.connect(600000, "83.254.32.240", Network.PORT, Network.PORT);
 	        client.connect(600000, "127.0.0.1", Network.PORT, Network.PORT);
         } catch (IOException e) {
         	Log.info("[CLIENT] Failed to connect!");
@@ -152,10 +151,8 @@ public class ClientState extends BasicGameState {
 			}
 			
 			// always update angle
-//			if(((AbstractTank) controller.getWorld().getEntity(currentTankID)) != null){
 			if(playerTank != null){
 				Pck5_ClientTurretAngle anglePck = new Pck5_ClientTurretAngle();
-			//	AbstractTurret playerTurret = ((AbstractTank) controller.getWorld().getEntity(currentTankID)).getTurret();
 				AbstractTurret playerTurret = playerTank.getTurret();
 				anglePck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
 				client.sendTCP(anglePck);
