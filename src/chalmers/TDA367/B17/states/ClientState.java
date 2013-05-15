@@ -36,13 +36,13 @@ public class ClientState extends BasicGameState {
 	private Image map = null;
 	private SpriteSheet entSprite;
 	private String playerName;
-	private int currentTankID;
 	private boolean mapLoaded;
 	private ClientButtons clientButtons;
 	private int delta;
 	private int frameCounter;
 	private int timeSinceLastUpdate;
 	private int updates;
+	private AbstractTank playerTank;
 		
 	private ClientState(int state){
 		this.state = state;
@@ -152,9 +152,11 @@ public class ClientState extends BasicGameState {
 			}
 			
 			// always update angle
-			if(((AbstractTank) controller.getWorld().getEntity(currentTankID)) != null){
+//			if(((AbstractTank) controller.getWorld().getEntity(currentTankID)) != null){
+			if(playerTank != null){
 				Pck5_ClientTurretAngle anglePck = new Pck5_ClientTurretAngle();
-				AbstractTurret playerTurret = ((AbstractTank) controller.getWorld().getEntity(currentTankID)).getTurret();
+			//	AbstractTurret playerTurret = ((AbstractTank) controller.getWorld().getEntity(currentTankID)).getTurret();
+				AbstractTurret playerTurret = playerTank.getTurret();
 				anglePck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
 				client.sendTCP(anglePck);
 			}
@@ -186,7 +188,7 @@ public class ClientState extends BasicGameState {
 						
 			if(packet instanceof Pck7_TankID){
 				Pck7_TankID pck = (Pck7_TankID) packet;
-				currentTankID = pck.tankID;
+				playerTank = (AbstractTank) controller.getWorld().getEntity(pck.tankID);
 			}		
 			
 			if(packet instanceof Pck8_EntityDestroyed){

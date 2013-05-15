@@ -32,7 +32,9 @@ public class ServerState extends BasicGameState {
 	private GameConditions gameConditions;
 	private ArrayList<Player> playerList;
 	private String ipAddress;
+	private ArrayList<Packet> allClientsPacketQueue;
 	private ArrayList<Packet> clientPacketQueue;
+	private ArrayList<Player> disconnectedPlayersTemp;
 	
 	private boolean gameStarted = false;
 	private int latestID = 0;
@@ -58,10 +60,12 @@ public class ServerState extends BasicGameState {
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
 		gc.setAlwaysRender(true);
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
-		
+
+		allClientsPacketQueue = new ArrayList<Network.Packet>();
 		clientPacketQueue = new ArrayList<Packet>();
 		gameConditions = new GameConditions();
 		playerList = new ArrayList<Player>();
+		disconnectedPlayersTemp = new ArrayList<Player>();
 		ipAddress = "N/A";
     }
 	
@@ -78,6 +82,7 @@ public class ServerState extends BasicGameState {
 		server = new Server();
 		Network.register(server);
 		server.addListener(new Listener(){
+
 			public void received(Connection con, Object msg){
 			   super.received(con, msg);
 			   if (msg instanceof Packet) {
@@ -95,24 +100,11 @@ public class ServerState extends BasicGameState {
 			@Override
 			public void disconnected(Connection connection) {
 				if(getPlayer(connection) != null){
-			    	String msg = getPlayer(connection).getName() + " disconnected.";
-					controller.getConsole().addMsg(msg, MsgLevel.INFO);
-			    	Pck3_ServerMessage disconnectedMsg = new Pck3_ServerMessage();
-			    	disconnectedMsg.message = msg;
-			    	server.sendToAllExceptTCP(connection.getID(), disconnectedMsg);
-			    	
-			    	Player lostPlayer = getPlayer(connection);
-			    	controller.getWorld().removeEntity(lostPlayer.getTank().getTurret());
-			    	controller.getWorld().removeEntity(lostPlayer.getTank());
-			    	playerList.remove(lostPlayer);
-					
-			    	Log.info("[SERVER] " + msg);
+					disconnectedPlayersTemp.add(getPlayer(connection));
 				} else {
 					GameController.getInstance().getConsole().addMsg("Player disconnected.", MsgLevel.INFO);
 					Log.info("[SERVER] Unkown player has  disconnected.");
 				}
-	
-				playerList.remove(getPlayer(connection));
 			}
 		});
 		
@@ -143,7 +135,8 @@ public class ServerState extends BasicGameState {
 	    	
 			Pck7_TankID tankPck = new Pck7_TankID();
 	    	tankPck.tankID = player.getTank().getId();
-	    	player.getConnection().sendTCP(tankPck);
+//	    	player.getConnection().sendTCP(tankPck);
+	    	addToClientQueue(tankPck, player.getConnection());
 	    	
 			x+=100;
 		}
@@ -157,10 +150,11 @@ public class ServerState extends BasicGameState {
 		frameCounter++;
 		this.deltaTime = delta;
 		processPackets();
+		checkDisconnectedPlayers();
 		
 		if(gc.getInput().isKeyPressed(Input.KEY_SPACE)){
 			controller.getConsole().clearMessages();
-			sendMessageToClients("Server says hello!");
+//			sendMessageToClients("Server says hello!");
 		}
 		
 		if(!gameStarted){
@@ -191,6 +185,25 @@ public class ServerState extends BasicGameState {
 		}
     }
 
+	public void checkDisconnectedPlayers(){
+		for(Player lostPlayer : disconnectedPlayersTemp){
+			if(lostPlayer != null){
+		    	String msg = lostPlayer.getName() + " disconnected.";
+				controller.getConsole().addMsg(msg, MsgLevel.INFO);
+		    	Pck3_ServerMessage disconnectedMsg = new Pck3_ServerMessage();
+		    	disconnectedMsg.message = msg;
+		    	server.sendToAllExceptTCP(lostPlayer.getConnection().getID(), disconnectedMsg);
+		    	
+		    	controller.getWorld().removeEntity(lostPlayer.getTank().getTurret());
+		    	controller.getWorld().removeEntity(lostPlayer.getTank());
+		    	playerList.remove(lostPlayer);
+				
+		    	Log.info("[SERVER] " + msg);
+			}
+		}
+		disconnectedPlayersTemp = new ArrayList<Player>();
+	}
+	
 	public void processPackets() {
 		Packet packet;
 		while ((packet = packetQueue.poll()) != null) {
@@ -326,24 +339,38 @@ public class ServerState extends BasicGameState {
 				controller.getWorld().checkCollisionsFor(entity);
 		}			
 //		sendToAll(worldState);
-		addToClientQueue(worldState);
+		addToAllClientsQueue(worldState);
 	}
 		
-	public void addToClientQueue(Packet packet){
+	public void addToAllClientsQueue(Packet packet){
+		allClientsPacketQueue.add(packet);
+	}
+	
+	public void addToClientQueue(Packet packet, Connection clientConnection){
+		packet.setConnection(clientConnection);
 		clientPacketQueue.add(packet);
 	}
 	
 	private void updateClients(){
 		if(server != null){
-			for(Packet packet : clientPacketQueue){
+			for(Packet packet : allClientsPacketQueue){
 				for(Player player : playerList){
 					if(player != null)
 						server.sendToTCP(player.getConnection().getID(), packet);
 				}
 			}
+			for(Packet clientPacket : clientPacketQueue){
+				if(clientPacket != null){
+					Connection con = clientPacket.getConnection();
+					clientPacket.setConnection(null);
+					server.sendToTCP(con.getID(), clientPacket);
+				}
+			}
 		}
+		allClientsPacketQueue = new ArrayList<Network.Packet>();
 		clientPacketQueue = new ArrayList<Network.Packet>();
 	}
+	
 
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
@@ -376,6 +403,7 @@ public class ServerState extends BasicGameState {
 			renderEntities(fourthLayerEnts, g);
 		}
 		controller.getConsole().renderMessages(g);
+		
 		g.drawString("Players: " + playerList.size(), 18, 500);
 		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 520);
 		g.drawString("LAN IP: " + ipAddress, 18, 545);
@@ -408,13 +436,7 @@ public class ServerState extends BasicGameState {
 	public void addPlayer(Player player){
 		playerList.add(player);
 	}	
-	
-	public void sendMessageToClients(String message){
-		Pck3_ServerMessage msg = new Pck3_ServerMessage();
-		msg.message = message;
-		server.sendToAllTCP(msg);
-	}
-	
+
 	@Override
     public int getID() {
 	    return this.state;

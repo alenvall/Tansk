@@ -4,10 +4,14 @@ import java.awt.Dimension;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+
 import chalmers.TDA367.B17.console.Console.MsgLevel;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.network.Network.*;
+import chalmers.TDA367.B17.spawnpoints.PowerUpSpawnPoint;
+import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.states.ServerState;
+import chalmers.TDA367.B17.terrain.BrownWall;
 
 public class World {
 	private Map<Integer, Entity> entities;
@@ -32,12 +36,14 @@ public class World {
 	 */
 	public void addEntity(Entity newEntity){
 		if(serverWorld){
-			GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
-			Pck9_EntityCreated packet = new Pck9_EntityCreated();
-			packet.entityID = newEntity.getId();
-			packet.identifier = newEntity.getClass().getSimpleName();
-//			ServerState.getInstance().sendToAll(packet);
-			ServerState.getInstance().addToClientQueue(packet);
+			if(!(newEntity instanceof MapBounds) || !(newEntity instanceof BrownWall) || !(newEntity instanceof PowerUpSpawnPoint) || !(newEntity instanceof TankSpawnPoint)){
+				GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+				Pck9_EntityCreated packet = new Pck9_EntityCreated();
+				packet.entityID = newEntity.getId();
+				packet.identifier = newEntity.getClass().getSimpleName();
+//				ServerState.getInstance().sendToAll(packet);
+				ServerState.getInstance().addToAllClientsQueue(packet);
+			}
 		}
 		entities.put(newEntity.getId(), newEntity);
 	}
@@ -53,7 +59,7 @@ public class World {
 			Pck8_EntityDestroyed pck = new Pck8_EntityDestroyed();
 			pck.entityID = id;
 //			ServerState.getInstance().sendToAll(pck);
-			ServerState.getInstance().addToClientQueue(pck);
+			ServerState.getInstance().addToAllClientsQueue(pck);
 		}
 		
 		entities.remove(id);
