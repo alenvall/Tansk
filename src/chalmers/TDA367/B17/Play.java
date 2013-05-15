@@ -6,11 +6,13 @@ import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.powerups.DamagePowerUp;
 import chalmers.TDA367.B17.powerups.FireRatePowerUp;
+import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.powerups.ShieldPowerUp;
 import chalmers.TDA367.B17.powerups.SpeedPowerUp;
 import chalmers.TDA367.B17.spawnpoints.PowerUpSpawnPoint;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.terrain.BrownWall;
+import chalmers.TDA367.B17.view.Lifebar;
 import chalmers.TDA367.B17.weaponPickups.*;
 import chalmers.TDA367.B17.weapons.*;
 
@@ -34,6 +36,7 @@ public class Play extends BasicGameState{
 	private Point mouseCoords;
 	private Input input;
 	private SpriteSheet entSprite = null;
+	Lifebar lifebar;
 	
 	private Player playerTwo;
 	private Player playerThree;
@@ -42,11 +45,13 @@ public class Play extends BasicGameState{
 	public Play(int state) {
 		
 	}
-
+	
 	@Override
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
-		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
+
 		controller = GameController.getInstance();
+		
+		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 
 		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000);
 
@@ -90,6 +95,8 @@ public class Play extends BasicGameState{
 		new PowerUpSpawnPoint(new Vector2f(500, 250), 10000, "firerate");
 		new PowerUpSpawnPoint(new Vector2f(750, 500), 10000, "health");
 		*/
+		
+		lifebar = new Lifebar((GameController.SCREEN_WIDTH/2)-100, 10, 200, 25);
 		
 		//TankSpawnPoints
 		TankSpawnPoint tsp = new TankSpawnPoint(new Vector2f(100, 100));
@@ -261,10 +268,20 @@ public class Play extends BasicGameState{
 			}
 		}
 		
+		controller.getAnimationHandler().renderAnimations();
 		debugRender(g);
+		if(playerOne.getTank() != null){
+			if(playerOne.getTank().getCurrentPowerUp() != null && playerOne.getTank().getCurrentPowerUp().getClass() == ShieldPowerUp.class){
+				Shield shield = ((ShieldPowerUp)playerOne.getTank().getCurrentPowerUp()).getShield();
+				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), shield.getHealth()/shield.getMaxHealth(), g);
+			}else{
+				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), 0, g);
+			}
+		}
 	}
 
 	private void renderEntities(ArrayList<Entity> entities){
+		
 		for(Entity entity : entities){
 			entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
 			

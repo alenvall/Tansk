@@ -127,7 +127,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 		if(entity instanceof AbstractProjectile || entity == getTank()){
 			return;
 		}else if(entity instanceof MapBounds || entity instanceof BrownWall){
-			debugWallHit.play();
+			//debugWallHit.play();
 			this.destroy();
 		}else if(entity instanceof AbstractTank){
 			damageTarget((AbstractTank)entity);
@@ -147,7 +147,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 */
 	public void damageTarget(AbstractTank target){
 		target.recieveDamage(this);
-		debugWallHit.play();
+		//debugWallHit.play();
 		this.destroy();
 	}
 }

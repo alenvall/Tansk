@@ -22,6 +22,7 @@ public abstract class AbstractTank extends MovableEntity {
 	private int timeSinceLastShot;
 	private double lastDir;
 	private Player player;
+	private static double MAX_HEALTH = 100;
 	
 	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
 	
@@ -66,6 +67,10 @@ public abstract class AbstractTank extends MovableEntity {
 	 */
 	public void setName(String name) {
 		this.name = name;
+	}
+	
+	public double getMaxHealth(){
+		return MAX_HEALTH;
 	}
 
 	/**
