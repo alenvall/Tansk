@@ -1,6 +1,6 @@
 package chalmers.TDA367.B17.model;
 
-import chalmers.TDA367.B17.controller.TanskController;
+import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.geom.*;
 
 public abstract class MovableEntity extends Entity {
@@ -22,12 +22,11 @@ public abstract class MovableEntity extends Entity {
 	 */
 	public MovableEntity(Vector2f direction, float maxSpeed, float minSpeed) {
 		super();
-		this.direction = direction;
+		setDirection(direction);
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
 		this.acceleration = maxSpeed*0.001f;
 		this.friction = maxSpeed*0.001f;
-		this.lastDirectionTheta = direction.getTheta();
 	}
 	
 	/**
@@ -43,7 +42,7 @@ public abstract class MovableEntity extends Entity {
 	 * @return The direction of this object
 	 */
 	public Vector2f getDirection(){
-		return direction;
+		return direction.copy();
 	}
 	
 	/**
@@ -52,7 +51,7 @@ public abstract class MovableEntity extends Entity {
 	 * @param newDirection The new direction
 	 */
 	public void setDirection(Vector2f newDirection){
-		this.direction = newDirection;
+		this.direction = newDirection.copy();
 		setShape(getShape().transform(Transform.createRotateTransform((float)Math.toRadians(newDirection.getTheta()-lastDirectionTheta), getShape().getCenterX(), getShape().getCenterY())));
 		lastDirectionTheta = newDirection.getTheta();
 	}
@@ -146,7 +145,7 @@ public abstract class MovableEntity extends Entity {
 	/**
 	 * Updates the position of the object, uses speed and direction to calculate the new position.
 	 * This also translates the shape of this entity.
-	 * @param delta hmm...
+	 * @param delta The time that has passed since the last update
 	 */
 	public void move(int delta){
 		Vector2f tmp = new Vector2f(direction);
@@ -163,7 +162,7 @@ public abstract class MovableEntity extends Entity {
 
 	/**
 	 * Increases the speed of this object based on the acceleration.
-	 * @param delta hmm...
+	 * @param delta The time that has passed since the last update
 	 */
 	public void accelerate(int delta){
 		setSpeed(speed + acceleration * delta);
@@ -171,7 +170,7 @@ public abstract class MovableEntity extends Entity {
 	
 	/**
 	 * Decreases the speed of this object based on the deceleration.
-	 * @param delta wat to write...
+	 * @param delta The time that has passed since the last update
 	 */
 	public void friction(int delta){ //TODO fix the name of this method (friction)
 		//if the speed after deceleration is greater than zero the speed is decreased
@@ -188,21 +187,20 @@ public abstract class MovableEntity extends Entity {
 	
 	/**
 	 * Decreases the speed of this object based on the deceleration.
-	 * @param delta 
+	 * @param delta The time that has passed since the last update
 	 */
 	public void reverse(int delta){
 			setSpeed(speed - friction * delta);
 	}
 
-	/**
-	 * The update method for the MovableEntity object. 
-	 * Used for updating the position of this object.
-	 * @param delta
-	 */
+	@Override
 	public void update(int delta){
 		move(delta);
 
-		if(getPosition().getX()<0 || getPosition().getX()> TanskController.getInstance().getWorld().getSize().width || getPosition().getY()<0 || getPosition().getY()> TanskController.getInstance().getWorld().getSize().height)
+		if(getPosition().getX()<0 || getPosition().getX()> 
+		GameController.getInstance().getWorld().getSize().width 
+		|| getPosition().getY()<0 || getPosition().getY()> 
+		GameController.getInstance().getWorld().getSize().height)
 			destroy();
 	}
 }

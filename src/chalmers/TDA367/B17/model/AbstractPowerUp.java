@@ -3,6 +3,8 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
+
 public abstract class AbstractPowerUp extends Entity {
 
 	private String name;
@@ -19,8 +21,13 @@ public abstract class AbstractPowerUp extends Entity {
 		super();
 		effectActive = false;
 		absTank = null;
-		Vector2f size = new Vector2f(60f, 25f);
+		Vector2f size = new Vector2f(35f, 35f);
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
+		renderLayer = GameController.RenderLayer.THIRD;
+
+		//Increase the powerup count
+		GameController.getInstance().getWorld().getSpawner().setPowerupCount
+		(GameController.getInstance().getWorld().getSpawner().getPowerupCount() + 1);
 	}
 
 	/**
@@ -57,6 +64,23 @@ public abstract class AbstractPowerUp extends Entity {
 		this.duration = duration;
 	}
 	
+	/**
+	 * Get the remaining time the effect is active.
+	 * @return The remaining time on the effect
+	 */
+	public int getEffectDuration() {
+		return effectDuration;
+	}
+
+	/**
+	 * Set the time the effect should last for.
+	 * @param effectDuration The time in milliseconds the effect should last for
+	 */
+	public void setEffectDuration(int effectDuration) {
+		this.effectDuration = effectDuration;
+	}
+
+	@Override
 	public void update(int delta) {
 		if(duration != 0){
 			duration -= delta;
@@ -78,6 +102,11 @@ public abstract class AbstractPowerUp extends Entity {
 		}
 	}
 	
+	/**
+	 * Run to activate the powerup for a specific tank. The powerup will no
+	 * longer be rendered. 
+	 * @param absTank The tank that will receive the effect
+	 */
 	public void activate(AbstractTank absTank){
 		this.absTank = absTank;
 		absTank.setCurrentPowerUp(this);
@@ -85,25 +114,42 @@ public abstract class AbstractPowerUp extends Entity {
 		active = false;
 		effectActive = true;
 		spriteID = "";
+		//Decrease the powerup count
+		GameController.getInstance().getWorld().getSpawner().setPowerupCount
+		(GameController.getInstance().getWorld().getSpawner().getPowerupCount() - 1);
 	}
 	
+	/**
+	 * Run to deactivate the powerup. The powerup will be removed from the 
+	 * tank and the effect will wear off.
+	 */
 	public void deactivate(){
 		if(absTank == null || !absTank.isActive())
 			return;
+		effectActive = false;
 		updateEffect();
 		endEffect();
-		effectActive = false;
 		active = false;
 		this.destroy();
 		absTank.setCurrentPowerUp(null);
 	}
 	
+	/**
+	 * Runs at the activation of the powerup.
+	 */
 	public abstract void effect();
 
+	/**
+	 * Runs at the deactivation of the powerup.
+	 */
 	public abstract void endEffect();
 
+	/**
+	 * Runs every update, includes what will happen during the effect.
+	 */
 	public abstract void updateEffect();
 	
+	@Override
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractTank && effectActive == false){
 			activate((AbstractTank)entity);

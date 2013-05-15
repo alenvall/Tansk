@@ -2,6 +2,8 @@ package chalmers.TDA367.B17.weapons;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.AbstractTurret;
@@ -10,9 +12,8 @@ public class ShotgunTurret extends AbstractTurret {
 
 	public ShotgunTurret(AbstractTank tank) {
 		super(tank);
-		turretCenter = new Vector2f(22.5f, 22.5f);
-		turretLength = 42f;
-		setSize(new Vector2f(45f, 65f));
+		turretCenter = new Vector2f(16.875f, 16.875f);
+		turretLength = 31.5f;
 		fireRate = 1000;
 		projectileType = "shotgun";
 	}
@@ -35,15 +36,12 @@ public class ShotgunTurret extends AbstractTurret {
 			}
 			
 			projectile.setDirection(angle);
-			projectile.setSpeed(Math.abs(projectile.getSpeed() * (i * 0.2f)));
+			//The spawned projectiles have different speed.
+			projectile.setSpeed(Math.abs(projectile.getSpeed() - (i * 0.025f)));
 
 			tank.addProjectile(projectile);
 		}
-	}
-	
-	/*
-	 * Should fireWeapon be moved to AbstractTurret?
-	 * Would make some things easier.
-	 */
 
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "SHOTGUN_EVENT"));
+	}
 }

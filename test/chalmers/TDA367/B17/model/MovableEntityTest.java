@@ -99,7 +99,7 @@ public class MovableEntityTest {
 	}
 
 	@Test
-	public void testFriction() { // again, not really sure if this method is tested properly
+	public void testFriction() {
 		MovableEntity mEntity = new MovableEntityMock();
 		mEntity.setMaxSpeed(10);
 		mEntity.setMinSpeed(-5);

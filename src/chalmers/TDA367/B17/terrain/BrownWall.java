@@ -1,7 +1,6 @@
 package chalmers.TDA367.B17.terrain;
 
 import org.newdawn.slick.Sound;
-import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.model.*;

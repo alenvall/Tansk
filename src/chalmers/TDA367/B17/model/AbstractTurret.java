@@ -1,11 +1,11 @@
 package chalmers.TDA367.B17.model;
 
-import chalmers.TDA367.B17.controller.TanskController;
+import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.geom.Point;
 import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractTurret extends Entity {
-	protected float angle;
+	private float rotation;
 	protected Vector2f turretCenter;
 	protected float turretLength;
 	protected int fireRate;
@@ -17,12 +17,17 @@ public abstract class AbstractTurret extends Entity {
 	 */
 	public AbstractTurret(AbstractTank tank) {
 		super();
-		angle = 0;
-		spriteID = "turret";
+		rotation = 0;
+		spriteID = "turret_blue";
 		this.tank = tank;
 		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
+		renderLayer = GameController.RenderLayer.THIRD;
 	}
 	
+	/**
+	 * Get the tank of this turret.
+	 * @return The tank
+	 */
 	public AbstractTank getTank(){
 		return tank;
 	}
@@ -42,7 +47,7 @@ public abstract class AbstractTurret extends Entity {
 	
 	@Override
 	public double getRotation() {
-	    return angle;
+	    return rotation;
     }
 
 	/**
@@ -50,7 +55,7 @@ public abstract class AbstractTurret extends Entity {
 	 * @param angle the new angle
 	 */
 	public void setRotation(float angle) {
-		this.angle = angle % 360.0f;
+		this.rotation = angle % 360.0f;
     }
 
 	/**
@@ -103,7 +108,7 @@ public abstract class AbstractTurret extends Entity {
 
 	@Override
 	public void update(int delta){
-		java.awt.Point mouseCoordinates = TanskController.getInstance().getMouseCoordinates();
+		java.awt.Point mouseCoordinates = GameController.getInstance().getMouseCoordinates();
 
 		float rotation = (float) Math.toDegrees(Math.atan2(this.getPosition().x - mouseCoordinates.x + 0, this.getPosition().y - mouseCoordinates.y + 0)* -1)+180;
 		this.setRotation(rotation);
