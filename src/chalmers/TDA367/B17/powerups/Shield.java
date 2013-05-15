@@ -23,7 +23,7 @@ public class Shield extends Entity {
 	 */
 	public Shield(AbstractTank absTank, int duration) {
 		Vector2f position = absTank.getPosition();
-		setShape(new Circle(position.x, position.y, 100));
+		setShape(new Circle(position.x, position.y, 107));
 		spriteID = "shield";
 		active = true;
 
