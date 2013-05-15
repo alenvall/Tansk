@@ -29,19 +29,6 @@ public class AnimationHandler {
 	 * @param pos The position
 	 */
 	public void newExplosion(Vector2f pos){
-		//Animation #1
-		Image[] frames = new Image[90];
-		for(int i = 0; i < 90; i++){
-			if(i < 9)
-				frames[i] = GameController.getInstance().getImageHandler().getSprite("explosion1_000" + (i+1));
-			else
-				frames[i] = GameController.getInstance().getImageHandler().getSprite("explosion1_00" + (i+1));
-		}
-		Animation ab = new Animation(frames, 25);
-		ab.setLooping(false);
-		animations.put(new Vector2f(450, 450), ab);
-		
-		//Animation #2
 		SpriteSheet ss = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("explosion_animation"), 133, 133);
 		Animation a = new Animation(ss, 50);
 		a.setLooping(false);
