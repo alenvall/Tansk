@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.controller;
 
 import java.awt.*;
 
+import chalmers.TDA367.B17.animations.AnimationHandler;
 import chalmers.TDA367.B17.model.GameConditions;
 import chalmers.TDA367.B17.model.World;
 import chalmers.TDA367.B17.sound.SoundHandler;
@@ -16,6 +17,7 @@ public class GameController {
 	private World world;
 	private ImageHandler imgHandler;
 	private SoundHandler soundHandler;
+	private AnimationHandler animationHandler;
 	
 	private GameConditions gameConditions;
 
@@ -27,8 +29,9 @@ public class GameController {
 		imgHandler.loadAllImages(DATA_FOLDER);
 		soundHandler = new SoundHandler();
 		soundHandler.loadEverySound(DATA_FOLDER);
+		animationHandler = new AnimationHandler();
 	}
-	
+
 	public static enum RenderLayer{
 		FIRST, SECOND, THIRD, FOURTH
 	}
@@ -75,5 +78,9 @@ public class GameController {
 	
 	public SoundHandler getSoundHandler(){
 		return soundHandler;
+	}
+	
+	public AnimationHandler getAnimationHandler() {
+		return animationHandler;
 	}
 }

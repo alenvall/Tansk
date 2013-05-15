@@ -42,11 +42,13 @@ public class Play extends BasicGameState{
 	public Play(int state) {
 		
 	}
-
+	
 	@Override
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
-		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
+
 		controller = GameController.getInstance();
+		
+		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 
 		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000);
 
@@ -261,6 +263,7 @@ public class Play extends BasicGameState{
 			}
 		}
 		
+		controller.getAnimationHandler().updateAnimations();
 		debugRender(g);
 	}
 
