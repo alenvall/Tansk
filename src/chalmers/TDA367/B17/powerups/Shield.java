@@ -11,6 +11,7 @@ public class Shield extends Entity {
 	
 	//The health of this shield.
 	private double health;
+	private double MAX_HEALTH = 50;
 	
 	private AbstractTank absTank;
 
@@ -37,6 +38,10 @@ public class Shield extends Entity {
 	 */
 	public double getHealth() {
 		return health;
+	}
+	
+	public double getMaxHealth(){
+		return MAX_HEALTH;
 	}
 
 	/**
