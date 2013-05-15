@@ -8,6 +8,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	private double damage;
 	private int duration;
 	private int durationTimer;
+	private AbstractTank tank;
 
 	/**
 	 * Create a new AbstractProjectile.
@@ -17,14 +18,19 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param damage the damage this projectile does
 	 * @param duration the time in milliseconds this projectile will remain on the map
 	 */
-	public AbstractProjectile(int id, Vector2f velocity,
+	public AbstractProjectile(int id, AbstractTank tank, Vector2f position, Vector2f velocity,
 			float maxSpeed, float minSpeed, double damage, int duration) {
 		super(id, maxSpeed, minSpeed);
 		this.damage = damage;
 		this.duration = duration;
 		this.durationTimer = duration;
+		this.tank = tank;
 		spriteID = "bullet";
 		renderLayer = RenderLayer.FOURTH;
+	}
+	
+	public AbstractTank getTank(){
+		return tank;
 	}
 	
 	/**
@@ -71,18 +77,31 @@ public abstract class AbstractProjectile extends MovableEntity {
 		super.update(delta);
 	}
 	
+	/**
+	 * Return the rotation of the projectile.
+	 * @return The rotation
+	 */
 	public double getRotation(){
 		return direction.getTheta() + 90;
 	}
 	
+	/**
+	 * Return the duration-timer of this projectile.
+	 * @return The duration-timer
+	 */
 	public int getDurationTimer() {
 		return durationTimer;
 	}
 
+	/**
+	 * Set the duration timer to a new one.
+	 * @param durationTimer The new duration-timer
+	 */
 	public void setDurationTimer(int durationTimer) {
 		this.durationTimer = durationTimer;
 	}
 	
+	@Override
 	public void didCollideWith(Entity entity){
 //		TODO: check this in World
 //		if(entity instanceof AbstractProjectile || entity == getTank()){
@@ -95,13 +114,16 @@ public abstract class AbstractProjectile extends MovableEntity {
 		}
 	}
 
-
 	@Override
 	public void destroy(){
 		super.destroy();
 //		getTank().getProjectiles().remove(this);
 	}
 	
+	/**
+	 * Deal damage to a target tank.
+	 * @param target The target tank
+	 */
 	public void damageTarget(AbstractTank target){
 		target.recieveDamage(this);
 		this.destroy();

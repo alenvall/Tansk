@@ -2,27 +2,24 @@ package chalmers.TDA367.B17.weapons;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.AbstractTurret;
-import chalmers.TDA367.B17.states.ServerState;
 
 public class ShockwaveTurret extends AbstractTurret{
 
-	public ShockwaveTurret(int id) {
-		super(id);
-		turretCenter = new Vector2f(22.5f, 22.5f);
-		turretLength = 42f;
-		setSize(new Vector2f(45f, 65f));
+	public ShockwaveTurret(int id, AbstractTank tank) {
+		super(id, tank);
+		turretCenter = new Vector2f(16.875f, 16.875f);
+		turretLength = 31.5f;
 		fireRate = 3000;
 		projectileType = "";
 	}
 
 	@Override
 	public AbstractProjectile createProjectile() {	
-		ShockwaveProjectile proj = new ShockwaveProjectile(ServerState.getInstance().generateID());
-		proj.setPosition(getTurretNozzle());
-		return proj;
+		return new ShockwaveProjectile(GameController.getInstance().generateID(), tank, getTurretNozzle());
 	}
 	
 	@Override
@@ -32,7 +29,7 @@ public class ShockwaveTurret extends AbstractTurret{
 
 		projectile.setDirection(angle);
 
-//		tank.addProjectile(projectile);
+		tank.addProjectile(projectile);
 	}
 
 }

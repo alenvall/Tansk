@@ -14,12 +14,13 @@ import chalmers.TDA367.B17.*;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.console.Console.*;
 import chalmers.TDA367.B17.controller.*;
+import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.*;
 import chalmers.TDA367.B17.network.*;
-import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
 import chalmers.TDA367.B17.network.Network.*;
 import chalmers.TDA367.B17.tanks.DefaultTank;
+import chalmers.TDA367.B17.view.Lifebar;
 import chalmers.TDA367.B17.weapons.DefaultProjectile;
 
 public class ClientState extends BasicGameState {
@@ -27,7 +28,6 @@ public class ClientState extends BasicGameState {
 	private int state;
 	private static ClientState instance;
 	private GameController controller;
-	private ImageHandler imgHandler;
 	private ConcurrentLinkedQueue<Packet> packetQueue;
 	
 	private Client client;
@@ -43,6 +43,7 @@ public class ClientState extends BasicGameState {
 	private int timeSinceLastUpdate;
 	private int updates;
 	private AbstractTank playerTank;
+	private Lifebar lifebar;
 		
 	private ClientState(int state){
 		this.state = state;
@@ -61,11 +62,11 @@ public class ClientState extends BasicGameState {
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
 		gc.setAlwaysRender(true);
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
-		imgHandler = new ImageHandler();
 		
 		clientButtons = new ClientButtons();
 		map = new Image("data/map.png");
 		playerName = "Nisse" + Math.round(Math.random() * 1000);
+		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 25);
     }
 	
 	@Override
@@ -110,7 +111,6 @@ public class ClientState extends BasicGameState {
         } 
 		
 		controller.getWorld().init();
-		imgHandler.loadAllImages(Tansk.DATA_FOLDER);
 
 		input = gc.getInput();   
 		input.addKeyListener(this);
@@ -200,6 +200,10 @@ public class ClientState extends BasicGameState {
 			if(packet instanceof Pck100_WorldState){
 				if(isConnected)
 					updateClientWorld((Pck100_WorldState) packet);
+			}	
+			
+			if(packet instanceof Pck999_PlaySound){
+				GameController.getInstance().getSoundHandler().handleEvent(new GameEvent(null, ((Pck999_PlaySound)packet).sound));
 			}
 		}
     }			
@@ -211,6 +215,9 @@ public class ClientState extends BasicGameState {
 				AbstractTank tank = (AbstractTank) controller.getWorld().getEntity(packet.entityID);
 				tank.setPosition(packet.tankPosition);
 				tank.setDirection(packet.tankDirection);
+				tank.setHealth(packet.tankHealth);
+				if(tank.getShield() != null)
+					tank.getShield().setHealth(packet.tankShieldHealth);
 				AbstractTurret turret = tank.getTurret();
 				turret.setPosition(packet.turretPosition);
 				turret.setRotation(packet.turretAngle);
@@ -261,15 +268,23 @@ public class ClientState extends BasicGameState {
 		}
 		controller.getConsole().renderMessages(g);
 		debugRender(g);
+		controller.getAnimationHandler().renderAnimations();
+		if(playerTank != null){
+			if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
+				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);
+			}else{
+				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), 0, g);
+			}
+		}
     }
 	
 	private void renderEntities(ArrayList<Entity> entities){
 		for(Entity entity : entities){
-			entSprite = imgHandler.getSprite(entity.getSpriteID());
+			entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
 			
 			if(entSprite != null){
 				if(entity instanceof AbstractTank){
-					entSprite = imgHandler.getSprite(entity.getSpriteID());
+					entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
 					if(entity.getRotation()!=0){
 						entSprite.setRotation((float) entity.getRotation());
 						// draw sprite at the coordinates of the top left corner of tank when it is not rotated
@@ -373,14 +388,11 @@ public class ClientState extends BasicGameState {
 	}
 	
 	private void createClientEntity(int entityID, String identifier) {
-	    switch(identifier){
-	    	case "DefaultTank":
-				new DefaultTank(entityID);
-				break;
-	    	case "DefaultProjectile":
-				new DefaultProjectile(entityID);
-				break;
+	    if(identifier.equals("DefaultTank")){
+			new DefaultTank(entityID);
+		}
+	    if(identifier.equals("DefaultProjectile")){
+			new DefaultProjectile(entityID, null, null);
 	    }
-	    
     }
 }

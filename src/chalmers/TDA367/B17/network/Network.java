@@ -26,6 +26,7 @@ public class Network {
 		kryo.register(Pck101_TankUpdate.class);
 		kryo.register(Pck102_ProjectileUpdate.class);
 		kryo.register(Pck9_EntityCreated.class);
+		kryo.register(Pck999_PlaySound.class);
 	}
 	
 	public static class Packet{
@@ -82,6 +83,7 @@ public class Network {
 
 	public static class Pck9_EntityCreated extends EntityPacket {
 		public String identifier;
+		public int possibleOwnerID;
 	}	
 	
 	public static class Pck100_WorldState extends Packet {
@@ -92,11 +94,17 @@ public class Network {
 		public Vector2f tankPosition;
 		public Vector2f tankDirection;
 		public Vector2f turretPosition;
+		public double tankHealth;
+		public double tankShieldHealth;
 		public float turretAngle;
 	}	
 	
 	public static class Pck102_ProjectileUpdate extends EntityPacket{
 		public Vector2f projPosition;
 		public Vector2f projDirection;
+	}
+	
+	public static class Pck999_PlaySound extends Packet{
+		public String sound;
 	}
 }

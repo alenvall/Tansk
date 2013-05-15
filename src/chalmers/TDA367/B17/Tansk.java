@@ -25,7 +25,7 @@ public class Tansk extends StateBasedGame {
 	@Override
 	public void initStatesList(GameContainer gc) throws SlickException {
 		this.addState(new Menu(MENU));
-		this.addState(new OldPlay(PLAY));
+		this.addState(new Play(PLAY));
 		this.addState(new HostMenu(HOST));
 		this.addState(new JoinMenu(JOIN));
 		this.addState(ClientState.getInstance());

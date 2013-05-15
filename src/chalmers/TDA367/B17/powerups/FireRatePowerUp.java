@@ -10,13 +10,17 @@ public class FireRatePowerUp extends AbstractPowerUp {
 	private final float MULTIPLIER = 0.5f;
 	private AbstractTurret turret;
 	private int firerate;
-	
+
+	/**
+	 * Create a new FireRatePowerUp at a position.
+	 * @param position The position of this powerup
+	 */
 	public FireRatePowerUp(int id, Vector2f position) {
 		super(id, position);
 		effectDuration = 7000;
 		spriteID = "firerate_powerup";
 	}
-
+	
 	@Override
 	public void effect(){
 		turret = absTank.getTurret();

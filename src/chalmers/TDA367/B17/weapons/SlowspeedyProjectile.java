@@ -3,11 +3,12 @@ package chalmers.TDA367.B17.weapons;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.model.AbstractProjectile;
+import chalmers.TDA367.B17.model.AbstractTank;
 
 public class SlowspeedyProjectile extends AbstractProjectile {
 
-	public SlowspeedyProjectile(int id) {
-		super(id, new Vector2f(1,1), 100, 0, 5, 3000);
+	public SlowspeedyProjectile(int id, AbstractTank tank, Vector2f position) {
+		super(id, tank, position, new Vector2f(1,1), 100, 0, 5, 3000);
 		setSpeed(0.05f);
 		setSize(new Vector2f(15,5));
 		spriteID = "proj_energy";

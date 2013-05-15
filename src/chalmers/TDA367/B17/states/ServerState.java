@@ -29,15 +29,12 @@ public class ServerState extends BasicGameState {
 	private ConcurrentLinkedQueue<Packet> packetQueue;
 	
 	private Server server;
-	private GameConditions gameConditions;
-	private ArrayList<Player> playerList;
 	private String ipAddress;
 	private ArrayList<Packet> allClientsPacketQueue;
 	private ArrayList<Packet> clientPacketQueue;
 	private ArrayList<Player> disconnectedPlayersTemp;
 	
 	private boolean gameStarted = false;
-	private int latestID = 0;
 	private int deltaTime;
 	private int frameCounter;
 	private int timeSinceLastUpdate;
@@ -63,8 +60,7 @@ public class ServerState extends BasicGameState {
 
 		allClientsPacketQueue = new ArrayList<Network.Packet>();
 		clientPacketQueue = new ArrayList<Packet>();
-		gameConditions = new GameConditions();
-		playerList = new ArrayList<Player>();
+//		playerList = new ArrayList<Player>();
 		disconnectedPlayersTemp = new ArrayList<Player>();
 		ipAddress = "N/A";
     }
@@ -128,14 +124,14 @@ public class ServerState extends BasicGameState {
 	private void startGame() {
 		gameStarted = true;
 		int x = 100;
-		for(Player player : playerList){
-			AbstractTank tank = new DefaultTank(generateID());
+		for(Player player : getPlayers()){
+			AbstractTank tank = new DefaultTank(GameController.getInstance().generateID());
 			tank.setPosition(new Vector2f(x, 100));
 			player.setTank(tank);
 	    	
 			Pck7_TankID tankPck = new Pck7_TankID();
 	    	tankPck.tankID = player.getTank().getId();
-//	    	player.getConnection().sendTCP(tankPck);
+	    	player.getConnection().sendTCP(tankPck);
 	    	addToClientQueue(tankPck, player.getConnection());
 	    	
 			x+=100;
@@ -191,7 +187,7 @@ public class ServerState extends BasicGameState {
 		    	
 		    	controller.getWorld().removeEntity(lostPlayer.getTank().getTurret());
 		    	controller.getWorld().removeEntity(lostPlayer.getTank());
-		    	playerList.remove(lostPlayer);
+		    	getPlayers().remove(lostPlayer);
 				
 		    	Log.info("[SERVER] " + msg);
 			}
@@ -210,10 +206,10 @@ public class ServerState extends BasicGameState {
 		    	
 		    	if(!gameStarted){
 			    	Player newPlayer = new Player(packet.getConnection(), pck.playerName);
-			    	newPlayer.setLives(gameConditions.getPlayerLives());
-			    	newPlayer.setRespawnTime(gameConditions.getSpawnTime());
+			    	newPlayer.setLives(GameController.getInstance().getGameConditions().getPlayerLives());
+			    	newPlayer.setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
 			    	
-			    	playerList.add(newPlayer);
+			    	getPlayers().add(newPlayer);
 			    	responsePacket.accepted = true;
 		    	} else {
 		    		responsePacket.accepted = false;
@@ -252,7 +248,7 @@ public class ServerState extends BasicGameState {
     }
 	
 	public void updatePlayerTanks(int delta){
-		for(Player player : playerList){		
+		for(Player player : getPlayers()){		
 			ArrayList<Boolean> pressedKeys = player.getInput();
 			if(player.getTank() != null){
 				if(pressedKeys.get(Player.INPT_W)){
@@ -316,6 +312,9 @@ public class ServerState extends BasicGameState {
 						pck.tankDirection = tank.getDirection();
 						pck.turretPosition = tank.getTurret().getPosition();
 						pck.turretAngle = (float) tank.getTurret().getRotation();
+						pck.tankHealth = tank.getHealth();
+						if(tank.getShield() != null)
+							pck.tankShieldHealth = tank.getShield().getHealth();
 						worldState.updatePackets.add(pck);
 					}
 					
@@ -347,7 +346,7 @@ public class ServerState extends BasicGameState {
 	private void updateClients(){
 		if(server != null){
 			for(Packet packet : allClientsPacketQueue){
-				for(Player player : playerList){
+				for(Player player : getPlayers()){
 					if(player != null)
 						server.sendToTCP(player.getConnection().getID(), packet);
 				}
@@ -396,7 +395,7 @@ public class ServerState extends BasicGameState {
 		}
 		controller.getConsole().renderMessages(g);
 		
-		g.drawString("Players: " + playerList.size(), 18, 500);
+		g.drawString("Players: " + getPlayers().size(), 18, 500);
 		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 520);
 		g.drawString("LAN IP: " + ipAddress, 18, 545);
 		
@@ -425,21 +424,21 @@ public class ServerState extends BasicGameState {
 		g.setColor(Color.white);
 	}
 	
-	public void addPlayer(Player player){
-		playerList.add(player);
-	}	
+//	public void addPlayer(Player player){
+//		playerList.add(player);
+//	}	
 
 	@Override
     public int getID() {
 	    return this.state;
     }
 	
-	public ArrayList<Player> getPlayerList(){
-		return playerList;
-	}
+//	public ArrayList<Player> getPlayerList(){
+//		return playerList;
+//	}
 	
 	public Player getPlayer(Connection con){
-		for(Player player : playerList){
+		for(Player player : getPlayers()){
 			if(player.getConnection().getID() == con.getID()){
 				return player;
 			}
@@ -449,15 +448,20 @@ public class ServerState extends BasicGameState {
 
 	public void sendToAll(Packet packet) {
 		if(server != null){
-			for(Player player : playerList){
+			for(Player player : getPlayers()){
 				if(player != null)
 					server.sendToTCP(player.getConnection().getID(), packet);
 			}
 		}
     }	
 	
-	public int generateID(){
-		latestID += 1;
-		return latestID;
+	public ArrayList<Player> getPlayers(){
+		return controller.getGameConditions().getPlayerList();
+	}
+	
+	public void sendSound(String sound){
+		Pck999_PlaySound soundPck = new Pck999_PlaySound();
+		soundPck.sound = sound;
+		addToAllClientsQueue(soundPck);
 	}
 }

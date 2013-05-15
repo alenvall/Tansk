@@ -72,7 +72,7 @@ public class OldPlay extends BasicGameState{
 	private void startGame() {
 		int x = 100;
 		
-		AbstractTank tank = new DefaultTank(ServerState.getInstance().generateID());
+		AbstractTank tank = new DefaultTank(GameController.getInstance().generateID());
 		tank.setPosition(new Vector2f(x, 100));
 		playerOne.setTank(tank);
 

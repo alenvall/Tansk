@@ -4,7 +4,12 @@ import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
 public class AbstractObstacle extends Entity {
-
+	
+	/**
+	 * Create a new AbstractObstacle.
+	 * @param size The size of this object.
+	 * @param position The position of this object.
+	 */
 	public AbstractObstacle(int id, Vector2f size, Vector2f position) {
 		super(id);
 		setSize(size);

@@ -2,25 +2,33 @@ package chalmers.TDA367.B17.powerups;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
-import chalmers.TDA367.B17.states.ServerState;
+import chalmers.TDA367.B17.model.AbstractTank;
 
 public class ShieldPowerUp extends AbstractPowerUp {
-	
-	private Shield shield;
 
+
+	
+	/**
+	 * Create a new ShieldPowerUp at a position.
+	 * @param position The position of this powerup
+	 */
 	public ShieldPowerUp(int id, Vector2f position) {
 		super(id, position);
-		effectDuration = 10000;
+		effectDuration = 1;
 		spriteID = "shield_powerup";
 	}
-	
+
+	/**
+	 * Create a new shield for the stored tank.
+	 */
 	private void createShield(){
-		shield = new Shield(ServerState.getInstance().generateID(), absTank.getPosition(), absTank);
-	}
-	
-	private void moveShield(){
-		shield.setPosition(absTank.getPosition());
+		if(absTank.getShield() != null){
+			absTank.getShield().destroy();
+			absTank.setShield(null);
+		}
+		absTank.setShield(new Shield(GameController.getInstance().generateID(), absTank, 99999));
 	}
 
 	@Override
@@ -29,17 +37,20 @@ public class ShieldPowerUp extends AbstractPowerUp {
 	}
 
 	@Override
-	public void endEffect() {
-		shield.destroy();
-	}
+	public void endEffect() {}
 
 	@Override
-	public void updateEffect() {
-		if(!shield.isActive() && effectActive){
-			deactivate();
-		}else if(shield.isActive()){
-			moveShield();
-		}
-	}
+	public void updateEffect() {}
 
+	@Override
+	public void activate(AbstractTank absTank){
+		this.absTank = absTank;
+		effect();
+		active = false;
+		effectActive = true;
+		spriteID = "";
+		//Decrease the powerup count
+		GameController.getInstance().getWorld().getSpawner().setPowerupCount
+		(GameController.getInstance().getWorld().getSpawner().getPowerupCount() - 1);
+	}
 }

@@ -2,7 +2,6 @@ package chalmers.TDA367.B17.model;
 
 import java.util.ArrayList;
 import com.esotericsoftware.kryonet.Connection;
-import chalmers.TDA367.B17.states.ServerState;
 
 public class Player {
 	private int id;
@@ -49,6 +48,9 @@ public class Player {
 		for(int i = 0; i < 6; i++){
 			inputStatuses.add(false);
 		}
+//		GameController.getInstance().getGameConditions().addPlayer(this);
+//		setLives(GameController.getInstance().getGameConditions().getPlayerLives());
+//		setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
 	}
 	
 	public static final int INPT_W = 0;
@@ -89,22 +91,42 @@ public class Player {
 		return score;
 	}
 	
+	/**
+	 * Return the lives of this player.
+	 * @return The lives of this player
+	 */
 	public int getLives() {
 		return lives;
 	}
 
+	/**
+	 * Set the lives of this player.
+	 * @param lives Next value of lives
+	 */
 	public void setLives(int lives) {
 		this.lives = lives;
 	}
 
+	/**
+	 * Return the respawn-timer.
+	 * @return The respawn-timer.
+	 */
 	public int getRespawnTimer() {
 		return respawnTimer;
 	}
 
+	/**
+	 * Set the respawn-timer.
+	 * @param respawnTimer The new respawn-timer.
+	 */
 	public void setRespawnTimer(int respawnTimer) {
 		this.respawnTimer = respawnTimer;
 	}
 
+	/**
+	 * Set the new tank.
+	 * @param tank The new tank
+	 */
 	public void setTank(AbstractTank tank) {
 		this.tank = tank;
 	}
@@ -133,9 +155,10 @@ public class Player {
 		this.score = score;
 	}
 	
-	
+	/**
+	 * Runs when the tank dies. Decreases lives and call for spawntank.
+	 */
 	public void tankDeath(){
-		tankDead = true;
 		setLives(getLives() - 1);
 		setTank(null);
 		if(getLives() > 0){
@@ -145,27 +168,47 @@ public class Player {
 		}
 	}
 	
+	/**
+	 * Starts a new respawn-timer and adds it to the TankSpawner to respawn.
+	 */
 	public void spawnTank(){
 		if(tank != null){
 			tank.destroy();
 			tank = null;
 		}
-		ServerState.getInstance().addPlayer(this);
+//		ServerState.getInstance().addPlayer(this);
+//		GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
 		this.respawnTimer = respawnTime;
 	}
 
+	/**
+	 * Checks if the player is active.
+	 * @return True if active
+	 */
 	public boolean isActive() {
 		return active;
 	}
 
+	/**
+	 * Set active to true or false.
+	 * @param active The new state
+	 */
 	public void setActive(boolean active) {
 		this.active = active;
 	}
 
+	/**
+	 * Return the spawn-time.
+	 * @return The spawn-time
+	 */
 	public int getRespawnTime() {
 		return respawnTime;
 	}
 
+	/**
+	 * Set the respawn-time of this player.
+	 * @param respawnTime The new respawn-time.
+	 */
 	public void setRespawnTime(int respawnTime) {
 		this.respawnTime = respawnTime;
 	}
@@ -188,5 +231,29 @@ public class Player {
 
 	public ArrayList<Boolean> getInput(){
 		return inputStatuses;
+	}
+	
+	/**
+	 * Check if this player has been eliminated.
+	 * @return True if the tank have zero lives
+	 */
+	public boolean isEliminated() {
+		return eliminated;
+	}
+
+	/**
+	 * Set this player to be eliminated.
+	 * @param eliminated The new state of eliminated
+	 */
+	public void setEliminated(boolean eliminated) {
+		this.eliminated = eliminated;
+	}
+
+	/**
+	 * Get the tank-type of this player.
+	 * @return The tank-type
+	 */
+	public String getTankType() {
+		return tankType;
 	}
 }
