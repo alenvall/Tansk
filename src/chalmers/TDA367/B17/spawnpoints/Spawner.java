@@ -4,6 +4,7 @@ import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.model.AbstractObstacle;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.AbstractTank;
@@ -106,7 +107,8 @@ public class Spawner {
 			
 			public void didCollideWith(Entity entity){
 				if(entity instanceof AbstractSpawnPoint || entity instanceof AbstractTank 
-						|| entity instanceof AbstractPowerUp || entity instanceof AbstractWeaponPickup){
+						|| entity instanceof AbstractPowerUp || entity instanceof AbstractWeaponPickup
+						|| entity instanceof AbstractObstacle){
 					blocked = true;
 				}
 			}
