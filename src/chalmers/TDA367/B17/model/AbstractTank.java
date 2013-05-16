@@ -188,7 +188,6 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 	
 	public void fireWeapon(int delta){
-		timeSinceLastShot -= delta;
 		if(timeSinceLastShot <= 0 && fire){
 			turret.fireWeapon(delta, this);
 			timeSinceLastShot = turret.getFireRate();
