@@ -90,6 +90,9 @@ public abstract class AbstractTank extends MovableEntity {
 	 */
 	public void setHealth(double health) {
 		this.health = health;
+		if(this.health <= 0){
+			tankDeath();
+		}
 	}
 
 	/**

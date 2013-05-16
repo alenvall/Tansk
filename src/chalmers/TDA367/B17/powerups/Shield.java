@@ -23,7 +23,7 @@ public class Shield extends Entity {
 	 */
 	public Shield(AbstractTank absTank, int duration) {
 		Vector2f position = absTank.getPosition();
-		setShape(new Circle(position.x, position.y, 107));
+		setShape(new Circle(position.x, position.y, 53));
 		spriteID = "shield";
 		active = true;
 
@@ -36,11 +36,13 @@ public class Shield extends Entity {
 		this.duration = duration;
 	}
 
+	/*
 	@Override
 	public Vector2f getSpritePosition() {
 		float radius = getShape().getBoundingCircleRadius();
 		return super.getSpritePosition().add(new Vector2f(radius/2, radius/2));
 	}
+	*/
 	
 	@Override
 	public void update(int delta){
@@ -60,6 +62,10 @@ public class Shield extends Entity {
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractProjectile){
 			if(!(((AbstractProjectile)entity).getTank() == absTank)){
+				double overkill = absTank.getHealth() - (getHealth() - ((AbstractProjectile)entity).getDamage());
+				if(overkill <= 0)
+					absTank.setHealth(absTank.getHealth() + overkill);
+				
 				setHealth(getHealth() - ((AbstractProjectile)entity).getDamage());
 				((AbstractProjectile)entity).destroy();
 			}
