@@ -14,11 +14,11 @@ public class TankSpawner{
 	//A list of all the TankSpawnPoints
 	private List<TankSpawnPoint> tankSpawnPoints;
 	//A list of all the players that wish to spawn.
-	private List<Player> playerList;
+	private List<Player> playersToSpawn;
 	
 	public TankSpawner(){
 		tankSpawnPoints = new ArrayList<TankSpawnPoint>();
-		playerList = new ArrayList<Player>();
+		playersToSpawn = new ArrayList<Player>();
 	}
 	
 	/**
@@ -26,8 +26,8 @@ public class TankSpawner{
 	 * @param delta The time that has passed since the last update
 	 */
 	public void update(int delta){
-		for(int i = 0; i < playerList.size(); i++){
-			Player p = playerList.get(i);
+		for(int i = 0; i < playersToSpawn.size(); i++){
+			Player p = playersToSpawn.get(i);
 			p.setRespawnTimer(p.getRespawnTimer() - delta);
 			if(p.getRespawnTimer() <= 0){
 				GameController controller = GameController.getInstance();
@@ -40,7 +40,7 @@ public class TankSpawner{
 						controller.getWorld().checkCollisionsFor(entity);
 				}
 				newTankRandSpawnPoint(p);
-				playerList.remove(i);
+				playersToSpawn.remove(i);
 			}
 		}
 	}
@@ -58,7 +58,7 @@ public class TankSpawner{
 	 * @param player The player to add
 	 */
 	public void addPlayer(Player player){
-		playerList.add(player);
+		playersToSpawn.add(player);
 	}
 	
 	/**
