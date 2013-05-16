@@ -150,7 +150,7 @@ public class World {
 	
 	public void handleEvent(GameEvent event){
 		if(serverWorld){
-			GameController.getInstance().getSoundHandler().handleEvent(event);
+//			GameController.getInstance().getSoundHandler().handleEvent(event);
 			ServerState.getInstance().sendSound(event.getEventType());
 		}
 	}
