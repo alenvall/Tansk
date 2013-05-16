@@ -35,14 +35,6 @@ public class Shield extends Entity {
 		}
 		this.duration = duration;
 	}
-
-	/*
-	@Override
-	public Vector2f getSpritePosition() {
-		float radius = getShape().getBoundingCircleRadius();
-		return super.getSpritePosition().add(new Vector2f(radius/2, radius/2));
-	}
-	*/
 	
 	@Override
 	public void update(int delta){
