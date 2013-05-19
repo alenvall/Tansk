@@ -53,7 +53,7 @@ public class Play extends BasicGameState{
 		
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 
-		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000);
+		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 4, 2, 5000, 500000, 1500000);
 
 		//Players
 		playerOne = new Player("Player One");
