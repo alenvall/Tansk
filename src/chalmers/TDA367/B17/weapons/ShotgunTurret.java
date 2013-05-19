@@ -17,6 +17,7 @@ public class ShotgunTurret extends AbstractTurret {
 		turretLength = 31.5f;
 		fireRate = 1000;
 		projectileType = "shotgun";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	@Override

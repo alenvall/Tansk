@@ -15,6 +15,7 @@ public class SlowspeedyTurret extends AbstractTurret {
 		turretLength = 31.5f;
 		fireRate = 750;
 		projectileType = "default";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	@Override

@@ -24,6 +24,8 @@ public class World {
 	//The size of the map (world)
 	private Dimension size;
 
+	private int entityCounter;
+	
 	//A spawner that spawns/respawns tanks.
 	private TankSpawner tankSpawner;
 	private boolean serverWorld = false;
@@ -69,6 +71,7 @@ public class World {
 				}
 			}
 		}
+		entityCounter++;
 		entities.put(newEntity.getId(), newEntity);
 	}
 
@@ -87,8 +90,10 @@ public class World {
 			pck.entityID = entity.getId();
 			ServerState.getInstance().addToAllClientsQueue(pck);
 		}
-		if(entity != null)
+		if(entity != null){
+			entityCounter--;
 			entities.remove(entity.getId());
+		}
 	}	
 	
 	/**

@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.weapons;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 
@@ -12,6 +13,7 @@ public class ShotgunProjectile extends AbstractProjectile {
 		setSpeed(0.3f);
 		setSize(new Vector2f(3,6));
 		spriteID = "proj_shotgun";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	@Override

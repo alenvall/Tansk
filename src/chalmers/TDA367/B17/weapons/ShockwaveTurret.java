@@ -15,6 +15,7 @@ public class ShockwaveTurret extends AbstractTurret{
 		turretLength = 31.5f;
 		fireRate = 3000;
 		projectileType = "";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	@Override

@@ -23,6 +23,7 @@ public class ShockwaveProjectile extends AbstractProjectile {
 		setSpeed(0.2f);
 		setSize(new Vector2f(8,10));
 		spriteID = "shockwave_proj";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	public void detonate(){

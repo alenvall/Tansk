@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.weapons;
 
 import org.newdawn.slick.geom.*;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
@@ -15,6 +16,7 @@ public class BounceProjectile extends AbstractProjectile {
 		setSpeed(0.25f);
 		setSize(new Vector2f(5f, 10f));
 		spriteID = "proj_fire";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 	
 	@Override

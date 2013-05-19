@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.weapons;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 
@@ -18,6 +19,7 @@ public class ShockwaveSecondaryProjectile extends AbstractProjectile {
 		spriteID = "proj_energy";
 
 //		shockproj = sp;
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	@Override
