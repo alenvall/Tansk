@@ -185,9 +185,11 @@ public class Play extends BasicGameState{
 			sbg.enterState(0);
 		}
 		
-		if(playerOne.getTank() != null){
-			AbstractTurret turret = playerOne.getTank().getTurret();
-			turret.setRotation((float) Math.toDegrees(Math.atan2(turret.getPosition().x - input.getMouseX() + 0, turret.getPosition().y - input.getMouseY() + 0)* -1)+180);		
+		for(Player player : players){
+			if(player.getTank() != null){
+				AbstractTurret turret = player.getTank().getTurret();
+				turret.setRotation((float) Math.toDegrees(Math.atan2(turret.getPosition().x - input.getMouseX() + 0, turret.getPosition().y - input.getMouseY() + 0)* -1)+180);		
+			}
 		}
 		
 		//Weapons
