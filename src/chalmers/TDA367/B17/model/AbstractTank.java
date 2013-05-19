@@ -6,6 +6,7 @@ import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.powerups.Shield;
 
 
@@ -24,6 +25,7 @@ public abstract class AbstractTank extends MovableEntity {
 	public static final double MAX_SHIELD_HEALTH = 50;
 	private Shield shield;
 	private ArrayList<AbstractProjectile> projectiles;
+	private Player player;
 	
 	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
 	
@@ -34,8 +36,9 @@ public abstract class AbstractTank extends MovableEntity {
 	 * @param minSpeed The minimum movement speed of this tank
 	 * @param player The owning player of this tank
 	 */
-	public AbstractTank(int id, float maxSpeed, float minSpeed) {
-		super(id, maxSpeed, minSpeed);
+	public AbstractTank(int id, Vector2f direction, float maxSpeed, float minSpeed, Player player) {
+		super(id, direction, maxSpeed, minSpeed);
+		this.player = player;
 		turnSpeed = 0.15f;
 		currentPowerUp = null;
 		spriteID = "turret";
@@ -204,7 +207,8 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 	
 	public void recieveDamage(AbstractProjectile ap){
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "TANK_HIT_EVENT"));
+//		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "TANK_HIT_EVENT"));
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "TANK_HIT_EVENT"));
 		setHealth(getHealth() - ap.getDamage());
 		if(getHealth() <= 0){
 			tankDeath();
@@ -212,10 +216,14 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 	
 	public void tankDeath(){
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, TANK_DEATH_EVENT));
+		setHealth(0);
+//		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, TANK_DEATH_EVENT));
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, TANK_DEATH_EVENT));
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.ANIM, this, TANK_DEATH_EVENT));
 		if(getCurrentPowerUp() != null)
 			getCurrentPowerUp().deactivate();
 		this.destroy();
+		player.tankDeath();
 	}
 	
 	@Override

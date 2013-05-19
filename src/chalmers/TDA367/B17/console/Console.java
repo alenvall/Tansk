@@ -3,6 +3,7 @@ package chalmers.TDA367.B17.console;
 import java.util.ArrayList;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.Graphics;
+import org.newdawn.slick.gui.TextField;
 
 /** A simple graphical text output console */
 public class Console {
@@ -12,7 +13,7 @@ public class Console {
 	private int height;
 	private int totalY;
 	private int numberOfMessages;
-	
+		
 //	private final static int NUMBER_OF_MESSAGES = 20;
 //	private final static int SCREEN_OFFSETX = 10;
 //	private final static int CONSOLE_WIDTH = 450;
@@ -47,7 +48,7 @@ public class Console {
 		
 		numberOfMessages = (height-2*MESSAGE_OFFSETY) / (ROW_HEIGHT);
 		totalY = posY + height;
-		
+				
 		// calculate the offset from the bottom of the screen depending on the max number of messages (more messages = bigger console)
 		// consoleSizeY = 2*MESSAGE_OFFSETY+NUMBER_OF_MESSAGES*ROW_SPACE;
 		// consolePosY = Tansk.SCREEN_HEIGHT - consoleSizeY - 10;

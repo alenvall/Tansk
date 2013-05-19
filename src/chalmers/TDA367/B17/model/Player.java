@@ -1,6 +1,9 @@
 package chalmers.TDA367.B17.model;
 
 import java.util.ArrayList;
+
+import chalmers.TDA367.B17.controller.GameController;
+
 import com.esotericsoftware.kryonet.Connection;
 
 public class Player {
@@ -177,7 +180,7 @@ public class Player {
 			tank = null;
 		}
 //		ServerState.getInstance().addPlayer(this);
-//		GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
+		GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
 		this.respawnTimer = respawnTime;
 	}
 

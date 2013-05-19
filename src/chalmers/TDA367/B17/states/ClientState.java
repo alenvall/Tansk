@@ -7,6 +7,9 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.newdawn.slick.*;
 import org.newdawn.slick.geom.*;
+import org.newdawn.slick.gui.AbstractComponent;
+import org.newdawn.slick.gui.ComponentListener;
+import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
 import com.esotericsoftware.kryonet.*;
 import com.esotericsoftware.minlog.Log;
@@ -24,7 +27,6 @@ import chalmers.TDA367.B17.view.Lifebar;
 import chalmers.TDA367.B17.weapons.DefaultProjectile;
 
 public class ClientState extends BasicGameState {
-	private static final int UPDATE_INTERVAL = 20;
 	private int state;
 	private static ClientState instance;
 	private GameController controller;
@@ -37,18 +39,22 @@ public class ClientState extends BasicGameState {
 	private SpriteSheet entSprite;
 	private String playerName;
 	private boolean mapLoaded;
-	private ClientButtons clientButtons;
-	private int delta;
 	private int frameCounter;
-	private int timeSinceLastUpdate;
 	private int updates;
 	private AbstractTank playerTank;
 	private Lifebar lifebar;
+	private long deltaTime;
+	private int packetsSentPerSecond;
+	private int packetsSent;
+	private int updatesPerSecond;
+	private long oldTime;
+	private int packetsRecPerSecond;
+	private int packetsReceived;
+	private TextField chatField;
 		
 	private ClientState(int state){
 		this.state = state;
 		controller = GameController.getInstance();
-		controller.setConsole(new Console(10, 565, 450, 192, OutputLevel.ALL));
 	}
 	
 	public static ClientState getInstance(){
@@ -60,10 +66,10 @@ public class ClientState extends BasicGameState {
 	
 	@Override
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
+		gc.setSmoothDeltas(true);
 		gc.setAlwaysRender(true);
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 		
-		clientButtons = new ClientButtons();
 		map = new Image("data/map.png");
 		playerName = "Nisse" + Math.round(Math.random() * 1000);
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 25);
@@ -72,6 +78,22 @@ public class ClientState extends BasicGameState {
 	@Override
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
+
+		controller.setConsole(new Console(10, 533, 450, 192, OutputLevel.ALL));
+		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23, new ComponentListener() {
+			public void componentActivated(AbstractComponent source) {
+				if(!chatField.getText().equals("")){
+					if(client != null){
+						String msg = playerName + ": " + chatField.getText();
+						Pck31_ChatMessage pck = new Pck31_ChatMessage();
+						pck.message = msg;
+						chatField.setText("");
+						client.sendTCP(pck);
+					}
+				}
+			}
+		});
+		
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		
 		packetQueue = new ConcurrentLinkedQueue<Packet>();
@@ -91,6 +113,7 @@ public class ClientState extends BasicGameState {
 				   Packet packet = (Packet)msg;
 				   packet.setConnection(con);
 				   packetQueue.add(packet);
+				   packetsReceived++;
 			   }
 			}
 			
@@ -120,42 +143,43 @@ public class ClientState extends BasicGameState {
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		frameCounter++;
-		this.delta = delta;
+		long newTime = Calendar.getInstance().getTimeInMillis();
+		deltaTime = newTime - oldTime;
+		if(deltaTime >= 1000){
+			packetsRecPerSecond = packetsReceived;
+			packetsReceived = 0;
+			packetsSentPerSecond = packetsSent;
+			packetsSent = 0;
+			updatesPerSecond = updates;
+			updates = 0;
+			oldTime = newTime;
+		}
+		
 		if((isConnected) && (!mapLoaded)){
 			MapLoader.createEntities("whatever");
 			mapLoaded = true;
 		}
 		processPackets();
-		
-		timeSinceLastUpdate -= delta;
-		if(timeSinceLastUpdate <= 0 && isConnected){
-			sendClientInput(gc.getInput());
-			timeSinceLastUpdate = UPDATE_INTERVAL;
-			updates++;
-		}
+					
+		sendClientInput(gc.getInput());
+		updates++;
 	}
-	
+
 	private void sendClientInput(Input input) {
 		if(isConnected){
-			// only update button if they have changed
-			if(clientButtons.isStateChanged()){
-				Pck4_ClientInput buttonPck = new Pck4_ClientInput();
-				buttonPck.W_pressed = clientButtons.button_W_pressed;
-				buttonPck.A_pressed = clientButtons.button_A_pressed;
-				buttonPck.S_pressed = clientButtons.button_S_pressed;
-				buttonPck.D_pressed = clientButtons.button_D_pressed;
-				buttonPck.LMB_pressed = clientButtons.button_LMB_pressed;
-
-				client.sendTCP(buttonPck);
-				clientButtons.setStateChanged(false);
-			}
-			
-			// always update angle
 			if(playerTank != null){
-				Pck5_ClientTurretAngle anglePck = new Pck5_ClientTurretAngle();
+				Pck4_ClientInput clientPck = new Pck4_ClientInput();
+				clientPck.W_pressed = input.isKeyDown(Input.KEY_W);
+				clientPck.A_pressed = input.isKeyDown(Input.KEY_A);
+				clientPck.S_pressed = input.isKeyDown(Input.KEY_S);
+				clientPck.D_pressed = input.isKeyDown(Input.KEY_D);
+				clientPck.LMB_pressed = input.isMouseButtonDown(0);
+
 				AbstractTurret playerTurret = playerTank.getTurret();
-				anglePck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
-				client.sendTCP(anglePck);
+				clientPck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
+			
+				client.sendTCP(clientPck);
+				packetsSent++;
 			}
 		}
     }
@@ -177,12 +201,16 @@ public class ClientState extends BasicGameState {
 				}
 			}
 						
-			if(packet instanceof Pck3_ServerMessage){
-				String message = ((Pck3_ServerMessage) packet).message;
-				GameController.getInstance().getConsole().addMsg(message, MsgLevel.INFO);
-				Log.info(message);
+			if(packet instanceof Pck3_Message){
+				if(packet instanceof Pck31_ChatMessage){
+					GameController.getInstance().getConsole().addMsg(((Pck31_ChatMessage)packet).message);
+				} else {
+					String message = ((Pck3_Message) packet).message;
+					GameController.getInstance().getConsole().addMsg(message, MsgLevel.INFO);
+					Log.info(message);
+				}
 			}	
-						
+			
 			if(packet instanceof Pck7_TankID){
 				Pck7_TankID pck = (Pck7_TankID) packet;
 				playerTank = (AbstractTank) controller.getWorld().getEntity(pck.tankID);
@@ -192,18 +220,25 @@ public class ClientState extends BasicGameState {
 				Pck8_EntityDestroyed pck = (Pck8_EntityDestroyed) packet;
 				controller.getWorld().removeEntity(pck.entityID);
 			}
+			
 			if(packet instanceof Pck9_EntityCreated){
 				Pck9_EntityCreated pck = (Pck9_EntityCreated) packet;
 				createClientEntity(pck.entityID, pck.identifier);
+			}
+			
+			if(packet instanceof Pck10_TankCreated){
+				Pck10_TankCreated pck = (Pck10_TankCreated) packet;
+				createClientTank(pck.entityID, pck.identifier, pck.direction);
 			}
 					
 			if(packet instanceof Pck100_WorldState){
 				if(isConnected)
 					updateClientWorld((Pck100_WorldState) packet);
-			}	
+			}			
 			
-			if(packet instanceof Pck999_PlaySound){
-				GameController.getInstance().getSoundHandler().handleEvent(new GameEvent(null, ((Pck999_PlaySound)packet).sound));
+			if(packet instanceof Pck1000_GameEvent){
+				Pck1000_GameEvent evtPck = (Pck1000_GameEvent)packet;
+				GameController.getInstance().getWorld().handleEvent(new GameEvent(evtPck.eventType, evtPck.sourceID, evtPck.eventDesc));
 			}
 		}
     }			
@@ -237,7 +272,6 @@ public class ClientState extends BasicGameState {
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
 		if(isConnected){
 			g.drawImage(map, 0, 0);
-			g.drawString("Delta: " + delta, 18, 400);
 			if(controller.getWorld().getEntities() != null){
 				ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
 				ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
@@ -270,12 +304,18 @@ public class ClientState extends BasicGameState {
 		debugRender(g);
 		controller.getAnimationHandler().renderAnimations();
 		if(playerTank != null){
-			if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
-				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);
-			}else{
-				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), 0, g);
+			if(playerTank.getHealth() > 0){
+				if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
+					lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);
+				}else{
+					lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), 0, g);
+				}
 			}
 		}
+		g.setColor(Color.white);
+		g.setLineWidth(1);
+		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
+		chatField.render(container, g);
     }
 	
 	private void renderEntities(ArrayList<Entity> entities){
@@ -305,9 +345,22 @@ public class ClientState extends BasicGameState {
 	}
 	
 	public void debugRender(Graphics g){
-		g.drawString("Frame: " + frameCounter, 18, 440);
-		g.drawString("Updates: " + updates, 18, 420);
-		g.drawString("Diff: " + (frameCounter-updates), 18, 460);
+//		if(playerTank != null){
+//			g.setColor(Color.green);
+//			g.draw(playerTank.getShape());
+//			g.setColor(Color.yellow);
+//			g.drawLine(playerTank.getSpritePosition().x, playerTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//			g.setColor(Color.red);
+//			g.drawLine(playerTank.getPosition().x, playerTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//			g.setColor(Color.blue);
+//			g.drawLine(playerTank.getTurret().getTurretNozzle().x, playerTank.getTurret().getTurretNozzle().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//		}
+		g.setColor(Color.white);
+		g.drawString("Packet rec/sec: " + packetsRecPerSecond, 18, 320);
+		g.drawString("Packet sent/sec: " + packetsSentPerSecond, 18, 340);
+		g.drawString("Update/sec: " + updatesPerSecond, 18, 360);
+		g.drawString("Frame: " + frameCounter, 18, 400);
+		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 420);
 	}
     
 	public String getPlayerName() {
@@ -318,79 +371,14 @@ public class ClientState extends BasicGameState {
     public int getID() {
 	    return this.state;
     }
-	
-	@Override
-	public void mousePressed(int button, int x, int y) {
-		clientButtons.stateChanged = true;	
-		clientButtons.button_LMB_pressed = true;			
-	}
-	
-	@Override
-	public void mouseReleased(int button, int x, int y) {
-		clientButtons.stateChanged = true;	
-		clientButtons.button_LMB_pressed = false;					
-	}
 		
-	@Override
-    public void keyPressed(int key, char c) {
-		clientButtons.stateChanged = true;
-		switch(key){
-			case Input.KEY_W:
-				clientButtons.button_W_pressed = true;
-				break;
-			case Input.KEY_A:
-				clientButtons.button_A_pressed = true;
-				break;
-			case Input.KEY_S:
-				clientButtons.button_S_pressed = true;
-				break;
-			case Input.KEY_D:
-				clientButtons.button_D_pressed = true;
-				break;
-		}
+	private void createClientTank(int entityID, String identifier, Vector2f direction) {
+	    if(identifier.equals("DefaultTank")){
+			new DefaultTank(entityID, direction, null);
+	    }
     }
-
-	@Override
-    public void keyReleased(int key, char c) {
-		clientButtons.stateChanged = true;
-		switch(key){
-			case Input.KEY_W:
-				clientButtons.button_W_pressed = false;
-				break;
-			case Input.KEY_A:
-				clientButtons.button_A_pressed = false;
-				break;
-			case Input.KEY_S:
-				clientButtons.button_S_pressed = false;
-				break;
-			case Input.KEY_D:
-				clientButtons.button_D_pressed = false;
-				break;
-		}
-    }
-	
-	public static class ClientButtons{
-		public boolean button_W_pressed;
-		public boolean button_A_pressed;
-		public boolean button_S_pressed;
-		public boolean button_D_pressed;
-		public boolean button_LMB_pressed;
-
-		private boolean stateChanged;
-		
-		public boolean isStateChanged(){
-			return stateChanged;
-		}
-		
-		public void setStateChanged(boolean stateChanged){
-			this.stateChanged = stateChanged;
-		}
-	}
 	
 	private void createClientEntity(int entityID, String identifier) {
-	    if(identifier.equals("DefaultTank")){
-			new DefaultTank(entityID);
-		}
 	    if(identifier.equals("DefaultProjectile")){
 			new DefaultProjectile(entityID, null, null);
 	    }

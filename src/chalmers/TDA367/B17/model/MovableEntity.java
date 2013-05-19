@@ -18,9 +18,9 @@ public abstract class MovableEntity extends Entity {
 	 * @param maxSpeed The maximum speed of this object
 	 * @param minSpeed The minimum speed of this object
 	 */
-	public MovableEntity(int id, float maxSpeed, float minSpeed) {
+	public MovableEntity(int id, Vector2f direction, float maxSpeed, float minSpeed) {
 		super(id);
-		this.direction = new Vector2f(0,-1);
+		setDirection(direction);
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
 		this.acceleration = maxSpeed*0.001f;
@@ -49,9 +49,11 @@ public abstract class MovableEntity extends Entity {
 	 * @param newDirection The new direction
 	 */
 	public void setDirection(Vector2f newDirection){
-		this.direction = newDirection.copy();
-		setShape(getShape().transform(Transform.createRotateTransform((float)Math.toRadians(newDirection.getTheta()-lastDirectionTheta), getShape().getCenterX(), getShape().getCenterY())));
-		lastDirectionTheta = newDirection.getTheta();
+		if(newDirection != null){
+			this.direction = newDirection.copy();
+			setShape(getShape().transform(Transform.createRotateTransform((float)Math.toRadians(newDirection.getTheta()-lastDirectionTheta), getShape().getCenterX(), getShape().getCenterY())));
+			lastDirectionTheta = newDirection.getTheta();	
+		}
 	}
 
 	/**

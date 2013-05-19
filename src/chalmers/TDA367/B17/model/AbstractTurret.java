@@ -40,7 +40,7 @@ public abstract class AbstractTurret extends Entity {
 	public int getFireRate(){
 		return fireRate;
 	}
-
+	
 	@Override
 	public Vector2f getSpritePosition(){
 		return new Vector2f(getPosition().x - turretCenter.x, getPosition().y - turretCenter.y);
@@ -101,7 +101,6 @@ public abstract class AbstractTurret extends Entity {
 	 * @return the new projectile
 	 */
 	public AbstractProjectile spawnNewProjectile(){
-//	public void spawnNewProjectile(){
 		AbstractProjectile projectile = createProjectile();
 		projectile.setDirection(new Vector2f(getRotation() + 90));
 		projectile.setPosition(getTurretNozzle());
@@ -110,6 +109,7 @@ public abstract class AbstractTurret extends Entity {
 
 	// moved func. to AbstractTank
 	public void update(int delta){
+		super.update(delta);
 //		double tankRotation = tank.getRotation() - 90;
 //		float newTurX = (float) (tank.getPosition().x + tank.getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
 //		float newTurY = (float) (tank.getPosition().y - tank.getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));

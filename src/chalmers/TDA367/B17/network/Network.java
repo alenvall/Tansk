@@ -15,9 +15,9 @@ public class Network {
 		kryo.register(Pck0_JoinRequest.class);
 		kryo.register(Pck1_LoginAnswer.class);
 		kryo.register(Pck2_ClientConfirmJoin.class);
-		kryo.register(Pck3_ServerMessage.class);
+		kryo.register(Pck3_Message.class);
+		kryo.register(Pck31_ChatMessage.class);
 		kryo.register(Pck4_ClientInput.class);
-		kryo.register(Pck5_ClientTurretAngle.class);
 		kryo.register(Vector2f.class);
 		kryo.register(Pck7_TankID.class);
 		kryo.register(ArrayList.class);
@@ -26,7 +26,8 @@ public class Network {
 		kryo.register(Pck101_TankUpdate.class);
 		kryo.register(Pck102_ProjectileUpdate.class);
 		kryo.register(Pck9_EntityCreated.class);
-		kryo.register(Pck999_PlaySound.class);
+		kryo.register(Pck10_TankCreated.class);
+		kryo.register(Pck1000_GameEvent.class);
 	}
 	
 	public static class Packet{
@@ -58,8 +59,10 @@ public class Network {
 		public String message;
 	}
 	
-	public static class Pck3_ServerMessage extends Packet{
+	public static class Pck3_Message extends Packet{
 		public String message;
+	}
+	public static class Pck31_ChatMessage extends Pck3_Message{
 	}	
 		
 	public static class Pck4_ClientInput extends Packet{
@@ -68,12 +71,9 @@ public class Network {
 		public boolean S_pressed;
 		public boolean D_pressed;
 		public boolean LMB_pressed;
+        public float turretNewAngle;
 	}
 	
-	public static class Pck5_ClientTurretAngle extends Packet{
-        public float turretNewAngle;
-	}	
-		
 	public static class Pck7_TankID extends Packet{
 		public int tankID;
 	}	
@@ -84,7 +84,11 @@ public class Network {
 	public static class Pck9_EntityCreated extends EntityPacket {
 		public String identifier;
 		public int possibleOwnerID;
-	}	
+	}
+
+	public static class Pck10_TankCreated extends Pck9_EntityCreated {
+		public Vector2f direction;
+	}
 	
 	public static class Pck100_WorldState extends Packet {
 		public ArrayList<EntityPacket> updatePackets;
@@ -103,8 +107,10 @@ public class Network {
 		public Vector2f projPosition;
 		public Vector2f projDirection;
 	}
-	
-	public static class Pck999_PlaySound extends Packet{
-		public String sound;
+		
+	public static class Pck1000_GameEvent extends Packet{
+		public int sourceID;
+		public String eventDesc;
+		public int eventType;
 	}
 }

@@ -72,9 +72,9 @@ public class OldPlay extends BasicGameState{
 	private void startGame() {
 		int x = 100;
 		
-		AbstractTank tank = new DefaultTank(GameController.getInstance().generateID());
-		tank.setPosition(new Vector2f(x, 100));
-		playerOne.setTank(tank);
+//		AbstractTank tank = new DefaultTank(GameController.getInstance().generateID());
+//		tank.setPosition(new Vector2f(x, 100));
+//		playerOne.setTank(tank);
 
 		// Start a new round
 //		gameConditions.init(10, 2, 1, 5000, 500000, 1500000);

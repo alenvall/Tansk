@@ -18,6 +18,8 @@ import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
 import chalmers.TDA367.B17.Tansk;
+import chalmers.TDA367.B17.console.Console;
+import chalmers.TDA367.B17.console.Console.OutputLevel;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.AbstractTank;
@@ -39,7 +41,7 @@ public class Play extends BasicGameState{
 	private Image map = null;
 	private Input input;
 	private SpriteSheet entSprite = null;
-	Lifebar lifebar;
+	private Lifebar lifebar;
 	
 	private Player playerTwo;
 	private Player playerThree;
@@ -49,14 +51,24 @@ public class Play extends BasicGameState{
 	
 	public Play(int state) {
 	    this.state = state;
+		controller = GameController.getInstance();
+		controller.setConsole(new Console(10, 565, 450, 192, OutputLevel.ALL));
 	}
 	
 	@Override
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
-
-		controller = GameController.getInstance();
-		
+		gc.setAlwaysRender(true);
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
+		
+		map = new Image("data/map.png");
+		
+		input = gc.getInput();
+		input.addMouseListener(this);
+	}	
+	
+	@Override
+	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
+		super.enter(container, game);
 
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, false);
 
@@ -74,10 +86,11 @@ public class Play extends BasicGameState{
 		playerFour = new Player("Player Four");
 		players.add(playerFour);
 		
-		map = new Image("data/map.png");
-		
-		input = gc.getInput();
-		input.addMouseListener(this);
+		for(Player player : players){
+			GameController.getInstance().getGameConditions().addPlayer(player);
+			player.setLives(GameController.getInstance().getGameConditions().getPlayerLives());
+			player.setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
+		}
 //		mouseCoords = new Point();
 
 		//WeaponPickups
@@ -210,7 +223,7 @@ public class Play extends BasicGameState{
 		}
 		
 		//Update for tankspawner
-		controller.getWorld().getTankSpawner().update(delta, players);
+		controller.getWorld().getTankSpawner().update(delta);
 		
 		controller.getWorld().getSpawner().update(delta);
 		
@@ -279,6 +292,8 @@ public class Play extends BasicGameState{
 		}
 		
 		controller.getAnimationHandler().renderAnimations();
+
+		controller.getConsole().renderMessages(g);
 		debugRender(g);
 		if(playerOne.getTank() != null){
 			if(playerOne.getTank().getShield() != null && playerOne.getTank().getShield().getHealth() <= 100){
@@ -290,7 +305,6 @@ public class Play extends BasicGameState{
 	}
 
 	private void renderEntities(ArrayList<Entity> entities){
-		
 		for(Entity entity : entities){
 			entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
 			

@@ -1,18 +1,22 @@
 package chalmers.TDA367.B17.model;
 
 import java.awt.Dimension;
-import java.util.*;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+
 import chalmers.TDA367.B17.console.Console.MsgLevel;
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.network.Network.*;
+import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.network.Network.Pck10_TankCreated;
+import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
+import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
 import chalmers.TDA367.B17.spawnpoints.PowerUpSpawnPoint;
+import chalmers.TDA367.B17.spawnpoints.Spawner;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.states.ServerState;
 import chalmers.TDA367.B17.terrain.BrownWall;
-import chalmers.TDA367.B17.event.GameEvent;
-import chalmers.TDA367.B17.spawnpoints.Spawner;
 
 public class World {
 	//A map holding all entities with an ID
@@ -39,7 +43,7 @@ public class World {
 	 * Initiate the world, giving it a MapBounds for border collision.
 	 */
 	public void init(){
-//		new MapBounds(getSize());
+		new MapBounds(GameController.getInstance().generateID(), getSize());
 	}
 
 	/**
@@ -50,24 +54,26 @@ public class World {
 		if(serverWorld){
 			if(!(newEntity instanceof MapBounds) || !(newEntity instanceof BrownWall) || !(newEntity instanceof PowerUpSpawnPoint) || !(newEntity instanceof TankSpawnPoint)){
 				GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
-				Pck9_EntityCreated packet = new Pck9_EntityCreated();
-				packet.entityID = newEntity.getId();
-				packet.identifier = newEntity.getClass().getSimpleName();
-				ServerState.getInstance().addToAllClientsQueue(packet);
+				
+				if(newEntity instanceof AbstractTank){
+					Pck10_TankCreated tankPacket = new Pck10_TankCreated();
+					tankPacket.entityID = ((AbstractTank) newEntity).getId();
+					tankPacket.identifier = ((AbstractTank) newEntity).getClass().getSimpleName();
+					tankPacket.direction = ((AbstractTank) newEntity).getDirection();
+					ServerState.getInstance().addToAllClientsQueue(tankPacket);
+				} else {				
+					Pck9_EntityCreated packet = new Pck9_EntityCreated();
+					packet.entityID = newEntity.getId();
+					packet.identifier = newEntity.getClass().getSimpleName();
+					ServerState.getInstance().addToAllClientsQueue(packet);	
+				}
 			}
 		}
 		entities.put(newEntity.getId(), newEntity);
 	}
 
 	public void removeEntity(int id){
-		if(serverWorld){
-			Entity deadEntity = getEntity(id);
-			GameController.getInstance().getConsole().addMsg("Destroyed (ID" + deadEntity.getId() + "): "+  deadEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
-			Pck8_EntityDestroyed pck = new Pck8_EntityDestroyed();
-			pck.entityID = id;
-			ServerState.getInstance().addToAllClientsQueue(pck);
-		}
-		entities.remove(id);
+		removeEntity(getEntity(id));
 	}
 	
 	/**
@@ -75,7 +81,14 @@ public class World {
 	 * @param entity The entity to be removed
 	 */
 	public void removeEntity(Entity entity){
-		removeEntity(entity.getId());
+		if(serverWorld){
+			GameController.getInstance().getConsole().addMsg("Destroyed (ID" + entity.getId() + "): "+  entity.getClass().getSimpleName(), MsgLevel.STANDARD);	
+			Pck8_EntityDestroyed pck = new Pck8_EntityDestroyed();
+			pck.entityID = entity.getId();
+			ServerState.getInstance().addToAllClientsQueue(pck);
+		}
+		if(entity != null)
+			entities.remove(entity.getId());
 	}	
 	
 	/**
@@ -150,8 +163,9 @@ public class World {
 	
 	public void handleEvent(GameEvent event){
 		if(serverWorld){
-//			GameController.getInstance().getSoundHandler().handleEvent(event);
-			ServerState.getInstance().sendSound(event.getEventType());
+			ServerState.getInstance().sendEvent(event);
+		} else {
+			GameController.getInstance().handleEvent(event);
 		}
 	}
 }

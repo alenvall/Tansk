@@ -35,9 +35,9 @@ public class Tansk extends StateBasedGame {
 	public static void main(String[] args) throws SlickException {
 		AppGameContainer app = new AppGameContainer(new Tansk(NAME));
 
-		app.setTargetFrameRate(60);
-		app.setMaximumLogicUpdateInterval(100);
-		app.setMinimumLogicUpdateInterval(5);
+		app.setTargetFrameRate(30);
+		app.setMaximumLogicUpdateInterval(34);
+		app.setMinimumLogicUpdateInterval(19);
 		app.setDisplayMode(SCREEN_WIDTH, SCREEN_HEIGHT, false);
 		
 		app.start();

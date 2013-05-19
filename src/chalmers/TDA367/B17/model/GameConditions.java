@@ -71,6 +71,7 @@ public class GameConditions {
 		this.roundTime = roundTime;
 		this.roundTimer = roundTime;
 		roundCounter = 0;
+		GameController.getInstance().getConsole().addMsg("GameConditions.init()");
 	}
 
 	/**
@@ -79,6 +80,7 @@ public class GameConditions {
 	 * Also increases the roundCounter and resets the roundTimer.
 	 */
 	public void newRound(){
+		GameController.getInstance().getConsole().addMsg("GameConditions.newRound()");
 		roundWinner = null;
 		roundCounter += 1;
 		roundTimer = roundTime;

@@ -1,5 +1,6 @@
 package chalmers.TDA367.B17.model;
 
+import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 import chalmers.TDA367.B17.terrain.BrownWall;
 
@@ -18,15 +19,17 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param damage the damage this projectile does
 	 * @param duration the time in milliseconds this projectile will remain on the map
 	 */
-	public AbstractProjectile(int id, AbstractTank tank, Vector2f position, Vector2f velocity,
+	public AbstractProjectile(int id, AbstractTank tank, Vector2f position, Vector2f direction,
 			float maxSpeed, float minSpeed, double damage, int duration) {
-		super(id, maxSpeed, minSpeed);
+		super(id, direction, maxSpeed, minSpeed);
 		this.damage = damage;
 		this.duration = duration;
 		this.durationTimer = duration;
 		this.tank = tank;
 		spriteID = "bullet";
 		renderLayer = RenderLayer.FOURTH;
+		if(position != null)
+			setShape(new Rectangle(position.x, position.y, 1,1));
 	}
 	
 	public AbstractTank getTank(){
@@ -103,11 +106,10 @@ public abstract class AbstractProjectile extends MovableEntity {
 	
 	@Override
 	public void didCollideWith(Entity entity){
-//		TODO: check this in World
-//		if(entity instanceof AbstractProjectile || entity == getTank()){
-//			return;
-//		}else if(entity instanceof MapBounds || entity instanceof BrownWall){
-		if(entity instanceof MapBounds || entity instanceof BrownWall){
+		if(entity instanceof AbstractProjectile || entity == getTank()){
+			return;
+		}else if(entity instanceof MapBounds || entity instanceof BrownWall){
+			//debugWallHit.play();
 			this.destroy();
 		}else if(entity instanceof AbstractTank){
 			damageTarget((AbstractTank)entity);

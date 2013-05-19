@@ -9,6 +9,7 @@ import org.newdawn.slick.SpriteSheet;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.event.GameEvent;
 
 public class AnimationHandler {
 
@@ -49,4 +50,10 @@ public class AnimationHandler {
 		}
 	}
 
+	public void playAnimation(GameEvent event) {
+		if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
+			Vector2f tmpPos = event.getSource().getSpritePosition();
+			newExplosion(new Vector2f(tmpPos.x-24, tmpPos.y-31));
+		}
+    }
 }

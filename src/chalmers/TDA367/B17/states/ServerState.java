@@ -8,13 +8,18 @@ import java.util.Map.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.newdawn.slick.*;
 import org.newdawn.slick.geom.Vector2f;
+import org.newdawn.slick.gui.AbstractComponent;
+import org.newdawn.slick.gui.ComponentListener;
+import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
 import com.esotericsoftware.kryonet.*;
+import com.esotericsoftware.kryonet.Listener.ThreadedListener;
 import com.esotericsoftware.minlog.Log;
 import chalmers.TDA367.B17.*;
 import chalmers.TDA367.B17.console.*;
 import chalmers.TDA367.B17.console.Console.*;
 import chalmers.TDA367.B17.controller.*;
+import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
 import chalmers.TDA367.B17.network.Network.*;
@@ -22,7 +27,6 @@ import chalmers.TDA367.B17.network.*;
 import chalmers.TDA367.B17.tanks.*;
 
 public class ServerState extends BasicGameState {
-	private static final int UPDATE_INTERVAL = 20;
 	private int state;
 	private static ServerState instance;
 	private GameController controller;
@@ -32,18 +36,25 @@ public class ServerState extends BasicGameState {
 	private String ipAddress;
 	private ArrayList<Packet> allClientsPacketQueue;
 	private ArrayList<Packet> clientPacketQueue;
+	private ArrayList<Player> players;
 	private ArrayList<Player> disconnectedPlayersTemp;
 	
 	private boolean gameStarted = false;
-	private int deltaTime;
+	private long deltaTime;
 	private int frameCounter;
-	private int timeSinceLastUpdate;
 	private int updates;
+	private long oldTime;
+	private int updatesPerSecond;
+	private int packetsSent;
+	private int packetsSentPerSecond;
+	private int packetsRecPerSecond;
+	private int packetsReceived;
+	private TextField chatField;
+	private boolean serverStarted;
 	
 	private ServerState(int state) {
 	    this.state = state;
 		controller = GameController.getInstance();
-		controller.setConsole(new Console(10, 565, 450, 192, OutputLevel.ALL));
     }
 	
 	public static ServerState getInstance(){
@@ -55,64 +66,87 @@ public class ServerState extends BasicGameState {
 	
 	@Override
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
+		gc.setSmoothDeltas(true);
 		gc.setAlwaysRender(true);
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 
 		allClientsPacketQueue = new ArrayList<Network.Packet>();
 		clientPacketQueue = new ArrayList<Packet>();
-//		playerList = new ArrayList<Player>();
 		disconnectedPlayersTemp = new ArrayList<Player>();
+		players = new ArrayList<Player>();
 		ipAddress = "N/A";
     }
 	
 	@Override
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
-		
+
+		controller.setConsole(new Console(10, 533, 450, 192, OutputLevel.ALL));
+		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23, new ComponentListener() {
+			public void componentActivated(AbstractComponent source) {
+				if(!chatField.getText().equals("")){
+					if(server != null){
+						String msg = "Server: " + chatField.getText();
+						Pck3_Message pck = new Pck3_Message();
+						pck.message = msg;
+						GameController.getInstance().getConsole().addMsg(msg, MsgLevel.INFO);
+						chatField.setText("");
+						addToAllClientsQueue(pck);
+					}
+				}
+			}
+		});
+
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		controller.getWorld().init();
-		MapLoader.createEntities("whatever");
+//		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, true);
 		
+		MapLoader.createEntities("whatever");
 		Log.set(Log.LEVEL_INFO);
 		packetQueue = new ConcurrentLinkedQueue<Packet>();
 		server = new Server();
 		Network.register(server);
-		server.addListener(new Listener(){
-
-			public void received(Connection con, Object msg){
-			   super.received(con, msg);
-			   if (msg instanceof Packet) {
-				   Packet packet = (Packet)msg;
-				   packet.setConnection(con);
-				   packetQueue.add(packet);
-			   }
-			}
-			
-			@Override
-			public void connected(Connection connection) {
-//				GameController.getInstance().getConsole().addMsg("Connected.", MsgLevel.INFO);
-			}
-			
-			@Override
-			public void disconnected(Connection connection) {
-				if(getPlayer(connection) != null){
-					disconnectedPlayersTemp.add(getPlayer(connection));
-				} else {
-					GameController.getInstance().getConsole().addMsg("Player disconnected.", MsgLevel.INFO);
-					Log.info("[SERVER] Unkown player has  disconnected.");
+		Listener listener = new Listener(){
+				public void received(Connection con, Object msg){
+					super.received(con, msg);
+					if (msg instanceof Packet) {
+						packetsReceived++;	
+						Packet packet = (Packet)msg;
+						packet.setConnection(con);
+						packetQueue.add(packet);
+					}
 				}
-			}
-		});
-		
+				
+				@Override
+				public void connected(Connection connection) {
+//					GameController.getInstance().getConsole().addMsg("Connected.", MsgLevel.INFO);
+				}
+				
+				@Override
+				public void disconnected(Connection connection) {
+					if(getPlayer(connection) != null){
+						disconnectedPlayersTemp.add(getPlayer(connection));
+					} else {
+						GameController.getInstance().getConsole().addMsg("Player disconnected.", MsgLevel.INFO);
+						Log.info("[SERVER] Unkown player has  disconnected.");
+					}
+				}
+			};
+			
+			ThreadedListener threadListener = new ThreadedListener(listener);
+			server.addListener(threadListener);
+	
 		try {
 	        server.bind(Network.PORT, Network.PORT);
 			server.start();	
 			controller.getConsole().addMsg("Server loaded and ready!", MsgLevel.INFO);
+			serverStarted = true;
         } catch (IOException e) {
-    		controller.getConsole().addMsg("Address in use!", MsgLevel.ERROR);
+    		controller.getConsole().addMsg("Address in use! Sever closed.", MsgLevel.ERROR);
+    		controller.getConsole().addMsg("Another server running?", MsgLevel.INFO);
+    		controller.getConsole().addMsg("Sever closed.", MsgLevel.ERROR);
 	        e.printStackTrace();
-        }
-		
+        }	
 		try {
 			ipAddress = InetAddress.getLocalHost().getHostAddress();
         } catch (UnknownHostException e1) {
@@ -124,15 +158,18 @@ public class ServerState extends BasicGameState {
 	private void startGame() {
 		gameStarted = true;
 		int x = 100;
-		for(Player player : getPlayers()){
-			AbstractTank tank = new DefaultTank(GameController.getInstance().generateID());
-			tank.setPosition(new Vector2f(x, 100));
-			player.setTank(tank);
+		int y = 100;
+		for(int i = 0; i < getPlayers().size(); i++){
+			AbstractTank tank = new DefaultTank(GameController.getInstance().generateID(), new Vector2f(0,-1), getPlayers().get(i));
+			if(i > 7)
+				y+=100;
+			tank.setPosition(new Vector2f(x, y));
+			getPlayers().get(i).setTank(tank);
 	    	
 			Pck7_TankID tankPck = new Pck7_TankID();
-	    	tankPck.tankID = player.getTank().getId();
-	    	player.getConnection().sendTCP(tankPck);
-	    	addToClientQueue(tankPck, player.getConnection());
+	    	tankPck.tankID = getPlayers().get(i).getTank().getId();
+	    	getPlayers().get(i).getConnection().sendTCP(tankPck);
+	    	addToClientQueue(tankPck, getPlayers().get(i).getConnection());
 	    	
 			x+=100;
 		}
@@ -144,15 +181,23 @@ public class ServerState extends BasicGameState {
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		frameCounter++;
-		this.deltaTime = delta;
-		processPackets();
-		checkDisconnectedPlayers();
+		long newTime = Calendar.getInstance().getTimeInMillis();
+		deltaTime = newTime - oldTime;
+		if(deltaTime >= 1000){			
+			packetsRecPerSecond = packetsReceived;
+			packetsReceived = 0;
+			packetsSentPerSecond = packetsSent;
+			packetsSent = 0;
+			updatesPerSecond = updates;
+			updates = 0;
+			oldTime = newTime;
+		}
 				
-		if(!gameStarted){
+		if(!gameStarted && serverStarted){
 			Input input = gc.getInput();
 			int x = input.getMouseX();
 			int y = input.getMouseY();
-			if(x > 410 && x < 460 && y > 525 && y < 555){
+			if(x > 410 && x < 465 && y > 495 && y < 525){
 				if(input.isMousePressed(0)){
 					startGame();
 					GameController.getInstance().getConsole().addMsg("Game started!", MsgLevel.INFO);
@@ -160,20 +205,17 @@ public class ServerState extends BasicGameState {
 			}
 		}
 		
+		processPackets();
+		checkDisconnectedPlayers();
 		if(gameStarted){
 			// Update for tankspawner & gameconditions
 //			controller.getWorld().getTankSpawner().update(delta, playerList);
 //			gameConditions.update(delta);
-			
-			timeSinceLastUpdate -= delta;
-			if(timeSinceLastUpdate <= 0){
-				updatePlayerTanks(delta);
-				updateWorld(delta);
-				updateClients();
-				timeSinceLastUpdate = UPDATE_INTERVAL;
-				updates++;
-			}
+			updatePlayerTanks(delta);
+			updateWorld(delta);
+			createWorldState();
 		}
+		updateClients();
     }
 
 	public void checkDisconnectedPlayers(){
@@ -181,12 +223,9 @@ public class ServerState extends BasicGameState {
 			if(lostPlayer != null){
 		    	String msg = lostPlayer.getName() + " disconnected.";
 				controller.getConsole().addMsg(msg, MsgLevel.INFO);
-		    	Pck3_ServerMessage disconnectedMsg = new Pck3_ServerMessage();
+		    	Pck3_Message disconnectedMsg = new Pck3_Message();
 		    	disconnectedMsg.message = msg;
 		    	server.sendToAllExceptTCP(lostPlayer.getConnection().getID(), disconnectedMsg);
-		    	
-		    	controller.getWorld().removeEntity(lostPlayer.getTank().getTurret());
-		    	controller.getWorld().removeEntity(lostPlayer.getTank());
 		    	getPlayers().remove(lostPlayer);
 				
 		    	Log.info("[SERVER] " + msg);
@@ -208,7 +247,6 @@ public class ServerState extends BasicGameState {
 			    	Player newPlayer = new Player(packet.getConnection(), pck.playerName);
 			    	newPlayer.setLives(GameController.getInstance().getGameConditions().getPlayerLives());
 			    	newPlayer.setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
-			    	
 			    	getPlayers().add(newPlayer);
 			    	responsePacket.accepted = true;
 		    	} else {
@@ -222,7 +260,7 @@ public class ServerState extends BasicGameState {
 		    if(packet instanceof Pck2_ClientConfirmJoin){
 		    	String msg = getPlayer(packet.getConnection()).getName() + " joined.";
 				controller.getConsole().addMsg(msg, MsgLevel.INFO);
-		    	Pck3_ServerMessage welcomeMsg = new Pck3_ServerMessage();
+		    	Pck3_Message welcomeMsg = new Pck3_Message();
 		    	welcomeMsg.message = msg;
 		    	server.sendToAllExceptTCP(packet.getConnection().getID(), welcomeMsg);
 				Log.info(msg);
@@ -233,18 +271,25 @@ public class ServerState extends BasicGameState {
 		    		receiveClientInput((Pck4_ClientInput) packet);
  		    }
 		    
-		    if(packet instanceof Pck5_ClientTurretAngle){
-		    	getPlayer(packet.getConnection()).getTank().getTurret().setRotation(((Pck5_ClientTurretAngle) packet).turretNewAngle);
+		    if(packet instanceof Pck3_Message){
+			    if(packet instanceof Pck31_ChatMessage){
+			    	packet.setConnection(null);
+			    	GameController.getInstance().getConsole().addMsg(((Pck31_ChatMessage)packet).message);
+					addToAllClientsQueue(packet);
+			    }
  		    }
 	   	}
     }
 
 	private void receiveClientInput(Pck4_ClientInput pck) {
-		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_W, pck.W_pressed);
-		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_A, pck.A_pressed);
-		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_S, pck.S_pressed);
-		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_D, pck.D_pressed);
-		getPlayer(pck.getConnection()).setInputStatus(Player.INPT_LMB, pck.LMB_pressed);
+		Player playerToUpdate = getPlayer(pck.getConnection());
+		playerToUpdate.setInputStatus(Player.INPT_W, pck.W_pressed);
+		playerToUpdate.setInputStatus(Player.INPT_A, pck.A_pressed);
+		playerToUpdate.setInputStatus(Player.INPT_S, pck.S_pressed);
+		playerToUpdate.setInputStatus(Player.INPT_D, pck.D_pressed);
+		playerToUpdate.setInputStatus(Player.INPT_LMB, pck.LMB_pressed);
+		if(playerToUpdate.getTank() != null)
+			playerToUpdate.getTank().getTurret().setRotation(pck.turretNewAngle);
     }
 	
 	public void updatePlayerTanks(int delta){
@@ -283,9 +328,6 @@ public class ServerState extends BasicGameState {
 	}
 	
 	public void updateWorld(int delta){
-		Pck100_WorldState worldState = new Pck100_WorldState();
-		worldState.updatePackets = new ArrayList<EntityPacket>();
-		
 		Dimension worldSize = GameController.getInstance().getWorld().getSize();
 		
 		Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
@@ -303,33 +345,46 @@ public class ServerState extends BasicGameState {
 					entity.destroy();
 				} else {
 					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
-					
-					if(entity instanceof AbstractTank){
-						AbstractTank tank = (AbstractTank) entity;
-						Pck101_TankUpdate pck = new Pck101_TankUpdate();
-						pck.entityID = tank.getId();
-						pck.tankPosition = tank.getPosition();
-						pck.tankDirection = tank.getDirection();
-						pck.turretPosition = tank.getTurret().getPosition();
-						pck.turretAngle = (float) tank.getTurret().getRotation();
-						pck.tankHealth = tank.getHealth();
-						if(tank.getShield() != null)
-							pck.tankShieldHealth = tank.getShield().getHealth();
-						worldState.updatePackets.add(pck);
-					}
-					
-					if(entity instanceof AbstractProjectile){
-						AbstractProjectile proj = (AbstractProjectile) entity;
-						Pck102_ProjectileUpdate pck = new Pck102_ProjectileUpdate();
-						pck.entityID = proj.getId();
-						pck.projPosition = proj.getPosition();
-						pck.projDirection = proj.getDirection();
-						worldState.updatePackets.add(pck);
-					}
 				}
 			}
 			if(entity instanceof AbstractSpawnPoint)
 				controller.getWorld().checkCollisionsFor(entity);
+		}
+	}
+	
+	private void createWorldState(){
+		Pck100_WorldState worldState = new Pck100_WorldState();
+		worldState.updatePackets = new ArrayList<EntityPacket>();
+		
+		Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
+		while(updateIterator.hasNext()){
+			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) updateIterator.next();
+			Entity entity = entry.getValue();
+
+			if(entity instanceof MovableEntity){
+				if(entity instanceof AbstractTank){
+					AbstractTank tank = (AbstractTank) entity;
+					Pck101_TankUpdate pck = new Pck101_TankUpdate();
+					pck.entityID = tank.getId();
+					pck.tankPosition = tank.getPosition();
+					pck.tankDirection = tank.getDirection();
+					pck.tankHealth = tank.getHealth();
+					if(tank.getShield() != null)
+						pck.tankShieldHealth = tank.getShield().getHealth();
+					pck.turretPosition = tank.getTurret().getPosition();
+					pck.turretAngle = (float) tank.getTurret().getRotation();
+					worldState.updatePackets.add(pck);
+				}
+				
+				if(entity instanceof AbstractProjectile){
+					AbstractProjectile proj = (AbstractProjectile) entity;
+					Pck102_ProjectileUpdate pck = new Pck102_ProjectileUpdate();
+					pck.entityID = proj.getId();
+					pck.projPosition = proj.getPosition();
+					pck.projDirection = proj.getDirection();
+					worldState.updatePackets.add(pck);
+				}
+			}
 		}			
 		addToAllClientsQueue(worldState);
 	}
@@ -346,26 +401,26 @@ public class ServerState extends BasicGameState {
 	private void updateClients(){
 		if(server != null){
 			for(Packet packet : allClientsPacketQueue){
-				for(Player player : getPlayers()){
-					if(player != null)
-						server.sendToTCP(player.getConnection().getID(), packet);
-				}
+				server.sendToAllTCP(packet);
+				packetsSent++;
 			}
 			for(Packet clientPacket : clientPacketQueue){
 				if(clientPacket != null){
 					Connection con = clientPacket.getConnection();
 					clientPacket.setConnection(null);
 					server.sendToTCP(con.getID(), clientPacket);
+					packetsSent++;
 				}
 			}
 		}
+		updates++;
+		// empty packet "buffers"
 		allClientsPacketQueue = new ArrayList<Network.Packet>();
 		clientPacketQueue = new ArrayList<Network.Packet>();
 	}
 	
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
-		g.drawString("Delta: " + deltaTime, 18, 480);
 		if(controller.getWorld().getEntities() != null){
 			ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
 			ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
@@ -393,22 +448,42 @@ public class ServerState extends BasicGameState {
 			renderEntities(thirdLayerEnts, g);
 			renderEntities(fourthLayerEnts, g);
 		}
+		
+		if(!getPlayers().isEmpty()){
+			Player playerOne = getPlayers().get(0);
+			if(playerOne.getTank() != null){
+				AbstractTank playerOneTank = playerOne.getTank();
+				g.setColor(Color.yellow);
+				g.drawLine(playerOneTank.getSpritePosition().x, playerOneTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//				g.setColor(Color.red);
+//				g.drawLine(playerOneTank.getPosition().x, playerOneTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//				g.setColor(Color.blue);
+//				g.drawLine(playerOneTank.getTurret().getPosition().x, playerOneTank.getTurret().getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+			}
+		}
+		
 		controller.getConsole().renderMessages(g);
 		
-		g.drawString("Players: " + getPlayers().size(), 18, 500);
-		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 520);
-		g.drawString("LAN IP: " + ipAddress, 18, 545);
 		
 		if(gameStarted)
 			g.setColor(Color.green);
 		else
 			g.setColor(Color.red);
-		g.drawString("Run!", 415, 530);
-		g.drawRect(410, 525, 50, 30);
+		g.drawString("Run!", 415, 500);
+		g.drawRect(410, 495, 50, 30);
 		g.setColor(Color.white);
-		g.drawString("Frame: " + frameCounter, 18, 440);
-		g.drawString("Updates: " + updates, 18, 420);
-		g.drawString("Diff: " + (frameCounter-updates), 18, 460);
+		g.drawString("Packet rec/sec: " + packetsRecPerSecond, 18, 320);
+		g.drawString("Packet sent/sec: " + packetsSentPerSecond, 18, 340);
+		g.drawString("Update/sec: " + updatesPerSecond, 18, 360);
+		g.drawString("Frame: " + frameCounter, 18, 400);
+		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 420);
+		g.drawString("Players: " + getPlayers().size(), 18, 480);
+		g.drawString("LAN IP: " + ipAddress, 18, 500);
+		
+		g.setColor(Color.white);
+		g.setLineWidth(1);
+		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
+		chatField.render(container, g);
     }
 	
 	private void renderEntities(ArrayList<Entity> entities, Graphics g){
@@ -424,19 +499,11 @@ public class ServerState extends BasicGameState {
 		g.setColor(Color.white);
 	}
 	
-//	public void addPlayer(Player player){
-//		playerList.add(player);
-//	}	
-
 	@Override
     public int getID() {
 	    return this.state;
     }
-	
-//	public ArrayList<Player> getPlayerList(){
-//		return playerList;
-//	}
-	
+		
 	public Player getPlayer(Connection con){
 		for(Player player : getPlayers()){
 			if(player.getConnection().getID() == con.getID()){
@@ -445,23 +512,17 @@ public class ServerState extends BasicGameState {
 		}
 		return null;
 	}
-
-	public void sendToAll(Packet packet) {
-		if(server != null){
-			for(Player player : getPlayers()){
-				if(player != null)
-					server.sendToTCP(player.getConnection().getID(), packet);
-			}
-		}
-    }	
 	
 	public ArrayList<Player> getPlayers(){
-		return controller.getGameConditions().getPlayerList();
+//		return controller.getGameConditions().getPlayerList();
+		return players;
 	}
-	
-	public void sendSound(String sound){
-		Pck999_PlaySound soundPck = new Pck999_PlaySound();
-		soundPck.sound = sound;
-		addToAllClientsQueue(soundPck);
-	}
+		
+	public void sendEvent(GameEvent event){
+		Pck1000_GameEvent eventPck = new Pck1000_GameEvent();
+		eventPck.eventType = event.getEventType().ordinal();
+		eventPck.eventDesc = event.getEventDesc();
+		eventPck.sourceID = event.getSourceID();
+		addToAllClientsQueue(eventPck);
+	} 
 }

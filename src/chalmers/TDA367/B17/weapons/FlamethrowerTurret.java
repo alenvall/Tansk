@@ -4,6 +4,7 @@ import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.AbstractTurret;
@@ -42,6 +43,6 @@ public class FlamethrowerTurret extends AbstractTurret {
 				tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getTank()));
 			}
 		}
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "FLAMETHROWER_EVENT"));
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "FLAMETHROWER_EVENT"));
 	}
 }

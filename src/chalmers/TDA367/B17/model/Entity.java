@@ -10,7 +10,7 @@ public abstract class Entity{
 	protected Shape shape;
 	protected String spriteID;
 	private double rotation;
-	protected RenderLayer renderLayer;	
+	protected RenderLayer renderLayer;
 	
 	public static enum RenderLayer{
 		FIRST, SECOND, THIRD, FOURTH
@@ -26,7 +26,7 @@ public abstract class Entity{
 //		this.id = GameController.getInstance().getWorld().generateID();
 //		GameController.getInstance().getWorld().addEntity(this);
 		active = true;
-		shape = new Point(-1, -1);
+		shape = new Point(1, 1);
 		rotation = 0;
 		spriteID = "";
 		renderLayer = RenderLayer.FOURTH;
@@ -133,9 +133,8 @@ public abstract class Entity{
 	 * @param delta The time that has passed since the last update
 	 */
 	public void update(int delta){
-		
 	}
-
+	
 	/**
 	 * Get the position of where the entity's sprite is to be drawn.
 	 * @return The position of the entity's sprite.

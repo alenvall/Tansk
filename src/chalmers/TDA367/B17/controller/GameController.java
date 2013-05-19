@@ -4,6 +4,8 @@ import java.awt.Dimension;
 
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
+import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.animations.AnimationHandler;
 import chalmers.TDA367.B17.model.GameConditions;
 import chalmers.TDA367.B17.model.World;
@@ -27,6 +29,7 @@ public class GameController {
 		soundHandler = new SoundHandler();
 		soundHandler.loadEverySound(Tansk.DATA_FOLDER);
 		animationHandler = new AnimationHandler();
+		gameConditions = new GameConditions();
 	}
 
 	public static GameController getInstance(){
@@ -40,7 +43,7 @@ public class GameController {
 			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld){
 		world = new World(new Dimension(width, height), false);
 		world.init();
-		gameConditions = new GameConditions();
+		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
 		gameConditions.init(scoreLimit, rounds, 
 				playerLives, spawnTime, roundTime, gameTime);
 	}
@@ -85,4 +88,12 @@ public class GameController {
 		latestID += 1;
 		return latestID;
 	}
+
+	public void handleEvent(GameEvent event) {
+	    if(event.getEventType().equals(EventType.SOUND)){
+	    	GameController.getInstance().getSoundHandler().playSound(event);
+	    } else if(event.getEventType().equals(EventType.ANIM)){
+	    	GameController.getInstance().getAnimationHandler().playAnimation(event);
+	    }	
+    }
 }
