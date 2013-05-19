@@ -17,7 +17,11 @@ public class ImageHandler {
 	public SpriteSheet getSprite(String id){
 		return sprites.get(id);
 	}
-
+	
+	/**
+	 * Loads all available image files from a directory.
+	 * @param directory The target directory
+	 */
 	public void loadAllImages(String directory){
 		File folder = new File(directory);
 		File[] listOfFiles = folder.listFiles();

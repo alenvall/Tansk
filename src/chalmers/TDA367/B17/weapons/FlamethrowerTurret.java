@@ -11,7 +11,7 @@ import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class FlamethrowerTurret extends AbstractTurret {
 	
-	private static int DEFAULT_AMMO = 500;
+	private static final int DEFAULT_AMMO = 500;
 	private int ammoLeft;
 
 

@@ -43,6 +43,10 @@ public class SoundHandler {
 		}
 	}
 	
+	/**
+	 * Loads all available sound files from a directory.
+	 * @param directory The target directory
+	 */
 	public void loadEverySound(String directory){
 		File folder = new File(directory);
 		File[] listOfFiles = folder.listFiles();
