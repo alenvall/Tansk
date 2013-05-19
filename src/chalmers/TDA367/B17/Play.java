@@ -96,7 +96,7 @@ public class Play extends BasicGameState{
 		new PowerUpSpawnPoint(new Vector2f(750, 500), 10000, "health");
 		*/
 		
-		lifebar = new Lifebar((GameController.SCREEN_WIDTH/2)-100, 10, 200, 25);
+		lifebar = new Lifebar((GameController.SCREEN_WIDTH/2)-100, 10, 200, 13);
 		
 		//TankSpawnPoints
 		TankSpawnPoint tsp = new TankSpawnPoint(new Vector2f(100, 100));
