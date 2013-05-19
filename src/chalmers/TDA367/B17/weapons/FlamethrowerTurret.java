@@ -37,6 +37,8 @@ public class FlamethrowerTurret extends AbstractTurret {
 				tank.setTurret(new DefaultTurret(getTank()));
 			}
 		}
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "FLAMETHROWER_EVENT"));
+		
+		if(ammoLeft > 0 && ammoLeft % 10 == 0)
+			GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "FLAMETHROWER_EVENT"));
 	}
 }
