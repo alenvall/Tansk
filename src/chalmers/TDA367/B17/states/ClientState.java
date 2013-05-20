@@ -236,7 +236,11 @@ public class ClientState extends BasicGameState {
 			controller.getSoundHandler().setVolume(tmp);
 		}
 		if(input.isKeyPressed(Input.KEY_S) && input.isKeyDown(Input.KEY_LCONTROL)){
-			soundSwitch.soundOnOff(controller.getSoundHandler().getVolume());
+			if(controller.getInstance().getSoundHandler().isSoundOn()){
+				soundSwitch.turnSoundOff(controller.getSoundHandler().getVolume());
+			}else{
+				soundSwitch.turnSoundOn();
+			}
 		}
 		
 		GameController.getInstance().getConsole().update(delta);

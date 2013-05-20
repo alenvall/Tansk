@@ -79,4 +79,8 @@ public class SoundHandler {
 	public float getVolume() {
 		return volume;
 	}
+	
+	public boolean isSoundOn(){
+		return volume != 0;
+	}
 }

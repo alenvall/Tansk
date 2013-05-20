@@ -202,13 +202,17 @@ public class Play extends BasicGameState{
 			float tmp = controller.getSoundHandler().getVolume();
 			if(tmp >= 0.1){
 				tmp-=0.1f;
-			}else if(tmp == 0.1f){
+			}else if(tmp < 0.1f){
 				tmp = 0;
 			}
 			controller.getSoundHandler().setVolume(tmp);
 		}
 		if(input.isKeyPressed(Input.KEY_S) && input.isKeyDown(Input.KEY_LCONTROL)){
-			soundSwitch.soundOnOff(controller.getSoundHandler().getVolume());
+			if(controller.getInstance().getSoundHandler().isSoundOn()){
+				soundSwitch.turnSoundOff(controller.getSoundHandler().getVolume());
+			}else{
+				soundSwitch.turnSoundOn();
+			}
 		}
 		
 		//Weapons
