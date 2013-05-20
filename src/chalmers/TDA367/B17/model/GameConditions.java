@@ -42,10 +42,10 @@ public class GameConditions {
 	private ArrayList<Player> players;
 
 	//The maximum amount of powerups that can be out at a time.
-	private int powerupLimit = 10;
+	private int powerupLimit = 6;
 
 	//The maximum amount of weapons that can be out at a time.
-	private int weaponLimit = 10;
+	private int weaponLimit = 6;
 
 	/**
 	 * Create a new GameConditions object.
