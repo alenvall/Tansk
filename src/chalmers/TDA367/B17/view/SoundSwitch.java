@@ -20,7 +20,13 @@ public class SoundSwitch {
 	
 	public void render(Graphics g){
 		if(controller.getSoundHandler().isSoundOn()){
-			g.drawImage(controller.getImageHandler().getSprite("speaker_on"), x, y);
+			if(controller.getSoundHandler().getVolume() > 0.75){
+				g.drawImage(controller.getImageHandler().getSprite("speaker_on_3"), x, y);
+			}else if(controller.getSoundHandler().getVolume() > 0.4){
+				g.drawImage(controller.getImageHandler().getSprite("speaker_on_2"), x, y);
+			}else{
+				g.drawImage(controller.getImageHandler().getSprite("speaker_on_1"), x, y);
+			}
 		}else{
 			g.drawImage(controller.getImageHandler().getSprite("speaker_off"), x, y);
 		}
