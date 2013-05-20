@@ -15,7 +15,6 @@ import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
 import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
 import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
-import chalmers.TDA367.B17.spawnpoints.PowerUpSpawnPoint;
 import chalmers.TDA367.B17.spawnpoints.Spawner;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.states.ServerState;
@@ -61,7 +60,7 @@ public class World {
 	 */
 	public void addEntity(Entity newEntity){
 		if(serverWorld){
-			if(!(newEntity instanceof MapBounds) || !(newEntity instanceof BrownWall) || !(newEntity instanceof PowerUpSpawnPoint) || !(newEntity instanceof TankSpawnPoint)){
+			if(!(newEntity instanceof MapBounds) || !(newEntity instanceof BrownWall) || !(newEntity instanceof TankSpawnPoint)){
 				GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
 				
 				if(newEntity instanceof AbstractTank){
