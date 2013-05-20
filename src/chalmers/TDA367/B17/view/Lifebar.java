@@ -5,8 +5,8 @@ import org.newdawn.slick.Graphics;
 
 public class Lifebar{
 	
-private static int DEFAULT_WIDTH = 100;
-private static int DEFAULT_HEIGHT = 13;
+private static int DEFAULT_WIDTH = 200;
+private static int DEFAULT_HEIGHT = 14;
 	
 private int width;
 private int height;	
