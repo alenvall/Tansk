@@ -11,7 +11,7 @@ import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class FlamethrowerTurret extends AbstractTurret {
 	
-	private static final int DEFAULT_AMMO = 500;
+	private static final int DEFAULT_AMMO = 400;
 	private int ammoLeft;
 
 	/**
@@ -38,14 +38,15 @@ public class FlamethrowerTurret extends AbstractTurret {
 	@Override
 	public void fireWeapon(int delta, AbstractTank tank){
 		for(int i = 0; i < 2; i++){
-			tank.addProjectile(spawnNewProjectile());
 			if(ammoLeft>0){
+				tank.addProjectile(spawnNewProjectile());
 				ammoLeft--;
+				if(ammoLeft % 10 == 0){ // only play the sound every ten projectile
+					GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "FLAMETHROWER_EVENT"));
+				}
 			}else{
 				tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank()));
 			}
 		}
-		if(ammoLeft > 0 && ammoLeft % 10 == 0)
-			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "FLAMETHROWER_EVENT"));
 	}
 }

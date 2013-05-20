@@ -11,6 +11,9 @@ import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class ShockwaveTurret extends AbstractTurret{
 
+	private static final int DEFAULT_AMMO = 5;
+	private int ammoLeft;
+	
 	/**
 	 * Create a new ShockwaveTurret.
 	 * @param id The id
@@ -18,6 +21,7 @@ public class ShockwaveTurret extends AbstractTurret{
 	 */
 	public ShockwaveTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
 	super(id, position, startingRotation,  tank);
+		ammoLeft = DEFAULT_AMMO;
 		turretCenter = new Vector2f(16.875f, 16.875f);
 		turretLength = 31.5f;
 		fireRate = 3000;
@@ -32,13 +36,20 @@ public class ShockwaveTurret extends AbstractTurret{
 	
 	@Override
 	public void fireWeapon(int delta, AbstractTank tank) {
-		AbstractProjectile projectile = spawnNewProjectile();
-		Vector2f angle = new Vector2f(getRotation() + 90);
-
-		projectile.setDirection(angle);
-
-		tank.addProjectile(projectile);
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND,this, "SHOCKWAVE_FIRE_EVENT"));
+		AbstractProjectile projectile;
+		if(ammoLeft>0){
+			ammoLeft--; 
+			projectile = spawnNewProjectile();
+			Vector2f angle = new Vector2f(getRotation() + 90);
+	
+			projectile.setDirection(angle);
+	
+			tank.addProjectile(projectile);
+			ammoLeft--;
+			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND,this, "SHOCKWAVE_FIRE_EVENT"));
+		}else{
+			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank()));
+		}
 	}
 
 }
