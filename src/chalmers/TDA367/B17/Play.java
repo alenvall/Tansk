@@ -53,7 +53,7 @@ public class Play extends BasicGameState{
 		
 		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
 
-		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000);
+		controller.newGame(GameController.SCREEN_WIDTH, GameController.SCREEN_HEIGHT, 10, 4, 2, 5000, 500000, 1500000);
 
 		//Players
 		playerOne = new Player("Player One");
@@ -159,7 +159,24 @@ public class Play extends BasicGameState{
 		}
 		
 		if(input.isKeyDown(Input.KEY_Q)){
-			playerOne.getTank().setSpriteID("tank_red");
+			new SlowspeedyPickup(new Vector2f(800, 300));
+		}
+		
+		if(input.isKeyDown(Input.KEY_UP)){
+			float tmp = controller.getSoundHandler().getVolume();
+			if(tmp < 1){
+				tmp+=0.1;
+				controller.getSoundHandler().setVolume(tmp);
+			}
+		}
+		if(input.isKeyDown(Input.KEY_DOWN)){
+			float tmp = controller.getSoundHandler().getVolume();
+			if(tmp >= 0.1){
+				tmp-=0.1f;
+			}else if(tmp == 0.1f){
+				tmp = 0;
+			}
+			controller.getSoundHandler().setVolume(tmp);
 		}
 		
 		//Go back to the menu
@@ -312,6 +329,8 @@ public class Play extends BasicGameState{
 	}
 	
 	public void debugRender(Graphics g){
+		g.setColor(Color.black);
+		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
 		/*g.setColor(Color.black);
 		g.drawString("tankPosX:   " + playerOne.getTank().getPosition().x,  10, 30);
 		g.drawString("tankPosY:   " + playerOne.getTank().getPosition().y,  10, 50);

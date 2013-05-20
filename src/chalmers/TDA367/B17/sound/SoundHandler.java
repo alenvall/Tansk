@@ -2,7 +2,9 @@ package chalmers.TDA367.B17.sound;
 
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.newdawn.slick.SlickException;
@@ -15,6 +17,8 @@ import chalmers.TDA367.B17.event.GameEvent;
 public class SoundHandler {
 	
 	private Map<String, Sound> sounds;
+	
+	private float volume = 0.5f;
 
 	/**
 	 * Create a new SoundHandler.
@@ -28,19 +32,39 @@ public class SoundHandler {
 	 * @param event a GameEvent
 	 */
 	public void handleEvent(GameEvent event){
+		List<Sound> tmpList = new ArrayList<Sound>();
+		
 		if(event.getEventType().equals("TANK_DEATH_EVENT")) {
-			sounds.get("Tank_Destroyed").play();
+			tmpList.add(sounds.get("Tank_Destroyed"));
+			
+			//Argh...
 			Vector2f tmpPos = event.getSource().getSpritePosition();
 			GameController.getInstance().getAnimationHandler().newExplosion(new Vector2f(tmpPos.x-24, tmpPos.y-31));
 		}else if(event.getEventType().equals("DEFAULTTURRET_FIRE_EVENT")){
-			sounds.get("Default_Firing").play();
+			tmpList.add(sounds.get("Default_Firing"));
+			
 		}else if(event.getEventType().equals("TANK_HIT_EVENT")){
-			sounds.get("Tank_Hit").play();
+			tmpList.add(sounds.get("Tank_Hit"));
+			
 		}else if(event.getEventType().equals("FLAMETHROWER_EVENT")){
-			Sound tmp = sounds.get("Flamethrower_Firing");
-			tmp.play(1, 135);
-		}else if(event.getEventType().equals("SHOTGUN_EVENT")){
-			sounds.get("Shotgun_Firing").play();
+			tmpList.add(sounds.get("Flamethrower_Firing"));
+			
+		}else if(event.getEventType().equals("SHOTGUN_FIRE_EVENT")){
+			tmpList.add(sounds.get("Shotgun_Firing"));
+			
+		}else if(event.getEventType().equals("SLOWSPEEDY_FIRE_SECONDARY_EVENT")){
+			tmpList.add(sounds.get("Slowspeedy_Firing"));
+			
+		}else if(event.getEventType().equals("SLOWSPEEDY_FIRE_EVENT")){
+			tmpList.add(sounds.get("Shockwave_Firing"));
+			
+		}else if(event.getEventType().equals("SHOCKWAVE_DETONATE_EVENT")){
+			
+		}else if(event.getEventType().equals("SHOCKWAVE_FIRE_EVENT")){
+			
+		}
+		for(Sound s : tmpList){
+			s.play(1, volume);
 		}
 	}
 	
@@ -62,5 +86,12 @@ public class SoundHandler {
 			}
 		}
         System.out.println("SoundHandler: Loaded sound.");
+	}
+
+	public void setVolume(float volume) {
+		this.volume = volume;
+	}
+	public float getVolume() {
+		return volume;
 	}
 }

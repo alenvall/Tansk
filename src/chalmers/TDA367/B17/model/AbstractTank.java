@@ -210,9 +210,6 @@ public abstract class AbstractTank extends MovableEntity {
 	public void recieveDamage(AbstractProjectile ap){
 		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "TANK_HIT_EVENT"));
 		setHealth(getHealth() - ap.getDamage());
-		if(getHealth() <= 0){
-			tankDeath();
-		}
 	}
 	
 	public void tankDeath(){
