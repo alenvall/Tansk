@@ -33,6 +33,7 @@ public class ShockwaveProjectile extends AbstractProjectile {
 					new ShockwaveSecondaryProjectile(GameController.getInstance().generateID(), getTank(), new Vector2f(getPosition()), this);
 			projectile.setDirection(new Vector2f(getRotation() + i*9));
 
+			projectile.setPosition(getPosition());
 			getTank().addProjectile(projectile);
 		}
 		this.destroy();

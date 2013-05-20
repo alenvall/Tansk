@@ -106,10 +106,11 @@ public abstract class Entity{
 	 * @param position The values for the new position
 	 */
 	public void setPosition(Vector2f position){
-		if(this.shape instanceof Point)
+		if(this.shape instanceof Point){
 			shape.setLocation(position.x, position.y);
-		else
+		} else{
 			this.shape = this.shape.transform(Transform.createTranslateTransform(position.getX() - getPosition().getX(), position.getY() - getPosition().getY()));
+		}
 	}
 
 	/**

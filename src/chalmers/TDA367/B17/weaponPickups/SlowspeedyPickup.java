@@ -11,11 +11,12 @@ public class SlowspeedyPickup extends AbstractWeaponPickup{
 	public SlowspeedyPickup(int id, Vector2f position) {
 		super(id, position);
 		spriteID = "SlowspeedyIcon";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 	
 	@Override
 	public void activate(AbstractTank absTank){
 		super.activate(absTank);
-		absTank.setTurret(new SlowspeedyTurret(GameController.getInstance().generateID(), absTank));
+		absTank.setTurret(new SlowspeedyTurret(GameController.getInstance().generateID(), absTank.getTurret().getPosition(), absTank.getTurret().getRotation(), absTank));
 	}
 }

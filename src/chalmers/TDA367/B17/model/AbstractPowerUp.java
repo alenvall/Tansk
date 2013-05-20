@@ -155,5 +155,4 @@ public abstract class AbstractPowerUp extends Entity {
 			activate((AbstractTank)entity);
 		}
 	}
-	
 }

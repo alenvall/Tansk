@@ -37,7 +37,7 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 		player.setTank(tank);
 		tank.setPosition(getPosition());
 		tank.setDirection(new Vector2f(getRotation()+90));
-		tank.setLastDir(tank.getDirection().getTheta());
+//		tank.setLastDir(tank.getDirection().getTheta());
 
 		// Adds a shield for protection that lasts 3 seconds.
 		Shield tmp = new Shield(GameController.getInstance().generateID(), tank, 3000);

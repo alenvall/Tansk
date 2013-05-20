@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 
@@ -25,6 +26,7 @@ public class DamagePowerUp extends AbstractPowerUp{
 		effectDuration = 7000;
 		projectiles = new ArrayList<AbstractProjectile>();
 		spriteID = "damage_powerup";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	@Override

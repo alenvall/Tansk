@@ -41,7 +41,7 @@ public class GameController {
 	
 	public void newGame(int width, int height, int scoreLimit, int rounds, 
 			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld){
-		world = new World(new Dimension(width, height), false);
+		world = new World(new Dimension(width, height), serverWorld);
 		world.init();
 		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
 		gameConditions.init(scoreLimit, rounds, 

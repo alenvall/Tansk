@@ -18,6 +18,7 @@ public class ShieldPowerUp extends AbstractPowerUp {
 		super(id, position);
 		effectDuration = 1;
 		spriteID = "shield_powerup";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	/**

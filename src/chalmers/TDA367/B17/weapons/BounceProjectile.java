@@ -21,11 +21,9 @@ public class BounceProjectile extends AbstractProjectile {
 	
 	@Override
 	public void didCollideWith(Entity entity){
-//		this is now done in World
-//		if(entity instanceof AbstractProjectile || entity == getTank()){
-//			return;
-//		} else if (entity instanceof MapBounds){
-		if(entity instanceof MapBounds){
+		if(entity instanceof AbstractProjectile || entity == getTank()){
+			return;
+		} else if (entity instanceof MapBounds){
 			MapBounds tmpMapBounds = (MapBounds)entity;
 			if(Math.abs(getPosition().x - tmpMapBounds.getShape().getX()) < 5 || 
 					Math.abs(getPosition().x - tmpMapBounds.getShape().getWidth()) < 5){

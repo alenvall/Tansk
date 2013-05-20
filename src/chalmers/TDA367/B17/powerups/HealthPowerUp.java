@@ -19,6 +19,7 @@ public class HealthPowerUp extends AbstractPowerUp {
 		super(id, position);
 		setEffectDuration(1);
 		setSpriteID("health_powerup");
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	@Override

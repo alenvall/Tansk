@@ -9,8 +9,8 @@ import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class ShockwaveTurret extends AbstractTurret{
 
-	public ShockwaveTurret(int id, AbstractTank tank) {
-		super(id, tank);
+	public ShockwaveTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
+		super(id, position, startingRotation,  tank);
 		turretCenter = new Vector2f(16.875f, 16.875f);
 		turretLength = 31.5f;
 		fireRate = 3000;
@@ -20,12 +20,12 @@ public class ShockwaveTurret extends AbstractTurret{
 
 	@Override
 	public AbstractProjectile createProjectile() {	
-		return new ShockwaveProjectile(GameController.getInstance().generateID(), tank, getTurretNozzle());
+		return new ShockwaveProjectile(GameController.getInstance().generateID(), getTank(), getTurretNozzle());
 	}
 	
 	@Override
 	public void fireWeapon(int delta, AbstractTank tank) {
-		AbstractProjectile projectile = createProjectile();
+		AbstractProjectile projectile = spawnNewProjectile();
 		Vector2f angle = new Vector2f(getRotation() + 90);
 
 		projectile.setDirection(angle);

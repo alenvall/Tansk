@@ -2,29 +2,89 @@ package chalmers.TDA367.B17.states;
 
 import java.awt.Dimension;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import org.newdawn.slick.*;
-import org.newdawn.slick.geom.*;
-import org.newdawn.slick.gui.AbstractComponent;
-import org.newdawn.slick.gui.ComponentListener;
+
+import org.newdawn.slick.Color;
+import org.newdawn.slick.GameContainer;
+import org.newdawn.slick.Graphics;
+import org.newdawn.slick.Image;
+import org.newdawn.slick.Input;
+import org.newdawn.slick.SlickException;
+import org.newdawn.slick.SpriteSheet;
+import org.newdawn.slick.geom.Shape;
+import org.newdawn.slick.geom.Transform;
+import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.gui.TextField;
-import org.newdawn.slick.state.*;
-import com.esotericsoftware.kryonet.*;
-import com.esotericsoftware.minlog.Log;
-import chalmers.TDA367.B17.*;
+import org.newdawn.slick.state.BasicGameState;
+import org.newdawn.slick.state.StateBasedGame;
+
+import chalmers.TDA367.B17.MapLoader;
+import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
-import chalmers.TDA367.B17.console.Console.*;
-import chalmers.TDA367.B17.controller.*;
+import chalmers.TDA367.B17.console.Console.MsgLevel;
+import chalmers.TDA367.B17.console.Console.OutputLevel;
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
-import chalmers.TDA367.B17.model.*;
-import chalmers.TDA367.B17.model.Entity.*;
-import chalmers.TDA367.B17.network.*;
-import chalmers.TDA367.B17.network.Network.*;
+import chalmers.TDA367.B17.model.AbstractProjectile;
+import chalmers.TDA367.B17.model.AbstractTank;
+import chalmers.TDA367.B17.model.AbstractTurret;
+import chalmers.TDA367.B17.model.Entity;
+import chalmers.TDA367.B17.model.Entity.RenderLayer;
+import chalmers.TDA367.B17.model.World;
+import chalmers.TDA367.B17.network.Network;
+import chalmers.TDA367.B17.network.Network.EntityPacket;
+import chalmers.TDA367.B17.network.Network.Packet;
+import chalmers.TDA367.B17.network.Network.Pck0_JoinRequest;
+import chalmers.TDA367.B17.network.Network.Pck1000_GameEvent;
+import chalmers.TDA367.B17.network.Network.Pck100_WorldState;
+import chalmers.TDA367.B17.network.Network.Pck102_TankUpdate;
+import chalmers.TDA367.B17.network.Network.Pck103_ProjectileUpdate;
+import chalmers.TDA367.B17.network.Network.Pck10_TankCreated;
+import chalmers.TDA367.B17.network.Network.Pck11_PickupCreated;
+import chalmers.TDA367.B17.network.Network.Pck1_LoginAnswer;
+import chalmers.TDA367.B17.network.Network.Pck2_ClientConfirmJoin;
+import chalmers.TDA367.B17.network.Network.Pck31_ChatMessage;
+import chalmers.TDA367.B17.network.Network.Pck3_Message;
+import chalmers.TDA367.B17.network.Network.Pck4_ClientInput;
+import chalmers.TDA367.B17.network.Network.Pck7_TankID;
+import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
+import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
+import chalmers.TDA367.B17.powerups.DamagePowerUp;
+import chalmers.TDA367.B17.powerups.FireRatePowerUp;
+import chalmers.TDA367.B17.powerups.HealthPowerUp;
+import chalmers.TDA367.B17.powerups.Shield;
+import chalmers.TDA367.B17.powerups.ShieldPowerUp;
+import chalmers.TDA367.B17.powerups.SpeedPowerUp;
 import chalmers.TDA367.B17.tanks.DefaultTank;
 import chalmers.TDA367.B17.view.Lifebar;
+import chalmers.TDA367.B17.weaponPickups.BouncePickup;
+import chalmers.TDA367.B17.weaponPickups.FlamethrowerPickup;
+import chalmers.TDA367.B17.weaponPickups.ShockwavePickup;
+import chalmers.TDA367.B17.weaponPickups.ShotgunPickup;
+import chalmers.TDA367.B17.weaponPickups.SlowspeedyPickup;
+import chalmers.TDA367.B17.weapons.BounceProjectile;
+import chalmers.TDA367.B17.weapons.BounceTurret;
 import chalmers.TDA367.B17.weapons.DefaultProjectile;
+import chalmers.TDA367.B17.weapons.DefaultTurret;
+import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
+import chalmers.TDA367.B17.weapons.FlamethrowerTurret;
+import chalmers.TDA367.B17.weapons.ShockwaveProjectile;
+import chalmers.TDA367.B17.weapons.ShockwaveSecondaryProjectile;
+import chalmers.TDA367.B17.weapons.ShockwaveTurret;
+import chalmers.TDA367.B17.weapons.ShotgunProjectile;
+import chalmers.TDA367.B17.weapons.ShotgunTurret;
+import chalmers.TDA367.B17.weapons.SlowspeedyProjectile;
+import chalmers.TDA367.B17.weapons.SlowspeedyTurret;
+
+import com.esotericsoftware.kryonet.Client;
+import com.esotericsoftware.kryonet.Connection;
+import com.esotericsoftware.kryonet.Listener;
+import com.esotericsoftware.minlog.Log;
 
 public class ClientState extends BasicGameState {
 	private int state;
@@ -80,19 +140,8 @@ public class ClientState extends BasicGameState {
 		super.enter(gc, game);
 
 		controller.setConsole(new Console(10, 533, 450, 192, OutputLevel.ALL));
-		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23, new ComponentListener() {
-			public void componentActivated(AbstractComponent source) {
-				if(!chatField.getText().equals("")){
-					if(client != null){
-						String msg = playerName + ": " + chatField.getText();
-						Pck31_ChatMessage pck = new Pck31_ChatMessage();
-						pck.message = msg;
-						chatField.setText("");
-						client.sendTCP(pck);
-					}
-				}
-			}
-		});
+		controller.getConsole().setVisible(false);
+		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
 		
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		
@@ -136,7 +185,7 @@ public class ClientState extends BasicGameState {
 		controller.getWorld().init();
 
 		input = gc.getInput();   
-		input.addKeyListener(this);
+//		input.addKeyListener(this);
 		input.addMouseListener(this);
 	}	
 	
@@ -219,18 +268,28 @@ public class ClientState extends BasicGameState {
 			if(packet instanceof Pck8_EntityDestroyed){
 				Pck8_EntityDestroyed pck = (Pck8_EntityDestroyed) packet;
 				controller.getWorld().removeEntity(pck.entityID);
+				if(playerTank != null){
+					if(pck.entityID == playerTank.getId()){
+						playerTank = null;			
+					}	
+				}
 			}
 			
 			if(packet instanceof Pck9_EntityCreated){
 				Pck9_EntityCreated pck = (Pck9_EntityCreated) packet;
-				createClientEntity(pck.entityID, pck.identifier);
+				createClientEntity(pck.entityID, pck.identifier, pck.possibleOwnerID);
 			}
 			
 			if(packet instanceof Pck10_TankCreated){
 				Pck10_TankCreated pck = (Pck10_TankCreated) packet;
 				createClientTank(pck.entityID, pck.identifier, pck.direction);
 			}
-					
+			
+			if(packet instanceof Pck11_PickupCreated){
+				Pck11_PickupCreated pck = (Pck11_PickupCreated) packet;
+				createClientPickup(pck.entityID, pck.identifier, pck.position);
+			}
+			
 			if(packet instanceof Pck100_WorldState){
 				if(isConnected)
 					updateClientWorld((Pck100_WorldState) packet);
@@ -245,20 +304,23 @@ public class ClientState extends BasicGameState {
 
 	private void updateClientWorld(Pck100_WorldState worldState) {
 		for(EntityPacket pck : worldState.updatePackets){
-			if(pck instanceof Pck101_TankUpdate){
-				Pck101_TankUpdate packet = (Pck101_TankUpdate) pck;;
+			if(pck instanceof Pck102_TankUpdate){
+				Pck102_TankUpdate packet = (Pck102_TankUpdate) pck;
 				AbstractTank tank = (AbstractTank) controller.getWorld().getEntity(packet.entityID);
 				tank.setPosition(packet.tankPosition);
 				tank.setDirection(packet.tankDirection);
 				tank.setHealth(packet.tankHealth);
-				if(tank.getShield() != null)
+				if(tank.getShield() != null){
 					tank.getShield().setHealth(packet.tankShieldHealth);
+					if(packet.shieldPosition != null)
+						tank.getShield().setPosition(packet.shieldPosition);
+				}
 				AbstractTurret turret = tank.getTurret();
 				turret.setPosition(packet.turretPosition);
 				turret.setRotation(packet.turretAngle);
 			}
-			if(pck instanceof Pck102_ProjectileUpdate){
-				Pck102_ProjectileUpdate packet = (Pck102_ProjectileUpdate) pck;
+			if(pck instanceof Pck103_ProjectileUpdate){
+				Pck103_ProjectileUpdate packet = (Pck103_ProjectileUpdate) pck;
 				AbstractProjectile proj = (AbstractProjectile) controller.getWorld().getEntity(packet.entityID);
 				if(proj != null){
 					proj.setPosition(packet.projPosition);
@@ -303,15 +365,15 @@ public class ClientState extends BasicGameState {
 		controller.getConsole().renderMessages(g);
 		debugRender(g);
 		controller.getAnimationHandler().renderAnimations();
+		
 		if(playerTank != null){
-			if(playerTank.getHealth() > 0){
-				if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
-					lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);
-				}else{
-					lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), 0, g);
-				}
+			if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
+				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);
+			}else{
+				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), 0, g);
 			}
 		}
+		
 		g.setColor(Color.white);
 		g.setLineWidth(1);
 		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
@@ -371,6 +433,29 @@ public class ClientState extends BasicGameState {
     public int getID() {
 	    return this.state;
     }
+	
+	@Override
+	public void keyReleased(int key, char c){
+		super.keyReleased(key, c);
+		if(key == Input.KEY_ENTER){
+			if(chatField.hasFocus()){
+				if(!chatField.getText().equals("")){
+					if(client != null){
+						String msg = playerName + ": " + chatField.getText();
+						Pck31_ChatMessage pck = new Pck31_ChatMessage();
+						pck.message = msg;
+						chatField.setText("");
+						client.sendTCP(pck);
+					}
+				}
+				GameController.getInstance().getConsole().setVisible(false);
+				chatField.setFocus(false);
+			} else {
+				GameController.getInstance().getConsole().setVisible(true);
+				chatField.setFocus(true);
+			}	
+		}
+	}
 		
 	private void createClientTank(int entityID, String identifier, Vector2f direction) {
 	    if(identifier.equals("DefaultTank")){
@@ -378,9 +463,96 @@ public class ClientState extends BasicGameState {
 	    }
     }
 	
-	private void createClientEntity(int entityID, String identifier) {
+	private void createClientPickup(int entityID, String identifier, Vector2f position){
+		if(identifier.equals("BouncePickup")){
+			new BouncePickup(entityID, position);
+		} else if(identifier.equals("FlamethrowerPickup")){
+			new FlamethrowerPickup(entityID, position);
+		} else if(identifier.equals("ShockwavePickup")){
+			new ShockwavePickup(entityID, position);
+		} else if(identifier.equals("SlowspeedyPickup")){
+			new SlowspeedyPickup(entityID, position);
+		}  else if(identifier.equals("ShotgunPickup")){
+			new ShotgunPickup(entityID, position);
+		}  else if(identifier.equals("DamagePowerUp")){
+			new DamagePowerUp(entityID, position);
+		}  else if(identifier.equals("FireRatePowerUp")){
+			new FireRatePowerUp(entityID, position);
+		}  else if(identifier.equals("HealthPowerUp")){
+			new HealthPowerUp(entityID, position);
+		}  else if(identifier.equals("ShieldPowerUp")){
+			new ShieldPowerUp(entityID, position);
+		}  else if(identifier.equals("SpeedPowerUp")){
+			new SpeedPowerUp(entityID, position);
+		} 
+	}
+	
+	private void createClientEntity(int entityID, String identifier, int possibleOwnerID) {
 	    if(identifier.equals("DefaultProjectile")){
 			new DefaultProjectile(entityID, null, null);
-	    }
+	    } else if(identifier.equals("BounceProjectile")){
+			new BounceProjectile(entityID, null, null);
+	    } else if(identifier.equals("FlamethrowerProjectile")){
+			new FlamethrowerProjectile(entityID, null, null);
+	    } else if(identifier.equals("ShockwaveProjectile")){
+			new ShockwaveProjectile(entityID, null, null);
+	    } else if(identifier.equals("ShockwaveSecondaryProjectile")){
+			new ShockwaveSecondaryProjectile(entityID, null, null, null);
+	    } else if(identifier.equals("ShotgunProjectile")){
+			new ShotgunProjectile(entityID, null, null);
+	    } else if(identifier.equals("SlowspeedyProjectile")){
+			new SlowspeedyProjectile(entityID, null, null);
+	    }  else if(identifier.equals("Shield")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    	tank.setShield(new Shield(entityID, tank, 0));
+	    } else if(identifier.equals("DefaultTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    	if(tank != null){
+	    		double rotation = tank.getTurret().getRotation();
+	    		Vector2f position = tank.getTurret().getPosition();
+	    		AbstractTurret turret = new DefaultTurret(entityID, position, rotation, tank);
+	    		tank.setTurret(turret);
+	    	}
+	    } else if(identifier.equals("BounceTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    	if(tank != null){
+	    		double rotation = tank.getTurret().getRotation();
+	    		Vector2f position = tank.getTurret().getPosition();
+	    		AbstractTurret turret = new BounceTurret(entityID, position, rotation, tank);
+	    		tank.setTurret(turret);
+	    	}
+	    } else if(identifier.equals("FlamethrowerTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    	if(tank != null){
+	    		double rotation = tank.getTurret().getRotation();
+	    		Vector2f position = tank.getTurret().getPosition();
+	    		AbstractTurret turret = new FlamethrowerTurret(entityID, position, rotation, tank);
+	    		tank.setTurret(turret);
+	    	}
+	    } else if(identifier.equals("ShockwaveTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    	if(tank != null){
+	    		double rotation = tank.getTurret().getRotation();
+	    		Vector2f position = tank.getTurret().getPosition();
+	    		AbstractTurret turret = new ShockwaveTurret(entityID, position, rotation, tank);
+	    		tank.setTurret(turret);
+	    	}
+	    } else if(identifier.equals("ShotgunTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    	if(tank != null){
+	    		double rotation = tank.getTurret().getRotation();
+	    		Vector2f position = tank.getTurret().getPosition();
+	    		AbstractTurret turret = new ShotgunTurret(entityID, position, rotation, tank);
+	    		tank.setTurret(turret);
+	    	}
+	    } else if(identifier.equals("SlowspeedyTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    	if(tank != null){
+	    		double rotation = tank.getTurret().getRotation();
+	    		Vector2f position = tank.getTurret().getPosition();
+	    		AbstractTurret turret = new SlowspeedyTurret(entityID, position, rotation, tank);
+	    		tank.setTurret(turret);
+	    	}
+	    } 
     }
 }

@@ -4,7 +4,7 @@ import org.newdawn.slick.geom.Point;
 import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractTurret extends Entity {
-	private float rotation;
+	private double rotation;
 	protected Vector2f turretCenter;
 	protected float turretLength;
 	protected int fireRate;
@@ -15,12 +15,13 @@ public abstract class AbstractTurret extends Entity {
 	/**
 	 * Create a new AbstractTurret.
 	 */
-	public AbstractTurret(int id, AbstractTank tank) {
+	public AbstractTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
 		super(id);
-		rotation = 0;
+		rotation = startingRotation;
 		spriteID = "turret_blue";
 		this.tank = tank;
-		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
+//		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
+		setShape(new Point(position.x, position.y));
 		renderLayer = RenderLayer.THIRD;
 	}
 	

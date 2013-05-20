@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.powerups;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTurret;
 
@@ -19,6 +20,7 @@ public class FireRatePowerUp extends AbstractPowerUp {
 		super(id, position);
 		effectDuration = 7000;
 		spriteID = "firerate_powerup";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 	
 	@Override

@@ -23,8 +23,9 @@ public class Network {
 		kryo.register(ArrayList.class);
 		kryo.register(Pck8_EntityDestroyed.class);
 		kryo.register(Pck100_WorldState.class);
-		kryo.register(Pck101_TankUpdate.class);
-		kryo.register(Pck102_ProjectileUpdate.class);
+		kryo.register(Pck11_PickupCreated.class);
+		kryo.register(Pck102_TankUpdate.class);
+		kryo.register(Pck103_ProjectileUpdate.class);
 		kryo.register(Pck9_EntityCreated.class);
 		kryo.register(Pck10_TankCreated.class);
 		kryo.register(Pck1000_GameEvent.class);
@@ -90,20 +91,30 @@ public class Network {
 		public Vector2f direction;
 	}
 	
+	public static class Pck11_PickupCreated extends Pck9_EntityCreated {
+		public Vector2f position;
+	}
+	
 	public static class Pck100_WorldState extends Packet {
 		public ArrayList<EntityPacket> updatePackets;
 	}
 	
-	public static class Pck101_TankUpdate extends EntityPacket{
+//	public static class Pck101_StaticEntityUpdate extends EntityPacket{
+//		public Vector2f position;
+//	}	
+	
+	
+	public static class Pck102_TankUpdate extends EntityPacket{
 		public Vector2f tankPosition;
 		public Vector2f tankDirection;
 		public Vector2f turretPosition;
 		public double tankHealth;
 		public double tankShieldHealth;
+		public Vector2f shieldPosition;
 		public float turretAngle;
 	}	
 	
-	public static class Pck102_ProjectileUpdate extends EntityPacket{
+	public static class Pck103_ProjectileUpdate extends EntityPacket{
 		public Vector2f projPosition;
 		public Vector2f projDirection;
 	}

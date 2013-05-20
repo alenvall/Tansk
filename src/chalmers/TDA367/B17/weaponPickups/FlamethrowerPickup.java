@@ -11,11 +11,12 @@ public class FlamethrowerPickup extends AbstractWeaponPickup{
 	public FlamethrowerPickup(int id, Vector2f position) {
 		super(id, position);
 		spriteID = "FlamethrowerIcon";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 	
 	@Override
 	public void activate(AbstractTank absTank){
 		super.activate(absTank);
-		absTank.setTurret(new FlamethrowerTurret(GameController.getInstance().generateID(), absTank));
+		absTank.setTurret(new FlamethrowerTurret(GameController.getInstance().generateID(), absTank.getTurret().getPosition(), absTank.getTurret().getRotation(), absTank));
 	}
 }

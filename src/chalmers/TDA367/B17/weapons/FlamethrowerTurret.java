@@ -15,8 +15,8 @@ public class FlamethrowerTurret extends AbstractTurret {
 	private int ammoLeft;
 
 
-	public FlamethrowerTurret(int id, AbstractTank tank)  {
-		super(id, tank);
+	public FlamethrowerTurret(int id, Vector2f position, double startingRotation, AbstractTank tank)  {
+		super(id, position, startingRotation,  tank);
 		turretCenter = new Vector2f(22.5f, 22.5f);
 		turretLength = 42f;
 		ammoLeft = DEFAULT_AMMO;
@@ -40,7 +40,7 @@ public class FlamethrowerTurret extends AbstractTurret {
 			if(ammoLeft>0){
 				ammoLeft--;
 			}else{
-				tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getTank()));
+				tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank()));
 			}
 		}
 		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "FLAMETHROWER_EVENT"));

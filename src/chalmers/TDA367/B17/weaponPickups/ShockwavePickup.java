@@ -11,11 +11,12 @@ public class ShockwavePickup extends AbstractWeaponPickup{
 	public ShockwavePickup(int id, Vector2f position) {
 		super(id, position);
 		spriteID = "ShockwaveIcon";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 	
 	@Override
 	public void activate(AbstractTank absTank){
 		super.activate(absTank);
-		absTank.setTurret(new ShockwaveTurret(GameController.getInstance().generateID(), absTank));
+		absTank.setTurret(new ShockwaveTurret(GameController.getInstance().generateID(), absTank.getTurret().getPosition(), absTank.getTurret().getRotation(), absTank));
 	}
 }

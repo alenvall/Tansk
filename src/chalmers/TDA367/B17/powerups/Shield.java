@@ -10,8 +10,9 @@ import chalmers.TDA367.B17.model.Entity;
 
 public class Shield extends Entity {
 
+	private static int shieldRadius = 53;
 	private AbstractTank absTank;
-
+	
 	private double health;
 
 	private int duration;
@@ -24,13 +25,15 @@ public class Shield extends Entity {
 	 */
 	public Shield(int id, AbstractTank absTank, int duration) {
 		super(id);
-		Vector2f position = absTank.getPosition();
-		setShape(new Circle(position.x, position.y, 107));
+		if(absTank != null){
+			Vector2f position = absTank.getPosition();
+			setShape(new Circle(position.x, position.y, shieldRadius));
+			this.absTank = absTank;
+			setHealth(absTank.getMaxShieldHealth());
+		}
 		spriteID = "shield";
 		active = true;
 
-		this.absTank = absTank;
-		setHealth(absTank.getMaxShieldHealth());
 
 		if(duration <= 0){
 			countDuration = false;
@@ -38,11 +41,9 @@ public class Shield extends Entity {
 		this.duration = duration;
 		GameController.getInstance().getWorld().addEntity(this);
 	}
-
-	@Override
-	public Vector2f getSpritePosition() {
-		float radius = getShape().getBoundingCircleRadius();
-		return super.getSpritePosition().add(new Vector2f(radius/2, radius/2));
+	
+	public AbstractTank getTank(){
+		return absTank;
 	}
 
 	@Override
