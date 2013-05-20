@@ -1,6 +1,5 @@
 package chalmers.TDA367.B17.model;
 
-import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.geom.*;
 
 public abstract class MovableEntity extends Entity {
@@ -16,12 +15,11 @@ public abstract class MovableEntity extends Entity {
 	
 	/**
 	 * Create a new MovableEntity based on the following parameters
-	 * @param direction The default direction this object is facing
 	 * @param maxSpeed The maximum speed of this object
 	 * @param minSpeed The minimum speed of this object
 	 */
-	public MovableEntity(Vector2f direction, float maxSpeed, float minSpeed) {
-		super();
+	public MovableEntity(int id, Vector2f direction, float maxSpeed, float minSpeed) {
+		super(id);
 		setDirection(direction);
 		this.maxSpeed = maxSpeed;
 		this.minSpeed = minSpeed;
@@ -51,9 +49,11 @@ public abstract class MovableEntity extends Entity {
 	 * @param newDirection The new direction
 	 */
 	public void setDirection(Vector2f newDirection){
-		this.direction = newDirection.copy();
-		setShape(getShape().transform(Transform.createRotateTransform((float)Math.toRadians(newDirection.getTheta()-lastDirectionTheta), getShape().getCenterX(), getShape().getCenterY())));
-		lastDirectionTheta = newDirection.getTheta();
+		if(newDirection != null){
+			this.direction = newDirection.copy();
+			setShape(getShape().transform(Transform.createRotateTransform((float)Math.toRadians(newDirection.getTheta()-lastDirectionTheta), getShape().getCenterX(), getShape().getCenterY())));
+			lastDirectionTheta = newDirection.getTheta();	
+		}
 	}
 
 	/**
@@ -197,10 +197,10 @@ public abstract class MovableEntity extends Entity {
 	public void update(int delta){
 		move(delta);
 
-		if(getPosition().getX()<0 || getPosition().getX()> 
-		GameController.getInstance().getWorld().getSize().width 
-		|| getPosition().getY()<0 || getPosition().getY()> 
-		GameController.getInstance().getWorld().getSize().height)
-			destroy();
+//		if(getPosition().getX()<0 || getPosition().getX()> 
+//		GameController.getInstance().getWorld().getSize().width 
+//		|| getPosition().getY()<0 || getPosition().getY()> 
+//		GameController.getInstance().getWorld().getSize().height)
+//			destroy();
 	}
 }

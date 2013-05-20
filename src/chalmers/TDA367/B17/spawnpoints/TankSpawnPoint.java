@@ -9,23 +9,24 @@ import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.powerups.Shield;
-import chalmers.TDA367.B17.powerups.ShieldPowerUp;
 import chalmers.TDA367.B17.tanks.TankFactory;
 
 public class TankSpawnPoint extends AbstractSpawnPoint {
-	
+
+
 	/**
 	 * Create a new TankSpawnPoint.
 	 * @param position The position of this spawn-point
 	 */
-	public TankSpawnPoint(Vector2f position) {
-		super(position);
+	public TankSpawnPoint(int id, Vector2f position) {
+		super(id, position);
 		GameController.getInstance().getWorld().getTankSpawner().addTankSpawnPoint(this);
 		spriteID = "tank_spawnpoint";
 		Vector2f size = new Vector2f(40f, 55f);
 		setShape(new Rectangle(position.getX()-size.getX()/2, position.getY()-size.getY()/2, size.getX(), size.getY()));
+		GameController.getInstance().getWorld().addEntity(this);
 	}
-	
+
 	/**
 	 * Spawns a new tank at the position of this TankSpawnPoint. It also adds
 	 * a 3 second shield to the tank.
@@ -36,24 +37,24 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 		player.setTank(tank);
 		tank.setPosition(getPosition());
 		tank.setDirection(new Vector2f(getRotation()+90));
-		tank.setLastDir(tank.getDirection().getTheta());
-		
+//		tank.setLastDir(tank.getDirection().getTheta());
+
 		// Adds a shield for protection that lasts 3 seconds.
-		Shield tmp = new Shield(tank, 3000);
+		Shield tmp = new Shield(GameController.getInstance().generateID(), tank, 3000);
 		tmp.setHealth(9999);
 		tank.setShield(tmp);
 	}
-	
+
 	@Override
 	public void update(int delta){
 		setSpawnable(true);
 	}
-	
+
 	@Override
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractTank){
 			setSpawnable(false);
 		}
 	}
-	
+
 }

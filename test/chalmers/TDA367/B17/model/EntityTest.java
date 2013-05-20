@@ -9,11 +9,13 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.model.Entity.RenderLayer;
+
 public class EntityTest {
 
 	class EntityMock extends Entity{
 		protected EntityMock(){
-			super();
+			super(0);
 		}
 	}
 	
@@ -58,6 +60,13 @@ public class EntityTest {
 		Entity entity = new EntityMock();
 		entity.setSpriteID("test_sprite");
 		assertTrue(entity.getSpriteID().equals("test_sprite"));
+	}
+	
+	@Test
+	public void testSetRenderLayer(){
+		Entity entity = new EntityMock();
+		entity.renderLayer = RenderLayer.SECOND;
+		assertTrue(entity.getRenderLayer().equals(RenderLayer.SECOND));
 	}
 	
 	@BeforeClass

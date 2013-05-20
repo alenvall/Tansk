@@ -3,13 +3,14 @@ package chalmers.TDA367.B17.spawnpoints;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractObstacle;
-import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.powerups.PowerUpFactory;
+import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
 import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
 import chalmers.TDA367.B17.weaponPickups.WeaponFactory;
 
@@ -53,7 +54,7 @@ public class Spawner {
 					while(p == null){
 						p = generateSpawnPoint();
 					}
-					PowerUpFactory.getRandomPowerUp(p);
+					PowerUpFactory.getRandomPowerUpPickup(p);
 				}
 			}
 			
@@ -77,8 +78,8 @@ public class Spawner {
 	 */
 	public Vector2f generateSpawnPoint(){
 		final Vector2f spawnpoint;
-		int width = GameController.getInstance().SCREEN_WIDTH;
-		int height = GameController.getInstance().SCREEN_HEIGHT;
+		int width = Tansk.SCREEN_WIDTH;
+		int height = Tansk.SCREEN_HEIGHT;
 		
 		int x = (int)(Math.random()*width);
 		int y = (int)(Math.random()*height);
@@ -99,7 +100,8 @@ public class Spawner {
 			
 			boolean blocked = false;
 			
-			public Dummy(){
+			public Dummy(int id){
+				super(id);
 				Vector2f size = new Vector2f(75f, 75f);
 				setPosition(spawnpoint);
 				setShape(new Rectangle(getPosition().x-size.getX()/2, getPosition().y-size.getY()/2, size.getX(), size.getY()));
@@ -107,14 +109,14 @@ public class Spawner {
 			
 			public void didCollideWith(Entity entity){
 				if(entity instanceof AbstractSpawnPoint || entity instanceof AbstractTank 
-						|| entity instanceof AbstractPowerUp || entity instanceof AbstractWeaponPickup
+						|| entity instanceof AbstractPowerUpPickup || entity instanceof AbstractWeaponPickup
 						|| entity instanceof AbstractObstacle){
 					blocked = true;
 				}
 			}
 		}
 		
-		Dummy d = new Dummy();
+		Dummy d = new Dummy(GameController.getInstance().generateID());
 		GameController.getInstance().getWorld().checkCollisionsFor(d);
 		
 		//Returns the generated point if it's not blocked, otherwise null.

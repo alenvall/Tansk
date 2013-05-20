@@ -14,24 +14,24 @@ public class TankSpawner{
 	//A list of all the TankSpawnPoints
 	private List<TankSpawnPoint> tankSpawnPoints;
 	//A list of all the players that wish to spawn.
-	private List<Player> playerList;
+	private List<Player> playersToSpawn;
 	
 	public TankSpawner(){
 		tankSpawnPoints = new ArrayList<TankSpawnPoint>();
-		playerList = new ArrayList<Player>();
+		playersToSpawn = new ArrayList<Player>();
 	}
-	
+
 	/**
 	 * Used for updating the TankSpawner object.
 	 * @param delta The time that has passed since the last update
 	 */
 	public void update(int delta){
-		for(int i = 0; i < playerList.size(); i++){
-			Player p = playerList.get(i);
+		//Loops through the playersToSpawn list and reduces their respawn time.
+		for(int i = 0; i < playersToSpawn.size(); i++){
+			Player p = playersToSpawn.get(i);
 			p.setRespawnTimer(p.getRespawnTimer() - delta);
 			if(p.getRespawnTimer() <= 0){
 				GameController controller = GameController.getInstance();
-				//Bad place to run this
 				Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
 				while(iterator.hasNext()){
 					Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
@@ -40,7 +40,7 @@ public class TankSpawner{
 						controller.getWorld().checkCollisionsFor(entity);
 				}
 				newTankRandSpawnPoint(p);
-				playerList.remove(i);
+				playersToSpawn.remove(i);
 			}
 		}
 	}
@@ -52,13 +52,13 @@ public class TankSpawner{
 	public void addTankSpawnPoint(TankSpawnPoint tankSpawnPoint){
 		tankSpawnPoints.add(tankSpawnPoint);
 	}
-	
+
 	/**
 	 * Add a Player to the player list.
 	 * @param player The player to add
 	 */
 	public void addPlayer(Player player){
-		playerList.add(player);
+		playersToSpawn.add(player);
 	}
 	
 	/**
@@ -66,9 +66,10 @@ public class TankSpawner{
 	 * @param player The player to spawn for
 	 */
 	public void newTankRandSpawnPoint(Player player){
-		if(!(GameController.getInstance().getGameConditions().getPlayers().size() > tankSpawnPoints.size())){
+		GameController controller = GameController.getInstance();
+		if(!(controller.getGameConditions().getPlayerList().size() > tankSpawnPoints.size())){
 			while(true){
-				int index = (int)(Math.random()*(GameController.getInstance().getGameConditions().getPlayers().size()));
+				int index = (int)(Math.random()*(controller.getGameConditions().getPlayerList().size()));
 				TankSpawnPoint tmp = tankSpawnPoints.get(index);
 				if(tmp.isSpawnable()){
 					tmp.spawnTank(player);

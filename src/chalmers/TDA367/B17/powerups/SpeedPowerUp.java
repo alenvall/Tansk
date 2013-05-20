@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.powerups;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.*;
 
 public class SpeedPowerUp extends AbstractPowerUp {
@@ -14,10 +15,11 @@ public class SpeedPowerUp extends AbstractPowerUp {
 	 * Create a new SpeedPowerUp at a position.
 	 * @param position The position of this powerup
 	 */
-	public SpeedPowerUp(Vector2f position) {
-		super(position);
+	public SpeedPowerUp(int id, Vector2f position) {
+		super(id, position);
 		effectDuration = 7000;
 		spriteID = "speed_powerup";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	@Override

@@ -1,11 +1,7 @@
 package chalmers.TDA367.B17.model;
 
-import org.newdawn.slick.SlickException;
-import org.newdawn.slick.Sound;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
-
-import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.terrain.BrownWall;
 
 public abstract class AbstractProjectile extends MovableEntity {
@@ -14,8 +10,6 @@ public abstract class AbstractProjectile extends MovableEntity {
 	private int duration;
 	private int durationTimer;
 	private AbstractTank tank;
-	private Sound debugWallHit;
-
 
 	/**
 	 * Create a new AbstractProjectile.
@@ -25,22 +19,17 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param damage the damage this projectile does
 	 * @param duration the time in milliseconds this projectile will remain on the map
 	 */
-	public AbstractProjectile(AbstractTank tank, Vector2f position, Vector2f velocity,
+	public AbstractProjectile(int id, AbstractTank tank, Vector2f position, Vector2f direction,
 			float maxSpeed, float minSpeed, double damage, int duration) {
-		super(velocity, maxSpeed, minSpeed);
+		super(id, direction, maxSpeed, minSpeed);
 		this.damage = damage;
 		this.duration = duration;
 		this.durationTimer = duration;
+		this.tank = tank;
 		spriteID = "bullet";
-		this.tank = tank;
-		try {
-	        debugWallHit = new Sound("data/bullet.wav");
-        } catch (SlickException e) {
-	        e.printStackTrace();
-        }
-		this.tank = tank;
-		setShape(new Rectangle(position.x, position.y, 1,1));
-		renderLayer = GameController.RenderLayer.FOURTH;
+		renderLayer = RenderLayer.FOURTH;
+		if(position != null)
+			setShape(new Rectangle(position.x, position.y, 1,1));
 	}
 	
 	public AbstractTank getTank(){
@@ -77,6 +66,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	public void setDuration(int duration) {
 		this.duration = duration;
 	}
+	
 	/**
 	 * Update the projectile's state.
 	 * @param delta The time that has passed since the last update
@@ -113,14 +103,6 @@ public abstract class AbstractProjectile extends MovableEntity {
 	public void setDurationTimer(int durationTimer) {
 		this.durationTimer = durationTimer;
 	}
-
-	/**
-	 * Set the tank of this projectile.
-	 * @param tank The tank
-	 */
-	public void setTank(AbstractTank tank) {
-		this.tank = tank;
-	}
 	
 	@Override
 	public void didCollideWith(Entity entity){
@@ -134,11 +116,10 @@ public abstract class AbstractProjectile extends MovableEntity {
 		}
 	}
 
-
 	@Override
 	public void destroy(){
 		super.destroy();
-		getTank().getProjectiles().remove(this);
+//		getTank().getProjectiles().remove(this);
 	}
 	
 	/**
@@ -147,7 +128,6 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 */
 	public void damageTarget(AbstractTank target){
 		target.recieveDamage(this);
-		//debugWallHit.play();
 		this.destroy();
 	}
 }

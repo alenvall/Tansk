@@ -1,31 +1,33 @@
 package chalmers.TDA367.B17.model;
 
 import java.util.ArrayList;
-import java.util.List;
 
-import org.newdawn.slick.geom.*;
+import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.powerups.Shield;
+import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
+
 
 public abstract class AbstractTank extends MovableEntity {
-
 	private String name;
 	private double health;
 	private AbstractPowerUp currentPowerUp;
 	private float turnSpeed; // How many degrees the tank will turn each update
-	private AbstractTurret turret;
-	private float turretOffset;
-	private List<AbstractProjectile> projectiles;
-	//Used to determine if the turret can fire or not
+	protected AbstractTurret turret;
+	protected float turretOffset;
+	protected int timeSinceLastShot;
+	public int lastDelta;
 	private boolean fire;
-	private int timeSinceLastShot;
-	private double lastDir;
-	private Player player;
+	private double lastDirection;
 	private static final double MAX_HEALTH = 100;
 	public static final double MAX_SHIELD_HEALTH = 50;
 	private Shield shield;
+	private ArrayList<AbstractProjectile> projectiles;
+	private Player player;
+	private double maxShieldHealth;
 	
 	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
 	
@@ -36,16 +38,16 @@ public abstract class AbstractTank extends MovableEntity {
 	 * @param minSpeed The minimum movement speed of this tank
 	 * @param player The owning player of this tank
 	 */
-	public AbstractTank(Vector2f velocity, float maxSpeed, float minSpeed, Player player) {
-		super(velocity, maxSpeed, minSpeed);
+	public AbstractTank(int id, Vector2f direction, float maxSpeed, float minSpeed, Player player) {
+		super(id, direction, maxSpeed, minSpeed);
+		this.player = player;
 		turnSpeed = 0.15f;
-		projectiles = new ArrayList<AbstractProjectile>();
 		currentPowerUp = null;
 		spriteID = "turret";
-		renderLayer = GameController.RenderLayer.SECOND;
-		
+		renderLayer = RenderLayer.SECOND;
 		fire = true;
-		this.player = player;
+		projectiles = new ArrayList<AbstractProjectile>();
+		maxShieldHealth = MAX_SHIELD_HEALTH;
 	}
 	
 	/**
@@ -90,6 +92,9 @@ public abstract class AbstractTank extends MovableEntity {
 	 */
 	public void setHealth(double health) {
 		this.health = health;
+		if(this.health <= 0){
+			tankDeath();
+		}
 	}
 
 	/**
@@ -154,7 +159,7 @@ public abstract class AbstractTank extends MovableEntity {
 	 * @param delta The time that has passed since the last update in milliseconds
 	 */
 	public void turnLeft(int delta){
-		lastDir = getDirection().getTheta();
+		lastDirection = getDirection().getTheta();
 		setDirection(getDirection().add(-turnSpeed * delta * (Math.abs(getSpeed())*0.2f + 0.7)));
 	}
 	
@@ -163,28 +168,35 @@ public abstract class AbstractTank extends MovableEntity {
 	 * @param delta The time that has passed since the last update in milliseconds
 	 */
 	public void turnRight(int delta){
-		lastDir = getDirection().getTheta();
+		lastDirection = getDirection().getTheta();
 		setDirection(getDirection().add(turnSpeed * delta * (Math.abs(getSpeed())*0.2f + 0.7)));
 	}
 	
+	/**
+	 * Get the offset between the tanks position and the turret position.
+	 * @return turretOffset
+	 */
 	public float getTurretOffset() {
 	    return turretOffset;
     }
 	
-	public List<AbstractProjectile> getProjectiles(){
-		return projectiles;
-	}
-	
-	public void addProjectile(AbstractProjectile projectile){
-		projectiles.add(projectile);
-	}
-	
 	public void update(int delta){
 		super.update(delta);
+
+		timeSinceLastShot -= delta;
+		
+		// moved here from AbstractTurret
+		double tankRotation = getRotation() - 90;
+		float newTurX = (float) (getPosition().x + getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
+		float newTurY = (float) (getPosition().y - getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
+		turret.setPosition(new Vector2f(newTurX, newTurY));
 	}
 	
+	/**
+	 * Fire the tanks turret if the turrets has cooled down.
+	 * @param delta
+	 */
 	public void fireWeapon(int delta){
-		timeSinceLastShot -= delta;
 		if(timeSinceLastShot <= 0 && fire){
 			turret.fireWeapon(delta, this);
 			timeSinceLastShot = turret.getFireRate();
@@ -197,23 +209,33 @@ public abstract class AbstractTank extends MovableEntity {
 			if(!lastPos.equals(getPosition())){
 				setPosition(lastPos);
 				setSpeed(-getSpeed());
+				double tankRotation = getRotation() - 90;
+				float newTurX = (float) (getPosition().x + getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
+				float newTurY = (float) (getPosition().y - getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
+				turret.setPosition(new Vector2f(newTurX, newTurY));
 			}
-			if(lastDir != getDirection().getTheta()){
-				setDirection(new Vector2f(lastDir));
+			if(lastDirection != getDirection().getTheta()){
+				setDirection(new Vector2f(lastDirection));
 			}
 		}
 	}
 	
-	public void recieveDamage(AbstractProjectile ap){
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "TANK_HIT_EVENT"));
-		setHealth(getHealth() - ap.getDamage());
-		if(getHealth() <= 0){
-			tankDeath();
-		}
+	/**
+	 * The tank takes damage and take appropriate action is taken.
+	 * @param projectile
+	 */
+	public void recieveDamage(AbstractProjectile projectile){
+		if(!(projectile instanceof FlamethrowerProjectile))
+			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "TANK_HIT_EVENT"));
+		setHealth(getHealth() - projectile.getDamage());
 	}
 	
+	/**
+	 * The tank is eliminated and appropriate action is taken.
+	 */
 	public void tankDeath(){
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, TANK_DEATH_EVENT));
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, TANK_DEATH_EVENT));
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.ANIM, this, TANK_DEATH_EVENT));
 		if(getCurrentPowerUp() != null)
 			getCurrentPowerUp().deactivate();
 		this.destroy();
@@ -230,29 +252,69 @@ public abstract class AbstractTank extends MovableEntity {
 		getTurret().destroy();
 	}
 
+	/**
+	 * Get the last direction of the tank.
+	 * @return lastDirection
+	 */
 	public double getLastDir() {
-		return lastDir;
+		return lastDirection;
 	}
 
-	public void setLastDir(double lastDir) {
-		this.lastDir = lastDir;
+	/**
+	 * Set the last direction of the tank.
+	 * @param lastDirection
+	 */
+	public void setLastDir(double lastDirection) {
+		this.lastDirection = lastDirection;
 	}
 
+	/**
+	 * Set the turret offset of the tank.
+	 * @param turretOffset
+	 */
 	public void setTurretOffset(float turretOffset) {
 		this.turretOffset = turretOffset;
 	}
 	
+	/**
+	 * Get the max shield health of the tank.
+	 * @return
+	 */
 	public double getMaxShieldHealth(){
-		return MAX_SHIELD_HEALTH;
+		return maxShieldHealth;
 	}
 	
+	/**
+	 * Get the tanks shield.
+	 * @return shield
+	 */
 	public Shield getShield(){
 		return shield;
 	}
 	
+	/**
+	 * Set the tanks shield.
+	 * @param shield
+	 */
 	public void setShield(Shield shield){
 		this.shield = shield;
 	}
+
+	/**
+	 * Add a projectile to the tank's list of projectiles.
+	 * @param projectile
+	 */
+	public void addProjectile(AbstractProjectile projectile) {
+		projectiles.add(projectile);   
+    }
+
+	/**
+	 * Return the list of the tank's projectiles.
+	 * @return projectiles
+	 */
+	public ArrayList<AbstractProjectile> getProjectiles() {
+		return projectiles;
+    }
 }
 
 

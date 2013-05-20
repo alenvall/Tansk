@@ -1,13 +1,13 @@
 package chalmers.TDA367.B17.model;
 
 import java.util.ArrayList;
-import java.util.List;
-
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
+import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
 
 public class GameConditions {
-	
+
 	//The amount of score it will take for a player to win.
 	private int scoreLimit;
 	//The amount of rounds that will be played.
@@ -22,28 +22,28 @@ public class GameConditions {
 	private int roundTimer;
 	//How long each game should last
 	private int gameTimer;
-	
+
 	//Determines of the game is over.
 	private boolean gameOver;
-	
+
 	//Used for delay between rounds
 	private int delayTimer;
 	private boolean delaying;
-	
+
 	//keeps track of the amount of eliminated players
 	private int eliminatedPlayerCount;
-	
+
 	//The winner of the game.
 	private Player winningPlayer;
 	//The winner of the latest round.
 	private Player roundWinner;
-	
+
 	//A list of all the players.
-	private List<Player> players;
-	
+	private ArrayList<Player> players;
+
 	//The maximum amount of powerups that can be out at a time.
 	private int powerupLimit = 10;
-	
+
 	//The maximum amount of weapons that can be out at a time.
 	private int weaponLimit = 10;
 
@@ -54,7 +54,7 @@ public class GameConditions {
 		players = new ArrayList<Player>();
 		gameOver = false;
 	}
-	
+
 	/**
 	 * Initiates the object's variables.
 	 * @param scoreLimit The score-limit of the game.
@@ -73,32 +73,34 @@ public class GameConditions {
 		this.roundTime = roundTime;
 		this.roundTimer = roundTime;
 		roundCounter = 0;
+		GameController.getInstance().getConsole().addMsg("GameConditions.init()");
 	}
-	
+
 	/**
 	 * Start a new round, reseting player lives and spawn new tanks.
 	 * Removes all tanks and power-ups on the map.
 	 * Also increases the roundCounter and resets the roundTimer.
 	 */
 	public void newRound(){
+		GameController.getInstance().getConsole().addMsg("GameConditions.newRound()");
 		roundWinner = null;
 		roundCounter += 1;
 		roundTimer = roundTime;
-		
+
 		eliminatedPlayerCount = 0;
 
 		//Reset the powerup count
 		GameController.getInstance().getWorld().getSpawner().setPowerupCount(0);
 		//Reset the weapon count
 		GameController.getInstance().getWorld().getSpawner().setWeaponCount(0);
-		
+
 		for(Entity entity : GameController.getInstance().getWorld().getEntities().values()){
-			if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUp
-					|| entity instanceof AbstractWeaponPickup){
+			if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUpPickup
+					|| entity instanceof AbstractWeaponPickup || entity instanceof Shield){
 				entity.destroy();
 			}
 		}
-		
+
 		for(Player p : players){
 			p.setRespawnTime(100);
 			p.setEliminated(false);
@@ -109,11 +111,11 @@ public class GameConditions {
 			}
 			p.spawnTank();
 		}
-		
+
 		setPlayerSpawnTime();
 		setPlayerLives();
 	}
-	
+
 	/**
 	 * Updates timers and checks if any player has won.
 	 * @param delta The time since the last update in milliseconds
@@ -122,12 +124,12 @@ public class GameConditions {
 		if(!gameOver && !delaying){
 			gameTimer -= delta;
 			roundTimer -= delta;
-			
+
 			if(gameTimer <= 0){
 				gameOver = true;
 				gameOver();
 			}
-			
+
 			//Check whether all players have been eliminated
 			for(int i = 0; i < players.size(); i++){
 				if(players.get(i).isActive() && players.get(i).isEliminated()){
@@ -139,12 +141,12 @@ public class GameConditions {
 					roundWinner = players.get(i);
 				}
 			}
-			
+
 			//Winning by rounds
 			if((roundWinner != null && eliminatedPlayerCount >= players.size()-1 && !(players.size() <= 1))
 					|| roundTimer <= 0){
 				System.out.println("Winner of round #" + roundCounter + ": "+ roundWinner.getName());
-				
+
 				//Check if it's the last round
 				if(roundCounter >= rounds){
 					//The game is over if the current round exceeds 
@@ -157,7 +159,7 @@ public class GameConditions {
 					newRoundDelayTimer(5000);
 				}
 			}
-			
+
 			//Winning by score
 			for(Player p: players){
 				if(p.getScore() >= scoreLimit){
@@ -176,7 +178,7 @@ public class GameConditions {
 			}
 		}
 	}
-	
+
 	/**
 	 * Get the timer of the delay.
 	 * @return The delay timer
@@ -201,37 +203,37 @@ public class GameConditions {
 		delaying = true;
 		delayTimer = time;
 	}
-	
+
 	/**
 	 * Determines the winning player.
 	 */
 	public void gameOver(){
 		if(gameOver){
 			//Checking who's got the highest score
-			winningPlayer = getHigestScoringPlayer();
-			
+			winningPlayer = getHighestScoringPlayer();
+
 			System.out.println("Winner: " + winningPlayer.getName() + "\n------------------");
 			for(Player p : players){
 				System.out.println(p.getName() + "'s score: " + p.getScore());
 			}
 		}
 	}
-	
+
 	/**
 	 * Returns the player with the highest score.
 	 * return Player with the highest score
 	 */
-	public Player getHigestScoringPlayer(){
+	public Player getHighestScoringPlayer(){
 		Player player = players.get(0);
 		for(int i = 0; i < players.size(); i++){
 			if(getPlayerScoreAtIndex(i) > player.getScore()){
 				player = players.get(i);
 			}
 		}
-		
+
 		return player;
 	}
-	
+
 	/**
 	 * Increments every player's score.
 	 */
@@ -241,7 +243,7 @@ public class GameConditions {
 				p.setScore(p.getScore() + 1);
 		}
 	}
-	
+
 	/**
 	 * Set the spawn time of every player to the preset spawn-time.
 	 */
@@ -250,7 +252,7 @@ public class GameConditions {
 			p.setRespawnTime(this.spawnTime);
 		}
 	}
-	
+
 	/**
 	 * Set the lives of every player to the preset lives.
 	 */
@@ -268,7 +270,7 @@ public class GameConditions {
 	public int getPlayerScoreAtIndex(int index){
 		return players.get(index).getScore();
 	}
-	
+
 	/**
 	 * Add a player to the playerList.
 	 * @param player The player you want to add
@@ -292,7 +294,7 @@ public class GameConditions {
 	public void setScoreLimit(int scoreLimit) {
 		this.scoreLimit = scoreLimit;
 	}
-	
+
 	/**
 	 * Return the number of the current round.
 	 * @return The number of the current round
@@ -316,7 +318,7 @@ public class GameConditions {
 	public boolean isGameOver() {
 		return gameOver;
 	}
-	
+
 	/**
 	 * Set the state of gameOver.
 	 * @param gameOver What gameOver should be set to (true/false)
@@ -377,7 +379,7 @@ public class GameConditions {
 	 * Return a list of all the players.
 	 * @return A list of all the players
 	 */
-	public List<Player> getPlayers() {
+	public ArrayList<Player> getPlayerList() {
 		return players;
 	}
 
@@ -396,7 +398,7 @@ public class GameConditions {
 	public void setPowerupLimit(int powerupLimit) {
 		this.powerupLimit = powerupLimit;
 	}
-	
+
 	/**
 	 * Get the maximum amount of weapons that can be out at once.
 	 * @return The weapon limit

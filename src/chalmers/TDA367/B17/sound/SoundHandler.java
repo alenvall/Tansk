@@ -7,14 +7,14 @@ import java.util.Map;
 
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
-import org.newdawn.slick.geom.Vector2f;
 
-import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
 
 public class SoundHandler {
 	
 	private Map<String, Sound> sounds;
+	
+	private float volume = 0.5f;
 
 	/**
 	 * Create a new SoundHandler.
@@ -27,23 +27,32 @@ public class SoundHandler {
 	 * Play sound related to an event.
 	 * @param event a GameEvent
 	 */
-	public void handleEvent(GameEvent event){
-		if(event.getEventType().equals("TANK_DEATH_EVENT")) {
-			sounds.get("Tank_Destroyed").play();
-			Vector2f tmpPos = event.getSource().getSpritePosition();
-			GameController.getInstance().getAnimationHandler().newExplosion(new Vector2f(tmpPos.x-24, tmpPos.y-31));
-		}else if(event.getEventType().equals("DEFAULTTURRET_FIRE_EVENT")){
-			sounds.get("Default_Firing").play();
-		}else if(event.getEventType().equals("TANK_HIT_EVENT")){
-			sounds.get("Tank_Hit").play();
-		}else if(event.getEventType().equals("FLAMETHROWER_EVENT")){
-			Sound tmp = sounds.get("Flamethrower_Firing");
-			tmp.play(1, 135);
-		}else if(event.getEventType().equals("SHOTGUN_EVENT")){
-			sounds.get("Shotgun_Firing").play();
+	public void playSound(GameEvent event){
+		if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
+			sounds.get("Tank_Destroyed").play(1, volume);
+		}else if(event.getEventDesc().equals("DEFAULTTURRET_FIRE_EVENT")){
+			sounds.get("Default_Firing").play(1, volume);
+		}else if(event.getEventDesc().equals("TANK_HIT_EVENT")){
+			sounds.get("Tank_Hit").play(1, volume);
+		}else if(event.getEventDesc().equals("FLAMETHROWER_EVENT")){
+			sounds.get("Flamethrower_Firing").play(1, volume);
+		}else if(event.getEventDesc().equals("SHOTGUN_FIRE_EVENT")){
+			sounds.get("Shotgun_Firing").play(1, volume);
+		}else if(event.getEventDesc().equals("SLOWSPEEDY_FIRE_SECONDARY_EVENT")){
+			sounds.get("Slowspeedy_Firing").play(1, volume);
+		}else if(event.getEventDesc().equals("SLOWSPEEDY_FIRE_EVENT")){
+			sounds.get("Shockwave_Firing").play(1, volume);
+		}else if(event.getEventDesc().equals("SHOCKWAVE_DETONATE_EVENT")){
+			// no sound yet
+		}else if(event.getEventDesc().equals("SHOCKWAVE_FIRE_EVENT")){
+			// no sound yet			
 		}
 	}
 	
+	/**
+	 * Loads all available sound files from a directory.
+	 * @param directory The target directory
+	 */
 	public void loadEverySound(String directory){
 		File folder = new File(directory);
 		File[] listOfFiles = folder.listFiles();
@@ -62,5 +71,16 @@ public class SoundHandler {
 			}
 		}
         System.out.println("SoundHandler: Loaded sound.");
+	}
+
+	public void setVolume(float volume) {
+		this.volume = volume;
+	}
+	public float getVolume() {
+		return volume;
+	}
+	
+	public boolean isSoundOn(){
+		return volume != 0;
 	}
 }

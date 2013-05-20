@@ -2,8 +2,6 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Vector2f;
 
-import chalmers.TDA367.B17.controller.GameController;
-
 public abstract class AbstractSpawnPoint extends Entity{
 	
 	//Used to check if the spawnpoint isn't colliding with anything 
@@ -14,10 +12,11 @@ public abstract class AbstractSpawnPoint extends Entity{
 	 * Create a new AbstractSpawnPoint.
 	 * @param position The position of this spawn-point.
 	 */
-	public AbstractSpawnPoint(Vector2f position) {
+	public AbstractSpawnPoint(int id, Vector2f position) {
+		super(id);
 		setPosition(position);
 		spawnable = false;
-		renderLayer = GameController.RenderLayer.FIRST;
+		renderLayer = RenderLayer.FIRST;
 	}
 	
 	/**

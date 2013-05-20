@@ -15,10 +15,11 @@ public class HealthPowerUp extends AbstractPowerUp {
 	 * Create a new HealthPowerUp at a position.
 	 * @param position The position of this powerup
 	 */
-	public HealthPowerUp(Vector2f position) {
-		super(position);
+	public HealthPowerUp(int id, Vector2f position) {
+		super(id, position);
 		setEffectDuration(1);
 		setSpriteID("health_powerup");
+		GameController.getInstance().getWorld().addEntity(this);
 	}
 
 	@Override

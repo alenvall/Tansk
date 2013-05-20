@@ -8,16 +8,19 @@ import chalmers.TDA367.B17.model.AbstractTank;
 
 public class ShieldPowerUp extends AbstractPowerUp {
 
+
+	
 	/**
 	 * Create a new ShieldPowerUp at a position.
 	 * @param position The position of this powerup
 	 */
-	public ShieldPowerUp(Vector2f position) {
-		super(position);
+	public ShieldPowerUp(int id, Vector2f position) {
+		super(id, position);
 		effectDuration = 1;
 		spriteID = "shield_powerup";
+		GameController.getInstance().getWorld().addEntity(this);
 	}
-	
+
 	/**
 	 * Create a new shield for the stored tank.
 	 */
@@ -26,7 +29,7 @@ public class ShieldPowerUp extends AbstractPowerUp {
 			absTank.getShield().destroy();
 			absTank.setShield(null);
 		}
-		absTank.setShield(new Shield(absTank, 99999));
+		absTank.setShield(new Shield(GameController.getInstance().generateID(), absTank, 99999));
 	}
 
 	@Override

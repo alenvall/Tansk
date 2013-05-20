@@ -13,7 +13,7 @@ public class MovableEntityTest {
 	
 	class MovableEntityMock extends MovableEntity{
 		protected MovableEntityMock(){
-			super(new Vector2f(), 0, 0);
+			super(0, new Vector2f(), 0, 0);
 		}
 	}
 
@@ -84,7 +84,7 @@ public class MovableEntityTest {
 		mEntity.setSpeed(10);
 		mEntity.setPosition(new Vector2f(5,5));
 		mEntity.setDirection(new Vector2f(1,1));
-		mEntity.move(60); //(direction*speed) + position
+		mEntity.move(1); //(direction*speed) + position
 		assertTrue(mEntity.getPosition().equals(new Vector2f(15, 15)));
 	}
 
@@ -94,7 +94,7 @@ public class MovableEntityTest {
 		mEntity.setMaxSpeed(10);
 		mEntity.setSpeed(5);
 		mEntity.setAcceleration(2);
-		mEntity.accelerate(60);
+		mEntity.accelerate(1);
 		assertTrue(mEntity.getSpeed() == 7);
 	}
 
@@ -105,21 +105,21 @@ public class MovableEntityTest {
 		mEntity.setMinSpeed(-5);
 		mEntity.setSpeed(5);
 		mEntity.setFriction(2);
-		mEntity.friction(60);
+		mEntity.friction(1);
 		//-------------------//
 		MovableEntity mEntity2 = new MovableEntityMock();
 		mEntity2.setMaxSpeed(10);
 		mEntity2.setMinSpeed(-5);
 		mEntity2.setSpeed(-3);
 		mEntity2.setFriction(2);
-		mEntity2.friction(60);
+		mEntity2.friction(1);
 		//-------------------//
 		MovableEntity mEntity3 = new MovableEntityMock();
 		mEntity3.setMaxSpeed(10);
 		mEntity3.setMinSpeed(-5);
 		mEntity3.setSpeed(-4);
 		mEntity3.setFriction(5);
-		mEntity3.friction(60);
+		mEntity3.friction(1);
 		//-------------------//
 		assertTrue(mEntity.getSpeed() == 3 && mEntity2.getSpeed() == -1 &&
 				mEntity3.getSpeed() == 0);
@@ -131,7 +131,7 @@ public class MovableEntityTest {
 		mEntity.setMaxSpeed(5);
 		mEntity.setSpeed(4);
 		mEntity.setFriction(1.5f);
-		mEntity.reverse(60);
+		mEntity.reverse(1);
 		assertTrue(mEntity.getSpeed() == 2.5f);
 	}
 	

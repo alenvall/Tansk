@@ -1,53 +1,49 @@
 package chalmers.TDA367.B17.controller;
 
-import java.awt.*;
+import java.awt.Dimension;
 
+import chalmers.TDA367.B17.Tansk;
+import chalmers.TDA367.B17.console.Console;
+import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.animations.AnimationHandler;
 import chalmers.TDA367.B17.model.GameConditions;
 import chalmers.TDA367.B17.model.World;
 import chalmers.TDA367.B17.sound.SoundHandler;
 
 public class GameController {
-
-	public static final int SCREEN_WIDTH = 1024;
-	public static final int SCREEN_HEIGHT = 768;
-	public static final String DATA_FOLDER = "data";
-	
 	private static GameController instance;
 	private World world;
+	private Console console;
+
 	private ImageHandler imgHandler;
 	private SoundHandler soundHandler;
 	private AnimationHandler animationHandler;
-	
 	private GameConditions gameConditions;
+	private int latestID;
 
-	private Point mouseCoordinates;
-
-	private GameController() {
-		mouseCoordinates = new Point();
-		imgHandler = new ImageHandler();
-		imgHandler.loadAllImages(DATA_FOLDER);
-		soundHandler = new SoundHandler();
-		soundHandler.loadEverySound(DATA_FOLDER);
-		animationHandler = new AnimationHandler();
-	}
-
-	public static enum RenderLayer{
-		FIRST, SECOND, THIRD, FOURTH
-	}
 	
+	private GameController() {
+		imgHandler = new ImageHandler();
+		imgHandler.loadAllImages(Tansk.IMAGES_FOLDER);
+		soundHandler = new SoundHandler();
+		soundHandler.loadEverySound(Tansk.SOUNDS_FOLDER);
+		animationHandler = new AnimationHandler();
+		gameConditions = new GameConditions();
+	}
+
 	public static GameController getInstance(){
-		if(instance==null)
+		if(instance == null)
 			instance = new GameController();
 		
 		return instance;
 	}
 	
 	public void newGame(int width, int height, int scoreLimit, int rounds, 
-			int playerLives, int spawnTime, int roundTime, int gameTime){
-		world = new World(new Dimension(width, height));
+			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld){
+		world = new World(new Dimension(width, height), serverWorld);
 		world.init();
-		gameConditions = new GameConditions();
+		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
 		gameConditions.init(scoreLimit, rounds, 
 				playerLives, spawnTime, roundTime, gameTime);
 	}
@@ -56,18 +52,18 @@ public class GameController {
 		return world;
 	}
 	
-	public ImageHandler getImageHandler(){
-		return imgHandler;
+	public void setWorld(World world){
+		this.world = world;
 	}
 	
-	public Point getMouseCoordinates(){
-		return mouseCoordinates;
+	public Console getConsole(){
+		return console;
 	}
 	
-	public void setMouseCoordinates(int x, int y){
-		mouseCoordinates.setLocation(x, y);
+	public void setConsole(Console console){
+		this.console = console;
 	}
-	
+
 	public GameConditions getGameConditions() {
 		return gameConditions;
 	}
@@ -83,4 +79,21 @@ public class GameController {
 	public AnimationHandler getAnimationHandler() {
 		return animationHandler;
 	}
+	
+	public ImageHandler getImageHandler() {
+		return imgHandler;
+	}
+
+	public int generateID(){
+		latestID += 1;
+		return latestID;
+	}
+
+	public void handleEvent(GameEvent event) {
+	    if(event.getEventType().equals(EventType.SOUND)){
+	    	GameController.getInstance().getSoundHandler().playSound(event);
+	    } else if(event.getEventType().equals(EventType.ANIM)){
+	    	GameController.getInstance().getAnimationHandler().playAnimation(event);
+	    }	
+    }
 }

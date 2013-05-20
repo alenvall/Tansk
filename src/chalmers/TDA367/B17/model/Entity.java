@@ -1,8 +1,7 @@
 package chalmers.TDA367.B17.model;
 
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.controller.GameController.RenderLayer;
-import chalmers.TDA367.B17.event.GameEvent;
+//import chalmers.TDA367.B17.event.GameEvent;
 import org.newdawn.slick.geom.*;
 
 public abstract class Entity{
@@ -12,20 +11,25 @@ public abstract class Entity{
 	protected String spriteID;
 	private double rotation;
 	protected RenderLayer renderLayer;
-
+	
+	public static enum RenderLayer{
+		FIRST, SECOND, THIRD, FOURTH
+	}
+	
 	public static final String ENTITY_REMOVED_EVENT = "ENTITY_REMOVED_EVENT";
 
 	/**
 	 * Create a new Entity.
 	 */
-	public Entity(){
-		this.id = GameController.getInstance().getWorld().generateID();
-		GameController.getInstance().getWorld().addEntity(this);
+	public Entity(int id){
+		this.id = id;
+//		this.id = GameController.getInstance().getWorld().generateID();
+//		GameController.getInstance().getWorld().addEntity(this);
 		active = true;
-		shape = new Point(-1, -1);
+		shape = new Point(1, 1);
 		rotation = 0;
 		spriteID = "";
-		renderLayer = GameController.RenderLayer.FOURTH;
+		renderLayer = RenderLayer.FOURTH;
 	}
 	
 	public RenderLayer getRenderLayer(){
@@ -102,10 +106,11 @@ public abstract class Entity{
 	 * @param position The values for the new position
 	 */
 	public void setPosition(Vector2f position){
-		if(this.shape instanceof Point)
+		if(this.shape instanceof Point){
 			shape.setLocation(position.x, position.y);
-		else
+		} else{
 			this.shape = this.shape.transform(Transform.createTranslateTransform(position.getX() - getPosition().getX(), position.getY() - getPosition().getY()));
+		}
 	}
 
 	/**
@@ -129,9 +134,8 @@ public abstract class Entity{
 	 * @param delta The time that has passed since the last update
 	 */
 	public void update(int delta){
-		
 	}
-
+	
 	/**
 	 * Get the position of where the entity's sprite is to be drawn.
 	 * @return The position of the entity's sprite.
@@ -152,7 +156,7 @@ public abstract class Entity{
 	 */
 	public void destroy(){
 		GameController.getInstance().getWorld().removeEntity(this);
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, ENTITY_REMOVED_EVENT));
+//		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, ENTITY_REMOVED_EVENT));
 	}
 	
 	/**

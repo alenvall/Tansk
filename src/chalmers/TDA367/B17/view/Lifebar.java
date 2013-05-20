@@ -5,6 +5,9 @@ import org.newdawn.slick.Graphics;
 
 public class Lifebar{
 	
+private static int DEFAULT_WIDTH = 200;
+private static int DEFAULT_HEIGHT = 14;
+	
 private int width;
 private int height;	
 private int x;
@@ -16,6 +19,13 @@ private int y;
 		this.x = x;
 		this.y = y;
 	}
+	
+	public Lifebar(int x, int y){
+		this.width = DEFAULT_WIDTH;
+		this.height = DEFAULT_HEIGHT;
+		this.x = x;
+		this.y = y;
+	}
 	public void render(double healthPercent, double shieldPercent, Graphics g){
 		g.setColor(Color.black);
 		g.fillRoundRect(x, y, width, height, height/2);
@@ -24,7 +34,7 @@ private int y;
 		g.fillRoundRect(x, y, (float)(width*healthPercent), height, height/2);
 		
 		g.setColor(Color.black);
-		g.setLineWidth(3);
+		g.setLineWidth(2);
 		g.drawRoundRect(x, y, width, height, height/2);
 		
 		if(shieldPercent != 0 && shieldPercent<=1){
@@ -35,7 +45,7 @@ private int y;
 			g.fillRoundRect(x, y+height+10, (float)(width*shieldPercent), height, height/2);
 			
 			g.setColor(Color.black);
-			g.setLineWidth(3);
+			g.setLineWidth(2);
 			g.drawRoundRect(x, y+height+10, width, height, height/2);
 		}
 	}

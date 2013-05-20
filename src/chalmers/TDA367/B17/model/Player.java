@@ -1,8 +1,13 @@
 package chalmers.TDA367.B17.model;
 
+import java.util.ArrayList;
+
 import chalmers.TDA367.B17.controller.GameController;
 
+import com.esotericsoftware.kryonet.Connection;
+
 public class Player {
+	private int id;
 	private String name;
 	private int playerId;
 	private int score;
@@ -10,23 +15,49 @@ public class Player {
 	private int lives;
 	private int respawnTimer;
 	private int respawnTime;
-	private String tankType;
-	private boolean active;
-	private boolean eliminated;
+	public boolean tankDead;
+	public String tankType;
+	public boolean active;
+	public boolean eliminated;
+	private Connection connection;
+	private ArrayList<Boolean> inputStatuses;
 
 	/**
 	 * Create a new Player.
 	 * @param name The player's name
 	 */
-	public Player(String name){
+	public Player(Connection connection, String name){
+		this.connection = connection;
+		this.id = connection.getID();
 		this.name = name;
 		tankType = "default";
 		active = true;
 		eliminated = false;
-		GameController.getInstance().getGameConditions().addPlayer(this);
-		setLives(GameController.getInstance().getGameConditions().getPlayerLives());
-		setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
+		inputStatuses = new ArrayList<Boolean>();
+		for(int i = 0; i < 6; i++){
+			inputStatuses.add(false);
+		}
 	}
+	
+	// only for single(Play)er state..
+	public Player(String name){
+		this.connection = null;
+		this.id = 0;
+		this.name = name;
+		tankType = "default";
+		active = true;
+		eliminated = false;
+		inputStatuses = new ArrayList<Boolean>();
+		for(int i = 0; i < 6; i++){
+			inputStatuses.add(false);
+		}
+	}
+	
+	public static final int INPT_W = 0;
+	public static final int INPT_A = 1;
+	public static final int INPT_S = 2;
+	public static final int INPT_D = 3;
+	public static final int INPT_LMB = 4;
 
 	/**
 	 * Get the players tank.
@@ -145,6 +176,7 @@ public class Player {
 			tank.destroy();
 			tank = null;
 		}
+//		ServerState.getInstance().addPlayer(this);
 		GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
 		this.respawnTimer = respawnTime;
 	}
@@ -181,6 +213,30 @@ public class Player {
 		this.respawnTime = respawnTime;
 	}
 
+	/**
+	 * Get the id of this player.
+	 * @return The id
+	 */
+	public int getId() {
+	    return id;
+    }
+
+	public Connection getConnection() {
+	    return connection;
+    }
+
+	public void setConnection(Connection connection) {
+	    this.connection = connection;
+    }
+
+	public void setInputStatus(int key, boolean pressed) {
+	    inputStatuses.set(key, pressed);
+    }
+
+	public ArrayList<Boolean> getInput(){
+		return inputStatuses;
+	}
+	
 	/**
 	 * Check if this player has been eliminated.
 	 * @return True if the tank have zero lives
