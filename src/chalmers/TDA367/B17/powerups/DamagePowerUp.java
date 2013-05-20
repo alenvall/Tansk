@@ -23,7 +23,7 @@ public class DamagePowerUp extends AbstractPowerUp{
 	 */
 	public DamagePowerUp(int id, Vector2f position) {
 		super(id, position);
-		effectDuration = 7000;
+		setEffectDuration(7000);
 		projectiles = new ArrayList<AbstractProjectile>();
 		spriteID = "damage_powerup";
 		GameController.getInstance().getWorld().addEntity(this);

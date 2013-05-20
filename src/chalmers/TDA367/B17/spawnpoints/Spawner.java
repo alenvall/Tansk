@@ -54,7 +54,7 @@ public class Spawner {
 					while(p == null){
 						p = generateSpawnPoint();
 					}
-					PowerUpFactory.getRandomPowerUp(p);
+					PowerUpFactory.getRandomPowerUpPickup(p);
 				}
 			}
 			

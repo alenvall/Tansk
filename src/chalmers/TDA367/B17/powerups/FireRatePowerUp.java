@@ -18,8 +18,7 @@ public class FireRatePowerUp extends AbstractPowerUp {
 	 */
 	public FireRatePowerUp(int id, Vector2f position) {
 		super(id, position);
-		effectDuration = 7000;
-		spriteID = "firerate_powerup";
+		setEffectDuration(7000);
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 	
