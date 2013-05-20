@@ -145,7 +145,7 @@ public class ClientState extends BasicGameState {
 		controller.getConsole().setTimerHide(true);
 		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
 
-		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 13);
+		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 		

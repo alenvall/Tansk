@@ -75,7 +75,7 @@ public class Play extends BasicGameState{
 		super.enter(container, game);
 
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, false);
-		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 13);
+		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 
 		//Players
