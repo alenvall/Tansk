@@ -476,6 +476,9 @@ public class ClientState extends BasicGameState {
 				if(!chatField.getText().equals("")){
 					if(client != null){
 						String msg = playerName + ": " + chatField.getText();
+						msg = msg.replace('\n', ' ');
+						if(msg.length() > 39)
+							msg = msg.substring(0, 38);
 						Pck31_ChatMessage pck = new Pck31_ChatMessage();
 						pck.message = msg;
 						chatField.setText("");

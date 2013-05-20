@@ -541,7 +541,10 @@ public class ServerState extends BasicGameState {
 	}
 	
 	public void serverMessage(String message){
-		if(server != null){
+		if(server != null){		
+			message = message.replace('\n', ' ');
+			if(message.length() > 39)
+				message = message.substring(0, 38);
 			Pck3_Message pck = new Pck3_Message();
 			pck.message = message;
 			GameController.getInstance().getConsole().addMsg(message, MsgLevel.INFO);
@@ -564,12 +567,8 @@ public class ServerState extends BasicGameState {
 			if(chatField.hasFocus()){
 				if(!chatField.getText().equals("")){
 					if(server != null){
-						String msg = "Server: " + chatField.getText();
-						Pck3_Message pck = new Pck3_Message();
-						pck.message = msg;
-						GameController.getInstance().getConsole().addMsg(msg, MsgLevel.INFO);
+						serverMessage("Server: " + chatField.getText());
 						chatField.setText("");
-						addToAllClientsQueue(pck);
 					}
 				}
 				chatField.setFocus(false);
