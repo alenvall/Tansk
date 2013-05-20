@@ -10,6 +10,8 @@ public class Tansk extends StateBasedGame {
 	public static final int SCREEN_WIDTH = 1024;
 	public static final int SCREEN_HEIGHT = 768;
 	public static final String DATA_FOLDER = "data";
+	public static final String SOUNDS_FOLDER = DATA_FOLDER + "/sounds";
+	public static final String IMAGES_FOLDER = DATA_FOLDER + "/images";
 	public static final String NAME = "Tansk!";
 	public static final int MENU = 0;
 	public static final int PLAY = 5;

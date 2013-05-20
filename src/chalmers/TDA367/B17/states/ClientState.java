@@ -130,9 +130,9 @@ public class ClientState extends BasicGameState {
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
 		gc.setSmoothDeltas(true);
 		gc.setAlwaysRender(true);
-		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
+		gc.setMouseCursor(new Image(Tansk.IMAGES_FOLDER + "/crosshair.png"), 16, 16);
 		
-		map = new Image("data/map.png");
+		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
 		playerName = "Nisse" + Math.round(Math.random() * 1000);
     }
 	

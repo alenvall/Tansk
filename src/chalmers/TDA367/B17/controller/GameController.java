@@ -25,9 +25,9 @@ public class GameController {
 	
 	private GameController() {
 		imgHandler = new ImageHandler();
-		imgHandler.loadAllImages(Tansk.DATA_FOLDER);
+		imgHandler.loadAllImages(Tansk.IMAGES_FOLDER);
 		soundHandler = new SoundHandler();
-		soundHandler.loadEverySound(Tansk.DATA_FOLDER);
+		soundHandler.loadEverySound(Tansk.SOUNDS_FOLDER);
 		animationHandler = new AnimationHandler();
 		gameConditions = new GameConditions();
 	}

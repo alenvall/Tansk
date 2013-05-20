@@ -62,9 +62,9 @@ public class Play extends BasicGameState{
 	@Override
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
 		gc.setAlwaysRender(true);
-		gc.setMouseCursor(new Image("data/crosshair.png"), 16, 16);
+		gc.setMouseCursor(new Image(Tansk.IMAGES_FOLDER + "/crosshair.png"), 16, 16);
 		
-		map = new Image("data/map.png");
+		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
 		
 		input = gc.getInput();
 		input.addMouseListener(this);
