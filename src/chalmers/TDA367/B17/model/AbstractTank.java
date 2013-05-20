@@ -89,6 +89,9 @@ public abstract class AbstractTank extends MovableEntity {
 	 */
 	public void setHealth(double health) {
 		this.health = health;
+		if(this.health <= 0){
+			tankDeath();
+		}
 	}
 
 	/**
@@ -182,7 +185,6 @@ public abstract class AbstractTank extends MovableEntity {
 	}
 	
 	public void fireWeapon(int delta){
-		timeSinceLastShot -= delta;
 		if(timeSinceLastShot <= 0 && fire){
 			turret.fireWeapon(delta, this);
 			timeSinceLastShot = turret.getFireRate();
@@ -210,14 +212,9 @@ public abstract class AbstractTank extends MovableEntity {
 //		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "TANK_HIT_EVENT"));
 		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "TANK_HIT_EVENT"));
 		setHealth(getHealth() - ap.getDamage());
-		if(getHealth() <= 0){
-			tankDeath();
-		}
 	}
 	
 	public void tankDeath(){
-		setHealth(0);
-//		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, TANK_DEATH_EVENT));
 		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, TANK_DEATH_EVENT));
 		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.ANIM, this, TANK_DEATH_EVENT));
 		if(getCurrentPowerUp() != null)

@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.model;
 
 import java.util.ArrayList;
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
 
 public class GameConditions {
@@ -94,7 +95,7 @@ public class GameConditions {
 
 		for(Entity entity : GameController.getInstance().getWorld().getEntities().values()){
 			if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUp
-					|| entity instanceof AbstractWeaponPickup){
+					|| entity instanceof AbstractWeaponPickup || entity instanceof Shield){
 				entity.destroy();
 			}
 		}

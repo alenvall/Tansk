@@ -48,7 +48,6 @@ public class ShotgunTurret extends AbstractTurret {
 
 			tank.addProjectile(projectile);
 		}
-
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "SHOTGUN_EVENT"));
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "SHOTGUN_FIRE_EVENT"));
 	}
 }

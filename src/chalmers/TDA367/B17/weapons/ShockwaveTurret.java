@@ -3,6 +3,8 @@ package chalmers.TDA367.B17.weapons;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.AbstractTurret;
@@ -36,6 +38,7 @@ public class ShockwaveTurret extends AbstractTurret{
 		projectile.setDirection(angle);
 
 		tank.addProjectile(projectile);
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND,this, "SHOCKWAVE_FIRE_EVENT"));
 	}
 
 }

@@ -11,6 +11,7 @@ public class Console {
 	private final static int MESSAGE_OFFSETY = 5;
 	private final static int MESSAGE_OFFSETX = 93;
 	private final static int ROW_HEIGHT = 18;
+	private static final int HIDE_TIMER = 2500;
 	
 	private int posX;
 	private int posY;
@@ -21,6 +22,9 @@ public class Console {
 	private ArrayList<ConsoleMessage> messages;
 	private OutputLevel outputLevel;
 	private boolean visible;
+	private boolean timerHide;
+	private int timeSinceLastActive;
+	private boolean active;
 	
 	/**
 	 * Create a new console at the given position and size
@@ -72,6 +76,7 @@ public class Console {
 	 * @param conMessage The console message to add
 	 */
 	public void addMsg(ConsoleMessage conMessage){
+		setActive(true);
 		// remove of the oldest message if the number of messages exceeds max
 
 		MsgLevel msgLevel = conMessage.getMessageLevel();
@@ -107,6 +112,23 @@ public class Console {
 	 */
 	public void setOutputLevel(OutputLevel outputLvl){
 		outputLevel = outputLvl;
+	}
+	
+	/**
+	 * Updates the console and determines if it should hide
+	 * @param delta
+	 */
+	public void update(int delta){
+		if(active){
+			timeSinceLastActive += delta;
+			if(timerHide){
+				if(timeSinceLastActive >= HIDE_TIMER){
+					setVisible(false);
+					setActive(false);
+					timeSinceLastActive = 0;
+				}
+			}
+		}
 	}
 
 	/**
@@ -167,4 +189,23 @@ public class Console {
 	public void setVisible(boolean visible){
 		this.visible = visible;
 	}
+
+	/**
+	 * Set if the console should hide after a certain amount of time
+	 * @param timerHide
+	 */
+	public void setTimerHide(boolean timerHide) {
+	    this.timerHide = timerHide;
+    }
+
+	/**
+	 * Set if the console should be active. The console will not hide if active.
+	 * @param active
+	 */
+	public void setActive(boolean active) {
+	    this.active = active;
+	    timeSinceLastActive = 0;
+	    if(active)
+	    	setVisible(true);
+    }
 }

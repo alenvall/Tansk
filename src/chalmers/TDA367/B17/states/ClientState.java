@@ -132,7 +132,6 @@ public class ClientState extends BasicGameState {
 		
 		map = new Image("data/map.png");
 		playerName = "Nisse" + Math.round(Math.random() * 1000);
-		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 25);
     }
 	
 	@Override
@@ -140,9 +139,11 @@ public class ClientState extends BasicGameState {
 		super.enter(gc, game);
 
 		controller.setConsole(new Console(10, 533, 450, 192, OutputLevel.ALL));
-		controller.getConsole().setVisible(false);
+//		controller.getConsole().setVisible(false);
+		controller.getConsole().setTimerHide(true);
 		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
-		
+
+		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 13);
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		
 		packetQueue = new ConcurrentLinkedQueue<Packet>();
@@ -169,6 +170,7 @@ public class ClientState extends BasicGameState {
 			@Override
 			public void disconnected(Connection connection) {
 				GameController.getInstance().getConsole().addMsg("Disconnected from server.", MsgLevel.ERROR);
+				GameController.getInstance().getConsole().setTimerHide(false);
 			}
 		});
 		client.start();
@@ -178,14 +180,14 @@ public class ClientState extends BasicGameState {
         } catch (IOException e) {
         	Log.info("[CLIENT] Failed to connect!");
 			GameController.getInstance().getConsole().addMsg("Failed to connect to server.", MsgLevel.ERROR);
+			GameController.getInstance().getConsole().setTimerHide(false);
 	        e.printStackTrace();
 	        client.stop();
         } 
 		
 		controller.getWorld().init();
 
-		input = gc.getInput();   
-//		input.addKeyListener(this);
+		input = gc.getInput();
 		input.addMouseListener(this);
 	}	
 	
@@ -208,8 +210,26 @@ public class ClientState extends BasicGameState {
 			MapLoader.createEntities("whatever");
 			mapLoaded = true;
 		}
-		processPackets();
-					
+		
+		if(input.isKeyDown(Input.KEY_UP)){
+			float tmp = controller.getSoundHandler().getVolume();
+			if(tmp < 1){
+				tmp+=0.1;
+				controller.getSoundHandler().setVolume(tmp);
+			}
+		}
+		if(input.isKeyDown(Input.KEY_DOWN)){
+			float tmp = controller.getSoundHandler().getVolume();
+			if(tmp >= 0.1){
+				tmp-=0.1f;
+			}else if(tmp == 0.1f){
+				tmp = 0;
+			}
+			controller.getSoundHandler().setVolume(tmp);
+		}
+		
+		GameController.getInstance().getConsole().update(delta);
+		processPackets();			
 		sendClientInput(gc.getInput());
 		updates++;
 	}
@@ -246,6 +266,7 @@ public class ClientState extends BasicGameState {
 				} else {
 					GameController.getInstance().getConsole().addMsg("Connection refused by server.", MsgLevel.ERROR);
 					GameController.getInstance().getConsole().addMsg("Reason: " + ((Pck1_LoginAnswer) packet).reason, MsgLevel.ERROR);
+					GameController.getInstance().getConsole().setTimerHide(false);
 					packet.getConnection().close();
 				}
 			}
@@ -417,6 +438,8 @@ public class ClientState extends BasicGameState {
 //			g.setColor(Color.blue);
 //			g.drawLine(playerTank.getTurret().getTurretNozzle().x, playerTank.getTurret().getTurretNozzle().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
 //		}
+		g.setColor(Color.black);
+		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
 		g.setColor(Color.white);
 		g.drawString("Packet rec/sec: " + packetsRecPerSecond, 18, 320);
 		g.drawString("Packet sent/sec: " + packetsSentPerSecond, 18, 340);
@@ -446,9 +469,11 @@ public class ClientState extends BasicGameState {
 						pck.message = msg;
 						chatField.setText("");
 						client.sendTCP(pck);
+						GameController.getInstance().getConsole().setActive(true);
 					}
+				} else {
+					GameController.getInstance().getConsole().setVisible(false);
 				}
-				GameController.getInstance().getConsole().setVisible(false);
 				chatField.setFocus(false);
 			} else {
 				GameController.getInstance().getConsole().setVisible(true);

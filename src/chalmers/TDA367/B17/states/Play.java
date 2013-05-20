@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Image;
@@ -30,6 +31,7 @@ import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.terrain.BrownWall;
 import chalmers.TDA367.B17.view.Lifebar;
+import chalmers.TDA367.B17.weaponPickups.SlowspeedyPickup;
 
 public class Play extends BasicGameState{
 	
@@ -71,6 +73,7 @@ public class Play extends BasicGameState{
 		super.enter(container, game);
 
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, false);
+		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 13);
 
 		//Players
 		playerOne = new Player("Player One");
@@ -113,9 +116,7 @@ public class Play extends BasicGameState{
 		new PowerUpSpawnPoint(new Vector2f(500, 250), 10000, "firerate");
 		new PowerUpSpawnPoint(new Vector2f(750, 500), 10000, "health");
 		*/
-		
-		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 25);
-		
+
 		//TankSpawnPoints
 		TankSpawnPoint tsp = new TankSpawnPoint(GameController.getInstance().generateID(), new Vector2f(100, 100));
 		tsp.setRotation(315);
@@ -177,19 +178,31 @@ public class Play extends BasicGameState{
 		}
 		
 		if(input.isKeyDown(Input.KEY_Q)){
-			playerOne.getTank().setSpriteID("tank_red");
+			new SlowspeedyPickup(GameController.getInstance().generateID(), new Vector2f(800, 300));
 		}
-		
-		//Go back to the menu
-		if(input.isKeyDown(Input.KEY_M) && input.isKeyDown(Input.KEY_LSHIFT)){
-			sbg.enterState(0);
-		}
-		
+						
 		for(Player player : players){
 			if(player.getTank() != null){
 				AbstractTurret turret = player.getTank().getTurret();
 				turret.setRotation((float) Math.toDegrees(Math.atan2(turret.getPosition().x - input.getMouseX() + 0, turret.getPosition().y - input.getMouseY() + 0)* -1)+180);		
 			}
+		}
+		
+		if(input.isKeyDown(Input.KEY_UP)){
+			float tmp = controller.getSoundHandler().getVolume();
+			if(tmp < 1){
+				tmp+=0.1;
+				controller.getSoundHandler().setVolume(tmp);
+			}
+		}
+		if(input.isKeyDown(Input.KEY_DOWN)){
+			float tmp = controller.getSoundHandler().getVolume();
+			if(tmp >= 0.1){
+				tmp-=0.1f;
+			}else if(tmp == 0.1f){
+				tmp = 0;
+			}
+			controller.getSoundHandler().setVolume(tmp);
 		}
 		
 		//Weapons
@@ -338,6 +351,8 @@ public class Play extends BasicGameState{
 	}
 	
 	public void debugRender(Graphics g){
+		g.setColor(Color.black);
+		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
 		/*g.setColor(Color.black);
 		g.drawString("tankPosX:   " + playerOne.getTank().getPosition().x,  10, 30);
 		g.drawString("tankPosY:   " + playerOne.getTank().getPosition().y,  10, 50);

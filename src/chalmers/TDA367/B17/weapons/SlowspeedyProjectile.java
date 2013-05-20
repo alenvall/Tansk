@@ -3,10 +3,14 @@ package chalmers.TDA367.B17.weapons;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 
 public class SlowspeedyProjectile extends AbstractProjectile {
+	
+	private static int counter = 0;
 
 	/**
 	 * Create a new SlowspeedyProjectile.
@@ -25,9 +29,12 @@ public class SlowspeedyProjectile extends AbstractProjectile {
 	@Override
 	public void update(int delta) {
 		if(getSpeed() < 0.1){
-			setSpeed(getSpeed()*1.01f);
-		}else if(getSpeed() < 0.85){
-			setSpeed(getSpeed()*1.5f);
+			setSpeed(getSpeed()*1.02f);
+		}else if(getSpeed() < 0.35){
+			setSpeed(0.55f);
+			if(counter%5 == 0)
+				GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND,this, "SLOWSPEEDY_FIRE_SECONDARY_EVENT"));
+			counter++;
 		}
 		super.update(delta);
 	}

@@ -13,6 +13,8 @@ import chalmers.TDA367.B17.event.GameEvent;
 public class SoundHandler {
 	
 	private Map<String, Sound> sounds;
+	
+	private float volume = 0.5f;
 
 	/**
 	 * Create a new SoundHandler.
@@ -27,19 +29,23 @@ public class SoundHandler {
 	 */
 	public void playSound(GameEvent event){
 		if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
-			sounds.get("Tank_Destroyed").play();
-//			moved to AnimationHandler:
-//			Vector2f tmpPos = event.getSource().getSpritePosition();
-//			GameController.getInstance().getAnimationHandler().newExplosion(new Vector2f(tmpPos.x-24, tmpPos.y-31));
+			sounds.get("Tank_Destroyed").play(1, volume);
 		}else if(event.getEventDesc().equals("DEFAULTTURRET_FIRE_EVENT")){
-			sounds.get("Default_Firing").play();
+			sounds.get("Default_Firing").play(1, volume);
 		}else if(event.getEventDesc().equals("TANK_HIT_EVENT")){
-			sounds.get("Tank_Hit").play();
+			sounds.get("Tank_Hit").play(1, volume);
 		}else if(event.getEventDesc().equals("FLAMETHROWER_EVENT")){
-			Sound tmp = sounds.get("Flamethrower_Firing");
-			tmp.play(1, 135);
-		}else if(event.getEventDesc().equals("SHOTGUN_EVENT")){
-			sounds.get("Shotgun_Firing").play();
+			sounds.get("Flamethrower_Firing").play(1, volume);
+		}else if(event.getEventDesc().equals("SHOTGUN_FIRE_EVENT")){
+			sounds.get("Shotgun_Firing").play(1, volume);
+		}else if(event.getEventDesc().equals("SLOWSPEEDY_FIRE_SECONDARY_EVENT")){
+			sounds.get("Slowspeedy_Firing").play(1, volume);
+		}else if(event.getEventDesc().equals("SLOWSPEEDY_FIRE_EVENT")){
+			sounds.get("Shockwave_Firing").play(1, volume);
+		}else if(event.getEventDesc().equals("SHOCKWAVE_DETONATE_EVENT")){
+			// no sound yet
+		}else if(event.getEventDesc().equals("SHOCKWAVE_FIRE_EVENT")){
+			// no sound yet			
 		}
 	}
 	
@@ -65,5 +71,12 @@ public class SoundHandler {
 			}
 		}
         System.out.println("SoundHandler: Loaded sound.");
+	}
+
+	public void setVolume(float volume) {
+		this.volume = volume;
+	}
+	public float getVolume() {
+		return volume;
 	}
 }
