@@ -14,6 +14,7 @@ import chalmers.TDA367.B17.network.Network.Pck11_PickupCreated;
 import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
 import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
 import chalmers.TDA367.B17.powerups.Shield;
+import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
 import chalmers.TDA367.B17.spawnpoints.PowerUpSpawnPoint;
 import chalmers.TDA367.B17.spawnpoints.Spawner;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
@@ -69,7 +70,7 @@ public class World {
 					tankPacket.identifier = ((AbstractTank) newEntity).getClass().getSimpleName();
 					tankPacket.direction = ((AbstractTank) newEntity).getDirection();
 					ServerState.getInstance().addToAllClientsQueue(tankPacket);
-				} else if((newEntity instanceof AbstractWeaponPickup) || (newEntity instanceof AbstractPowerUp)) {
+				} else if((newEntity instanceof AbstractWeaponPickup) || (newEntity instanceof AbstractPowerUpPickup)) {
 					Pck11_PickupCreated pickPck = new Pck11_PickupCreated();
 					pickPck.entityID = newEntity.getId();
 					pickPck.identifier = newEntity.getClass().getSimpleName();

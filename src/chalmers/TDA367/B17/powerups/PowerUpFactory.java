@@ -20,7 +20,7 @@ public class PowerUpFactory {
 	 * @return A random powerup pickup.
 	 */
 	public static AbstractPowerUpPickup getRandomPowerUpPickup(Vector2f position){
-		int rand = (int)(Math.random()*1);
+		int rand = (int)(Math.random()*5);
 		if(rand == 1){
 			return new FireRatePowerUpPickup(GameController.getInstance().generateID(), position);
 		}else if(rand == 2){

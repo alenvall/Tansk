@@ -60,6 +60,11 @@ import chalmers.TDA367.B17.powerups.HealthPowerUp;
 import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.powerups.ShieldPowerUp;
 import chalmers.TDA367.B17.powerups.SpeedPowerUp;
+import chalmers.TDA367.B17.powerups.powerupPickups.DamagePowerUpPickup;
+import chalmers.TDA367.B17.powerups.powerupPickups.FireRatePowerUpPickup;
+import chalmers.TDA367.B17.powerups.powerupPickups.HealthPowerUpPickup;
+import chalmers.TDA367.B17.powerups.powerupPickups.ShieldPowerUpPickup;
+import chalmers.TDA367.B17.powerups.powerupPickups.SpeedPowerUpPickup;
 import chalmers.TDA367.B17.tanks.DefaultTank;
 import chalmers.TDA367.B17.view.Lifebar;
 import chalmers.TDA367.B17.view.SoundSwitch;
@@ -506,16 +511,16 @@ public class ClientState extends BasicGameState {
 			new SlowspeedyPickup(entityID, position);
 		}  else if(identifier.equals("ShotgunPickup")){
 			new ShotgunPickup(entityID, position);
-		}  else if(identifier.equals("DamagePowerUp")){
-			new DamagePowerUp(entityID, position);
-		}  else if(identifier.equals("FireRatePowerUp")){
-			new FireRatePowerUp(entityID, position);
-		}  else if(identifier.equals("HealthPowerUp")){
-			new HealthPowerUp(entityID, position);
-		}  else if(identifier.equals("ShieldPowerUp")){
-			new ShieldPowerUp(entityID, position);
-		}  else if(identifier.equals("SpeedPowerUp")){
-			new SpeedPowerUp(entityID, position);
+		}  else if(identifier.equals("DamagePowerUpPickup")){
+			new DamagePowerUpPickup(entityID, position);
+		}  else if(identifier.equals("FireRatePowerUpPickup")){
+			new FireRatePowerUpPickup(entityID, position);
+		}  else if(identifier.equals("HealthPowerUpPickup")){
+			new HealthPowerUpPickup(entityID, position);
+		}  else if(identifier.equals("ShieldPowerUpPickup")){
+			new ShieldPowerUpPickup(entityID, position);
+		}  else if(identifier.equals("SpeedPowerUpPickup")){
+			new SpeedPowerUpPickup(entityID, position);
 		} 
 	}
 	
