@@ -294,9 +294,9 @@ public class Play extends BasicGameState{
 		}
 		
 		controller.getAnimationHandler().renderAnimations();
-
 		controller.getConsole().renderMessages(g);
 		debugRender(g);
+		
 		if(playerOne.getTank() != null){
 			if(playerOne.getTank().getShield() != null && playerOne.getTank().getShield().getHealth() <= 100){
 				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), playerOne.getTank().getShield().getHealth()/playerOne.getTank().getMaxShieldHealth(), g);

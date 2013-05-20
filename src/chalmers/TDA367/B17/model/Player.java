@@ -51,9 +51,6 @@ public class Player {
 		for(int i = 0; i < 6; i++){
 			inputStatuses.add(false);
 		}
-//		GameController.getInstance().getGameConditions().addPlayer(this);
-//		setLives(GameController.getInstance().getGameConditions().getPlayerLives());
-//		setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
 	}
 	
 	public static final int INPT_W = 0;
