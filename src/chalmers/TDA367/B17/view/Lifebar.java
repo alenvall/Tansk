@@ -5,6 +5,9 @@ import org.newdawn.slick.Graphics;
 
 public class Lifebar{
 	
+private static int DEFAULT_WIDTH = 100;
+private static int DEFAULT_HEIGHT = 13;
+	
 private int width;
 private int height;	
 private int x;
@@ -13,6 +16,13 @@ private int y;
 	public Lifebar(int x, int y, int width, int height){
 		this.width = width;
 		this.height = height;
+		this.x = x;
+		this.y = y;
+	}
+	
+	public Lifebar(int x, int y){
+		this.width = DEFAULT_WIDTH;
+		this.height = DEFAULT_HEIGHT;
 		this.x = x;
 		this.y = y;
 	}
