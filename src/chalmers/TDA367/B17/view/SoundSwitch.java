@@ -26,17 +26,6 @@ public class SoundSwitch {
 			g.drawImage(controller.getImageHandler().getSprite("speaker_off"), x, y);
 		}
 	}
-	/*
-	public void soundOnOff(float volume){
-		if(isSoundOn){
-			storedVolume = volume;
-			GameController.getInstance().getSoundHandler().setVolume(0);
-			isSoundOn = false;
-		}else{
-			isSoundOn = true;
-			GameController.getInstance().getSoundHandler().setVolume(storedVolume);
-		}
-	}*/
 	
 	public void turnSoundOff(float volume){
 		storedVolume = volume;
