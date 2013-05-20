@@ -56,7 +56,7 @@ public class Play extends BasicGameState{
 	public Play(int state) {
 	    this.state = state;
 		controller = GameController.getInstance();
-		controller.setConsole(new Console(10, 565, 450, 192, OutputLevel.ALL));
+		controller.setConsole(new Console(10, 565, 450, 192, OutputLevel.ALL, false));
 	}
 	
 	@Override

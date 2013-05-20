@@ -21,10 +21,11 @@ public class Console {
 	private int maxMessages;
 	private ArrayList<ConsoleMessage> messages;
 	private OutputLevel outputLevel;
+	private boolean border;
 	private boolean visible;
+	private boolean active;
 	private boolean timerHide;
 	private int timeSinceLastActive;
-	private boolean active;
 	
 	/**
 	 * Create a new console at the given position and size
@@ -34,13 +35,14 @@ public class Console {
 	 * @param height
 	 * @param initialOutputLevel
 	 */
-	public Console(int posX, int posY, int width, int height, OutputLevel initialOutputLevel){
+	public Console(int posX, int posY, int width, int height, OutputLevel initialOutputLevel, boolean border){
 		messages = new ArrayList<ConsoleMessage>();
 		this.posX = posX;
 		this.posY = posY;
 		this.width = width;
 		this.height = height;
 		outputLevel = initialOutputLevel;
+		this.border = border;
 		visible = true;
 		
 		maxMessages = (height-2*MESSAGE_OFFSETY) / (ROW_HEIGHT);
@@ -137,10 +139,13 @@ public class Console {
 	 */
 	public void renderMessages(Graphics graphics) {	
 		if(visible){
-			// draw the console "window"
-			graphics.setColor(Color.white);
-			graphics.drawRect(posX, posY, width, height);
-						
+			
+			if(border){
+				// draw the console "window"
+				graphics.setColor(Color.white);
+				graphics.drawRect(posX, posY, width, height);
+			}
+			
 			if(!messages.isEmpty()){
 				// draw the oldest message above the newer messages
 				for(int i = 0; i < messages.size(); i++){

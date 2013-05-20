@@ -110,7 +110,7 @@ public class ServerState extends BasicGameState {
 		super.enter(container, game);
 
 		int width = 600;
-		controller.setConsole(new Console(10, 533, width, 192, OutputLevel.ALL));;
+		controller.setConsole(new Console(10, 533, width, 192, OutputLevel.ALL, true));;
 		chatField = new TextField(container, container.getDefaultFont(), 10, 733, width, 23);
 		
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, true);

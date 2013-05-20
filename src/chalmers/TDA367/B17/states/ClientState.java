@@ -140,7 +140,7 @@ public class ClientState extends BasicGameState {
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
 
-		controller.setConsole(new Console(10, 533, 450, 192, OutputLevel.ALL));
+		controller.setConsole(new Console(10, 533, 450, 192, OutputLevel.ALL, false));
 //		controller.getConsole().setVisible(false);
 		controller.getConsole().setTimerHide(true);
 		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
