@@ -11,6 +11,7 @@ import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.powerups.PowerUpFactory;
+import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
 import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
 import chalmers.TDA367.B17.weaponPickups.WeaponFactory;
 
@@ -109,7 +110,7 @@ public class Spawner {
 			
 			public void didCollideWith(Entity entity){
 				if(entity instanceof AbstractSpawnPoint || entity instanceof AbstractTank 
-						|| entity instanceof AbstractPowerUp || entity instanceof AbstractWeaponPickup
+						|| entity instanceof AbstractPowerUpPickup || entity instanceof AbstractWeaponPickup
 						|| entity instanceof AbstractObstacle){
 					blocked = true;
 				}
