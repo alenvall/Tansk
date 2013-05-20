@@ -13,7 +13,7 @@ public abstract class AbstractWeaponPickup extends Entity{
 	protected String type;
 
 	/**
-	 * Create a new AbstractPowerUp.
+	 * Create a new AbstractWeaponPickup.
 	 */
 	public AbstractWeaponPickup(int id, Vector2f position) {
 		super(id);
@@ -27,7 +27,7 @@ public abstract class AbstractWeaponPickup extends Entity{
 	}
 
 	/**
-	 * Get the name of this power up.
+	 * Get the name of this weapon pickup.
 	 * @return the name
 	 */
 	public String getName() {
@@ -35,16 +35,22 @@ public abstract class AbstractWeaponPickup extends Entity{
 	}
 
 	/**
-	 * Set the name of this power up.
+	 * Set the name of this weapon pickup.
 	 * @param name the new name
 	 */
 	public void setName(String name) {
 		this.name = name;
 	}
 	
+	@Override
 	public void update(int delta) {
 		
 	}
+	
+	/**
+	 * Activate to change the weapon (turret) of a tank.
+	 * @param absTank The tank to receive the weapon
+	 */
 	public void activate(AbstractTank absTank){
 		this.absTank = absTank;
 		spriteID = "";
@@ -55,6 +61,7 @@ public abstract class AbstractWeaponPickup extends Entity{
 		(GameController.getInstance().getWorld().getSpawner().getWeaponCount() - 1);
 	}
 	
+	@Override
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractTank){
 			activate((AbstractTank)entity);

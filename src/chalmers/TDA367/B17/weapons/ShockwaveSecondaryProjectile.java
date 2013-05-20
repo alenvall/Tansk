@@ -14,6 +14,13 @@ public class ShockwaveSecondaryProjectile extends AbstractProjectile {
 	//Used to check the amount of times this shockwave has hit a target. 
 	ShockwaveProjectile shockproj;
 
+	/**
+	 * Create a new ShockwaveSecondaryProjectile.
+	 * @param id The id
+	 * @param tank The tank it belongs to
+	 * @param position The position
+	 * @param sp The ShockwaveProjectile that is the origin
+	 */
 	public ShockwaveSecondaryProjectile(int id, AbstractTank tank, Vector2f position, ShockwaveProjectile sp) {
 		super(id, tank, position, new Vector2f(1,1), 100, 0, 10, 1200);	
 		setSpeed(0.05f);

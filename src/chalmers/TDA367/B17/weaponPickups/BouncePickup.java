@@ -8,6 +8,11 @@ import chalmers.TDA367.B17.weapons.BounceTurret;
 
 public class BouncePickup extends AbstractWeaponPickup{
 
+	/**
+	 * Create a new BouncePickup.
+	 * @param id The id
+	 * @param position The position
+	 */
 	public BouncePickup(int id, Vector2f position) {
 		super(id, position);
 		spriteID = "BounceGunIcon";

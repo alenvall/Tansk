@@ -34,6 +34,11 @@ public class World {
 	//A spawner that spawns powerup and weapons.
 	private Spawner spawner;
 	
+	/**
+	 * Create a new world.
+	 * @param size The size of the world
+	 * @param serverWorld If the world is server or client based
+	 */
 	public World(Dimension size, boolean serverWorld) {
 		this.size = size;
 		this.serverWorld = serverWorld;
@@ -85,6 +90,10 @@ public class World {
 		entities.put(newEntity.getId(), newEntity);
 	}
 
+	/**
+	 * Remove an entity with a specific id from this world.
+	 * @param id The id of the entity to be removed
+	 */
 	public void removeEntity(int id){
 		removeEntity(getEntity(id));
 	}
@@ -175,6 +184,10 @@ public class World {
 		return spawner;
 	}
 	
+	/**
+	 * Handle a GameEvent.
+	 * @param event The event to be handled
+	 */
 	public void handleEvent(GameEvent event){
 		if(serverWorld){
 			ServerState.getInstance().sendEvent(event);

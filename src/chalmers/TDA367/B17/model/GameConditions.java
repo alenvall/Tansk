@@ -208,7 +208,7 @@ public class GameConditions {
 	public void gameOver(){
 		if(gameOver){
 			//Checking who's got the highest score
-			winningPlayer = getHigestScoringPlayer();
+			winningPlayer = getHighestScoringPlayer();
 
 			System.out.println("Winner: " + winningPlayer.getName() + "\n------------------");
 			for(Player p : players){
@@ -221,7 +221,7 @@ public class GameConditions {
 	 * Returns the player with the highest score.
 	 * return Player with the highest score
 	 */
-	public Player getHigestScoringPlayer(){
+	public Player getHighestScoringPlayer(){
 		Player player = players.get(0);
 		for(int i = 0; i < players.size(); i++){
 			if(getPlayerScoreAtIndex(i) > player.getScore()){

@@ -12,6 +12,11 @@ public class TankFactory {
 
 	private TankFactory() {}
 
+	/**
+	 * Get a tank based on a player's tank type.
+	 * @param player The new owner of the tank
+	 * @return A tank based on a player's type
+	 */
 	public static AbstractTank getTank(Player player){
 		AbstractTank tank;
 		if(player.tankType.equals("default")){

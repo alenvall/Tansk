@@ -26,12 +26,12 @@ public class TankSpawner{
 	 * @param delta The time that has passed since the last update
 	 */
 	public void update(int delta){
+		//Loops through the playersToSpawn list and reduces their respawn time.
 		for(int i = 0; i < playersToSpawn.size(); i++){
 			Player p = playersToSpawn.get(i);
 			p.setRespawnTimer(p.getRespawnTimer() - delta);
 			if(p.getRespawnTimer() <= 0){
 				GameController controller = GameController.getInstance();
-				//Bad place to run this
 				Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
 				while(iterator.hasNext()){
 					Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();

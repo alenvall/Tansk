@@ -70,10 +70,18 @@ public class Shield extends Entity {
 		}
 	}
 
+	/**
+	 * Get the health of this shield.
+	 * @return
+	 */
 	public double getHealth() {
 		return health;
 	}
 
+	/**
+	 * Set the health of this shield.
+	 * @param health The new health
+	 */
 	public void setHealth(double health) {
 		this.health = health;
 	}

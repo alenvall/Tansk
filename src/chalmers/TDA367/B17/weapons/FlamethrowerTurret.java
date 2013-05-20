@@ -11,14 +11,16 @@ import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class FlamethrowerTurret extends AbstractTurret {
 	
-	private static int DEFAULT_AMMO = 500;
+	private static final int DEFAULT_AMMO = 500;
 	private int ammoLeft;
 
-
+	/**
+	 * Create a new FlamethrowerTurret.
+	 * @param id The id
+	 * @param tank The tank it belongs to
+	 */
 	public FlamethrowerTurret(int id, Vector2f position, double startingRotation, AbstractTank tank)  {
 		super(id, position, startingRotation,  tank);
-		turretCenter = new Vector2f(22.5f, 22.5f);
-		turretLength = 42f;
 		ammoLeft = DEFAULT_AMMO;
 		turretCenter = new Vector2f(16.875f, 16.875f);
 		turretLength = 31.5f;
