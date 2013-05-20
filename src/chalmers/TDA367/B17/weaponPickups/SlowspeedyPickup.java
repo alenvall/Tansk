@@ -8,6 +8,11 @@ import chalmers.TDA367.B17.weapons.SlowspeedyTurret;
 
 public class SlowspeedyPickup extends AbstractWeaponPickup{
 
+	/**
+	 * Create a new SlowspeedyPickup.
+	 * @param id The id
+	 * @param position The position
+	 */
 	public SlowspeedyPickup(int id, Vector2f position) {
 		super(id, position);
 		spriteID = "SlowspeedyIcon";

@@ -8,6 +8,12 @@ import chalmers.TDA367.B17.model.AbstractTank;
 
 public class SlowspeedyProjectile extends AbstractProjectile {
 
+	/**
+	 * Create a new SlowspeedyProjectile.
+	 * @param id The id
+	 * @param tank The tank it belongs to
+	 * @param position The position
+	 */
 	public SlowspeedyProjectile(int id, AbstractTank tank, Vector2f position) {
 		super(id, tank, position, new Vector2f(1,1), 100, 0, 5, 3000);
 		setSpeed(0.05f);

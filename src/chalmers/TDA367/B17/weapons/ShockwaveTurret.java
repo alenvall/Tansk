@@ -9,6 +9,11 @@ import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class ShockwaveTurret extends AbstractTurret{
 
+	/**
+	 * Create a new ShockwaveTurret.
+	 * @param id The id
+	 * @param tank The tank it belongs to
+	 */
 	public ShockwaveTurret(int id, AbstractTank tank) {
 		super(id, tank);
 		turretCenter = new Vector2f(16.875f, 16.875f);

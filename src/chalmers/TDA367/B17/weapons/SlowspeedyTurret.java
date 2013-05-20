@@ -9,6 +9,11 @@ import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class SlowspeedyTurret extends AbstractTurret {
 
+	/**
+	 * Create a new SlowspeedyTurret.
+	 * @param id The id
+	 * @param tank The tank it belongs to
+	 */
 	public SlowspeedyTurret(int id, AbstractTank tank) {
 		super(id, tank);
 		turretCenter = new Vector2f(16.875f, 16.875f);

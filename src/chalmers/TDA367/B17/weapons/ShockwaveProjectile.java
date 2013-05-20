@@ -16,8 +16,15 @@ public class ShockwaveProjectile extends AbstractProjectile {
 
 	private boolean activated = false;
 
+	//Used to handle the amount of times a single tank has been hit by a shockwave.
 	protected Map<AbstractTank, Integer> tankMap = new HashMap<AbstractTank, Integer>();
 
+	/**
+	 * Create a new ShockwaveProjectile.
+	 * @param id The id
+	 * @param tank The tank it belongs to
+	 * @param position The position
+	 */
 	public ShockwaveProjectile(int id, AbstractTank tank, Vector2f position) {
 		super(id, tank, position, new Vector2f(1,1), 100, 0, 0.5, 1500);
 		setSpeed(0.2f);
@@ -26,6 +33,9 @@ public class ShockwaveProjectile extends AbstractProjectile {
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 
+	/**
+	 * Launch a shockwave of ShockwaveSecondaryProjectiles.
+	 */
 	public void detonate(){
 		activated = true;
 		for(int i = 0; i < 40; i++){
@@ -46,6 +56,7 @@ public class ShockwaveProjectile extends AbstractProjectile {
 		super.update(delta);
 	}
 
+	@Override
 	public void didCollideWith(Entity entity){
 		if(entity instanceof MapBounds || entity instanceof AbstractObstacle || entity instanceof AbstractTank){
 			if(entity instanceof AbstractTank){
@@ -58,6 +69,11 @@ public class ShockwaveProjectile extends AbstractProjectile {
 		}
 	}
 
+	/**
+	 * Handle the amount of times a tank can be hit.
+	 * @param tank The tank that's hit
+	 * @return How many times the tank has been damaged
+	 */
 	public int tankDamaged(AbstractTank tank){
 		if(!tankMap.containsKey(tank)){
 			tankMap.put(tank, 1);

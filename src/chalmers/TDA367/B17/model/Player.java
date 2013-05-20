@@ -216,6 +216,10 @@ public class Player {
 		this.respawnTime = respawnTime;
 	}
 
+	/**
+	 * Get the id of this player.
+	 * @return The id
+	 */
 	public int getId() {
 	    return id;
     }
