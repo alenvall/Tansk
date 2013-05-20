@@ -10,14 +10,12 @@ public class SoundSwitch {
 	
 	private int x;
 	private int y;
-	private boolean isSoundOn;
 	private float storedVolume;
 	private GameController controller;
 	
 	public SoundSwitch(int x, int y){
 		this.x = x;
 		this.y = y;
-		isSoundOn = true;
 		controller = GameController.getInstance();
 	}
 	
