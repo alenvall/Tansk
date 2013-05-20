@@ -6,7 +6,6 @@ import org.newdawn.slick.geom.Vector2f;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
-import chalmers.TDA367.B17.model.Entity.RenderLayer;
 
 public abstract class AbstractPowerUpPickup extends Entity{
 
