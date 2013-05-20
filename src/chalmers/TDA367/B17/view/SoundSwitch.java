@@ -3,7 +3,6 @@ package chalmers.TDA367.B17.view;
 import org.newdawn.slick.Graphics;
 
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.sound.SoundHandler;
 
 
 public class SoundSwitch {
