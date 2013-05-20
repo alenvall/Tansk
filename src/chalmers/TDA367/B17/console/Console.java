@@ -28,12 +28,13 @@ public class Console {
 	private int timeSinceLastActive;
 	
 	/**
-	 * Create a new console at the given position and size
+	 * Create a new console at the given position and size with a starting output level and an optional border
 	 * @param posX
 	 * @param posY
 	 * @param width
 	 * @param height
 	 * @param initialOutputLevel
+	 * @param border
 	 */
 	public Console(int posX, int posY, int width, int height, OutputLevel initialOutputLevel, boolean border){
 		messages = new ArrayList<ConsoleMessage>();
