@@ -193,15 +193,17 @@ public class Play extends BasicGameState{
 		
 		if(input.isKeyDown(Input.KEY_UP)){
 			float tmp = controller.getSoundHandler().getVolume();
-			if(tmp < 1){
-				tmp+=0.1;
-				controller.getSoundHandler().setVolume(tmp);
+			if(tmp + 0.05 < 1){
+				tmp+=0.05;
+			}else{
+				tmp = 1;
 			}
+			controller.getSoundHandler().setVolume(tmp);
 		}
 		if(input.isKeyDown(Input.KEY_DOWN)){
 			float tmp = controller.getSoundHandler().getVolume();
-			if(tmp >= 0.1){
-				tmp-=0.1f;
+			if(tmp - 0.05 >= 0){
+				tmp-=0.05f;
 			}else if(tmp < 0.1f){
 				tmp = 0;
 			}
