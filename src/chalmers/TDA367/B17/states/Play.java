@@ -208,9 +208,7 @@ public class Play extends BasicGameState{
 			controller.getSoundHandler().setVolume(tmp);
 		}
 		if(input.isKeyPressed(Input.KEY_S) && input.isKeyDown(Input.KEY_LCONTROL)){
-			soundSwitch.setStoredVolume(controller.getSoundHandler().getVolume());
-			soundSwitch.soundOnOff();
-			controller.getSoundHandler().setVolume(0);
+			soundSwitch.soundOnOff(controller.getSoundHandler().getVolume());
 		}
 		
 		//Weapons

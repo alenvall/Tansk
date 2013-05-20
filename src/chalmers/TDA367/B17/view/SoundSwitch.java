@@ -26,15 +26,14 @@ public class SoundSwitch {
 		}
 	}
 	
-	public void setStoredVolume(float f){
-		storedVolume = f;
-	}
-	
-	public void soundOnOff(){
+	public void soundOnOff(float f){
 		if(isSoundOn){
+			storedVolume = f;
+			GameController.getInstance().getSoundHandler().setVolume(0);
 			isSoundOn = false;
 		}else{
 			isSoundOn = true;
+			GameController.getInstance().getSoundHandler().setVolume(storedVolume);
 		}
 	}
 }
