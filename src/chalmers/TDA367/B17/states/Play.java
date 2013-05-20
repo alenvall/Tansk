@@ -31,6 +31,7 @@ import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.terrain.BrownWall;
 import chalmers.TDA367.B17.view.Lifebar;
+import chalmers.TDA367.B17.view.SoundSwitch;
 import chalmers.TDA367.B17.weaponPickups.SlowspeedyPickup;
 
 public class Play extends BasicGameState{
@@ -44,6 +45,7 @@ public class Play extends BasicGameState{
 	private Input input;
 	private SpriteSheet entSprite = null;
 	private Lifebar lifebar;
+	private SoundSwitch soundSwitch;
 	
 	private Player playerTwo;
 	private Player playerThree;
@@ -74,6 +76,7 @@ public class Play extends BasicGameState{
 
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, false);
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 13);
+		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 
 		//Players
 		playerOne = new Player("Player One");
@@ -204,6 +207,11 @@ public class Play extends BasicGameState{
 			}
 			controller.getSoundHandler().setVolume(tmp);
 		}
+		if(input.isKeyPressed(Input.KEY_S) && input.isKeyDown(Input.KEY_LCONTROL)){
+			soundSwitch.setStoredVolume(controller.getSoundHandler().getVolume());
+			soundSwitch.soundOnOff();
+			controller.getSoundHandler().setVolume(0);
+		}
 		
 		//Weapons
 		/*
@@ -317,6 +325,8 @@ public class Play extends BasicGameState{
 				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), 0, g);
 			}
 		}
+		soundSwitch.render(g);
+		
 	}
 
 	private void renderEntities(ArrayList<Entity> entities){

@@ -62,6 +62,7 @@ import chalmers.TDA367.B17.powerups.ShieldPowerUp;
 import chalmers.TDA367.B17.powerups.SpeedPowerUp;
 import chalmers.TDA367.B17.tanks.DefaultTank;
 import chalmers.TDA367.B17.view.Lifebar;
+import chalmers.TDA367.B17.view.SoundSwitch;
 import chalmers.TDA367.B17.weaponPickups.BouncePickup;
 import chalmers.TDA367.B17.weaponPickups.FlamethrowerPickup;
 import chalmers.TDA367.B17.weaponPickups.ShockwavePickup;
@@ -111,6 +112,7 @@ public class ClientState extends BasicGameState {
 	private int packetsRecPerSecond;
 	private int packetsReceived;
 	private TextField chatField;
+	private SoundSwitch soundSwitch;
 		
 	private ClientState(int state){
 		this.state = state;
@@ -145,6 +147,7 @@ public class ClientState extends BasicGameState {
 
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10, 200, 13);
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
+		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 		
 		packetQueue = new ConcurrentLinkedQueue<Packet>();
 		client = new Client();
@@ -226,6 +229,10 @@ public class ClientState extends BasicGameState {
 				tmp = 0;
 			}
 			controller.getSoundHandler().setVolume(tmp);
+		}
+		if(input.isKeyDown(Input.KEY_S) && input.isKeyDown(Input.KEY_LCONTROL)){
+			soundSwitch.setStoredVolume(controller.getSoundHandler().getVolume());
+			controller.getSoundHandler().setVolume(0);
 		}
 		
 		GameController.getInstance().getConsole().update(delta);
@@ -394,6 +401,7 @@ public class ClientState extends BasicGameState {
 				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), 0, g);
 			}
 		}
+		soundSwitch.render(g);
 		
 		g.setColor(Color.white);
 		g.setLineWidth(1);
