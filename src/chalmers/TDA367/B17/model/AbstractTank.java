@@ -21,12 +21,13 @@ public abstract class AbstractTank extends MovableEntity {
 	protected int timeSinceLastShot;
 	public int lastDelta;
 	private boolean fire;
-	private double lastDir;
+	private double lastDirection;
 	private static final double MAX_HEALTH = 100;
 	public static final double MAX_SHIELD_HEALTH = 50;
 	private Shield shield;
 	private ArrayList<AbstractProjectile> projectiles;
 	private Player player;
+	private double maxShieldHealth;
 	
 	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
 	
@@ -46,6 +47,7 @@ public abstract class AbstractTank extends MovableEntity {
 		renderLayer = RenderLayer.SECOND;
 		fire = true;
 		projectiles = new ArrayList<AbstractProjectile>();
+		maxShieldHealth = MAX_SHIELD_HEALTH;
 	}
 	
 	/**
@@ -157,7 +159,7 @@ public abstract class AbstractTank extends MovableEntity {
 	 * @param delta The time that has passed since the last update in milliseconds
 	 */
 	public void turnLeft(int delta){
-		lastDir = getDirection().getTheta();
+		lastDirection = getDirection().getTheta();
 		setDirection(getDirection().add(-turnSpeed * delta * (Math.abs(getSpeed())*0.2f + 0.7)));
 	}
 	
@@ -166,10 +168,14 @@ public abstract class AbstractTank extends MovableEntity {
 	 * @param delta The time that has passed since the last update in milliseconds
 	 */
 	public void turnRight(int delta){
-		lastDir = getDirection().getTheta();
+		lastDirection = getDirection().getTheta();
 		setDirection(getDirection().add(turnSpeed * delta * (Math.abs(getSpeed())*0.2f + 0.7)));
 	}
 	
+	/**
+	 * Get the offset between the tanks position and the turret position.
+	 * @return turretOffset
+	 */
 	public float getTurretOffset() {
 	    return turretOffset;
     }
@@ -185,6 +191,10 @@ public abstract class AbstractTank extends MovableEntity {
 		turret.setPosition(new Vector2f(newTurX, newTurY));
 	}
 	
+	/**
+	 * Fire the tanks turret if the turrets has cooled down.
+	 * @param delta
+	 */
 	public void fireWeapon(int delta){
 		if(timeSinceLastShot <= 0 && fire){
 			turret.fireWeapon(delta, this);
@@ -203,19 +213,25 @@ public abstract class AbstractTank extends MovableEntity {
 				float newTurY = (float) (getPosition().y - getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
 				turret.setPosition(new Vector2f(newTurX, newTurY));
 			}
-			if(lastDir != getDirection().getTheta()){
-				setDirection(new Vector2f(lastDir));
+			if(lastDirection != getDirection().getTheta()){
+				setDirection(new Vector2f(lastDirection));
 			}
 		}
 	}
 	
-	public void recieveDamage(AbstractProjectile ap){
-//		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "TANK_HIT_EVENT"));
-		if(!(ap instanceof FlamethrowerProjectile))
+	/**
+	 * The tank takes damage and take appropriate action is taken.
+	 * @param projectile
+	 */
+	public void recieveDamage(AbstractProjectile projectile){
+		if(!(projectile instanceof FlamethrowerProjectile))
 			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "TANK_HIT_EVENT"));
-		setHealth(getHealth() - ap.getDamage());
+		setHealth(getHealth() - projectile.getDamage());
 	}
 	
+	/**
+	 * The tank is eliminated and appropriate action is taken.
+	 */
 	public void tankDeath(){
 		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, TANK_DEATH_EVENT));
 		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.ANIM, this, TANK_DEATH_EVENT));
@@ -235,34 +251,66 @@ public abstract class AbstractTank extends MovableEntity {
 		getTurret().destroy();
 	}
 
+	/**
+	 * Get the last direction of the tank.
+	 * @return lastDirection
+	 */
 	public double getLastDir() {
-		return lastDir;
+		return lastDirection;
 	}
 
-	public void setLastDir(double lastDir) {
-		this.lastDir = lastDir;
+	/**
+	 * Set the last direction of the tank.
+	 * @param lastDirection
+	 */
+	public void setLastDir(double lastDirection) {
+		this.lastDirection = lastDirection;
 	}
 
+	/**
+	 * Set the turret offset of the tank.
+	 * @param turretOffset
+	 */
 	public void setTurretOffset(float turretOffset) {
 		this.turretOffset = turretOffset;
 	}
 	
+	/**
+	 * Get the max shield health of the tank.
+	 * @return
+	 */
 	public double getMaxShieldHealth(){
-		return MAX_SHIELD_HEALTH;
+		return maxShieldHealth;
 	}
 	
+	/**
+	 * Get the tanks shield.
+	 * @return shield
+	 */
 	public Shield getShield(){
 		return shield;
 	}
 	
+	/**
+	 * Set the tanks shield.
+	 * @param shield
+	 */
 	public void setShield(Shield shield){
 		this.shield = shield;
 	}
 
+	/**
+	 * Add a projectile to the tank's list of projectiles.
+	 * @param projectile
+	 */
 	public void addProjectile(AbstractProjectile projectile) {
 		projectiles.add(projectile);   
     }
 
+	/**
+	 * Return the list of the tank's projectiles.
+	 * @return projectiles
+	 */
 	public ArrayList<AbstractProjectile> getProjectiles() {
 		return projectiles;
     }
