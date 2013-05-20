@@ -33,7 +33,6 @@ public class BounceTurret extends AbstractTurret {
 	@Override
 	public void fireWeapon(int delta, AbstractTank tank){
 		tank.addProjectile(spawnNewProjectile());
-		spawnNewProjectile();
 //		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "DEFAULTTURRET_FIRE_EVENT"));	
 		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "DEFAULTTURRET_FIRE_EVENT"));
 	}
