@@ -1,23 +1,36 @@
 package chalmers.TDA367.B17.states;
 
-import org.newdawn.slick.*;
-
-import chalmers.TDA367.B17.MapLoader;
-import chalmers.TDA367.B17.Tansk;
-import chalmers.TDA367.B17.console.Console;
-import chalmers.TDA367.B17.console.Console.OutputLevel;
-import chalmers.TDA367.B17.controller.*;
-import chalmers.TDA367.B17.model.*;
-import chalmers.TDA367.B17.model.Entity.RenderLayer;
-import chalmers.TDA367.B17.tanks.DefaultTank;
-import org.newdawn.slick.geom.*;
-import org.newdawn.slick.state.*;
-
 import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.newdawn.slick.GameContainer;
+import org.newdawn.slick.Graphics;
+import org.newdawn.slick.Image;
+import org.newdawn.slick.Input;
+import org.newdawn.slick.SlickException;
+import org.newdawn.slick.SpriteSheet;
+import org.newdawn.slick.geom.Shape;
+import org.newdawn.slick.geom.Transform;
+import org.newdawn.slick.state.BasicGameState;
+import org.newdawn.slick.state.StateBasedGame;
+
+import chalmers.TDA367.B17.MapLoader;
+import chalmers.TDA367.B17.Tansk;
+import chalmers.TDA367.B17.console.Console;
+import chalmers.TDA367.B17.console.Console.OutputLevel;
+import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.controller.ImageHandler;
+import chalmers.TDA367.B17.model.AbstractSpawnPoint;
+import chalmers.TDA367.B17.model.AbstractTank;
+import chalmers.TDA367.B17.model.AbstractTurret;
+import chalmers.TDA367.B17.model.Entity;
+import chalmers.TDA367.B17.model.Entity.RenderLayer;
+import chalmers.TDA367.B17.model.MovableEntity;
+import chalmers.TDA367.B17.model.Player;
+import chalmers.TDA367.B17.model.World;
 
 public class OldPlay extends BasicGameState{
 	
@@ -70,7 +83,7 @@ public class OldPlay extends BasicGameState{
 	
 	// only used for debug
 	private void startGame() {
-		int x = 100;
+//		int x = 100;
 		
 //		AbstractTank tank = new DefaultTank(GameController.getInstance().generateID());
 //		tank.setPosition(new Vector2f(x, 100));
