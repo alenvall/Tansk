@@ -8,6 +8,7 @@ import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.powerups.Shield;
+import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
 
 
 public abstract class AbstractTank extends MovableEntity {
@@ -210,7 +211,8 @@ public abstract class AbstractTank extends MovableEntity {
 	
 	public void recieveDamage(AbstractProjectile ap){
 //		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "TANK_HIT_EVENT"));
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "TANK_HIT_EVENT"));
+		if(!(ap instanceof FlamethrowerProjectile))
+			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "TANK_HIT_EVENT"));
 		setHealth(getHealth() - ap.getDamage());
 	}
 	
