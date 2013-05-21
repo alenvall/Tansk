@@ -64,6 +64,16 @@ public class GameController {
 				playerLives, spawnTime, roundTime, gameTime);
 	}
 	
+	public void newGame(int width, int height, int rounds, 
+			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld, GameConditions gameMode){
+		world = new World(new Dimension(width, height), serverWorld);
+		world.init();
+		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
+		this.gameMode = gameMode;
+		gameMode.init(rounds, 
+				playerLives, spawnTime, roundTime, gameTime);
+	}
+	
 	/**
 	 * Get the controllers World.
 	 * @return world
