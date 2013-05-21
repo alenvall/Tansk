@@ -49,6 +49,8 @@ public abstract class GameConditions {
 
 	//The maximum amount of weapons that can be out at a time.
 	private int weaponLimit = 6;
+	
+	protected boolean roundEnded;
 
 	/**
 	 * Create a new GameConditions object.
@@ -85,6 +87,7 @@ public abstract class GameConditions {
 	 * Also increases the roundCounter and resets the roundTimer.
 	 */
 	public void newRound(){
+		roundEnded = false;
 		GameController.getInstance().getConsole().addMsg("GameConditions.newRound()");
 		roundWinner = null;
 		roundCounter += 1;
@@ -107,24 +110,27 @@ public abstract class GameConditions {
 
 	
 	public void endRound(){
-		//Reset the powerup count
-		GameController.getInstance().getWorld().getSpawner().setPowerupCount(0);
-		//Reset the weapon count
-		GameController.getInstance().getWorld().getSpawner().setWeaponCount(0);
-
-		//Remove all entities
-		for(Entity entity : GameController.getInstance().getWorld().getEntities().values()){
-			if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUpPickup
-					|| entity instanceof AbstractWeaponPickup || entity instanceof Shield){
-				entity.destroy();
+		if(!roundEnded){
+			//Reset the powerup count
+			GameController.getInstance().getWorld().getSpawner().setPowerupCount(0);
+			//Reset the weapon count
+			GameController.getInstance().getWorld().getSpawner().setWeaponCount(0);
+	
+			//Remove all entities
+			for(Entity entity : GameController.getInstance().getWorld().getEntities().values()){
+				if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUpPickup
+						|| entity instanceof AbstractWeaponPickup || entity instanceof Shield){
+					entity.destroy();
+				}
 			}
-		}
-		
-		for(Player p : players){
-			if(p.getTank() != null){
-				p.getTank().destroy();
-				p.setTank(null);
+			
+			for(Player p : players){
+				if(p.getTank() != null){
+					p.getTank().destroy();
+					p.setTank(null);
+				}
 			}
+			roundEnded = true;
 		}
 	}
 	

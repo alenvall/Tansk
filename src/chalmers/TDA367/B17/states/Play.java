@@ -310,8 +310,9 @@ public class Play extends BasicGameState{
 		
 		if(controller.getGameMode().isGameOver()){
 			g.drawString("Game Over!", 500, 300);
+			System.out.println(controller.getGameMode().getWinningPlayers().size());
 			for(Player p: controller.getGameMode().getWinningPlayers()){
-				g.drawString("Winner: " + p.getName(), 500, 400 + 25*controller.getGameMode().getWinningPlayers().indexOf(p));
+				g.drawString("Winner(s): " + p.getName(), 500, 400 + 25*controller.getGameMode().getWinningPlayers().indexOf(p));
 			}
 			int i = 0;
 			for(Player p : controller.getGameMode().getPlayerList()){

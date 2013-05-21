@@ -4,7 +4,7 @@ import chalmers.TDA367.B17.model.Player;
 
  
 
-public class StandardGameMode extends scoreBasedGame {
+public class StandardGameMode extends ScoreBasedGame {
 
 
 	public StandardGameMode(){

@@ -6,11 +6,11 @@ import chalmers.TDA367.B17.model.Player;
 
 
 
-public abstract class scoreBasedGame extends GameConditions{
+public abstract class ScoreBasedGame extends GameConditions{
 private static int DEFAULT_SCORE_LIMIT = 4;	
 private int scoreLimit;
 
-	public scoreBasedGame(){
+	public ScoreBasedGame(){
 		this.scoreLimit = DEFAULT_SCORE_LIMIT;
 	}
 	
@@ -34,13 +34,15 @@ private int scoreLimit;
 	
 	@Override
 	public void endRound(){
-		super.endRound();
-		//Winning by score
-		for(Player p: players){
-			if(p.getScore() >= scoreLimit){
-				setGameOver(true);
-				
-				winningPlayers.addAll(getHighestScoringPlayers());
+		if(!roundEnded){
+			super.endRound();
+			//Winning by score
+			for(Player p: players){
+				if(p.getScore() >= scoreLimit){
+					setGameOver(true);
+					
+					winningPlayers.addAll(getHighestScoringPlayers());
+				}
 			}
 		}
 	}
