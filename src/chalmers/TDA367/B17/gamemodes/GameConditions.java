@@ -1,6 +1,8 @@
 package chalmers.TDA367.B17.gamemodes;
 
 import java.util.ArrayList;
+import java.util.List;
+
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.Entity;
@@ -35,7 +37,7 @@ public abstract class GameConditions {
 	protected int eliminatedPlayerCount;
 
 	//The winner of the game.
-	protected Player winningPlayer;
+	protected List<Player> winningPlayers;
 	//The winner of the latest round.
 	protected Player roundWinner;
 
@@ -72,6 +74,7 @@ public abstract class GameConditions {
 		this.gameTimer = gameTime;
 		this.roundTime = roundTime;
 		this.roundTimer = roundTime;
+		winningPlayers = new ArrayList<Player>();
 		roundCounter = 0;
 		GameController.getInstance().getConsole().addMsg("GameConditions.init()");
 	}
@@ -192,9 +195,15 @@ public abstract class GameConditions {
 	 */
 	public void gameOver(){
 		if(gameOver){
-			winningPlayer = getWinningPlayer();
+			winningPlayers = getWinningPlayers();
 
-			System.out.println("Winner: " + winningPlayer.getName() + "\n------------------");
+			if(winningPlayers.size() == 1){
+				System.out.println("Winner: " + winningPlayers.get(0).getName() + "\n------------------");
+			}else{
+				for(Player p: winningPlayers){
+					System.out.println("Winners: " + p.getName() + "\n------------------");
+				}
+			}
 		}
 	}
 
@@ -301,7 +310,9 @@ public abstract class GameConditions {
 	 * Return the winning player.
 	 * @return The winning player
 	 */
-	public abstract Player getWinningPlayer();
+	public List<Player> getWinningPlayers() {
+		return winningPlayers;
+	}
 
 	/**
 	 * Return a list of all the players.
@@ -343,7 +354,7 @@ public abstract class GameConditions {
 		this.weaponLimit = weaponLimit;
 	}
 	
-	public void setWinningPlayer(){
-		
+	public void addWinningPlayer(Player p){
+		winningPlayers.add(p);
 	}
 }

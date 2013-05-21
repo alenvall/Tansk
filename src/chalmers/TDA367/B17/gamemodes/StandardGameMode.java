@@ -10,16 +10,11 @@ public class StandardGameMode extends scoreBasedGame {
 	public StandardGameMode(){
 		super();
 	}
-
-	@Override
-	public Player getWinningPlayer() {
-		return getHighestScoringPlayer();
-	}
 	
 	@Override
 	public void gameOver(){
 		super.gameOver();
-		for(Player p : getPlayerList()){
+		for(Player p : players){
 			System.out.println(p.getName() + "'s score: " + p.getScore());
 		}
 	}
