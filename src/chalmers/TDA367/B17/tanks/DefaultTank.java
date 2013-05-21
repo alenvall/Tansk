@@ -25,7 +25,7 @@ public class DefaultTank extends AbstractTank {
 		setTurretOffset(6);
 		turret = new DefaultTurret(1000+id, new Vector2f(this.getPosition().x, this.getPosition().y+this.getTurretOffset()), direction.getTheta(), this);
 		spriteID = "tank_blue";
-		setHealth(100);
+		setHealth(10);
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 }
