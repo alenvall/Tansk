@@ -22,6 +22,7 @@ import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.console.Console.OutputLevel;
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.gamemodes.ScoreBasedGame;
 import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.AbstractTurret;
@@ -311,6 +312,7 @@ public class Play extends BasicGameState{
 		if(controller.getGameMode().isGameOver()){
 			g.drawString("Game Over!", 500, 300);
 			System.out.println(controller.getGameMode().getWinningPlayers().size());
+			System.out.println(((ScoreBasedGame) (controller.getGameMode())).getHighestScoringPlayers().size());
 			for(Player p: controller.getGameMode().getWinningPlayers()){
 				g.drawString("Winner(s): " + p.getName(), 500, 400 + 25*controller.getGameMode().getWinningPlayers().indexOf(p));
 			}

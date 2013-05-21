@@ -327,9 +327,7 @@ public abstract class GameConditions {
 	 * Return the winning player.
 	 * @return The winning player
 	 */
-	public List<Player> getWinningPlayers() {
-		return winningPlayers;
-	}
+	public abstract List<Player> getWinningPlayers();
 
 	/**
 	 * Return a list of all the players.

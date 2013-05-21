@@ -40,8 +40,6 @@ private int scoreLimit;
 			for(Player p: players){
 				if(p.getScore() >= scoreLimit){
 					setGameOver(true);
-					
-					winningPlayers.addAll(getHighestScoringPlayers());
 				}
 			}
 		}
@@ -55,6 +53,11 @@ private int scoreLimit;
 			if(p.isActive())
 				p.setScore(p.getScore() + 1);
 		}
+	}
+	
+	@Override
+	public List<Player> getWinningPlayers(){
+		return getHighestScoringPlayers();
 	}
 	
 	/**
@@ -81,12 +84,12 @@ private int scoreLimit;
 	public List<Player> getHighestScoringPlayers(){
 		List<Player> player = new ArrayList<Player>();
 		player.add(getPlayerList().get(0));
-		for(int i = 0; i < getPlayerList().size(); i++){
+		for(int i = 1; i < players.size(); i++){
 			if(getPlayerScoreAtIndex(i) > player.get(0).getScore()){
 				player.clear();
-				player.add(getPlayerList().get(i));
+				player.add(players.get(i));
 			}else if(getPlayerScoreAtIndex(i) == player.get(0).getScore()){
-				player.add(getPlayerList().get(i));
+				player.add(players.get(i));
 			}
 		}
 
