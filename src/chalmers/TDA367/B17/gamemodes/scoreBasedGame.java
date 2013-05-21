@@ -37,7 +37,7 @@ private int scoreLimit;
 		for(Player p: players){
 			if(p.getScore() >= scoreLimit){
 				setGameOver(true);
-				winningPlayer = p;
+				addWinningPlayer(p);
 			}
 		}
 	}
