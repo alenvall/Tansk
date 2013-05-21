@@ -1,7 +1,5 @@
 package chalmers.TDA367.B17.gamemodes;
 
-import chalmers.TDA367.B17.model.Player;
-
  
 
 public class StandardGameMode extends ScoreBasedGame {
@@ -19,23 +17,8 @@ public class StandardGameMode extends ScoreBasedGame {
 			if(players.get(i).isActive() && players.get(i).isEliminated()){
 				players.get(i).setActive(false);
 				eliminatedPlayerCount++;
-				incrementPlayerScores();
+				incrementAllPlayerScores();
 			}
 		}
-		
-		
-	}
-	
-	@Override
-	public void gameOver(){
-		super.gameOver();
-		for(Player p : players){
-			System.out.println(p.getName() + "'s score: " + p.getScore());
-		}
-	}
-	
-	@Override
-	public void newRound(){
-		super.newRound();
 	}
 }

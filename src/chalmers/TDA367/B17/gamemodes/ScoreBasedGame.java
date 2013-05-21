@@ -31,10 +31,22 @@ private int scoreLimit;
 	/**
 	 * Increments every player's score.
 	 */
-	public void incrementPlayerScores(){
+	public void incrementAllPlayerScores(){
 		for(Player p : getPlayerList()){
 			if(p.isActive())
-				p.setScore(p.getScore() + 1);
+				incrementPlayerScore(p);
+		}
+	}
+	
+	public void incrementPlayerScore(Player p){
+		p.setScore(p.getScore()+1);
+	}
+
+	@Override
+	public void gameOver(){
+		super.gameOver();
+		for(Player p : players){
+			System.out.println(p.getName() + "'s score: " + p.getScore());
 		}
 	}
 	
