@@ -1,67 +1,33 @@
 package chalmers.TDA367.B17.states;
 
-import java.awt.Dimension;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Iterator;
-import java.util.Map;
+import java.awt.*;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.newdawn.slick.*;
 import org.newdawn.slick.Color;
-import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
-import org.newdawn.slick.Image;
-import org.newdawn.slick.Input;
-import org.newdawn.slick.SlickException;
-import org.newdawn.slick.gui.TextField;
-import org.newdawn.slick.state.BasicGameState;
-import org.newdawn.slick.state.StateBasedGame;
+import org.newdawn.slick.state.*;
 
-import chalmers.TDA367.B17.MapLoader;
-import chalmers.TDA367.B17.Tansk;
+import chalmers.TDA367.B17.*;
 import chalmers.TDA367.B17.console.Console;
-import chalmers.TDA367.B17.console.Console.MsgLevel;
-import chalmers.TDA367.B17.console.Console.OutputLevel;
-import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.event.GameEvent;
-import chalmers.TDA367.B17.model.AbstractProjectile;
-import chalmers.TDA367.B17.model.AbstractSpawnPoint;
-import chalmers.TDA367.B17.model.AbstractTank;
-import chalmers.TDA367.B17.model.AbstractTurret;
-import chalmers.TDA367.B17.model.Entity;
+import chalmers.TDA367.B17.console.Console.*;
+import chalmers.TDA367.B17.controller.*;
+import chalmers.TDA367.B17.event.*;
+import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
-import chalmers.TDA367.B17.model.MovableEntity;
-import chalmers.TDA367.B17.model.Player;
-import chalmers.TDA367.B17.network.Network;
-import chalmers.TDA367.B17.network.Network.EntityPacket;
-import chalmers.TDA367.B17.network.Network.Packet;
-import chalmers.TDA367.B17.network.Network.Pck0_JoinRequest;
-import chalmers.TDA367.B17.network.Network.Pck1000_GameEvent;
-import chalmers.TDA367.B17.network.Network.Pck100_WorldState;
-import chalmers.TDA367.B17.network.Network.Pck102_TankUpdate;
-import chalmers.TDA367.B17.network.Network.Pck103_ProjectileUpdate;
-import chalmers.TDA367.B17.network.Network.Pck1_LoginAnswer;
-import chalmers.TDA367.B17.network.Network.Pck2_ClientConfirmJoin;
-import chalmers.TDA367.B17.network.Network.Pck31_ChatMessage;
-import chalmers.TDA367.B17.network.Network.Pck3_Message;
-import chalmers.TDA367.B17.network.Network.Pck4_ClientInput;
+import chalmers.TDA367.B17.network.*;
+import chalmers.TDA367.B17.network.Network.*;
 
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.Listener;
-import com.esotericsoftware.kryonet.Listener.ThreadedListener;
-import com.esotericsoftware.kryonet.Server;
-import com.esotericsoftware.minlog.Log;
+import com.esotericsoftware.kryonet.*;
+import com.esotericsoftware.kryonet.Listener.*;
+import com.esotericsoftware.minlog.*;
 
-public class ServerState extends BasicGameState {
-	private int state;
+public class ServerState extends TanskState {
 	private static ServerState instance;
-	private GameController controller;
-	private ConcurrentLinkedQueue<Packet> packetQueue;
-	
+
 	private Server server;
 	private String ipAddress;
 	private ArrayList<Packet> allClientsPacketQueue;
@@ -69,21 +35,10 @@ public class ServerState extends BasicGameState {
 	private ArrayList<Player> disconnectedPlayersTemp;
 	
 	private boolean gameStarted = false;
-	private long deltaTime;
-	private int frameCounter;
-	private int updates;
-	private long oldTime;
-	private int updatesPerSecond;
-	private int packetsSent;
-	private int packetsSentPerSecond;
-	private int packetsRecPerSecond;
-	private int packetsReceived;
-	private TextField chatField;
 	private boolean serverStarted;
 	
 	private ServerState(int state) {
-	    this.state = state;
-		controller = GameController.getInstance();
+		super(state);
     }
 	
 	public static ServerState getInstance(){
@@ -95,9 +50,7 @@ public class ServerState extends BasicGameState {
 	
 	@Override
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
-		gc.setSmoothDeltas(true);
-		gc.setAlwaysRender(true);
-		gc.setMouseCursor(new Image(Tansk.IMAGES_FOLDER + "/crosshair.png"), 16, 16);
+		super.init(gc, game);
 
 		allClientsPacketQueue = new ArrayList<Network.Packet>();
 		clientPacketQueue = new ArrayList<Packet>();
@@ -109,16 +62,11 @@ public class ServerState extends BasicGameState {
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 
-		int width = 600;
-		controller.setConsole(new Console(10, 533, width, 192, OutputLevel.ALL, true));;
-		chatField = new TextField(container, container.getDefaultFont(), 10, 733, width, 23);
-		
+		controller.setConsole(new Console(10, 533, 600, 192, OutputLevel.ALL));
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, true);
-		
 		MapLoader.createEntities("whatever");
 	
 		Log.set(Log.LEVEL_INFO);
-		packetQueue = new ConcurrentLinkedQueue<Packet>();
 		server = new Server();
 		Network.register(server);
 		Listener listener = new Listener(){
@@ -171,19 +119,7 @@ public class ServerState extends BasicGameState {
 		
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
-		frameCounter++;
-		long newTime = Calendar.getInstance().getTimeInMillis();
-		deltaTime = newTime - oldTime;
-		if(deltaTime >= 1000){			
-			packetsRecPerSecond = packetsReceived;
-			packetsReceived = 0;
-			packetsSentPerSecond = packetsSent;
-			packetsSent = 0;
-			updatesPerSecond = updates;
-			updates = 0;
-			oldTime = newTime;
-		}
-				
+		super.update(gc, game, delta);
 		if(!gameStarted && serverStarted){
 			Input input = gc.getInput();
 			int x = input.getMouseX();
@@ -198,6 +134,8 @@ public class ServerState extends BasicGameState {
 				}
 			}
 		}
+
+		GameController.getInstance().getConsole().update(delta);
 		
 		processPackets();
 		checkDisconnectedPlayers();
@@ -217,6 +155,102 @@ public class ServerState extends BasicGameState {
 		updateClients();
     }
 
+	@Override
+    public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		if(controller.getWorld().getEntities() != null){
+			ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
+			ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
+			ArrayList<Entity> thirdLayerEnts = new ArrayList<Entity>();
+			ArrayList<Entity> fourthLayerEnts = new ArrayList<Entity>();
+
+			Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
+			while(iterator.hasNext()){
+				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
+				Entity entity = entry.getValue();
+				
+				if(!entity.getSpriteID().equals("")){
+					if(entity.getRenderLayer() == RenderLayer.FIRST)
+						firstLayerEnts.add(entity);
+					else if(entity.getRenderLayer() == RenderLayer.SECOND)
+						secondLayerEnts.add(entity);
+					else if(entity.getRenderLayer() == RenderLayer.THIRD)
+						thirdLayerEnts.add(entity);
+					else if(entity.getRenderLayer() == RenderLayer.FOURTH)
+						fourthLayerEnts.add(entity);
+				}
+			}
+			renderEntities(firstLayerEnts, g);
+			renderEntities(secondLayerEnts, g);
+			renderEntities(thirdLayerEnts, g);
+			renderEntities(fourthLayerEnts, g);
+		}
+		renderGUI(container, g);
+	}
+		
+	@Override
+	public void renderGUI(GameContainer gc, Graphics g){
+		super.renderGUI(gc, g);
+		if(gameStarted)
+			g.setColor(Color.green);
+		else
+			g.setColor(Color.red);
+		g.drawString("Run!", 415, 500);
+		g.drawRect(410, 495, 50, 30);
+
+		g.setColor(Color.white);
+		g.drawString("Players: " + getPlayers().size(), 18, 480);
+		g.drawString("LAN IP: " + ipAddress, 18, 500);
+		
+		// some debug stuff
+//		if(!getPlayers().isEmpty()){
+//			Player playerOne = getPlayers().get(0);
+//			if(playerOne.getTank() != null){
+//				AbstractTank playerOneTank = playerOne.getTank();
+//				g.setColor(Color.yellow);
+//				g.drawLine(playerOneTank.getSpritePosition().x, playerOneTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//				g.setColor(Color.red);
+//				g.drawLine(playerOneTank.getPosition().x, playerOneTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//				g.setColor(Color.blue);
+//				g.drawLine(playerOneTank.getTurret().getPosition().x, playerOneTank.getTurret().getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//			}
+//		}
+		
+		
+//		TODO: not do this in render maybe
+		//Cool timer
+		if(controller.getGameConditions().isDelaying()){
+			if(controller.getGameConditions().getDelayTimer() > 0)
+//				serverMessage("Round starts in: " + (controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!");
+				g.drawString("Round starts in: " + (controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+		}
+		
+		if(controller.getGameConditions().isGameOver()){
+//			serverMessage("Game Over!");
+			g.drawString("Game Over!", 500, 300);
+//			serverMessage("Winner: " + controller.getGameConditions().getWinningPlayer().getName());
+			g.drawString("Winner: " + controller.getGameConditions().getWinningPlayer().getName(), 500, 400);
+			int i = 0;
+			for(Player p : controller.getGameConditions().getPlayerList()){
+				i++;
+				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
+				serverMessage(p.getName() + "'s score: " + p.getScore());
+			}
+		}
+	}
+	
+	private void renderEntities(ArrayList<Entity> entities, Graphics g){
+		g.setColor(Color.yellow);
+		for(Entity entity : entities){
+			if(entity instanceof AbstractTurret){
+				g.drawOval(entity.getPosition().x-10, entity.getPosition().y-10, 20, 20);
+				g.drawLine(entity.getPosition().x, entity.getPosition().y, ((AbstractTurret)entity).getTurretNozzle().x, ((AbstractTurret)entity).getTurretNozzle().y);
+			} else {
+				g.draw(entity.getShape());
+			}
+		}
+		g.setColor(Color.white);
+	}
+	
 	public void checkDisconnectedPlayers(){
 		for(Player lostPlayer : disconnectedPlayersTemp){
 			if(lostPlayer != null){
@@ -390,15 +424,6 @@ public class ServerState extends BasicGameState {
 		addToAllClientsQueue(worldState);
 	}
 		
-	public void addToAllClientsQueue(Packet packet){
-		allClientsPacketQueue.add(packet);
-	}
-	
-	public void addToClientQueue(Packet packet, Connection clientConnection){
-		packet.setConnection(clientConnection);
-		clientPacketQueue.add(packet);
-	}
-	
 	private void updateClients(){
 		if(server != null){
 			for(Packet packet : allClientsPacketQueue){
@@ -414,119 +439,20 @@ public class ServerState extends BasicGameState {
 				}
 			}
 		}
-		updates++;
 		// empty packet "buffers"
 		allClientsPacketQueue = new ArrayList<Network.Packet>();
 		clientPacketQueue = new ArrayList<Network.Packet>();
 	}
 	
-	@Override
-    public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
-		if(controller.getWorld().getEntities() != null){
-			ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
-			ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
-			ArrayList<Entity> thirdLayerEnts = new ArrayList<Entity>();
-			ArrayList<Entity> fourthLayerEnts = new ArrayList<Entity>();
-
-			Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
-			while(iterator.hasNext()){
-				Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
-				Entity entity = entry.getValue();
-				
-				if(!entity.getSpriteID().equals("")){
-					if(entity.getRenderLayer() == RenderLayer.FIRST)
-						firstLayerEnts.add(entity);
-					else if(entity.getRenderLayer() == RenderLayer.SECOND)
-						secondLayerEnts.add(entity);
-					else if(entity.getRenderLayer() == RenderLayer.THIRD)
-						thirdLayerEnts.add(entity);
-					else if(entity.getRenderLayer() == RenderLayer.FOURTH)
-						fourthLayerEnts.add(entity);
-				}
-			}
-			renderEntities(firstLayerEnts, g);
-			renderEntities(secondLayerEnts, g);
-			renderEntities(thirdLayerEnts, g);
-			renderEntities(fourthLayerEnts, g);
-		}
-		
-//		TODO: not do this in render maybe
-		//Cool timer
-		if(controller.getGameConditions().isDelaying()){
-			if(controller.getGameConditions().getDelayTimer() > 0)
-//				serverMessage("Round starts in: " + (controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!");
-				g.drawString("Round starts in: " + (controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
-		}
-		
-		if(controller.getGameConditions().isGameOver()){
-//			serverMessage("Game Over!");
-			g.drawString("Game Over!", 500, 300);
-//			serverMessage("Winner: " + controller.getGameConditions().getWinningPlayer().getName());
-			g.drawString("Winner: " + controller.getGameConditions().getWinningPlayer().getName(), 500, 400);
-			int i = 0;
-			for(Player p : controller.getGameConditions().getPlayerList()){
-				i++;
-				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
-				serverMessage(p.getName() + "'s score: " + p.getScore());
-			}
-		}
-		
-//		some debug stuff
-//		if(!getPlayers().isEmpty()){
-//			Player playerOne = getPlayers().get(0);
-//			if(playerOne.getTank() != null){
-//				AbstractTank playerOneTank = playerOne.getTank();
-//				g.setColor(Color.yellow);
-//				g.drawLine(playerOneTank.getSpritePosition().x, playerOneTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//				g.setColor(Color.red);
-//				g.drawLine(playerOneTank.getPosition().x, playerOneTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//				g.setColor(Color.blue);
-//				g.drawLine(playerOneTank.getTurret().getPosition().x, playerOneTank.getTurret().getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//			}
-//		}
-		
-		controller.getConsole().renderMessages(g);
-		
-		
-		if(gameStarted)
-			g.setColor(Color.green);
-		else
-			g.setColor(Color.red);
-		g.drawString("Run!", 415, 500);
-		g.drawRect(410, 495, 50, 30);
-		g.setColor(Color.white);
-		g.drawString("Packet rec/sec: " + packetsRecPerSecond, 18, 320);
-		g.drawString("Packet sent/sec: " + packetsSentPerSecond, 18, 340);
-		g.drawString("Update/sec: " + updatesPerSecond, 18, 360);
-		g.drawString("Frame: " + frameCounter, 18, 400);
-		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 420);
-		g.drawString("Players: " + getPlayers().size(), 18, 480);
-		g.drawString("LAN IP: " + ipAddress, 18, 500);
-		
-		g.setColor(Color.white);
-		g.setLineWidth(1);
-		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
-		chatField.render(container, g);
-    }
-	
-	private void renderEntities(ArrayList<Entity> entities, Graphics g){
-		g.setColor(Color.yellow);
-		for(Entity entity : entities){
-			if(entity instanceof AbstractTurret){
-				g.drawOval(entity.getPosition().x-10, entity.getPosition().y-10, 20, 20);
-				g.drawLine(entity.getPosition().x, entity.getPosition().y, ((AbstractTurret)entity).getTurretNozzle().x, ((AbstractTurret)entity).getTurretNozzle().y);
-			} else {
-				g.draw(entity.getShape());
-			}
-		}
-		g.setColor(Color.white);
+	public void addToAllClientsQueue(Packet packet){
+		allClientsPacketQueue.add(packet);
 	}
 	
-	@Override
-    public int getID() {
-	    return this.state;
-    }
-		
+	public void addToClientQueue(Packet packet, Connection clientConnection){
+		packet.setConnection(clientConnection);
+		clientPacketQueue.add(packet);
+	}
+	
 	public Player getPlayer(Connection con){
 		for(Player player : getPlayers()){
 			if(player.getConnection().getID() == con.getID()){

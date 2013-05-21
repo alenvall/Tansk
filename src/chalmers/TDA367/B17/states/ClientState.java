@@ -3,11 +3,9 @@ package chalmers.TDA367.B17.states;
 import java.awt.Dimension;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
@@ -19,8 +17,6 @@ import org.newdawn.slick.SpriteSheet;
 import org.newdawn.slick.geom.Shape;
 import org.newdawn.slick.geom.Transform;
 import org.newdawn.slick.geom.Vector2f;
-import org.newdawn.slick.gui.TextField;
-import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
 import chalmers.TDA367.B17.MapLoader;
@@ -87,11 +83,8 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.minlog.Log;
 
-public class ClientState extends BasicGameState {
-	private int state;
+public class ClientState extends TanskState {
 	private static ClientState instance;
-	private GameController controller;
-	private ConcurrentLinkedQueue<Packet> packetQueue;
 	
 	private Client client;
 	private boolean isConnected;
@@ -100,23 +93,12 @@ public class ClientState extends BasicGameState {
 	private SpriteSheet entSprite;
 	private String playerName;
 	private boolean mapLoaded;
-	private int frameCounter;
-	private int updates;
 	private AbstractTank playerTank;
 	private Lifebar lifebar;
-	private long deltaTime;
-	private int packetsSentPerSecond;
-	private int packetsSent;
-	private int updatesPerSecond;
-	private long oldTime;
-	private int packetsRecPerSecond;
-	private int packetsReceived;
-	private TextField chatField;
 	private SoundSwitch soundSwitch;
 		
-	private ClientState(int state){
-		this.state = state;
-		controller = GameController.getInstance();
+	private ClientState(int state) {
+		super(state);
 	}
 	
 	public static ClientState getInstance(){
@@ -128,9 +110,7 @@ public class ClientState extends BasicGameState {
 	
 	@Override
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
-		gc.setSmoothDeltas(true);
-		gc.setAlwaysRender(true);
-		gc.setMouseCursor(new Image(Tansk.IMAGES_FOLDER + "/crosshair.png"), 16, 16);
+		super.init(gc, game);
 		
 		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
 		playerName = "Nisse" + Math.round(Math.random() * 1000);
@@ -140,16 +120,15 @@ public class ClientState extends BasicGameState {
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
 
-		controller.setConsole(new Console(10, 533, 450, 192, OutputLevel.ALL, false));
-//		controller.getConsole().setVisible(false);
-		controller.getConsole().setTimerHide(true);
-		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
+		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
+		console.setBorder(false);
+		console.setTimerHide(true);
+		controller.setConsole(console);
 
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 		
-		packetQueue = new ConcurrentLinkedQueue<Packet>();
 		client = new Client();
 		Network.register(client);
 		client.addListener(new Listener(){
@@ -188,27 +167,13 @@ public class ClientState extends BasicGameState {
 	        client.stop();
         } 
 		
-		controller.getWorld().init();
-
 		input = gc.getInput();
 		input.addMouseListener(this);
 	}	
 	
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
-		frameCounter++;
-		long newTime = Calendar.getInstance().getTimeInMillis();
-		deltaTime = newTime - oldTime;
-		if(deltaTime >= 1000){
-			packetsRecPerSecond = packetsReceived;
-			packetsReceived = 0;
-			packetsSentPerSecond = packetsSent;
-			packetsSent = 0;
-			updatesPerSecond = updates;
-			updates = 0;
-			oldTime = newTime;
-		}
-		
+		super.update(gc, game, delta);
 		if((isConnected) && (!mapLoaded)){
 			MapLoader.createEntities("whatever");
 			mapLoaded = true;
@@ -241,9 +206,97 @@ public class ClientState extends BasicGameState {
 		GameController.getInstance().getConsole().update(delta);
 		processPackets();			
 		sendClientInput(gc.getInput());
-		updates++;
 	}
 
+	@Override
+    public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		if(isConnected){
+			g.drawImage(map, 0, 0);
+			if(controller.getWorld().getEntities() != null){
+				ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
+				ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
+				ArrayList<Entity> thirdLayerEnts = new ArrayList<Entity>();
+				ArrayList<Entity> fourthLayerEnts = new ArrayList<Entity>();
+	
+				Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
+				while(iterator.hasNext()){
+					Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
+					Entity entity = entry.getValue();
+					
+					if(!entity.getSpriteID().equals("")){
+						if(entity.getRenderLayer() == RenderLayer.FIRST)
+							firstLayerEnts.add(entity);
+						else if(entity.getRenderLayer() == RenderLayer.SECOND)
+							secondLayerEnts.add(entity);
+						else if(entity.getRenderLayer() == RenderLayer.THIRD)
+							thirdLayerEnts.add(entity);
+						else if(entity.getRenderLayer() == RenderLayer.FOURTH)
+							fourthLayerEnts.add(entity);
+					}
+				}
+				renderEntities(firstLayerEnts);
+				renderEntities(secondLayerEnts);
+				renderEntities(thirdLayerEnts);
+				renderEntities(fourthLayerEnts);
+			}
+		}
+		controller.getAnimationHandler().renderAnimations();
+		renderGUI(container, g);
+    }
+		
+	@Override
+	public void renderGUI(GameContainer gc, Graphics g){
+		super.renderGUI(gc, g);
+		if(playerTank != null){
+			if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
+				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);
+			}else{
+				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), 0, g);
+			}
+		}
+		soundSwitch.render(g);
+		
+//		if(playerTank != null){
+//			g.setColor(Color.green);
+//			g.draw(playerTank.getShape());
+//			g.setColor(Color.yellow);
+//			g.drawLine(playerTank.getSpritePosition().x, playerTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//			g.setColor(Color.red);
+//			g.drawLine(playerTank.getPosition().x, playerTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//			g.setColor(Color.blue);
+//			g.drawLine(playerTank.getTurret().getTurretNozzle().x, playerTank.getTurret().getTurretNozzle().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
+//		}
+		
+		g.setColor(Color.black);
+		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
+	}
+
+	private void renderEntities(ArrayList<Entity> entities){
+		for(Entity entity : entities){
+			entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
+			
+			if(entSprite != null){
+				if(entity instanceof AbstractTank){
+					entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
+					if(entity.getRotation()!=0){
+						entSprite.setRotation((float) entity.getRotation());
+						// draw sprite at the coordinates of the top left corner of tank when it is not rotated
+						Shape nonRotatedShape = entity.getShape().transform(Transform.createRotateTransform((float)Math.toRadians(-entity.getRotation()), entity.getPosition().x, entity.getPosition().y));
+						entSprite.draw(nonRotatedShape.getMinX(), nonRotatedShape.getMinY());
+					} else {
+						entSprite.draw(entity.getShape().getMinX(), entity.getShape().getMinY());
+					}
+				} else {
+					if(entity instanceof AbstractTurret){
+						entSprite.setCenterOfRotation(((AbstractTurret) entity).getTurretCenter().x, ((AbstractTurret) entity).getTurretCenter().y);
+					}
+					entSprite.setRotation((float) entity.getRotation());
+					entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);						
+				}
+			}
+		}
+	}
+	
 	private void sendClientInput(Input input) {
 		if(isConnected){
 			if(playerTank != null){
@@ -361,113 +414,10 @@ public class ClientState extends BasicGameState {
 		}
     }
 
-	@Override
-    public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
-		if(isConnected){
-			g.drawImage(map, 0, 0);
-			if(controller.getWorld().getEntities() != null){
-				ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
-				ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
-				ArrayList<Entity> thirdLayerEnts = new ArrayList<Entity>();
-				ArrayList<Entity> fourthLayerEnts = new ArrayList<Entity>();
-	
-				Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
-				while(iterator.hasNext()){
-					Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
-					Entity entity = entry.getValue();
-					
-					if(!entity.getSpriteID().equals("")){
-						if(entity.getRenderLayer() == RenderLayer.FIRST)
-							firstLayerEnts.add(entity);
-						else if(entity.getRenderLayer() == RenderLayer.SECOND)
-							secondLayerEnts.add(entity);
-						else if(entity.getRenderLayer() == RenderLayer.THIRD)
-							thirdLayerEnts.add(entity);
-						else if(entity.getRenderLayer() == RenderLayer.FOURTH)
-							fourthLayerEnts.add(entity);
-					}
-				}
-				renderEntities(firstLayerEnts);
-				renderEntities(secondLayerEnts);
-				renderEntities(thirdLayerEnts);
-				renderEntities(fourthLayerEnts);
-			}
-		}
-		controller.getConsole().renderMessages(g);
-		debugRender(g);
-		controller.getAnimationHandler().renderAnimations();
-		
-		if(playerTank != null){
-			if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
-				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);
-			}else{
-				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), 0, g);
-			}
-		}
-		soundSwitch.render(g);
-		
-		g.setColor(Color.white);
-		g.setLineWidth(1);
-		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
-		chatField.render(container, g);
-    }
-	
-	private void renderEntities(ArrayList<Entity> entities){
-		for(Entity entity : entities){
-			entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
-			
-			if(entSprite != null){
-				if(entity instanceof AbstractTank){
-					entSprite = GameController.getInstance().getImageHandler().getSprite(entity.getSpriteID());
-					if(entity.getRotation()!=0){
-						entSprite.setRotation((float) entity.getRotation());
-						// draw sprite at the coordinates of the top left corner of tank when it is not rotated
-						Shape nonRotatedShape = entity.getShape().transform(Transform.createRotateTransform((float)Math.toRadians(-entity.getRotation()), entity.getPosition().x, entity.getPosition().y));
-						entSprite.draw(nonRotatedShape.getMinX(), nonRotatedShape.getMinY());
-					} else {
-						entSprite.draw(entity.getShape().getMinX(), entity.getShape().getMinY());
-					}
-				} else {
-					if(entity instanceof AbstractTurret){
-						entSprite.setCenterOfRotation(((AbstractTurret) entity).getTurretCenter().x, ((AbstractTurret) entity).getTurretCenter().y);
-					}
-					entSprite.setRotation((float) entity.getRotation());
-					entSprite.draw(entity.getSpritePosition().x, entity.getSpritePosition().y);						
-				}
-			}
-		}
-	}
-	
-	public void debugRender(Graphics g){
-//		if(playerTank != null){
-//			g.setColor(Color.green);
-//			g.draw(playerTank.getShape());
-//			g.setColor(Color.yellow);
-//			g.drawLine(playerTank.getSpritePosition().x, playerTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//			g.setColor(Color.red);
-//			g.drawLine(playerTank.getPosition().x, playerTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//			g.setColor(Color.blue);
-//			g.drawLine(playerTank.getTurret().getTurretNozzle().x, playerTank.getTurret().getTurretNozzle().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//		}
-		g.setColor(Color.black);
-		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
-		g.setColor(Color.white);
-		g.drawString("Packet rec/sec: " + packetsRecPerSecond, 18, 320);
-		g.drawString("Packet sent/sec: " + packetsSentPerSecond, 18, 340);
-		g.drawString("Update/sec: " + updatesPerSecond, 18, 360);
-		g.drawString("Frame: " + frameCounter, 18, 400);
-		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 420);
-	}
-    
 	public String getPlayerName() {
 	    return playerName;
     }
-	
-	@Override
-    public int getID() {
-	    return this.state;
-    }
-	
+		
 	@Override
 	public void keyReleased(int key, char c){
 		super.keyReleased(key, c);
