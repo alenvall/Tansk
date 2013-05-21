@@ -305,18 +305,18 @@ public class Play extends BasicGameState{
 		if(controller.getGameMode().isDelaying()){
 			if(controller.getGameMode().getDelayTimer() > 0)
 				g.drawString("Round starts in: " + 
-			(controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+			(controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 350);
 		}
 		
 		if(controller.getGameMode().isGameOver()){
 			g.drawString("Game Over!", 500, 300);
 			for(Player p: controller.getGameMode().getWinningPlayers()){
-				g.drawString("Winner: " + p.getName(), 500, 400 + 10*controller.getGameMode().getWinningPlayers().indexOf(p));
+				g.drawString("Winner: " + p.getName(), 500, 400 + 25*controller.getGameMode().getWinningPlayers().indexOf(p));
 			}
 			int i = 0;
 			for(Player p : controller.getGameMode().getPlayerList()){
 				i++;
-				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
+				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (500+(i*25)));
 			}
 		}
 		
