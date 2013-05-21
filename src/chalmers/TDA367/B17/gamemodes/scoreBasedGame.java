@@ -7,7 +7,7 @@ import chalmers.TDA367.B17.model.Player;
 
 
 public abstract class scoreBasedGame extends GameConditions{
-private static int DEFAULT_SCORE_LIMIT = 3;	
+private static int DEFAULT_SCORE_LIMIT = 4;	
 private int scoreLimit;
 
 	public scoreBasedGame(){
@@ -21,8 +21,8 @@ private int scoreLimit;
 		for(int i = 0; i < players.size(); i++){
 			if(players.get(i).isActive() && players.get(i).isEliminated()){
 				players.get(i).setActive(false);
-				incrementPlayerScores();
 				eliminatedPlayerCount++;
+				incrementPlayerScores();
 			}else if(players.get(i).isActive()){
 				//Keep setting the roundWinner for later use
 				roundWinner = players.get(i);
@@ -33,8 +33,8 @@ private int scoreLimit;
 	}
 	
 	@Override
-	public void newRound(){
-		super.newRound();
+	public void endRound(){
+		super.endRound();
 		//Winning by score
 		for(Player p: players){
 			if(p.getScore() >= scoreLimit){
