@@ -7,7 +7,7 @@ import chalmers.TDA367.B17.model.Player;
 
 
 public abstract class ScoreBasedGame extends GameConditions{
-private static int DEFAULT_SCORE_LIMIT = 3;	
+private static int DEFAULT_SCORE_LIMIT = 8;	
 private int scoreLimit;
 
 	public ScoreBasedGame(){
