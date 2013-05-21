@@ -41,6 +41,10 @@ public class GameEvent {
 		return GameController.getInstance().getWorld().getEntity(sourceID);
 	}
 	
+	/**
+	 * Get the ID of the source.
+	 * @return sourceID
+	 */
 	public int getSourceID() {
 		return sourceID;
 	}	
@@ -53,6 +57,10 @@ public class GameEvent {
 		return eventDesc;
 	}
 	
+	/**
+	 * Get the type of the event
+	 * @return eventType
+	 */
 	public EventType getEventType() {
 		return eventType;
 	}

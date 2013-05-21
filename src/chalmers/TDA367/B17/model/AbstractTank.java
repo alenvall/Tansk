@@ -22,7 +22,7 @@ public abstract class AbstractTank extends MovableEntity {
 	public int lastDelta;
 	private boolean fire;
 	private double lastDirection;
-	private static final double MAX_HEALTH = 100;
+	public static final double MAX_HEALTH = 100;
 	public static final double MAX_SHIELD_HEALTH = 50;
 	private Shield shield;
 	private ArrayList<AbstractProjectile> projectiles;
@@ -74,6 +74,10 @@ public abstract class AbstractTank extends MovableEntity {
 		this.name = name;
 	}
 	
+	/**
+	 * Return the max health of the tank.
+	 * @return max_health
+	 */
 	public double getMaxHealth(){
 		return MAX_HEALTH;
 	}

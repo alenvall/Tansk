@@ -50,6 +50,10 @@ public class AnimationHandler {
 		}
 	}
 
+	/**
+	 * Play an animation.
+	 * @param event
+	 */
 	public void playAnimation(GameEvent event) {
 		if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
 			Vector2f tmpPos = event.getSource().getSpritePosition();

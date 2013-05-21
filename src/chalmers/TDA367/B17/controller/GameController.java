@@ -32,6 +32,10 @@ public class GameController {
 		gameConditions = new GameConditions();
 	}
 
+	/**
+	 * Get an instance of the controller.
+	 * @return instance
+	 */
 	public static GameController getInstance(){
 		if(instance == null)
 			instance = new GameController();
@@ -39,6 +43,18 @@ public class GameController {
 		return instance;
 	}
 	
+	/**
+	 * Prepare for a new game to be started.
+	 * @param width Width of the map.
+	 * @param height Height of the map.
+	 * @param scoreLimit The game's score limit.
+	 * @param rounds The game's number of rounds.
+	 * @param playerLives The number of lives each player get.
+	 * @param spawnTime The time it takes to spawn.
+	 * @param roundTime The time each round takes.
+	 * @param gameTime The total time the game takes.
+	 * @param serverWorld If the world should be on a server or not. 
+	 */
 	public void newGame(int width, int height, int scoreLimit, int rounds, 
 			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld){
 		world = new World(new Dimension(width, height), serverWorld);
@@ -48,47 +64,91 @@ public class GameController {
 				playerLives, spawnTime, roundTime, gameTime);
 	}
 	
+	/**
+	 * Get the controllers World.
+	 * @return world
+	 */
 	public World getWorld(){
 		return world;
 	}
 	
+	/**
+	 * Set the controllers World.
+	 * @param world
+	 */
 	public void setWorld(World world){
 		this.world = world;
 	}
 	
+	/**
+	 * Get the controllers Console.
+	 * @return console
+	 */
 	public Console getConsole(){
 		return console;
 	}
 	
+	/**
+	 * Set the controllers Console.
+	 * @param console
+	 */
 	public void setConsole(Console console){
 		this.console = console;
 	}
-
+	
+	/**
+	 * Get the controllers GameConditions.
+	 * @return gameConditions
+	 */
 	public GameConditions getGameConditions() {
 		return gameConditions;
 	}
-
+	
+	/**
+	 * Set the controllers GameConditions.
+	 * @param gameConditions
+	 */
 	public void setGameConditions(GameConditions gameConditions) {
 		this.gameConditions = gameConditions;
 	}
 	
+	/**
+	 * Get the controllers SoundHandler.
+	 * @return soundHandler
+	 */
 	public SoundHandler getSoundHandler(){
 		return soundHandler;
 	}
 	
+	/**
+	 * Get the controllers AnimationHandler.
+	 * @return animationHandler
+	 */
 	public AnimationHandler getAnimationHandler() {
 		return animationHandler;
 	}
 	
+	/**
+	 * Get the controllers ImageHandler.
+	 * @return imgHandler
+	 */
 	public ImageHandler getImageHandler() {
 		return imgHandler;
 	}
 
+	/**
+	 * Generate a new ID for entities.
+	 * @return id
+	 */
 	public int generateID(){
 		latestID += 1;
 		return latestID;
 	}
 
+	/**
+	 * Handle a game event such as a sound effect or an animation.
+	 * @param event
+	 */
 	public void handleEvent(GameEvent event) {
 	    if(event.getEventType().equals(EventType.SOUND)){
 	    	GameController.getInstance().getSoundHandler().playSound(event);
