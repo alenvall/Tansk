@@ -44,10 +44,10 @@ public class Spawner {
 	 * @param delta The time that has passed since the last update
 	 */
 	public void update(int delta){
-		if(!GameController.getInstance().getGameConditions().isGameOver()){
+		if(!GameController.getInstance().getGameMode().isGameOver()){
 			powerupTimer -= delta;
 			weaponTimer -= delta;
-			if(powerupSpawnTime > 0 && powerupCount < GameController.getInstance().getGameConditions().getPowerupLimit()){
+			if(powerupSpawnTime > 0 && powerupCount < GameController.getInstance().getGameMode().getPowerupLimit()){
 				if(powerupTimer <= 0){
 					powerupTimer = powerupSpawnTime;
 					Vector2f p = null;
@@ -59,7 +59,7 @@ public class Spawner {
 			}
 			
 	
-			if(weaponSpawnTime > 0 && weaponCount < GameController.getInstance().getGameConditions().getWeaponLimit()){
+			if(weaponSpawnTime > 0 && weaponCount < GameController.getInstance().getGameMode().getWeaponLimit()){
 				if(weaponTimer <= 0){
 					weaponTimer = weaponSpawnTime;
 					Vector2f p = null;

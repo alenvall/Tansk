@@ -74,7 +74,7 @@ public class Play extends BasicGameState{
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, false);
+		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, false);
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 
@@ -93,9 +93,9 @@ public class Play extends BasicGameState{
 		players.add(playerFour);
 		
 		for(Player player : players){
-			GameController.getInstance().getGameConditions().addPlayer(player);
-			player.setLives(GameController.getInstance().getGameConditions().getPlayerLives());
-			player.setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
+			GameController.getInstance().getGameMode().addPlayer(player);
+			player.setLives(GameController.getInstance().getGameMode().getPlayerLives());
+			player.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
 		}
 //		mouseCoords = new Point();
 
@@ -136,7 +136,7 @@ public class Play extends BasicGameState{
 	//	obstacle.setShape(new Rectangle(75, 250, 40, 40));
 		
 		//Start a new round
-		controller.getGameConditions().newRoundDelayTimer(3000);
+		controller.getGameMode().newRoundDelayTimer(3000);
 	}
 	
 	@Override
@@ -254,8 +254,8 @@ public class Play extends BasicGameState{
 		
 		controller.getWorld().getSpawner().update(delta);
 		
-		//Update for getGameConditions()
-		controller.getGameConditions().update(delta);
+		//Update for getGameMode()
+		controller.getGameMode().update(delta);
 		
 		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
 		while(iterator.hasNext()){
@@ -302,17 +302,17 @@ public class Play extends BasicGameState{
 		renderEntities(fourthLayerEnts);
 		
 		//Cool timer
-		if(controller.getGameConditions().isDelaying()){
-			if(controller.getGameConditions().getDelayTimer() > 0)
+		if(controller.getGameMode().isDelaying()){
+			if(controller.getGameMode().getDelayTimer() > 0)
 				g.drawString("Round starts in: " + 
-			(controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+			(controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
 		}
 		
-		if(controller.getGameConditions().isGameOver()){
+		if(controller.getGameMode().isGameOver()){
 			g.drawString("Game Over!", 500, 300);
-			g.drawString("Winner: " + controller.getGameConditions().getWinningPlayer().getName(), 500, 400);
+			g.drawString("Winner: " + controller.getGameMode().getWinningPlayer().getName(), 500, 400);
 			int i = 0;
-			for(Player p : controller.getGameConditions().getPlayerList()){
+			for(Player p : controller.getGameMode().getPlayerList()){
 				i++;
 				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
 			}

@@ -1,12 +1,15 @@
-package chalmers.TDA367.B17.model;
+package chalmers.TDA367.B17.gamemodes;
 
 import java.util.ArrayList;
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.model.AbstractProjectile;
+import chalmers.TDA367.B17.model.Entity;
+import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
 import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
 
-public class GameConditions {
+public abstract class GameConditions {
 
 	//The amount of score it will take for a player to win.
 	private int scoreLimit;
@@ -64,8 +67,7 @@ public class GameConditions {
 	 * @param roundTime The time of each round.
 	 * @param gameTime The maximum time the game will continue on for.
 	 */
-	public void init(int scoreLimit, int rounds, int playerLives, int spawnTime, int roundTime, int gameTime){
-		this.scoreLimit = scoreLimit;
+	public void init(int rounds, int playerLives, int spawnTime, int roundTime, int gameTime){
 		this.rounds = rounds;
 		this.playerLives = playerLives;
 		this.spawnTime = spawnTime;
@@ -210,28 +212,10 @@ public class GameConditions {
 	public void gameOver(){
 		if(gameOver){
 			//Checking who's got the highest score
-			winningPlayer = getHighestScoringPlayer();
+			winningPlayer = getWinningPlayer();
 
 			System.out.println("Winner: " + winningPlayer.getName() + "\n------------------");
-			for(Player p : players){
-				System.out.println(p.getName() + "'s score: " + p.getScore());
-			}
 		}
-	}
-
-	/**
-	 * Returns the player with the highest score.
-	 * return Player with the highest score
-	 */
-	public Player getHighestScoringPlayer(){
-		Player player = players.get(0);
-		for(int i = 0; i < players.size(); i++){
-			if(getPlayerScoreAtIndex(i) > player.getScore()){
-				player = players.get(i);
-			}
-		}
-
-		return player;
 	}
 
 	/**
@@ -277,22 +261,6 @@ public class GameConditions {
 	 */
 	public void addPlayer(Player player){
 		players.add(player);
-	}
-
-	/**
-	 * Return the score-limit.
-	 * @return The score-limit
-	 */
-	public int getScoreLimit() {
-		return scoreLimit;
-	}
-
-	/**
-	 * Set the score-limit.
-	 * @param scoreLimit The new score-limit
-	 */
-	public void setScoreLimit(int scoreLimit) {
-		this.scoreLimit = scoreLimit;
 	}
 
 	/**
@@ -371,9 +339,7 @@ public class GameConditions {
 	 * Return the winning player.
 	 * @return The winning player
 	 */
-	public Player getWinningPlayer() {
-		return winningPlayer;
-	}
+	public abstract Player getWinningPlayer();
 
 	/**
 	 * Return a list of all the players.

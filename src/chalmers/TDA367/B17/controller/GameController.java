@@ -6,8 +6,9 @@ import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
+import chalmers.TDA367.B17.gamemodes.GameConditions;
+import chalmers.TDA367.B17.gamemodes.StandardGameMode;
 import chalmers.TDA367.B17.animations.AnimationHandler;
-import chalmers.TDA367.B17.model.GameConditions;
 import chalmers.TDA367.B17.model.World;
 import chalmers.TDA367.B17.sound.SoundHandler;
 
@@ -19,7 +20,7 @@ public class GameController {
 	private ImageHandler imgHandler;
 	private SoundHandler soundHandler;
 	private AnimationHandler animationHandler;
-	private GameConditions gameConditions;
+	private GameConditions gameMode;
 	private int latestID;
 
 	
@@ -29,7 +30,7 @@ public class GameController {
 		soundHandler = new SoundHandler();
 		soundHandler.loadEverySound(Tansk.SOUNDS_FOLDER);
 		animationHandler = new AnimationHandler();
-		gameConditions = new GameConditions();
+		gameMode = new StandardGameMode();
 	}
 
 	public static GameController getInstance(){
@@ -39,12 +40,12 @@ public class GameController {
 		return instance;
 	}
 	
-	public void newGame(int width, int height, int scoreLimit, int rounds, 
+	public void newGame(int width, int height, int rounds, 
 			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld){
 		world = new World(new Dimension(width, height), serverWorld);
 		world.init();
 		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
-		gameConditions.init(scoreLimit, rounds, 
+		gameMode.init(rounds, 
 				playerLives, spawnTime, roundTime, gameTime);
 	}
 	
@@ -64,12 +65,12 @@ public class GameController {
 		this.console = console;
 	}
 
-	public GameConditions getGameConditions() {
-		return gameConditions;
+	public GameConditions getGameMode() {
+		return gameMode;
 	}
 
 	public void setGameConditions(GameConditions gameConditions) {
-		this.gameConditions = gameConditions;
+		this.gameMode = gameConditions;
 	}
 	
 	public SoundHandler getSoundHandler(){

@@ -113,7 +113,7 @@ public class ServerState extends BasicGameState {
 		controller.setConsole(new Console(10, 533, width, 192, OutputLevel.ALL, true));;
 		chatField = new TextField(container, container.getDefaultFont(), 10, 733, width, 23);
 		
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, true);
+		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, true);
 		
 		MapLoader.createEntities("whatever");
 	
@@ -193,7 +193,7 @@ public class ServerState extends BasicGameState {
 					gameStarted = true;
 
 					//Start a new round
-					controller.getGameConditions().newRoundDelayTimer(3000);
+					controller.getGameMode().newRoundDelayTimer(3000);
 					GameController.getInstance().getConsole().addMsg("Game started!", MsgLevel.INFO);
 				}
 			}
@@ -207,8 +207,8 @@ public class ServerState extends BasicGameState {
 			
 			controller.getWorld().getSpawner().update(delta);
 			
-			//Update for getGameConditions()
-			controller.getGameConditions().update(delta);
+			//Update for getGameMode()
+			controller.getGameMode().update(delta);
 
 			updatePlayerTanks(delta);
 			updateWorld(delta);
@@ -244,8 +244,8 @@ public class ServerState extends BasicGameState {
 		    	
 		    	if(!gameStarted){
 			    	Player newPlayer = new Player(packet.getConnection(), pck.playerName);
-			    	newPlayer.setLives(GameController.getInstance().getGameConditions().getPlayerLives());
-			    	newPlayer.setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
+			    	newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
+			    	newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
 			    	getPlayers().add(newPlayer);
 			    	responsePacket.accepted = true;
 		    	} else {
@@ -452,19 +452,19 @@ public class ServerState extends BasicGameState {
 		
 //		TODO: not do this in render maybe
 		//Cool timer
-		if(controller.getGameConditions().isDelaying()){
-			if(controller.getGameConditions().getDelayTimer() > 0)
-//				serverMessage("Round starts in: " + (controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!");
-				g.drawString("Round starts in: " + (controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+		if(controller.getGameMode().isDelaying()){
+			if(controller.getGameMode().getDelayTimer() > 0)
+//				serverMessage("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!");
+				g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
 		}
 		
-		if(controller.getGameConditions().isGameOver()){
+		if(controller.getGameMode().isGameOver()){
 //			serverMessage("Game Over!");
 			g.drawString("Game Over!", 500, 300);
-//			serverMessage("Winner: " + controller.getGameConditions().getWinningPlayer().getName());
-			g.drawString("Winner: " + controller.getGameConditions().getWinningPlayer().getName(), 500, 400);
+//			serverMessage("Winner: " + controller.getGameMode().getWinningPlayer().getName());
+			g.drawString("Winner: " + controller.getGameMode().getWinningPlayer().getName(), 500, 400);
 			int i = 0;
-			for(Player p : controller.getGameConditions().getPlayerList()){
+			for(Player p : controller.getGameMode().getPlayerList()){
 				i++;
 				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
 				serverMessage(p.getName() + "'s score: " + p.getScore());
@@ -537,7 +537,7 @@ public class ServerState extends BasicGameState {
 	}
 	
 	public ArrayList<Player> getPlayers(){
-		return controller.getGameConditions().getPlayerList();
+		return controller.getGameMode().getPlayerList();
 	}
 	
 	public void serverMessage(String message){
