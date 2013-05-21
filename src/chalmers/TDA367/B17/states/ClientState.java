@@ -17,6 +17,7 @@ import org.newdawn.slick.SpriteSheet;
 import org.newdawn.slick.geom.Shape;
 import org.newdawn.slick.geom.Transform;
 import org.newdawn.slick.geom.Vector2f;
+import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.StateBasedGame;
 
 import chalmers.TDA367.B17.MapLoader;
@@ -96,6 +97,7 @@ public class ClientState extends TanskState {
 	private AbstractTank playerTank;
 	private Lifebar lifebar;
 	private SoundSwitch soundSwitch;
+	protected TextField chatField;
 		
 	private ClientState(int state) {
 		super(state);
@@ -120,6 +122,7 @@ public class ClientState extends TanskState {
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
 
+		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
 		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
 		console.setBorder(false);
 		console.setTimerHide(true);
@@ -247,6 +250,10 @@ public class ClientState extends TanskState {
 	@Override
 	public void renderGUI(GameContainer gc, Graphics g){
 		super.renderGUI(gc, g);
+		
+		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
+		chatField.render(gc, g);
+		
 		if(playerTank != null){
 			if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
 				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);

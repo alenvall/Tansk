@@ -8,7 +8,6 @@ import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Image;
 import org.newdawn.slick.SlickException;
-import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
@@ -26,7 +25,6 @@ public abstract class TanskState extends BasicGameState {
 	protected int packetsSentPerSecond;
 	protected int packetsRecPerSecond;
 	protected int packetsReceived;
-	protected TextField chatField;
 	protected long deltaTime;
 	protected long oldTime;
 	protected int updates;
@@ -47,7 +45,6 @@ public abstract class TanskState extends BasicGameState {
 		super.enter(gc, game);
 
 		controller = GameController.getInstance();
-		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
 		packetQueue = new ConcurrentLinkedQueue<Packet>();
 	}
 		
@@ -72,8 +69,6 @@ public abstract class TanskState extends BasicGameState {
 		controller.getConsole().renderMessages(g);
 		g.setColor(Color.white);
 		g.setLineWidth(1);
-		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
-		chatField.render(container, g);
 		
 		g.setColor(Color.white);
 		g.drawString("Packet rec/sec: " + packetsRecPerSecond, 18, 320);

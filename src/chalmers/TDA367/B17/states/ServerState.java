@@ -9,6 +9,7 @@ import java.util.Map.Entry;
 import org.newdawn.slick.*;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.Graphics;
+import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
 
 import chalmers.TDA367.B17.*;
@@ -33,7 +34,8 @@ public class ServerState extends TanskState {
 	private ArrayList<Packet> allClientsPacketQueue;
 	private ArrayList<Packet> clientPacketQueue;
 	private ArrayList<Player> disconnectedPlayersTemp;
-	
+
+	protected TextField chatField;
 	private boolean gameStarted = false;
 	private boolean serverStarted;
 	
@@ -63,6 +65,7 @@ public class ServerState extends TanskState {
 		super.enter(container, game);
 
 
+		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
 		controller.setConsole(new Console(10, 533, 600, 192, OutputLevel.ALL));
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, true);
 		
@@ -192,7 +195,11 @@ public class ServerState extends TanskState {
 	@Override
 	public void renderGUI(GameContainer gc, Graphics g){
 		super.renderGUI(gc, g);
+
+		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
+		chatField.render(gc, g);
 		if(gameStarted)
+			
 			g.setColor(Color.green);
 		else
 			g.setColor(Color.red);
