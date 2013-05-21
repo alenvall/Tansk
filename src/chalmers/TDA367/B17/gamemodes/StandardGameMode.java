@@ -4,15 +4,11 @@ import chalmers.TDA367.B17.model.Player;
 
  
 
-public class StandardGameMode extends GameConditions {
-	
-private static int DEFAULT_SCORE_LIMIT = 3;	
+public class StandardGameMode extends scoreBasedGame {
 
-private int scoreLimit;
 
 	public StandardGameMode(){
 		super();
-		this.scoreLimit = DEFAULT_SCORE_LIMIT;
 	}
 
 	@Override
@@ -28,35 +24,9 @@ private int scoreLimit;
 		}
 	}
 	
-	/**
-	 * Return the score-limit.
-	 * @return The score-limit
-	 */
-	public int getScoreLimit() {
-		return scoreLimit;
-	}
-	
-
-	/**
-	 * Set the score-limit.
-	 * @param scoreLimit The new score-limit
-	 */
-	public void setScoreLimit(int scoreLimit) {
-		this.scoreLimit = scoreLimit;
-	}
-	
-	/**
-	 * Returns the player with the highest score.
-	 * return Player with the highest score
-	 */
-	public Player getHighestScoringPlayer(){
-		Player player = getPlayerList().get(0);
-		for(int i = 0; i < getPlayerList().size(); i++){
-			if(getPlayerScoreAtIndex(i) > player.getScore()){
-				player = getPlayerList().get(i);
-			}
-		}
-
-		return player;
+	@Override
+	public void newRound(){
+		super.newRound();
+		incrementPlayerScores();
 	}
 }

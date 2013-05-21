@@ -11,8 +11,6 @@ import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
 
 public abstract class GameConditions {
 
-	//The amount of score it will take for a player to win.
-	private int scoreLimit;
 	//The amount of rounds that will be played.
 	private int rounds;
 	//The lives of each player.
@@ -34,15 +32,15 @@ public abstract class GameConditions {
 	private boolean delaying;
 
 	//keeps track of the amount of eliminated players
-	private int eliminatedPlayerCount;
+	protected int eliminatedPlayerCount;
 
 	//The winner of the game.
-	private Player winningPlayer;
+	protected Player winningPlayer;
 	//The winner of the latest round.
-	private Player roundWinner;
+	protected Player roundWinner;
 
 	//A list of all the players.
-	private ArrayList<Player> players;
+	protected ArrayList<Player> players;
 
 	//The maximum amount of powerups that can be out at a time.
 	private int powerupLimit = 6;
@@ -132,17 +130,7 @@ public abstract class GameConditions {
 				gameOver();
 			}
 
-			//Check whether all players have been eliminated
-			for(int i = 0; i < players.size(); i++){
-				if(players.get(i).isActive() && players.get(i).isEliminated()){
-					players.get(i).setActive(false);
-					incrementPlayerScores();
-					eliminatedPlayerCount++;
-				}else if(players.get(i).isActive()){
-					//Keep setting the roundWinner for later use
-					roundWinner = players.get(i);
-				}
-			}
+			
 
 			//Winning by rounds
 			if((roundWinner != null && eliminatedPlayerCount >= players.size()-1 && !(players.size() <= 1))
@@ -162,13 +150,6 @@ public abstract class GameConditions {
 				}
 			}
 
-			//Winning by score
-			for(Player p: players){
-				if(p.getScore() >= scoreLimit){
-					gameOver = true;
-					winningPlayer = p;
-				}
-			}
 		}
 
 		if(delaying){
@@ -211,20 +192,9 @@ public abstract class GameConditions {
 	 */
 	public void gameOver(){
 		if(gameOver){
-			//Checking who's got the highest score
 			winningPlayer = getWinningPlayer();
 
 			System.out.println("Winner: " + winningPlayer.getName() + "\n------------------");
-		}
-	}
-
-	/**
-	 * Increments every player's score.
-	 */
-	public void incrementPlayerScores(){
-		for(Player p : players){
-			if(p.isActive())
-				p.setScore(p.getScore() + 1);
 		}
 	}
 
@@ -246,14 +216,6 @@ public abstract class GameConditions {
 		}
 	}
 
-	/**
-	 * Return the score of a player at an index.
-	 * @param index The index of the player.
-	 * @return The score of the player at index.
-	 */
-	public int getPlayerScoreAtIndex(int index){
-		return players.get(index).getScore();
-	}
 
 	/**
 	 * Add a player to the playerList.
@@ -379,5 +341,9 @@ public abstract class GameConditions {
 	 */
 	public void setWeaponLimit(int weaponLimit) {
 		this.weaponLimit = weaponLimit;
+	}
+	
+	public void setWinningPlayer(){
+		
 	}
 }
