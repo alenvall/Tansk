@@ -14,6 +14,7 @@ private int scoreLimit;
 	
 	@Override
 	public void update(int delta){
+		super.update(delta);
 		//Check whether all players have been eliminated
 		for(int i = 0; i < players.size(); i++){
 			if(players.get(i).isActive() && players.get(i).isEliminated()){
@@ -25,6 +26,13 @@ private int scoreLimit;
 				roundWinner = players.get(i);
 			}
 		}
+		
+		
+	}
+	
+	@Override
+	public void newRound(){
+		super.newRound();
 		//Winning by score
 		for(Player p: players){
 			if(p.getScore() >= scoreLimit){
@@ -32,7 +40,6 @@ private int scoreLimit;
 				winningPlayer = p;
 			}
 		}
-		
 	}
 	
 	/**
