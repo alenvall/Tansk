@@ -22,6 +22,5 @@ public class StandardGameMode extends scoreBasedGame {
 	@Override
 	public void newRound(){
 		super.newRound();
-		incrementPlayerScores();
 	}
 }
