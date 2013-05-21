@@ -80,6 +80,10 @@ public abstract class AbstractTurret extends Entity {
 		return new Vector2f(nozzleX, nozzleY);
 	}
 	
+	/**
+	 * Set the fire rate of the turret. (the amount of time between each shot.)
+	 * @param fireRate
+	 */
 	public void setFireRate(int fireRate) {
 		this.fireRate = fireRate;
 	}

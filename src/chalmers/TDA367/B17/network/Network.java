@@ -10,6 +10,10 @@ import com.esotericsoftware.kryonet.*;
 public class Network {
 	static public final int PORT = 54555;
 	
+	/**
+	 * Register the network classes.
+	 * @param endPoint
+	 */
 	static public void register(EndPoint endPoint) {
 		Kryo kryo = endPoint.getKryo();
 		kryo.register(Pck0_JoinRequest.class);

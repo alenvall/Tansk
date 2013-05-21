@@ -221,18 +221,35 @@ public class Player {
 	    return id;
     }
 
+	/**
+	 * Get the connection associated with the player.
+	 * @return connection
+	 */
 	public Connection getConnection() {
 	    return connection;
     }
-
+	
+	/**
+	 * Set the connection associated with the player.
+	 * @param connection
+	 */
 	public void setConnection(Connection connection) {
 	    this.connection = connection;
     }
-
+	
+	/**
+	 * Set the players input status of a key.
+	 * @param key
+	 * @param pressed
+	 */
 	public void setInputStatus(int key, boolean pressed) {
 	    inputStatuses.set(key, pressed);
     }
 
+	/**
+	 * Return the input statuses of the player.
+	 * @return inputStatuses
+	 */
 	public ArrayList<Boolean> getInput(){
 		return inputStatuses;
 	}

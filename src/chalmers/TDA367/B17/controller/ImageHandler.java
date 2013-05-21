@@ -14,6 +14,11 @@ public class ImageHandler {
 		
 	}
 	
+	/**
+	 * Return a sprite given its sprite id.
+	 * @param id
+	 * @return sprite
+	 */
 	public SpriteSheet getSprite(String id){
 		return sprites.get(id);
 	}

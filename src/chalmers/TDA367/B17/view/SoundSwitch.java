@@ -12,12 +12,21 @@ public class SoundSwitch {
 	private float storedVolume;
 	private GameController controller;
 	
+	/**
+	 * Create a new SoundSwitch at the given position.
+	 * @param x
+	 * @param y
+	 */
 	public SoundSwitch(int x, int y){
 		this.x = x;
 		this.y = y;
 		controller = GameController.getInstance();
 	}
 	
+	/**
+	 * Render the SoundSwitch on the current graphics object.
+	 * @param g
+	 */
 	public void render(Graphics g){
 		if(controller.getSoundHandler().isSoundOn()){
 			if(controller.getSoundHandler().getVolume() > 0.75){
@@ -32,11 +41,18 @@ public class SoundSwitch {
 		}
 	}
 	
+	/**
+	 * Turn the sound off and save the volume.
+	 * @param volume
+	 */
 	public void turnSoundOff(float volume){
 		storedVolume = volume;
 		controller.getSoundHandler().setVolume(0);
 	}
 	
+	/**
+	 * Turn the sound on and restore the volume.
+	 */
 	public void turnSoundOn(){
 		controller.getSoundHandler().setVolume(storedVolume);
 	}
