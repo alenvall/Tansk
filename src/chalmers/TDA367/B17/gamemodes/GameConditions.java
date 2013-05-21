@@ -92,26 +92,12 @@ public abstract class GameConditions {
 
 		eliminatedPlayerCount = 0;
 
-		//Reset the powerup count
-		GameController.getInstance().getWorld().getSpawner().setPowerupCount(0);
-		//Reset the weapon count
-		GameController.getInstance().getWorld().getSpawner().setWeaponCount(0);
 
-		for(Entity entity : GameController.getInstance().getWorld().getEntities().values()){
-			if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUpPickup
-					|| entity instanceof AbstractWeaponPickup || entity instanceof Shield){
-				entity.destroy();
-			}
-		}
 
 		for(Player p : players){
 			p.setRespawnTime(100);
 			p.setEliminated(false);
 			p.setActive(true);
-			if(p.getTank() != null){
-				p.getTank().destroy();
-				p.setTank(null);
-			}
 			p.spawnTank();
 		}
 
@@ -119,6 +105,29 @@ public abstract class GameConditions {
 		setPlayerLives();
 	}
 
+	
+	public void endRound(){
+		//Reset the powerup count
+		GameController.getInstance().getWorld().getSpawner().setPowerupCount(0);
+		//Reset the weapon count
+		GameController.getInstance().getWorld().getSpawner().setWeaponCount(0);
+
+		//Remove all entities
+		for(Entity entity : GameController.getInstance().getWorld().getEntities().values()){
+			if(entity instanceof AbstractProjectile || entity instanceof AbstractPowerUpPickup
+					|| entity instanceof AbstractWeaponPickup || entity instanceof Shield){
+				entity.destroy();
+			}
+		}
+		
+		for(Player p : players){
+			if(p.getTank() != null){
+				p.getTank().destroy();
+				p.setTank(null);
+			}
+		}
+	}
+	
 	/**
 	 * Updates timers and checks if any player has won.
 	 * @param delta The time since the last update in milliseconds
@@ -156,8 +165,10 @@ public abstract class GameConditions {
 		}
 
 		if(delaying){
+			endRound();
 			delayTimer-=delta;
 			if(delayTimer <= 0){
+				
 				//Start a new round when the delay is over
 				newRound();
 				delaying = false;
