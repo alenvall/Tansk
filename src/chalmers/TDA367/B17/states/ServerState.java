@@ -462,7 +462,9 @@ public class ServerState extends BasicGameState {
 //			serverMessage("Game Over!");
 			g.drawString("Game Over!", 500, 300);
 //			serverMessage("Winner: " + controller.getGameMode().getWinningPlayer().getName());
-			g.drawString("Winner: " + controller.getGameMode().getWinningPlayer().getName(), 500, 400);
+			for(Player p: controller.getGameMode().getWinningPlayers()){
+				g.drawString("Winner: " + p.getName(), 500, 400 + 10*controller.getGameMode().getWinningPlayers().indexOf(p));
+			}
 			int i = 0;
 			for(Player p : controller.getGameMode().getPlayerList()){
 				i++;

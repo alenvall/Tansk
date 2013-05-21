@@ -1,5 +1,7 @@
 package chalmers.TDA367.B17.gamemodes;
 
+import java.util.*;
+
 import chalmers.TDA367.B17.model.Player;
 
 
@@ -37,7 +39,8 @@ private int scoreLimit;
 		for(Player p: players){
 			if(p.getScore() >= scoreLimit){
 				setGameOver(true);
-				addWinningPlayer(p);
+				
+				winningPlayers.addAll(getHighestScoringPlayers());
 			}
 		}
 	}
@@ -73,11 +76,15 @@ private int scoreLimit;
 	 * Returns the player with the highest score.
 	 * return Player with the highest score
 	 */
-	public Player getHighestScoringPlayer(){
-		Player player = getPlayerList().get(0);
+	public List<Player> getHighestScoringPlayers(){
+		List<Player> player = new ArrayList<Player>();
+		player.add(getPlayerList().get(0));
 		for(int i = 0; i < getPlayerList().size(); i++){
-			if(getPlayerScoreAtIndex(i) > player.getScore()){
-				player = getPlayerList().get(i);
+			if(getPlayerScoreAtIndex(i) > player.get(0).getScore()){
+				player.clear();
+				player.add(getPlayerList().get(i));
+			}else if(getPlayerScoreAtIndex(i) == player.get(0).getScore()){
+				player.add(getPlayerList().get(i));
 			}
 		}
 
