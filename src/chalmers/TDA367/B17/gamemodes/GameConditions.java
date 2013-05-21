@@ -50,8 +50,9 @@ public abstract class GameConditions {
 	//The maximum amount of weapons that can be out at a time.
 	private int weaponLimit = 6;
 	
+	//has the round been ended (map cleared and such)
 	protected boolean roundEnded;
-
+	
 	/**
 	 * Create a new GameConditions object.
 	 */
@@ -151,9 +152,8 @@ public abstract class GameConditions {
 			
 
 			//Winning by rounds
-			if((roundWinner != null && eliminatedPlayerCount >= players.size()-1 && !(players.size() <= 1))
+			if((eliminatedPlayerCount >= players.size()-1 && !(players.size() <= 1))
 					|| roundTimer <= 0){
-				System.out.println("Winner of round #" + roundCounter + ": "+ roundWinner.getName());
 
 				//Check if it's the last round
 				if(roundCounter >= rounds){
