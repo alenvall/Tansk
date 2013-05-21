@@ -3,11 +3,11 @@ package chalmers.TDA367.B17.weapons;
 import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.model.AbstractObstacle;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.MapBounds;
-import chalmers.TDA367.B17.terrain.BrownWall;
 
 public class BounceProjectile extends AbstractProjectile {
 	
@@ -37,10 +37,10 @@ public class BounceProjectile extends AbstractProjectile {
 			}else if(true){
 			setDirection(new Vector2f(getDirection().x, -getDirection().y));
 			}
-		}else if(entity instanceof BrownWall){
-			BrownWall tmpBrownWall = (BrownWall)entity;
-			if(Math.abs(getPosition().x - tmpBrownWall.getShape().getX()) < 5 || 
-					Math.abs(getPosition().x - tmpBrownWall.getShape().getWidth()) < 5){
+		}else if(entity instanceof AbstractObstacle){
+			AbstractObstacle tmpAbstractObstacle = (AbstractObstacle)entity;
+			if(Math.abs(getPosition().x - tmpAbstractObstacle.getShape().getX()) < 5 || 
+					Math.abs(getPosition().x - tmpAbstractObstacle.getShape().getWidth()) < 5){
 			setDirection(new Vector2f(-getDirection().x, getDirection().y));
 			}else if(true){
 			setDirection(new Vector2f(getDirection().x, -getDirection().y));
