@@ -62,8 +62,10 @@ public class ServerState extends TanskState {
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 
+
 		controller.setConsole(new Console(10, 533, 600, 192, OutputLevel.ALL));
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, true);
+		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, true);
+		
 		MapLoader.createEntities("whatever");
 	
 		Log.set(Log.LEVEL_INFO);
@@ -129,7 +131,7 @@ public class ServerState extends TanskState {
 					gameStarted = true;
 
 					//Start a new round
-					controller.getGameConditions().newRoundDelayTimer(3000);
+					controller.getGameMode().newRoundDelayTimer(3000);
 					GameController.getInstance().getConsole().addMsg("Game started!", MsgLevel.INFO);
 				}
 			}
@@ -145,8 +147,8 @@ public class ServerState extends TanskState {
 			
 			controller.getWorld().getSpawner().update(delta);
 			
-			//Update for getGameConditions()
-			controller.getGameConditions().update(delta);
+			//Update for getGameMode()
+			controller.getGameMode().update(delta);
 
 			updatePlayerTanks(delta);
 			updateWorld(delta);
@@ -215,27 +217,30 @@ public class ServerState extends TanskState {
 //			}
 //		}
 		
-		
+			
 //		TODO: not do this in render maybe
 		//Cool timer
-		if(controller.getGameConditions().isDelaying()){
-			if(controller.getGameConditions().getDelayTimer() > 0)
-//				serverMessage("Round starts in: " + (controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!");
-				g.drawString("Round starts in: " + (controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+		if(controller.getGameMode().isDelaying()){
+			if(controller.getGameMode().getDelayTimer() > 0)
+//				serverMessage("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!");
+				g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
 		}
 		
-		if(controller.getGameConditions().isGameOver()){
+		if(controller.getGameMode().isGameOver()){
 //			serverMessage("Game Over!");
 			g.drawString("Game Over!", 500, 300);
-//			serverMessage("Winner: " + controller.getGameConditions().getWinningPlayer().getName());
-			g.drawString("Winner: " + controller.getGameConditions().getWinningPlayer().getName(), 500, 400);
+//			serverMessage("Winner: " + controller.getGameMode().getWinningPlayer().getName());
+			for(Player p: controller.getGameMode().getWinningPlayers()){
+				g.drawString("Winner: " + p.getName(), 500, 400 + 10*controller.getGameMode().getWinningPlayers().indexOf(p));
+			}
 			int i = 0;
-			for(Player p : controller.getGameConditions().getPlayerList()){
+			for(Player p : controller.getGameMode().getPlayerList()){
 				i++;
 				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
 				serverMessage(p.getName() + "'s score: " + p.getScore());
 			}
 		}
+	
 	}
 	
 	private void renderEntities(ArrayList<Entity> entities, Graphics g){
@@ -278,8 +283,8 @@ public class ServerState extends TanskState {
 		    	
 		    	if(!gameStarted){
 			    	Player newPlayer = new Player(packet.getConnection(), pck.playerName);
-			    	newPlayer.setLives(GameController.getInstance().getGameConditions().getPlayerLives());
-			    	newPlayer.setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
+			    	newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
+			    	newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
 			    	getPlayers().add(newPlayer);
 			    	responsePacket.accepted = true;
 		    	} else {
@@ -447,7 +452,7 @@ public class ServerState extends TanskState {
 	public void addToAllClientsQueue(Packet packet){
 		allClientsPacketQueue.add(packet);
 	}
-	
+		
 	public void addToClientQueue(Packet packet, Connection clientConnection){
 		packet.setConnection(clientConnection);
 		clientPacketQueue.add(packet);
@@ -463,7 +468,7 @@ public class ServerState extends TanskState {
 	}
 	
 	public ArrayList<Player> getPlayers(){
-		return controller.getGameConditions().getPlayerList();
+		return controller.getGameMode().getPlayerList();
 	}
 	
 	public void serverMessage(String message){

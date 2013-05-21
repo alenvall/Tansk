@@ -36,7 +36,6 @@ public class Play extends TanskState {
 	private Player playerTwo;
 	private Player playerThree;
 	private Player playerFour;
-
 	
 	public Play(int state) {
 	    super(state);
@@ -61,7 +60,7 @@ public class Play extends TanskState {
 		controller.setConsole(console);
 		
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, false);
+		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, false);
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 
 		//Players
@@ -79,15 +78,15 @@ public class Play extends TanskState {
 		players.add(playerFour);
 		
 		for(Player player : players){
-			GameController.getInstance().getGameConditions().addPlayer(player);
-			player.setLives(GameController.getInstance().getGameConditions().getPlayerLives());
-			player.setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
+			GameController.getInstance().getGameMode().addPlayer(player);
+			player.setLives(GameController.getInstance().getGameMode().getPlayerLives());
+			player.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
 		}
 		
 		MapLoader.createEntities("");
 
 		//Start a new round
-		controller.getGameConditions().newRoundDelayTimer(3000);
+		controller.getGameMode().newRoundDelayTimer(3000);
 	}
 	
 	@Override
@@ -209,8 +208,8 @@ public class Play extends TanskState {
 		
 		controller.getWorld().getSpawner().update(delta);
 		
-		//Update for getGameConditions()
-		controller.getGameConditions().update(delta);
+		//Update for getGameMode()
+		controller.getGameMode().update(delta);
 		
 		updateWorld(delta);
 	}
@@ -288,19 +287,21 @@ public class Play extends TanskState {
 		soundSwitch.render(g);
 		
 		//Cool timer
-		if(controller.getGameConditions().isDelaying()){
-			if(controller.getGameConditions().getDelayTimer() > 0)
+		if(controller.getGameMode().isDelaying()){
+			if(controller.getGameMode().getDelayTimer() > 0)
 				g.drawString("Round starts in: " + 
-			(controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+			(controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 350);
 		}
 		
-		if(controller.getGameConditions().isGameOver()){
+		if(controller.getGameMode().isGameOver()){
 			g.drawString("Game Over!", 500, 300);
-			g.drawString("Winner: " + controller.getGameConditions().getWinningPlayer().getName(), 500, 400);
+			for(Player p: controller.getGameMode().getWinningPlayers()){
+				g.drawString("Winner(s): " + p.getName(), 500, 400 + 25*controller.getGameMode().getWinningPlayers().indexOf(p));
+			}
 			int i = 0;
-			for(Player p : controller.getGameConditions().getPlayerList()){
+			for(Player p : controller.getGameMode().getPlayerList()){
 				i++;
-				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
+				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (500+(i*25)));
 			}
 		}
 		

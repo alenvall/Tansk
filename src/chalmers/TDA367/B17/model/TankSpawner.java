@@ -67,9 +67,9 @@ public class TankSpawner{
 	 */
 	public void newTankRandSpawnPoint(Player player){
 		GameController controller = GameController.getInstance();
-		if(!(controller.getGameConditions().getPlayerList().size() > tankSpawnPoints.size())){
+		if(!(controller.getGameMode().getPlayerList().size() > tankSpawnPoints.size())){
 			while(true){
-				int index = (int)(Math.random()*(controller.getGameConditions().getPlayerList().size()));
+				int index = (int)(Math.random()*(controller.getGameMode().getPlayerList().size()));
 				TankSpawnPoint tmp = tankSpawnPoints.get(index);
 				if(tmp.isSpawnable()){
 					tmp.spawnTank(player);

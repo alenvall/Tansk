@@ -6,8 +6,9 @@ import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
+import chalmers.TDA367.B17.gamemodes.GameConditions;
+import chalmers.TDA367.B17.gamemodes.StandardGameMode;
 import chalmers.TDA367.B17.animations.AnimationHandler;
-import chalmers.TDA367.B17.model.GameConditions;
 import chalmers.TDA367.B17.model.World;
 import chalmers.TDA367.B17.sound.SoundHandler;
 
@@ -19,7 +20,7 @@ public class GameController {
 	private ImageHandler imgHandler;
 	private SoundHandler soundHandler;
 	private AnimationHandler animationHandler;
-	private GameConditions gameConditions;
+	private GameConditions gameMode;
 	private int latestID;
 
 	
@@ -29,7 +30,7 @@ public class GameController {
 		soundHandler = new SoundHandler();
 		soundHandler.loadEverySound(Tansk.SOUNDS_FOLDER);
 		animationHandler = new AnimationHandler();
-		gameConditions = new GameConditions();
+		gameMode = new StandardGameMode();
 	}
 
 	/**
@@ -47,7 +48,6 @@ public class GameController {
 	 * Prepare for a new game to be started.
 	 * @param width Width of the map.
 	 * @param height Height of the map.
-	 * @param scoreLimit The game's score limit.
 	 * @param rounds The game's number of rounds.
 	 * @param playerLives The number of lives each player get.
 	 * @param spawnTime The time it takes to spawn.
@@ -55,12 +55,12 @@ public class GameController {
 	 * @param gameTime The total time the game takes.
 	 * @param serverWorld If the world should be on a server or not. 
 	 */
-	public void newGame(int width, int height, int scoreLimit, int rounds, 
+	public void newGame(int width, int height, int rounds, 
 			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld){
 		world = new World(new Dimension(width, height), serverWorld);
 		world.init();
 		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
-		gameConditions.init(scoreLimit, rounds, 
+		gameMode.init(rounds, 
 				playerLives, spawnTime, roundTime, gameTime);
 	}
 	
@@ -97,11 +97,11 @@ public class GameController {
 	}
 	
 	/**
-	 * Get the controllers GameConditions.
-	 * @return gameConditions
-	 */
-	public GameConditions getGameConditions() {
-		return gameConditions;
+	 * Get the game mode.
+	 * @return gameMode
+	 */		
+	public GameConditions getGameMode() {
+		return gameMode;
 	}
 	
 	/**
@@ -109,7 +109,7 @@ public class GameController {
 	 * @param gameConditions
 	 */
 	public void setGameConditions(GameConditions gameConditions) {
-		this.gameConditions = gameConditions;
+		this.gameMode = gameConditions;
 	}
 	
 	/**
