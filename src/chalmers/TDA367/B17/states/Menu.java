@@ -4,44 +4,49 @@ import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Input;
 import org.newdawn.slick.SlickException;
-import org.newdawn.slick.geom.Rectangle;
+import org.newdawn.slick.SpriteSheet;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
 import chalmers.TDA367.B17.Tansk;
+import chalmers.TDA367.B17.controller.GameController;
 
 public class Menu extends BasicGameState{
 	
-	Rectangle playGame;
-	Rectangle exitGame;
-	Rectangle hostGame;
-	Rectangle joinGame;
+	SpriteSheet playGame;
+	boolean playPressed = false;
+	boolean exitPressed = false;
+	boolean joinPressed = false;
+	boolean hostPressed = false;
+	SpriteSheet exitGame;
+	SpriteSheet hostGame;
+	SpriteSheet joinGame;
 	private int state;
-
+	
+	SpriteSheet background;
+	
 	public Menu(int state) {
 		this.state = state;
 	}
 
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
-		playGame = new Rectangle(100, 125, 150, 50);
-		exitGame = new Rectangle(100, 225, 150, 50);
-		hostGame = new Rectangle(100, 325, 150, 50);
-		joinGame = new Rectangle(100, 425, 150, 50);
+		playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play"), 150, 50);
+		exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit"), 150, 50);
+		hostGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_host"), 150, 50);
+		joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join"), 150, 50);
+		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
+				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
 	}
 
 	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
-		g.drawString("Welcome to Tansk!", 100, 50);
-		g.drawString("Play", 150, 140);
-		g.drawString("Exit", 150, 240);
-		g.drawString("Host", 150, 340);
-		g.drawString("Join", 150, 440);
-		g.draw(playGame);
-		g.draw(exitGame);
-		g.draw(hostGame);
-		g.draw(joinGame);
+		background.draw(0,0);
+		playGame.draw(100,125);
+		exitGame.draw(100,225);
+		hostGame.draw(100,325);
+		joinGame.draw(100,425);
 	}
 
 	@Override
@@ -52,27 +57,71 @@ public class Menu extends BasicGameState{
 		int y = input.getMouseY();
 		
 		if(x > 100 && x < 250 && y > 125 && y < 175){
+			playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play_hover"), 150, 50);
 			if(input.isMouseButtonDown(0)){
-				sbg.enterState(Tansk.PLAY);
+				playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play_pressed"), 150, 50);
+				playPressed = true;
 			}
+			if(!input.isMouseButtonDown(0)){
+				if(playPressed){
+					playPressed = false;
+					sbg.enterState(Tansk.PLAY);
+				}
+			}
+		}else{
+			playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play"), 150, 50);
+			playPressed = false;
 		}
 		
 		if(x > 100 && x < 250 && y > 225 && y < 275){
+			exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit_hover"), 150, 50);
 			if(input.isMouseButtonDown(0)){
-				gc.exit();
+				exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit_pressed"), 150, 50);
+				exitPressed = true;
 			}
+			if(!input.isMouseButtonDown(0)){
+				if(exitPressed){
+					exitPressed = false;
+					gc.exit();
+				}
+			}
+		}else{
+			exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit"), 150, 50);
+			exitPressed = false;
 		}
 		
 		if(x > 100 && x < 250 && y > 325 && y < 375){
+			hostGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_host_hover"), 150, 50);
 			if(input.isMouseButtonDown(0)){
-				sbg.enterState(Tansk.HOST);
+				hostGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_host_pressed"), 150, 50);
+				hostPressed = true;
 			}
+			if(!input.isMouseButtonDown(0)){
+				if(hostPressed){
+					hostPressed = false;
+					sbg.enterState(Tansk.HOST);
+				}
+			}
+		}else{
+			hostGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_host"), 150, 50);
+			hostPressed = false;
 		}		
 		
 		if(x > 100 && x < 250 && y > 425 && y < 475){
+			joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join_hover"), 150, 50);
 			if(input.isMouseButtonDown(0)){
-				sbg.enterState(Tansk.JOIN);
+				joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join_pressed"), 150, 50);
+				joinPressed = true;
 			}
+			if(!input.isMouseButtonDown(0)){
+				if(joinPressed){
+					joinPressed = false;
+					sbg.enterState(Tansk.JOIN);
+				}
+			}
+		}else{
+			joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join"), 150, 50);
+			joinPressed = false;
 		}
 	}
 
