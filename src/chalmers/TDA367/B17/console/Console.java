@@ -36,14 +36,14 @@ public class Console {
 	 * @param initialOutputLevel
 	 * @param border
 	 */
-	public Console(int posX, int posY, int width, int height, OutputLevel initialOutputLevel, boolean border){
+	public Console(int posX, int posY, int width, int height, OutputLevel initialOutputLevel){
 		messages = new ArrayList<ConsoleMessage>();
 		this.posX = posX;
 		this.posY = posY;
 		this.width = width;
 		this.height = height;
 		outputLevel = initialOutputLevel;
-		this.border = border;
+		this.border = true;
 		visible = true;
 		
 		maxMessages = (height-2*MESSAGE_OFFSETY) / (ROW_HEIGHT);
@@ -214,4 +214,12 @@ public class Console {
 	    if(active)
 	    	setVisible(true);
     }
+	
+	/**
+	 * Set if console should have a border.
+	 * @param border
+	 */
+	public void setBorder(boolean border) {
+		this.border = border;
+	}
 }

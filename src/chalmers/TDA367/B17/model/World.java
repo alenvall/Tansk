@@ -18,7 +18,6 @@ import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
 import chalmers.TDA367.B17.spawnpoints.Spawner;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.states.ServerState;
-import chalmers.TDA367.B17.terrain.BrownWall;
 import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
 
 public class World {
@@ -60,7 +59,7 @@ public class World {
 	 */
 	public void addEntity(Entity newEntity){
 		if(serverWorld){
-			if(!(newEntity instanceof MapBounds) || !(newEntity instanceof BrownWall) || !(newEntity instanceof TankSpawnPoint)){
+			if(!(newEntity instanceof MapBounds) || !(newEntity instanceof AbstractObstacle) || !(newEntity instanceof TankSpawnPoint)){
 				GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
 				
 				if(newEntity instanceof AbstractTank){
