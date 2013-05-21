@@ -10,13 +10,12 @@ import org.newdawn.slick.*;
 import org.newdawn.slick.geom.*;
 import org.newdawn.slick.state.*;
 
+import chalmers.TDA367.B17.MapLoader;
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.console.Console.OutputLevel;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.*;
-import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
-import chalmers.TDA367.B17.terrain.BrownWall;
 import chalmers.TDA367.B17.view.Lifebar;
 import chalmers.TDA367.B17.view.SoundSwitch;
 import chalmers.TDA367.B17.weaponPickups.SlowspeedyPickup;
@@ -84,18 +83,7 @@ public class Play extends TanskState {
 			player.setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
 		}
 		
-		//ObstacleTest
-		new BrownWall(GameController.getInstance().generateID(), new Vector2f(150, 50), new Vector2f(700, 600));
-		
-		//TankSpawnPoints
-		TankSpawnPoint tsp = new TankSpawnPoint(GameController.getInstance().generateID(), new Vector2f(100, 100));
-		tsp.setRotation(315);
-		tsp = new TankSpawnPoint(GameController.getInstance().generateID(), new Vector2f(900, 100));
-		tsp.setRotation(45);
-		tsp = new TankSpawnPoint(GameController.getInstance().generateID(), new Vector2f(100, 650));
-		tsp.setRotation(225);
-		tsp = new TankSpawnPoint(GameController.getInstance().generateID(), new Vector2f(900, 650));
-		tsp.setRotation(135);
+		MapLoader.createEntities("");
 
 		//Start a new round
 		controller.getGameConditions().newRoundDelayTimer(3000);

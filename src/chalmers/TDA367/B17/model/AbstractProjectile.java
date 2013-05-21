@@ -2,7 +2,6 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
-import chalmers.TDA367.B17.terrain.BrownWall;
 
 public abstract class AbstractProjectile extends MovableEntity {
 	
@@ -108,7 +107,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractProjectile || entity == getTank()){
 			return;
-		}else if(entity instanceof MapBounds || entity instanceof BrownWall){
+		}else if(entity instanceof MapBounds || entity instanceof AbstractObstacle){
 			//debugWallHit.play();
 			this.destroy();
 		}else if(entity instanceof AbstractTank){
