@@ -5,7 +5,6 @@ import org.newdawn.slick.geom.Vector2f;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.terrain.HorizontalWall;
-import chalmers.TDA367.B17.terrain.BrownWall;
 import chalmers.TDA367.B17.terrain.VerticalWall;
 
 /** Loads static entities from the map
