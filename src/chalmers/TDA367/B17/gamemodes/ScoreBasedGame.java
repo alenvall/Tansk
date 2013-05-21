@@ -14,23 +14,6 @@ private int scoreLimit;
 		this.scoreLimit = DEFAULT_SCORE_LIMIT;
 	}
 	
-	@Override
-	public void update(int delta){
-		super.update(delta);
-		//Check whether all players have been eliminated
-		for(int i = 0; i < players.size(); i++){
-			if(players.get(i).isActive() && players.get(i).isEliminated()){
-				players.get(i).setActive(false);
-				eliminatedPlayerCount++;
-				incrementPlayerScores();
-			}else if(players.get(i).isActive()){
-				//Keep setting the roundWinner for later use
-				roundWinner = players.get(i);
-			}
-		}
-		
-		
-	}
 	
 	@Override
 	public void endRound(){
