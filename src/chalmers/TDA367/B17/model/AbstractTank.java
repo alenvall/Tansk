@@ -19,7 +19,6 @@ public abstract class AbstractTank extends MovableEntity {
 	protected AbstractTurret turret;
 	protected float turretOffset;
 	protected int timeSinceLastShot;
-	public int lastDelta;
 	private boolean fire;
 	private double lastDirection;
 	public static final double MAX_HEALTH = 100;
@@ -212,7 +211,7 @@ public abstract class AbstractTank extends MovableEntity {
 		if(entity instanceof MapBounds || entity instanceof AbstractTank || entity instanceof AbstractObstacle){
 			if(!lastPos.equals(getPosition())){
 				setPosition(lastPos);
-				setSpeed(-getSpeed());
+				setSpeed(-(getSpeed()*0.5f));
 				double tankRotation = getRotation() - 90;
 				float newTurX = (float) (getPosition().x + getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
 				float newTurY = (float) (getPosition().y - getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
