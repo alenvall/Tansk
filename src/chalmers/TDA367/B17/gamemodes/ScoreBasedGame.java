@@ -77,18 +77,20 @@ protected int scoreLimit;
 	 * return Player with the highest score
 	 */
 	public List<Player> getHighestScoringPlayers(){
-		List<Player> player = new ArrayList<Player>();
-		player.add(getPlayerList().get(0));
-		for(int i = 1; i < players.size(); i++){
-			if(getPlayerScoreAtIndex(i) > player.get(0).getScore()){
-				player.clear();
-				player.add(players.get(i));
-			}else if(getPlayerScoreAtIndex(i) == player.get(0).getScore()){
-				player.add(players.get(i));
+		List<Player> winningPlayers = new ArrayList<Player>();
+		if(getPlayerList().size() > 0){
+			winningPlayers.add(getPlayerList().get(0));
+			for(int i = 1; i < players.size(); i++){
+				if(getPlayerScoreAtIndex(i) > winningPlayers.get(0).getScore()){
+					winningPlayers.clear();
+					winningPlayers.add(players.get(i));
+				}else if(getPlayerScoreAtIndex(i) == winningPlayers.get(0).getScore()){
+					winningPlayers.add(players.get(i));
+				}
 			}
 		}
 
-		return player;
+		return winningPlayers;
 	}
 
 	
