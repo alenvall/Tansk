@@ -161,6 +161,9 @@ public class Player {
 	public void tankDeath(){
 		setLives(getLives() - 1);
 		setTank(null);
+		
+		//TODO clear up code afer having added line below
+		setActive(false);
 		if(getLives() > 0){
 			spawnTank();
 		}else{
@@ -177,6 +180,7 @@ public class Player {
 			tank = null;
 		}
 //		ServerState.getInstance().addPlayer(this);
+		setActive(true);
 		GameController.getInstance().getWorld().getTankSpawner().addPlayer(this);
 		this.respawnTimer = respawnTime;
 	}
