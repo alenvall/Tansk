@@ -30,8 +30,8 @@ public abstract class GameConditions {
 	private boolean gameOver;
 
 	//Used for delay between rounds
-	private int delayTimer;
-	private boolean delaying;
+	protected int delayTimer;
+	protected boolean delaying;
 
 	//keeps track of the amount of eliminated players
 	protected int eliminatedPlayerCount;
@@ -63,7 +63,6 @@ public abstract class GameConditions {
 
 	/**
 	 * Initiates the object's variables.
-	 * @param scoreLimit The score-limit of the game.
 	 * @param rounds The number of rounds that will be played.
 	 * @param playerLives The number of lives each player has.
 	 * @param spawnTime The spawn-time of the tanks.
@@ -99,6 +98,10 @@ public abstract class GameConditions {
 
 
 		for(Player p : players){
+			if(p.getTank() != null){
+				p.getTank().destroy();
+				p.setTank(null);
+			}
 			p.setRespawnTime(100);
 			p.setEliminated(false);
 			p.setActive(true);
@@ -124,13 +127,6 @@ public abstract class GameConditions {
 					entity.destroy();
 				}
 			}
-			
-			for(Player p : players){
-				if(p.getTank() != null){
-					p.getTank().destroy();
-					p.setTank(null);
-				}
-			}
 			roundEnded = true;
 		}
 	}
@@ -145,41 +141,27 @@ public abstract class GameConditions {
 			roundTimer -= delta;
 
 			if(gameTimer <= 0){
-				gameOver = true;
 				gameOver();
 			}
 
 			
 
-			//Winning by rounds
 			if((eliminatedPlayerCount >= players.size()-1 && !(players.size() <= 1))
 					|| roundTimer <= 0){
-
-				//Check if it's the last round
-				if(roundCounter >= rounds){
-					//The game is over if the current round exceeds 
-					//the total amount of rounds.
-					gameOver = true;
-					gameOver();
-				}else{
-					//When the round is over, start a
-					//timer with a fixed delay between rounds
-					newRoundDelayTimer(5000);
-				}
+				
+				newRoundDelayTimer(5000);
 			}
-
-		}
-
+		}	
 		if(delaying){
 			endRound();
 			delayTimer-=delta;
 			if(delayTimer <= 0){
 				
-				//Start a new round when the delay is over
-				newRound();
-				delaying = false;
+			//Start a new round when the delay is over
+			newRound();
+			delaying = false;
+				}
 			}
-		}
 	}
 
 	/**
@@ -211,15 +193,15 @@ public abstract class GameConditions {
 	 * Determines the winning player.
 	 */
 	public void gameOver(){
-		if(gameOver){
-			winningPlayers = getWinningPlayers();
+		gameOver = true;
+		winningPlayers = getWinningPlayers();
 
-			if(winningPlayers.size() == 1){
-				System.out.println("Winner: " + winningPlayers.get(0).getName() + "\n------------------");
-			}else{
-				for(Player p: winningPlayers){
-					System.out.println("Winners: " + p.getName() + "\n------------------");
-				}
+		//TODO Remove prints
+		if(winningPlayers.size() == 1){
+			System.out.println("Winner: " + winningPlayers.get(0).getName() + "\n------------------");
+		}else{
+			for(Player p: winningPlayers){
+				System.out.println("Winners: " + p.getName() + "\n------------------");
 			}
 		}
 	}
