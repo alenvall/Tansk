@@ -64,7 +64,7 @@ public class GameController {
 		world.init();
 		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
 		
-		gameMode = new KingOfTheHillMode(new Vector2f(400,400));
+		gameMode = new KingOfTheHillMode(new Vector2f(512,384));
 		gameMode.init(rounds, playerLives, spawnTime, roundTime, gameTime);
 
 	}
