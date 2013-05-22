@@ -20,5 +20,16 @@ public class StandardGameMode extends ScoreBasedGame {
 				incrementAllPlayerScores();
 			}
 		}
+
+		if(delaying){
+			endRound();
+			delayTimer-=delta;
+			if(delayTimer <= 0){
+				
+				//Start a new round when the delay is over
+				newRound();
+				delaying = false;
+			}
+		}
 	}
 }
