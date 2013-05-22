@@ -2,13 +2,17 @@ package chalmers.TDA367.B17.controller;
 
 import java.awt.Dimension;
 
+import org.newdawn.slick.geom.Vector2f;
+
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.gamemodes.GameConditions;
+import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
 import chalmers.TDA367.B17.gamemodes.StandardGameMode;
 import chalmers.TDA367.B17.animations.AnimationHandler;
+import chalmers.TDA367.B17.model.KingOfTheHillZone;
 import chalmers.TDA367.B17.model.World;
 import chalmers.TDA367.B17.sound.SoundHandler;
 
@@ -30,7 +34,6 @@ public class GameController {
 		soundHandler = new SoundHandler();
 		soundHandler.loadEverySound(Tansk.SOUNDS_FOLDER);
 		animationHandler = new AnimationHandler();
-		gameMode = new StandardGameMode();
 	}
 
 	/**
@@ -40,7 +43,7 @@ public class GameController {
 	public static GameController getInstance(){
 		if(instance == null)
 			instance = new GameController();
-		
+
 		return instance;
 	}
 	
@@ -60,8 +63,10 @@ public class GameController {
 		world = new World(new Dimension(width, height), serverWorld);
 		world.init();
 		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
-		gameMode.init(rounds, 
-				playerLives, spawnTime, roundTime, gameTime);
+		
+		gameMode = new KingOfTheHillMode(new Vector2f(400,400));
+		gameMode.init(rounds, playerLives, spawnTime, roundTime, gameTime);
+
 	}
 	
 	public void newGame(int width, int height, int rounds, 
