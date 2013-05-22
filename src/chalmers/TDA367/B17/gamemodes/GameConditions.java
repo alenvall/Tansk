@@ -354,4 +354,8 @@ public abstract class GameConditions {
 	public void addWinningPlayer(Player p){
 		winningPlayers.add(p);
 	}
+	
+	public void removePlayer(Player p){
+		getPlayerList().remove(p);
+	}
 }
