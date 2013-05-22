@@ -8,7 +8,7 @@ public class KingOfTheHillZone extends Entity {
 	
 	public KingOfTheHillZone(int id, Vector2f position){
 		super(id);
-		shape = new Circle(position.x, position.y, 20);
+		shape = new Circle(position.x, position.y, 45);
 		spriteID = "king_of_the_hill_zone";
 		GameController.getInstance().getWorld().addEntity(this);
 		renderLayer = RenderLayer.FIRST;
