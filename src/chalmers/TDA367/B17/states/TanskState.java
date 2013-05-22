@@ -28,6 +28,7 @@ public abstract class TanskState extends BasicGameState {
 	protected long deltaTime;
 	protected long oldTime;
 	protected int updates;
+	protected int seconds;
 	
 	protected TanskState(int state) {
 	    this.state = state;
@@ -60,6 +61,7 @@ public abstract class TanskState extends BasicGameState {
 			packetsSent = 0;
 			updatesPerSecond = updates;
 			updates = 0;
+			seconds++;
 			oldTime = newTime;
 		}
 		updates++;
@@ -67,15 +69,17 @@ public abstract class TanskState extends BasicGameState {
 	
 	public void renderGUI(GameContainer container, Graphics g){
 		controller.getConsole().renderMessages(g);
-		g.setColor(Color.white);
+		g.setColor(Color.black);
 		g.setLineWidth(1);
 		
-		g.setColor(Color.white);
+		g.setColor(Color.black);
+		g.drawString("Time: " + seconds, 18, 300);
 		g.drawString("Packet rec/sec: " + packetsRecPerSecond, 18, 320);
 		g.drawString("Packet sent/sec: " + packetsSentPerSecond, 18, 340);
 		g.drawString("Update/sec: " + updatesPerSecond, 18, 360);
 		g.drawString("Frame: " + frameCounter, 18, 400);
 		g.drawString("Entities: " + controller.getWorld().getEntities().size(), 18, 420);
+		g.setColor(Color.white);
 	}
 	
 	@Override
