@@ -271,8 +271,7 @@ public class ServerState extends TanskState {
 		    	Pck3_Message disconnectedMsg = new Pck3_Message();
 		    	disconnectedMsg.message = msg;
 		    	server.sendToAllExceptTCP(lostPlayer.getConnection().getID(), disconnectedMsg);
-		    	getPlayers().remove(lostPlayer);
-				
+		    	controller.getGameMode().removePlayer(lostPlayer);
 		    	Log.info("[SERVER] " + msg);
 			}
 		}
