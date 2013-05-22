@@ -55,9 +55,11 @@ public class AnimationHandler {
 	 * @param event
 	 */
 	public void playAnimation(GameEvent event) {
-		if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
-			Vector2f tmpPos = event.getSource().getSpritePosition();
-			newExplosion(new Vector2f(tmpPos.x-24, tmpPos.y-31));
+		if(event.getSource() != null){
+			if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
+				Vector2f tmpPos = event.getSource().getSpritePosition();
+				newExplosion(new Vector2f(tmpPos.x-24, tmpPos.y-31));
+			}
 		}
     }
 }
