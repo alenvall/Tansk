@@ -4,6 +4,7 @@ import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.*;
+import chalmers.TDA367.B17.model.Entity.RenderLayer;
 
 public class VerticalWall extends AbstractObstacle {
 
@@ -17,6 +18,7 @@ public class VerticalWall extends AbstractObstacle {
 	public VerticalWall(int id, Vector2f position) {
 		super(id, VERTICAL_WALL_SIZE, position);
 		spriteID = "vertical_wall";
+		renderLayer = RenderLayer.THIRD;
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 	

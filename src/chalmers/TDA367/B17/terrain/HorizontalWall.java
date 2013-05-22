@@ -18,6 +18,7 @@ public class HorizontalWall extends AbstractObstacle {
 		super(id, HORIZONTAL_WALL_SIZE, position);
 		spriteID = "horizontal_wall";
 		GameController.getInstance().getWorld().addEntity(this);
+		renderLayer = RenderLayer.THIRD;
 	}
 	
 	@Override
