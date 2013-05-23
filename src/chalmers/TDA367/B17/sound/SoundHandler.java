@@ -49,14 +49,6 @@ public class SoundHandler {
 			}
 		}
 	}
-	
-	public void stopMusic(MusicType music){
-		if(music == MusicType.MENU_MUSIC){
-			if(menuMusic != null){
-				menuMusic.stop();
-			}
-		}
-	}
 
 	/**
 	 * Play sound related to an event.
