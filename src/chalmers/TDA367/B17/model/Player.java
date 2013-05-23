@@ -15,10 +15,10 @@ public class Player {
 	private int lives;
 	private int respawnTimer;
 	private int respawnTime;
-	public boolean tankDead;
-	public String tankType;
-	public boolean active;
-	public boolean eliminated;
+	private boolean tankDead;
+	private String tankType;
+	private boolean active;
+	private boolean eliminated;
 	private Connection connection;
 	private ArrayList<Boolean> inputStatuses;
 
