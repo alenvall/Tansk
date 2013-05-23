@@ -27,7 +27,7 @@ public class Network {
 		kryo.register(ArrayList.class);
 		kryo.register(Pck8_EntityDestroyed.class);
 		kryo.register(Pck100_WorldState.class);
-		kryo.register(Pck11_PickupCreated.class);
+		kryo.register(Pck11_StaticObjectCreated.class);
 		kryo.register(Pck102_TankUpdate.class);
 		kryo.register(Pck103_ProjectileUpdate.class);
 		kryo.register(Pck9_EntityCreated.class);
@@ -97,7 +97,7 @@ public class Network {
 		public String color;
 	}
 	
-	public static class Pck11_PickupCreated extends Pck9_EntityCreated {
+	public static class Pck11_StaticObjectCreated extends Pck9_EntityCreated {
 		public Vector2f position;
 	}
 	

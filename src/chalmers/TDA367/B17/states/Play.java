@@ -55,6 +55,9 @@ public class Play extends TanskState {
 	@Override
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
+
+		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
+		controller.getWorld().init();
 		
 		controller.getSoundHandler().playMusic(MusicType.BATTLE_MUSIC);
 			
@@ -63,7 +66,7 @@ public class Play extends TanskState {
 		controller.setConsole(console);
 		
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, false);
+		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000);
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 
 		//Players
