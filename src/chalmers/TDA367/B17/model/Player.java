@@ -15,7 +15,6 @@ public class Player {
 	private int lives;
 	private int respawnTimer;
 	private int respawnTime;
-	private boolean tankDead;
 	private String tankType;
 	private boolean active;
 	private boolean eliminated;
