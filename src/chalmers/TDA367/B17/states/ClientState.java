@@ -49,6 +49,7 @@ import chalmers.TDA367.B17.network.Network.Pck2_ClientConfirmJoin;
 import chalmers.TDA367.B17.network.Network.Pck31_ChatMessage;
 import chalmers.TDA367.B17.network.Network.Pck3_Message;
 import chalmers.TDA367.B17.network.Network.Pck4_ClientInput;
+import chalmers.TDA367.B17.network.Network.Pck5_PlayerKicked;
 import chalmers.TDA367.B17.network.Network.Pck7_TankID;
 import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
 import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
@@ -350,7 +351,12 @@ public class ClientState extends TanskState {
 					GameController.getInstance().getConsole().addMsg(message, MsgLevel.INFO);
 					Log.info(message);
 				}
-			}	
+			}
+			
+			if(packet instanceof Pck5_PlayerKicked){
+				GameController.getInstance().getConsole().addMsg("You have been kicked from the server.", MsgLevel.INFO);
+				client.close();
+			}
 			
 			if(packet instanceof Pck7_TankID){
 				Pck7_TankID pck = (Pck7_TankID) packet;

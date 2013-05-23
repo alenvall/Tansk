@@ -22,6 +22,7 @@ public class Network {
 		kryo.register(Pck3_Message.class);
 		kryo.register(Pck31_ChatMessage.class);
 		kryo.register(Pck4_ClientInput.class);
+		kryo.register(Pck5_PlayerKicked.class);
 		kryo.register(Vector2f.class);
 		kryo.register(Pck7_TankID.class);
 		kryo.register(ArrayList.class);
@@ -67,6 +68,7 @@ public class Network {
 	public static class Pck3_Message extends Packet{
 		public String message;
 	}
+	
 	public static class Pck31_ChatMessage extends Pck3_Message{
 	}	
 		
@@ -77,6 +79,10 @@ public class Network {
 		public boolean D_pressed;
 		public boolean LMB_pressed;
         public float turretNewAngle;
+	}
+	
+	public static class Pck5_PlayerKicked extends Packet{
+		public String reason;
 	}
 	
 	public static class Pck7_TankID extends Packet{
@@ -104,11 +110,6 @@ public class Network {
 	public static class Pck100_WorldState extends Packet {
 		public ArrayList<EntityPacket> updatePackets;
 	}
-	
-//	public static class Pck101_StaticEntityUpdate extends EntityPacket{
-//		public Vector2f position;
-//	}	
-	
 	
 	public static class Pck102_TankUpdate extends EntityPacket{
 		public Vector2f tankPosition;

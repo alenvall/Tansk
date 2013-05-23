@@ -541,27 +541,9 @@ public class ServerState extends TanskState {
 				if(!chatField.getText().equals("")){
 					if(server != null){
 						if((chatField.getText().charAt(0) + "").equals("/")){
-							String subString = chatField.getText().substring(1, 5);
-							GameController.getInstance().getConsole()
-                                    .addMsg(subString);
-							if(subString.equals("kick")){
-								if(getPlayers().size() > 0){
-									Player matchedPlayer = null;
-									for(Player player : getPlayers()){
-										String subString2 = chatField.getText().substring(6).trim();
-										GameController.getInstance()
-                                                .getConsole()
-                                                .addMsg(subString2);
-										if(player.getName().equals(subString2))
-											matchedPlayer = player;
-										else
-											GameController.getInstance().getConsole().addMsg("Player not found.");
-									}
-									GameController.getInstance().getGameMode().removePlayer(matchedPlayer);
-								} else {
-									GameController.getInstance().getConsole()
-                                            .addMsg("No players!");
-								}
+							if(chatField.getText().length() >= 4){
+								if(chatField.getText().substring(0, 3).equals("/k "))
+									doCommand("kick");
 							}
 						} else {
 							serverMessage("Server: " + chatField.getText());
@@ -573,6 +555,30 @@ public class ServerState extends TanskState {
 			} else {
 				chatField.setFocus(true);
 			}	
+		}
+	}
+	
+	private void doCommand(String cmd){
+		if(cmd.equals("kick")){
+			if(getPlayers().size() > 0){
+				Player matchedPlayer = null;
+				String playerName = chatField.getText().substring(3).trim();
+				for(Player player : getPlayers()){
+					if(player.getName().equals(playerName))
+						matchedPlayer = player;
+					else
+						GameController.getInstance().getConsole().addMsg("Player: " + playerName + " not found.");
+				}
+				if(matchedPlayer != null){
+					Pck5_PlayerKicked kickPck = new Pck5_PlayerKicked();
+					kickPck.reason = "";
+					matchedPlayer.getConnection().sendTCP(kickPck);
+					GameController.getInstance().getConsole().addMsg("Kicked " + matchedPlayer.getName() + ".");
+					serverMessage(matchedPlayer.getName() + " kicked.");
+				}
+			} else {
+				GameController.getInstance().getConsole().addMsg("No players to kick!");
+			}
 		}
 	}
 }
