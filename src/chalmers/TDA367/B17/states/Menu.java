@@ -4,12 +4,16 @@ import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Input;
 import org.newdawn.slick.SlickException;
+import org.newdawn.slick.Sound;
 import org.newdawn.slick.SpriteSheet;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.event.GameEvent.EventType;
+import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
 
 public class Menu extends BasicGameState{
 	
@@ -22,8 +26,8 @@ public class Menu extends BasicGameState{
 	SpriteSheet hostGame;
 	SpriteSheet joinGame;
 	private int state;
-	
-	SpriteSheet background;
+	private Sound music;
+	private SpriteSheet background;
 	
 	public Menu(int state) {
 		this.state = state;
@@ -37,7 +41,9 @@ public class Menu extends BasicGameState{
 		joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join"), 150, 50);
 		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
 				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
+		GameController.getInstance().getSoundHandler().playMusic(MusicType.MENU_MUSIC);
 	}
+	
 
 	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)

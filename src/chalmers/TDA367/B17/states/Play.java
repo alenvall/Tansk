@@ -16,6 +16,7 @@ import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.console.Console.OutputLevel;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.*;
+import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
 import chalmers.TDA367.B17.view.Lifebar;
 import chalmers.TDA367.B17.view.SoundSwitch;
 import chalmers.TDA367.B17.weaponPickups.SlowspeedyPickup;
@@ -54,6 +55,8 @@ public class Play extends TanskState {
 	@Override
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
+		
+		controller.getSoundHandler().stopMusic(MusicType.MENU_MUSIC);
 			
 		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
 		console.setBorder(false);
