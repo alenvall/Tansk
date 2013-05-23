@@ -61,7 +61,7 @@ public class Player {
 			inputStatuses.add(false);
 		}
 		
-		color = "red";
+		color = "white";
 	}
 	
 	public static final int INPT_W = 0;
