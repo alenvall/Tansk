@@ -356,6 +356,9 @@ public abstract class GameConditions {
 	}
 	
 	public void removePlayer(Player p){
+		if(p.getTank() != null){
+			p.getTank().tankDeath();
+		}
 		getPlayerList().remove(p);
 	}
 }
