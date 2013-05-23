@@ -18,7 +18,6 @@ public abstract class AbstractTank extends MovableEntity {
 	protected AbstractTurret turret;
 	protected float turretOffset;
 	protected int timeSinceLastShot;
-	private boolean fire;
 	private double lastDirection;
 	public static final double MAX_HEALTH = 100;
 	public static final double MAX_SHIELD_HEALTH = 50;
@@ -47,7 +46,6 @@ public abstract class AbstractTank extends MovableEntity {
 		turnSpeed = 0.15f;
 		currentPowerUp = null;
 		renderLayer = RenderLayer.SECOND;
-		fire = true;
 		projectiles = new ArrayList<AbstractProjectile>();
 		maxShieldHealth = MAX_SHIELD_HEALTH;
 		this.color = color;
@@ -204,8 +202,8 @@ public abstract class AbstractTank extends MovableEntity {
 	 * Fire the tanks turret if the turrets has cooled down.
 	 * @param delta
 	 */
-	public void fireWeapon(int delta){
-		if(timeSinceLastShot <= 0 && fire){
+	public void fireTurret(int delta){
+		if(timeSinceLastShot <= 0){
 			turret.fireWeapon(delta, this);
 			timeSinceLastShot = turret.getFireRate();
 		}
@@ -260,7 +258,6 @@ public abstract class AbstractTank extends MovableEntity {
 		super.destroy();
 		if(getCurrentPowerUp() != null)
 			getCurrentPowerUp().deactivate();
-		fire = false;
 		active = false;
 		getTurret().destroy();
 	}
