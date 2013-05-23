@@ -89,10 +89,12 @@ public class Network {
 	public static class Pck9_EntityCreated extends EntityPacket {
 		public String identifier;
 		public int possibleOwnerID;
+		public String color;
 	}
 
 	public static class Pck10_TankCreated extends Pck9_EntityCreated {
 		public Vector2f direction;
+		public String color;
 	}
 	
 	public static class Pck11_PickupCreated extends Pck9_EntityCreated {

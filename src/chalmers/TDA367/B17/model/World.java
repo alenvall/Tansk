@@ -67,6 +67,7 @@ public class World {
 					tankPacket.entityID = ((AbstractTank) newEntity).getId();
 					tankPacket.identifier = ((AbstractTank) newEntity).getClass().getSimpleName();
 					tankPacket.direction = ((AbstractTank) newEntity).getDirection();
+					tankPacket.color = ((AbstractTank) newEntity).getColor();
 					ServerState.getInstance().addToAllClientsQueue(tankPacket);
 				} else if((newEntity instanceof AbstractWeaponPickup) || (newEntity instanceof AbstractPowerUpPickup)) {
 					Pck11_PickupCreated pickPck = new Pck11_PickupCreated();
@@ -80,8 +81,10 @@ public class World {
 					packet.identifier = newEntity.getClass().getSimpleName();
 					if(newEntity instanceof Shield)
 						packet.possibleOwnerID = ((Shield)newEntity).getTank().getId();
-					else if(newEntity instanceof AbstractTurret)
+					else if(newEntity instanceof AbstractTurret){
 						packet.possibleOwnerID = ((AbstractTurret)newEntity).getTank().getId();
+						packet.color = ((AbstractTurret)newEntity).getColor();
+					}
 					ServerState.getInstance().addToAllClientsQueue(packet);	
 				}
 			}

@@ -367,13 +367,12 @@ public class ClientState extends TanskState {
 			}
 			
 			if(packet instanceof Pck9_EntityCreated){
-				Pck9_EntityCreated pck = (Pck9_EntityCreated) packet;
-				createClientEntity(pck.entityID, pck.identifier, pck.possibleOwnerID);
+				createClientEntity((Pck9_EntityCreated) packet);
 			}
 			
 			if(packet instanceof Pck10_TankCreated){
 				Pck10_TankCreated pck = (Pck10_TankCreated) packet;
-				createClientTank(pck.entityID, pck.identifier, pck.direction);
+				createClientTank(pck.entityID, pck.identifier, pck.direction, pck.color);
 			}
 			
 			if(packet instanceof Pck11_PickupCreated){
@@ -453,9 +452,9 @@ public class ClientState extends TanskState {
 		}
 	}
 		
-	private void createClientTank(int entityID, String identifier, Vector2f direction) {
+	private void createClientTank(int entityID, String identifier, Vector2f direction, String playerColor) {
 	    if(identifier.equals("DefaultTank")){
-			new DefaultTank(entityID, direction, null);
+			new DefaultTank(entityID, direction, null, playerColor);
 	    }
     }
 	
@@ -483,70 +482,72 @@ public class ClientState extends TanskState {
 		} 
 	}
 	
-	private void createClientEntity(int entityID, String identifier, int possibleOwnerID) {
-	    if(identifier.equals("DefaultProjectile")){
-			new DefaultProjectile(entityID, null, null);
-	    } else if(identifier.equals("BounceProjectile")){
-			new BounceProjectile(entityID, null, null);
-	    } else if(identifier.equals("FlamethrowerProjectile")){
-			new FlamethrowerProjectile(entityID, null, null);
-	    } else if(identifier.equals("ShockwaveProjectile")){
-			new ShockwaveProjectile(entityID, null, null);
-	    } else if(identifier.equals("ShockwaveSecondaryProjectile")){
-			new ShockwaveSecondaryProjectile(entityID, null, null, null);
-	    } else if(identifier.equals("ShotgunProjectile")){
-			new ShotgunProjectile(entityID, null, null);
-	    } else if(identifier.equals("SlowspeedyProjectile")){
-			new SlowspeedyProjectile(entityID, null, null);
-	    }  else if(identifier.equals("Shield")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
-	    	tank.setShield(new Shield(entityID, tank, 0));
-	    } else if(identifier.equals("DefaultTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+
+//	private void createClientEntity(int entityID, String identifier, int possibleOwnerID) { 
+	private void createClientEntity(Pck9_EntityCreated pck) {
+	    if(pck.identifier.equals("DefaultProjectile")){
+			new DefaultProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("BounceProjectile")){
+			new BounceProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("FlamethrowerProjectile")){
+			new FlamethrowerProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("ShockwaveProjectile")){
+			new ShockwaveProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("ShockwaveSecondaryProjectile")){
+			new ShockwaveSecondaryProjectile(pck.entityID, null, null, null);
+	    } else if(pck.identifier.equals("ShotgunProjectile")){
+			new ShotgunProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("SlowspeedyProjectile")){
+			new SlowspeedyProjectile(pck.entityID, null, null);
+	    }  else if(pck.identifier.equals("Shield")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
+	    	tank.setShield(new Shield(pck.entityID, tank, 0));
+	    } else if(pck.identifier.equals("DefaultTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new DefaultTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new DefaultTurret(pck.entityID, position, rotation, tank, pck.color);
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("BounceTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("BounceTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new BounceTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new BounceTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("FlamethrowerTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("FlamethrowerTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new FlamethrowerTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new FlamethrowerTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("ShockwaveTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("ShockwaveTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new ShockwaveTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new ShockwaveTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("ShotgunTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("ShotgunTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new ShotgunTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new ShotgunTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("SlowspeedyTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("SlowspeedyTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new SlowspeedyTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new SlowspeedyTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
 	    } 
