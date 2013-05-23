@@ -504,6 +504,14 @@ public class ServerState extends TanskState {
 			if(chatField.hasFocus()){
 				if(!chatField.getText().equals("")){
 					if(server != null){
+						if(chatField.getText().charAt(0) == '/'){
+							if(chatField.getText().substring(1, 4).equals("kick")){
+								for(Player player : getPlayers()){
+									player.getName().equals(chatField.getText().substring(6, 20).trim());
+									GameController.getInstance().getGameMode().removePlayer(player);
+								}
+							}
+						}
 						serverMessage("Server: " + chatField.getText());
 						chatField.setText("");
 					}
