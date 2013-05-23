@@ -8,19 +8,47 @@ import java.util.Map;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 
+import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.event.GameEvent;
 
 public class SoundHandler {
 	
 	private Map<String, Sound> sounds;
-	
+	private Sound menuMusic;
 	private float volume = 0.5f;
+	
+	public enum MusicType{
+		MENU_MUSIC,
+		BATTLE_MUSIC
+	}
 
 	/**
 	 * Create a new SoundHandler.
 	 */
 	public SoundHandler(){
 		sounds = new HashMap<String, Sound>();
+		try {
+			menuMusic = new Sound(Tansk.SOUNDS_FOLDER + "/Tensions.wav");
+		} catch (SlickException e) {
+			System.out.println("Failed to load menu music.");
+			e.printStackTrace();
+		}
+	}
+	
+	public void playMusic(MusicType music){
+		if(music == MusicType.MENU_MUSIC){
+			if(menuMusic != null){
+				menuMusic.play();
+			}
+		}
+	}
+	
+	public void stopMusic(MusicType music){
+		if(music == MusicType.MENU_MUSIC){
+			if(menuMusic != null){
+				menuMusic.stop();
+			}
+		}
 	}
 
 	/**
@@ -28,7 +56,10 @@ public class SoundHandler {
 	 * @param event a GameEvent
 	 */
 	public void playSound(GameEvent event){
-		if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
+		if(event.getEventDesc().equals("MENU_MUSIC")) {
+			sounds.get("Tensions").play(1, volume);
+		}
+		else if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
 			sounds.get("Tank_Destroyed").play(1, volume);
 		}else if(event.getEventDesc().equals("DEFAULTTURRET_FIRE_EVENT")){
 			sounds.get("Default_Firing").play(1, volume);
