@@ -252,6 +252,8 @@ public abstract class AbstractTank extends MovableEntity {
 			getCurrentPowerUp().deactivate();
 		active = false;
 		getTurret().destroy();
+		if(shield != null)
+			shield.destroy();
 	}
 
 	/**
