@@ -17,7 +17,7 @@ public class SoundHandler {
 	private Map<String, Sound> sounds;
 	private Music menuMusic;
 	private Music battleMusic;
-	private float volume = 0.5f;
+	private float volume = 0.35f;
 	
 	public enum MusicType{
 		MENU_MUSIC,
@@ -41,11 +41,11 @@ public class SoundHandler {
 	public void playMusic(MusicType music){
 		if(music == MusicType.MENU_MUSIC){
 			if(menuMusic != null){
-				menuMusic.loop();
+				menuMusic.loop(1, volume);
 			}
 		}else if(music == MusicType.BATTLE_MUSIC){
 			if(battleMusic != null){
-				battleMusic.loop();
+				battleMusic.loop(1, volume);
 			}
 		}
 	}
@@ -109,6 +109,8 @@ public class SoundHandler {
 	 */
 	public void setVolume(float volume) {
 		this.volume = volume;
+		menuMusic.setVolume(volume);
+		battleMusic.setVolume(volume);
 	}
 	
 	/**
