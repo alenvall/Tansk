@@ -1,8 +1,8 @@
 package chalmers.TDA367.B17.states;
 
+import chalmers.TDA367.B17.view.MenuButton;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
-import org.newdawn.slick.Input;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.SpriteSheet;
 import org.newdawn.slick.state.BasicGameState;
@@ -13,14 +13,10 @@ import chalmers.TDA367.B17.controller.GameController;
 
 public class Menu extends BasicGameState{
 	
-	SpriteSheet playGame;
-	boolean playPressed = false;
-	boolean exitPressed = false;
-	boolean joinPressed = false;
-	boolean hostPressed = false;
-	SpriteSheet exitGame;
-	SpriteSheet hostGame;
-	SpriteSheet joinGame;
+	private MenuButton playButton;
+	private MenuButton hostButton;
+	private MenuButton joinButton;
+	private MenuButton exitButton;
 	private int state;
 	
 	SpriteSheet background;
@@ -31,10 +27,15 @@ public class Menu extends BasicGameState{
 
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
-		playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play"), 150, 50);
-		exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit"), 150, 50);
-		hostGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_host"), 150, 50);
-		joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join"), 150, 50);
+		playButton = new MenuButton(100, 125, GameController.getInstance().getImageHandler().getSprite("button_play"),
+				GameController.getInstance().getImageHandler().getSprite("button_play_pressed"));
+		hostButton = new MenuButton(100, 225, GameController.getInstance().getImageHandler().getSprite("button_host"),
+				GameController.getInstance().getImageHandler().getSprite("button_host_pressed"));
+		joinButton = new MenuButton(100, 325, GameController.getInstance().getImageHandler().getSprite("button_join"),
+				GameController.getInstance().getImageHandler().getSprite("button_join_pressed"));
+		exitButton = new MenuButton(100, 425, GameController.getInstance().getImageHandler().getSprite("button_exit"),
+				GameController.getInstance().getImageHandler().getSprite("button_exit_pressed"));
+
 		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
 				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
 	}
@@ -43,86 +44,24 @@ public class Menu extends BasicGameState{
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
 		background.draw(0,0);
-		playGame.draw(100,125);
-		exitGame.draw(100,225);
-		hostGame.draw(100,325);
-		joinGame.draw(100,425);
+
+		playButton.draw();
+		hostButton.draw();
+		joinButton.draw();
+		exitButton.draw();
 	}
 
 	@Override
 	public void update(GameContainer gc, StateBasedGame sbg, int delta)
 			throws SlickException {
-		Input input = gc.getInput();
-		int x = input.getMouseX();
-		int y = input.getMouseY();
-		
-		if(x > 100 && x < 250 && y > 125 && y < 175){
-			playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play_hover"), 150, 50);
-			if(input.isMouseButtonDown(0)){
-				playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play_pressed"), 150, 50);
-				playPressed = true;
-			}
-			if(!input.isMouseButtonDown(0)){
-				if(playPressed){
-					playPressed = false;
-					sbg.enterState(Tansk.PLAY);
-				}
-			}
-		}else{
-			playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play"), 150, 50);
-			playPressed = false;
-		}
-		
-		if(x > 100 && x < 250 && y > 225 && y < 275){
-			exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit_hover"), 150, 50);
-			if(input.isMouseButtonDown(0)){
-				exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit_pressed"), 150, 50);
-				exitPressed = true;
-			}
-			if(!input.isMouseButtonDown(0)){
-				if(exitPressed){
-					exitPressed = false;
-					gc.exit();
-				}
-			}
-		}else{
-			exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit"), 150, 50);
-			exitPressed = false;
-		}
-		
-		if(x > 100 && x < 250 && y > 325 && y < 375){
-			hostGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_host_hover"), 150, 50);
-			if(input.isMouseButtonDown(0)){
-				hostGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_host_pressed"), 150, 50);
-				hostPressed = true;
-			}
-			if(!input.isMouseButtonDown(0)){
-				if(hostPressed){
-					hostPressed = false;
-					sbg.enterState(Tansk.HOST);
-				}
-			}
-		}else{
-			hostGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_host"), 150, 50);
-			hostPressed = false;
-		}		
-		
-		if(x > 100 && x < 250 && y > 425 && y < 475){
-			joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join_hover"), 150, 50);
-			if(input.isMouseButtonDown(0)){
-				joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join_pressed"), 150, 50);
-				joinPressed = true;
-			}
-			if(!input.isMouseButtonDown(0)){
-				if(joinPressed){
-					joinPressed = false;
-					sbg.enterState(Tansk.JOIN);
-				}
-			}
-		}else{
-			joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join"), 150, 50);
-			joinPressed = false;
-		}
+		if(playButton.isClicked(gc.getInput()))
+			sbg.enterState(Tansk.PLAY);
+		else if(hostButton.isClicked(gc.getInput()))
+			sbg.enterState(Tansk.HOST);
+		else if(joinButton.isClicked(gc.getInput()))
+			sbg.enterState(Tansk.JOIN);
+		else if(exitButton.isClicked(gc.getInput()))
+			gc.exit();
 	}
 
 	@Override
