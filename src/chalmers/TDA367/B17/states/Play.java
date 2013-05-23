@@ -15,6 +15,7 @@ import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.console.Console.OutputLevel;
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
 import chalmers.TDA367.B17.view.Lifebar;
@@ -56,17 +57,20 @@ public class Play extends TanskState {
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 
-		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
-		controller.getWorld().init();
-		
-		controller.getSoundHandler().playMusic(MusicType.BATTLE_MUSIC);
-			
 		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
 		console.setBorder(false);
 		controller.setConsole(console);
 		
-		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
+		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
+		controller.getWorld().init();
+
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000);
+		if(controller.getGameMode() instanceof KingOfTheHillMode)
+			((KingOfTheHillMode)controller.getGameMode()).generateZone(new Vector2f(512, 384));
+		
+		controller.getSoundHandler().playMusic(MusicType.BATTLE_MUSIC);
+			
+		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 
 		//Players
