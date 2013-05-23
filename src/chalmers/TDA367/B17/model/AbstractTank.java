@@ -28,6 +28,8 @@ public abstract class AbstractTank extends MovableEntity {
 	private Player player;
 	private double maxShieldHealth;
 	
+	private String color;
+	
 	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
 	
 	/**
@@ -37,16 +39,17 @@ public abstract class AbstractTank extends MovableEntity {
 	 * @param minSpeed The minimum movement speed of this tank
 	 * @param player The owning player of this tank
 	 */
-	public AbstractTank(int id, Vector2f direction, float maxSpeed, float minSpeed, Player player) {
+	public AbstractTank(int id, Vector2f direction, float maxSpeed, float minSpeed, Player player, String color) {
 		super(id, direction, maxSpeed, minSpeed);
 		this.player = player;
 		turnSpeed = 0.15f;
 		currentPowerUp = null;
-		spriteID = "turret";
 		renderLayer = RenderLayer.SECOND;
 		fire = true;
 		projectiles = new ArrayList<AbstractProjectile>();
 		maxShieldHealth = MAX_SHIELD_HEALTH;
+		this.color = color;
+		setSpriteID("tank_" + color);
 	}
 	
 	/**
@@ -323,6 +326,10 @@ public abstract class AbstractTank extends MovableEntity {
 	public ArrayList<AbstractProjectile> getProjectiles() {
 		return projectiles;
     }
+	
+	public String getColor(){
+		return color;
+	}
 }
 
 

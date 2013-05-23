@@ -20,9 +20,9 @@ public class TankFactory {
 	public static AbstractTank getTank(Player player){
 		AbstractTank tank;
 		if(player.getTankType().equals("default")){
-			tank = new DefaultTank(GameController.getInstance().generateID(), new Vector2f(0,-1), player, player.getPlayerColor());
+			tank = new DefaultTank(GameController.getInstance().generateID(), new Vector2f(0,-1), player, player.getColor());
 		}else{
-			tank =  new DefaultTank(GameController.getInstance().generateID(), new Vector2f(0,-1), player, player.getPlayerColor());
+			tank =  new DefaultTank(GameController.getInstance().generateID(), new Vector2f(0,-1), player, player.getColor());
 		}
 		player.setTank(tank);
     	

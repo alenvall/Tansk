@@ -21,6 +21,8 @@ public class Player {
 	private boolean eliminated;
 	private Connection connection;
 	private ArrayList<Boolean> inputStatuses;
+	
+	private String color;
 
 	/**
 	 * Create a new Player.
@@ -37,6 +39,8 @@ public class Player {
 		for(int i = 0; i < 6; i++){
 			inputStatuses.add(false);
 		}
+		
+		color = "white";
 	}
 	
 	// only for single(Play)er state..
@@ -51,6 +55,8 @@ public class Player {
 		for(int i = 0; i < 6; i++){
 			inputStatuses.add(false);
 		}
+		
+		color = "red";
 	}
 	
 	public static final int INPT_W = 0;
@@ -280,5 +286,13 @@ public class Player {
 	 */
 	public String getTankType() {
 		return tankType;
+	}
+	
+	public void setColor(String color){
+		this.color = color;
+	}
+	
+	public String getColor(){
+		return color;
 	}
 }

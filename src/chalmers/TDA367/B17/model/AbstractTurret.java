@@ -10,19 +10,20 @@ public abstract class AbstractTurret extends Entity {
 	protected int fireRate;
 	protected String projectileType;
 	protected AbstractTank tank;
-
-
+	private String color;
+	
 	/**
 	 * Create a new AbstractTurret.
 	 */
-	public AbstractTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
+	public AbstractTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id);
 		rotation = startingRotation;
-		spriteID = "turret_blue";
 		this.tank = tank;
 //		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
 		setShape(new Point(position.x, position.y));
 		renderLayer = RenderLayer.THIRD;
+		this.color = color;
+		setSpriteID("turret_" + color);
 	}
 	
 	/**
@@ -120,5 +121,9 @@ public abstract class AbstractTurret extends Entity {
 //		float newTurY = (float) (tank.getPosition().y - tank.getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
 //
 //		this.setPosition(new Vector2f(newTurX, newTurY));
+	}
+	
+	public String getColor(){
+		return color;
 	}
 }
