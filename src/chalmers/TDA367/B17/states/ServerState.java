@@ -388,7 +388,7 @@ public class ServerState extends TanskState {
 				}
 				
 				if(pressedKeys.get(Player.INPT_LMB)){
-					player.getTank().fireWeapon(delta);
+					player.getTank().fireTurret(delta);
 				}	
 			}
 		}

@@ -132,9 +132,9 @@ public class Play extends TanskState {
 
 		if(input.isMouseButtonDown(0)){
 			if(playerOne.getTank() != null)
-				playerOne.getTank().fireWeapon(delta);
+				playerOne.getTank().fireTurret(delta);
 			if(playerTwo.getTank() != null)
-				playerTwo.getTank().fireWeapon(delta);
+				playerTwo.getTank().fireTurret(delta);
 		}
 		
 		if(input.isKeyDown(Input.KEY_Q)){
