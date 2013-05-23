@@ -37,6 +37,8 @@ public class Play extends TanskState {
 	private Player playerTwo;
 	private Player playerThree;
 	private Player playerFour;
+
+	private Font scoreboardFont;
 	
 	public Play(int state) {
 	    super(state);
@@ -47,6 +49,7 @@ public class Play extends TanskState {
 		super.init(gc, sbg);
 		
 		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
+		scoreboardFont = new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true);
 		
 		input = gc.getInput();
 		input.addMouseListener(this);
@@ -326,7 +329,7 @@ public class Play extends TanskState {
 			g.drawRect(tmpPosition.x, tmpPosition.y, tmpSideLength, tmpSideLength);
 			g.setLineWidth(1);
 			
-			g.setFont(new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true));
+			g.setFont(scoreboardFont);
 			for(Player p: controller.getGameMode().getPlayerList()){
 				g.drawString(p.getName() + ": " + p.getScore(), tmpPosition.x+70, tmpPosition.y+tmpYOffset);
 				tmpYOffset += 30;
