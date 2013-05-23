@@ -112,6 +112,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 			this.destroy();
 		}else if(entity instanceof AbstractTank){
 			damageTarget((AbstractTank)entity);
+			this.destroy();
 		}
 	}
 
@@ -126,7 +127,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param target The target tank
 	 */
 	public void damageTarget(AbstractTank target){
-		target.recieveDamage(this);
+		target.receiveDamage(this);
 		this.destroy();
 	}
 }

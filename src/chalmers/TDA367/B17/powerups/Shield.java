@@ -64,12 +64,8 @@ public class Shield extends Entity {
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractProjectile){
 			if(!(((AbstractProjectile)entity).getTank() == absTank)){
-				double overkill = (getHealth() - ((AbstractProjectile)entity).getDamage());
-				if(overkill <= 0){
-					absTank.setHealth(absTank.getHealth() + overkill);
-				}
+				damageShield(((AbstractProjectile)entity).getDamage());
 				
-				setHealth(getHealth() - ((AbstractProjectile)entity).getDamage());
 				((AbstractProjectile)entity).destroy();
 			}
 		}
@@ -89,5 +85,17 @@ public class Shield extends Entity {
 	 */
 	public void setHealth(double health) {
 		this.health = health;
+	}
+	
+	/**
+	 * Deal damage to the shield. Any leftover damage will be dealt to the tank.
+	 * @param damage The damage
+	 */
+	public void damageShield(double damage){
+		double overkill = (getHealth() - damage);
+		if(overkill <= 0){
+			absTank.setHealth(absTank.getHealth() + overkill);
+		}
+		setHealth(getHealth() - damage);
 	}
 }

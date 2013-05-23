@@ -227,10 +227,15 @@ public abstract class AbstractTank extends MovableEntity {
 	 * The tank takes damage and take appropriate action is taken.
 	 * @param projectile
 	 */
-	public void recieveDamage(AbstractProjectile projectile){
-		if(!(projectile instanceof FlamethrowerProjectile))
+	public void receiveDamage(AbstractProjectile projectile){
+		if(!(projectile instanceof FlamethrowerProjectile)){
 			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "TANK_HIT_EVENT"));
-		setHealth(getHealth() - projectile.getDamage());
+		}
+		if(shield != null && shield.getHealth() > 0){
+			shield.damageShield(projectile.getDamage());
+		}else{
+			setHealth(getHealth() - projectile.getDamage());
+		}
 	}
 	
 	/**
