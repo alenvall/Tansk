@@ -52,6 +52,7 @@ public class ShockwaveSecondaryProjectile extends AbstractProjectile {
 			if(tmp <= 5){
 				damageTarget((AbstractTank)entity);
 			}
+			this.destroy();
 		}
 	}
 }
