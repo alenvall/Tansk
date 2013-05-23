@@ -9,6 +9,7 @@ import java.util.Map.Entry;
 import org.newdawn.slick.*;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.Graphics;
+import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
 
@@ -17,6 +18,7 @@ import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.console.Console.*;
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.event.*;
+import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
 import chalmers.TDA367.B17.network.*;
@@ -63,10 +65,13 @@ public class ServerState extends TanskState {
 	@Override
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
-
-		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
+		
 		controller.setConsole(new Console(10, 533, 600, 192, OutputLevel.ALL));
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, true);
+		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
+		controller.getWorld().init();
+
+		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000);
+		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
 		
 		MapLoader.createEntities("whatever");
 	
@@ -133,6 +138,8 @@ public class ServerState extends TanskState {
 					gameStarted = true;
 
 					//Start a new round
+					if(controller.getGameMode() instanceof KingOfTheHillMode)
+						((KingOfTheHillMode)controller.getGameMode()).generateZone(new Vector2f(512, 384));
 					controller.getGameMode().newRoundDelayTimer(3000);
 					GameController.getInstance().getConsole().addMsg("Game started!", MsgLevel.INFO);
 				}
@@ -206,7 +213,8 @@ public class ServerState extends TanskState {
 		g.drawRect(410, 495, 50, 30);
 
 		g.setColor(Color.white);
-		g.drawString("Players: " + getPlayers().size() + "/4", 18, 480);
+		if(getPlayers() != null)
+			g.drawString("Players: " + getPlayers().size() + "/4", 18, 480);
 		g.drawString("LAN IP: " + ipAddress, 18, 500);
 		
 		// some debug stuff
@@ -226,10 +234,12 @@ public class ServerState extends TanskState {
 			
 //		TODO: not do this in render maybe
 		//Cool timer
-		if(controller.getGameMode().isDelaying()){
-			if(controller.getGameMode().getDelayTimer() > 0)
-//				serverMessage("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!");
-				g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+		if(gameStarted){
+			if(controller.getGameMode().isDelaying()){
+				if(controller.getGameMode().getDelayTimer() > 0)
+//					serverMessage("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!");
+					g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+			}
 		}
 		
 //		if(controller.getGameMode().isGameOver()){
@@ -497,7 +507,10 @@ public class ServerState extends TanskState {
 	}
 	
 	public ArrayList<Player> getPlayers(){
-		return controller.getGameMode().getPlayerList();
+		if(controller.getGameMode() != null)
+			return controller.getGameMode().getPlayerList();
+		else
+			return null;
 	}
 	
 	public void serverMessage(String message){

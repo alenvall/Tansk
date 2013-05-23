@@ -15,7 +15,7 @@ public class KingOfTheHillMode extends ScoreBasedGame{
 	
 	public KingOfTheHillMode(Vector2f position){
 		playersInZone = new HashMap<Player, Integer>();
-		pointZone = new KingOfTheHillZone(GameController.getInstance().generateID() , position);
+//		pointZone = new KingOfTheHillZone(GameController.getInstance().generateID() , position);
 		setScoreLimit(15);
 	}
 	
@@ -33,7 +33,6 @@ public class KingOfTheHillMode extends ScoreBasedGame{
 				}else{
 					Integer timeInZone = playersInZone.get(p);
 					timeInZone +=delta;
-					GameController.getInstance().getConsole().addMsg("" + timeInZone);
 					if(timeInZone > 1000){
 						incrementPlayerScore(p);
 						timeInZone = 0;
@@ -48,6 +47,10 @@ public class KingOfTheHillMode extends ScoreBasedGame{
 				addWinningPlayer(p);
 			}
 		}
+	}
+	
+	public void generateZone(Vector2f position){
+		pointZone = new KingOfTheHillZone(GameController.getInstance().generateID(), position);
 	}
 	
 	public boolean playerInZone(Player p){

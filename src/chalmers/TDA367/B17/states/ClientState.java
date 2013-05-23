@@ -32,6 +32,7 @@ import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.AbstractTurret;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
+import chalmers.TDA367.B17.model.KingOfTheHillZone;
 import chalmers.TDA367.B17.model.World;
 import chalmers.TDA367.B17.network.Network;
 import chalmers.TDA367.B17.network.Network.EntityPacket;
@@ -42,7 +43,7 @@ import chalmers.TDA367.B17.network.Network.Pck100_WorldState;
 import chalmers.TDA367.B17.network.Network.Pck102_TankUpdate;
 import chalmers.TDA367.B17.network.Network.Pck103_ProjectileUpdate;
 import chalmers.TDA367.B17.network.Network.Pck10_TankCreated;
-import chalmers.TDA367.B17.network.Network.Pck11_PickupCreated;
+import chalmers.TDA367.B17.network.Network.Pck11_StaticObjectCreated;
 import chalmers.TDA367.B17.network.Network.Pck1_LoginAnswer;
 import chalmers.TDA367.B17.network.Network.Pck2_ClientConfirmJoin;
 import chalmers.TDA367.B17.network.Network.Pck31_ChatMessage;
@@ -375,9 +376,9 @@ public class ClientState extends TanskState {
 				createClientTank(pck.entityID, pck.identifier, pck.direction, pck.color);
 			}
 			
-			if(packet instanceof Pck11_PickupCreated){
-				Pck11_PickupCreated pck = (Pck11_PickupCreated) packet;
-				createClientPickup(pck.entityID, pck.identifier, pck.position);
+			if(packet instanceof Pck11_StaticObjectCreated){
+				Pck11_StaticObjectCreated pck = (Pck11_StaticObjectCreated) packet;
+				createStaticObject(pck.entityID, pck.identifier, pck.position);
 			}
 			
 			if(packet instanceof Pck100_WorldState){
@@ -458,7 +459,7 @@ public class ClientState extends TanskState {
 	    }
     }
 	
-	private void createClientPickup(int entityID, String identifier, Vector2f position){
+	private void createStaticObject(int entityID, String identifier, Vector2f position){
 		if(identifier.equals("BouncePickup")){
 			new BouncePickup(entityID, position);
 		} else if(identifier.equals("FlamethrowerPickup")){
@@ -479,13 +480,13 @@ public class ClientState extends TanskState {
 			new ShieldPowerUpPickup(entityID, position);
 		}  else if(identifier.equals("SpeedPowerUpPickup")){
 			new SpeedPowerUpPickup(entityID, position);
-		} 
+		} else if(identifier.equals("KingOfTheHillZone")){
+			new KingOfTheHillZone(entityID, position);
+		}
 	}
 	
-
-//	private void createClientEntity(int entityID, String identifier, int possibleOwnerID) { 
 	private void createClientEntity(Pck9_EntityCreated pck) {
-	    if(pck.identifier.equals("DefaultProjectile")){
+		if(pck.identifier.equals("DefaultProjectile")){
 			new DefaultProjectile(pck.entityID, null, null);
 	    } else if(pck.identifier.equals("BounceProjectile")){
 			new BounceProjectile(pck.entityID, null, null);

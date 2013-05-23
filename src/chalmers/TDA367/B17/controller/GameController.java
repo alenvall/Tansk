@@ -10,9 +10,7 @@ import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.gamemodes.GameConditions;
 import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
-import chalmers.TDA367.B17.gamemodes.StandardGameMode;
 import chalmers.TDA367.B17.animations.AnimationHandler;
-import chalmers.TDA367.B17.model.KingOfTheHillZone;
 import chalmers.TDA367.B17.model.World;
 import chalmers.TDA367.B17.sound.SoundHandler;
 
@@ -59,9 +57,8 @@ public class GameController {
 	 * @param serverWorld If the world should be on a server or not. 
 	 */
 	public void newGame(int width, int height, int rounds, 
-			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld){
-		world = new World(new Dimension(width, height), serverWorld);
-		world.init();
+			int playerLives, int spawnTime, int roundTime, int gameTime){
+
 		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
 		
 		gameMode = new KingOfTheHillMode(new Vector2f(512,384));
