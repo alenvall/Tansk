@@ -109,6 +109,35 @@ public class ClientState extends TanskState {
 	
 		return instance;
 	}
+
+	public void setClient(final Client client){
+		this.client = client;
+
+		this.client.addListener(new Listener(){
+			@Override
+			public void connected(Connection connection) {
+				Pck0_JoinRequest pck = new Pck0_JoinRequest();
+				pck.playerName = ClientState.getInstance().getPlayerName();
+				client.sendTCP(pck);
+			}
+
+			public void received(Connection con, Object msg) {
+				super.received(con, msg);
+				if (msg instanceof Packet) {
+					Packet packet = (Packet)msg;
+					packet.setConnection(con);
+					packetQueue.add(packet);
+					packetsReceived++;
+				}
+			}
+
+			@Override
+			public void disconnected(Connection connection) {
+				GameController.getInstance().getConsole().addMsg("Disconnected from server.", MsgLevel.ERROR);
+				GameController.getInstance().getConsole().setTimerHide(false);
+			}
+		});
+	}
 	
 	@Override
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
@@ -131,44 +160,8 @@ public class ClientState extends TanskState {
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
-		
-		client = new Client();
-		Network.register(client);
-		client.addListener(new Listener(){
-			@Override
-			public void connected(Connection connection) {
-				Pck0_JoinRequest pck = new Pck0_JoinRequest();
-				pck.playerName = ClientState.getInstance().getPlayerName();
-			    client.sendTCP(pck);
-			}
-			
-			public void received(Connection con, Object msg) {
-			   super.received(con, msg);
-			   if (msg instanceof Packet) {
-				   Packet packet = (Packet)msg;
-				   packet.setConnection(con);
-				   packetQueue.add(packet);
-				   packetsReceived++;
-			   }
-			}
-			
-			@Override
-			public void disconnected(Connection connection) {
-				GameController.getInstance().getConsole().addMsg("Disconnected from server.", MsgLevel.ERROR);
-				GameController.getInstance().getConsole().setTimerHide(false);
-			}
-		});
+
 		client.start();
-		
-		try {
-	        client.connect(600000, "127.0.0.1", Network.PORT, Network.PORT);
-        } catch (IOException e) {
-        	Log.info("[CLIENT] Failed to connect!");
-			GameController.getInstance().getConsole().addMsg("Failed to connect to server.", MsgLevel.ERROR);
-			GameController.getInstance().getConsole().setTimerHide(false);
-	        e.printStackTrace();
-	        client.stop();
-        } 
 		
 		input = gc.getInput();
 		input.addMouseListener(this);
@@ -449,7 +442,7 @@ public class ClientState extends TanskState {
 			} else {
 				GameController.getInstance().getConsole().setVisible(true);
 				chatField.setFocus(true);
-			}	
+			}
 		}
 	}
 		
