@@ -5,6 +5,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.newdawn.slick.Music;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.Sound;
 
@@ -14,7 +15,8 @@ import chalmers.TDA367.B17.event.GameEvent;
 public class SoundHandler {
 	
 	private Map<String, Sound> sounds;
-	private Sound menuMusic;
+	private Music menuMusic;
+	private Music battleMusic;
 	private float volume = 0.5f;
 	
 	public enum MusicType{
@@ -28,7 +30,8 @@ public class SoundHandler {
 	public SoundHandler(){
 		sounds = new HashMap<String, Sound>();
 		try {
-			menuMusic = new Sound(Tansk.SOUNDS_FOLDER + "/Tensions.wav");
+			menuMusic = new Music(Tansk.SOUNDS_FOLDER + "/Tensions.wav");
+			battleMusic = new Music(Tansk.SOUNDS_FOLDER + "/Battle_Music.wav");
 		} catch (SlickException e) {
 			System.out.println("Failed to load menu music.");
 			e.printStackTrace();
@@ -39,6 +42,10 @@ public class SoundHandler {
 		if(music == MusicType.MENU_MUSIC){
 			if(menuMusic != null){
 				menuMusic.play();
+			}
+		}else if(music == MusicType.BATTLE_MUSIC){
+			if(battleMusic != null){
+				battleMusic.play();
 			}
 		}
 	}

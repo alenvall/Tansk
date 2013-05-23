@@ -56,7 +56,7 @@ public class Play extends TanskState {
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 		
-		controller.getSoundHandler().stopMusic(MusicType.MENU_MUSIC);
+		controller.getSoundHandler().playMusic(MusicType.BATTLE_MUSIC);
 			
 		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
 		console.setBorder(false);
