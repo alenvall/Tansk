@@ -504,15 +504,32 @@ public class ServerState extends TanskState {
 			if(chatField.hasFocus()){
 				if(!chatField.getText().equals("")){
 					if(server != null){
-						if(chatField.getText().charAt(0) == '/'){
-							if(chatField.getText().substring(1, 4).equals("kick")){
-								for(Player player : getPlayers()){
-									player.getName().equals(chatField.getText().substring(6, 20).trim());
-									GameController.getInstance().getGameMode().removePlayer(player);
+						if((chatField.getText().charAt(0) + "").equals("/")){
+							String subString = chatField.getText().substring(1, 5);
+							GameController.getInstance().getConsole()
+                                    .addMsg(subString);
+							if(subString.equals("kick")){
+								if(getPlayers().size() > 0){
+									Player matchedPlayer = null;
+									for(Player player : getPlayers()){
+										String subString2 = chatField.getText().substring(6).trim();
+										GameController.getInstance()
+                                                .getConsole()
+                                                .addMsg(subString2);
+										if(player.getName().equals(subString2))
+											matchedPlayer = player;
+										else
+											GameController.getInstance().getConsole().addMsg("Player not found.");
+									}
+//									GameController.getInstance().getGameMode().removePlayer(matchedPlayer);
+								} else {
+									GameController.getInstance().getConsole()
+                                            .addMsg("No players!");
 								}
 							}
+						} else {
+							serverMessage("Server: " + chatField.getText());
 						}
-						serverMessage("Server: " + chatField.getText());
 						chatField.setText("");
 					}
 				}
