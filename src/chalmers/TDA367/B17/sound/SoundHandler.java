@@ -41,11 +41,11 @@ public class SoundHandler {
 	public void playMusic(MusicType music){
 		if(music == MusicType.MENU_MUSIC){
 			if(menuMusic != null){
-				menuMusic.play();
+				menuMusic.loop();
 			}
 		}else if(music == MusicType.BATTLE_MUSIC){
 			if(battleMusic != null){
-				battleMusic.play();
+				battleMusic.loop();
 			}
 		}
 	}
