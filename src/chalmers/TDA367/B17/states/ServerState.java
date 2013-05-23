@@ -64,7 +64,6 @@ public class ServerState extends TanskState {
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 
-
 		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
 		controller.setConsole(new Console(10, 533, 600, 192, OutputLevel.ALL));
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, true);
@@ -207,7 +206,7 @@ public class ServerState extends TanskState {
 		g.drawRect(410, 495, 50, 30);
 
 		g.setColor(Color.white);
-		g.drawString("Players: " + getPlayers().size(), 18, 480);
+		g.drawString("Players: " + getPlayers().size() + "/4", 18, 480);
 		g.drawString("LAN IP: " + ipAddress, 18, 500);
 		
 		// some debug stuff
@@ -287,17 +286,24 @@ public class ServerState extends TanskState {
 		    	controller.getConsole().addMsg(pck.playerName + " attempting to connect..", MsgLevel.INFO);
 		    	Pck1_LoginAnswer responsePacket = new Pck1_LoginAnswer();
 		    	
-		    	if(!gameStarted){
-			    	Player newPlayer = new Player(packet.getConnection(), pck.playerName);
-			    	newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
-			    	newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
-			    	getPlayers().add(newPlayer);
-			    	responsePacket.accepted = true;
-		    	} else {
-		    		responsePacket.accepted = false;
-		    		responsePacket.reason = "Game started.";
-		    		GameController.getInstance().getConsole().addMsg(pck.playerName + " kicked, game has started.", MsgLevel.INFO);
-		    	}
+		    	GameController.getInstance().getConsole().addMsg(getPlayers().size() + "");
+	    		if(getPlayers().size() < 4){
+			    	if(!gameStarted){
+			    		createPlayer(pck.playerName, packet.getConnection());
+//		    			Player newPlayer = new Player(packet.getConnection(), pck.playerName);
+//		    			newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
+//		    			newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
+//		    			getPlayers().add(newPlayer);
+		    			responsePacket.accepted = true;
+			    	} else {
+			    		responsePacket.accepted = false;
+			    		responsePacket.reason = "Game started.";
+			    		GameController.getInstance().getConsole().addMsg(pck.playerName + " kicked, game has started.", MsgLevel.INFO); 	
+			    	}
+	    		} else {
+	    			responsePacket.accepted = false;
+	    			responsePacket.reason = "Server full.";
+	    		}
 			   	packet.getConnection().sendTCP(responsePacket);
 		    }
 		    
@@ -323,6 +329,23 @@ public class ServerState extends TanskState {
 			    }
  		    }
 	   	}
+    }
+
+	private void createPlayer(String playerName, Connection connection) {
+		Player newPlayer = new Player(connection, playerName);
+		newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
+		newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
+		int numberOfPlayers = getPlayers().size();
+		if(numberOfPlayers == 0){
+			newPlayer.setColor("blue");
+		} else if (numberOfPlayers == 1) {
+			newPlayer.setColor("red");
+		} else if (numberOfPlayers == 2) {
+			newPlayer.setColor("yellow");
+		} else if (numberOfPlayers == 3) {
+			newPlayer.setColor("white");
+		}
+		getPlayers().add(newPlayer);
     }
 
 	private void receiveClientInput(Pck4_ClientInput pck) {
