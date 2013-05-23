@@ -117,16 +117,6 @@ public abstract class AbstractTurret extends Entity {
 		projectile.setPosition(getTurretNozzle());
 		return projectile;
 	}
-
-	// moved func. to AbstractTank
-	public void update(int delta){
-		super.update(delta);
-//		double tankRotation = tank.getRotation() - 90;
-//		float newTurX = (float) (tank.getPosition().x + tank.getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
-//		float newTurY = (float) (tank.getPosition().y - tank.getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
-//
-//		this.setPosition(new Vector2f(newTurX, newTurY));
-	}
 	
 	/**
 	 * Get the color of this turret.
