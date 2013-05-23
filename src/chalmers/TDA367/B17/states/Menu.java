@@ -35,7 +35,7 @@ public class Menu extends BasicGameState{
 
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
-		playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play"), 150, 50);
+		playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_playground"), 150, 50);
 		exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit"), 150, 50);
 		hostGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_host"), 150, 50);
 		joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join"), 150, 50);
@@ -63,9 +63,9 @@ public class Menu extends BasicGameState{
 		int y = input.getMouseY();
 		
 		if(x > 100 && x < 250 && y > 125 && y < 175){
-			playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play_hover"), 150, 50);
+			playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_playground_hover"), 150, 50);
 			if(input.isMouseButtonDown(0)){
-				playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play_pressed"), 150, 50);
+				playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_playground_pressed"), 150, 50);
 				playPressed = true;
 			}
 			if(!input.isMouseButtonDown(0)){
@@ -75,7 +75,7 @@ public class Menu extends BasicGameState{
 				}
 			}
 		}else{
-			playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_play"), 150, 50);
+			playGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_playground"), 150, 50);
 			playPressed = false;
 		}
 		
