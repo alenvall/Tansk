@@ -20,6 +20,7 @@ public class Shield extends Entity {
 
 	/**
 	 * Create a new shield for a tank.
+	 * @param id The id
 	 * @param absTank The tank that will receive the shield
 	 * @param duration The duration of the shield (0 for unlimited time)
 	 */

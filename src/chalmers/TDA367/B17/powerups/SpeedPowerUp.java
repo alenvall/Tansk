@@ -13,6 +13,7 @@ public class SpeedPowerUp extends AbstractPowerUp {
 
 	/**
 	 * Create a new SpeedPowerUp at a position.
+	 * @param id The id
 	 * @param position The position of this powerup
 	 */
 	public SpeedPowerUp(int id, Vector2f position) {

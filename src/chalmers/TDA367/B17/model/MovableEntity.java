@@ -2,6 +2,11 @@ package chalmers.TDA367.B17.model;
 
 import org.newdawn.slick.geom.*;
 
+/**
+ * MovableEntity is an entity with a move method that allows it to move.
+ * A min- and max-speed is used to determine how fast this object can move,
+ * along with a direction.
+ */
 public abstract class MovableEntity extends Entity {
 
 	protected Vector2f direction;
@@ -15,6 +20,8 @@ public abstract class MovableEntity extends Entity {
 	
 	/**
 	 * Create a new MovableEntity based on the following parameters
+	 * @param id The id
+	 * @param direction The direction
 	 * @param maxSpeed The maximum speed of this object
 	 * @param minSpeed The minimum speed of this object
 	 */

@@ -10,7 +10,6 @@ import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
 
-
 public abstract class AbstractTank extends MovableEntity {
 	private String name;
 	private double health;
@@ -34,6 +33,8 @@ public abstract class AbstractTank extends MovableEntity {
 	
 	/**
 	 * Create a new AbstractTank.
+	 * @param id The id
+	 * @param direction The direction
 	 * @param velocity The velocity of this tank
 	 * @param maxSpeed The maximum movement speed of this tank
 	 * @param minSpeed The minimum movement speed of this tank

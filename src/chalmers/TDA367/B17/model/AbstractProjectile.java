@@ -12,7 +12,10 @@ public abstract class AbstractProjectile extends MovableEntity {
 
 	/**
 	 * Create a new AbstractProjectile.
-	 * @param velocity the initial velocity
+	 * @param id The id
+	 * @param tank The tank this projectile belongs to
+	 * @param position The position
+	 * @param direction The direction
 	 * @param maxSpeed the maximum speed
 	 * @param minSpeed the minimum speed
 	 * @param damage the damage this projectile does

@@ -4,6 +4,9 @@ import chalmers.TDA367.B17.controller.GameController;
 //import chalmers.TDA367.B17.event.GameEvent;
 import org.newdawn.slick.geom.*;
 
+/**
+ * Entity represents a visible object in the world.
+ */
 public abstract class Entity{
 	protected int id; // The id of this object
 	protected boolean active;
@@ -20,6 +23,7 @@ public abstract class Entity{
 
 	/**
 	 * Create a new Entity.
+	 * @param id The id
 	 */
 	public Entity(int id){
 		this.id = id;

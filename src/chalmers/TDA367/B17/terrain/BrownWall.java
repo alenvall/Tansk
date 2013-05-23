@@ -18,11 +18,4 @@ public class BrownWall extends AbstractObstacle {
 		spriteID = "obstacle";
 		GameController.getInstance().getWorld().addEntity(this);
 	}
-	
-	@Override
-	public void didCollideWith(Entity entity){
-		if(entity instanceof AbstractProjectile){
-			// removed sound
-		}
-	}
 }

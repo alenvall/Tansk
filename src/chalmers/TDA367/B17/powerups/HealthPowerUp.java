@@ -13,6 +13,7 @@ public class HealthPowerUp extends AbstractPowerUp {
 
 	/**
 	 * Create a new HealthPowerUp at a position.
+	 * @param id The id
 	 * @param position The position of this powerup
 	 */
 	public HealthPowerUp(int id, Vector2f position) {

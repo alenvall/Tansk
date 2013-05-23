@@ -6,6 +6,11 @@ import chalmers.TDA367.B17.controller.GameController;
 
 public class KingOfTheHillZone extends Entity {
 	
+	/**
+	 * Create a new KingOfTheHillZone.
+	 * @param id The id
+	 * @param position The position
+	 */
 	public KingOfTheHillZone(int id, Vector2f position){
 		super(id);
 		shape = new Circle(position.x, position.y, 45);

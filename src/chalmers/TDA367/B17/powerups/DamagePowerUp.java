@@ -19,6 +19,7 @@ public class DamagePowerUp extends AbstractPowerUp{
 	
 	/**
 	 * Create a new damage powerup at a position.
+	 * @param id The id
 	 * @param position The position of this powerup
 	 */
 	public DamagePowerUp(int id, Vector2f position) {

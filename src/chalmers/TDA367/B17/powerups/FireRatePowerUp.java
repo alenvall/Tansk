@@ -14,6 +14,7 @@ public class FireRatePowerUp extends AbstractPowerUp {
 
 	/**
 	 * Create a new FireRatePowerUp at a position.
+	 * @param id The id
 	 * @param position The position of this powerup
 	 */
 	public FireRatePowerUp(int id, Vector2f position) {

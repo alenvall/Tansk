@@ -16,6 +16,9 @@ public class TankSpawner{
 	//A list of all the players that wish to spawn.
 	private List<Player> playersToSpawn;
 	
+	/**
+	 * Create a new TankSpawner.
+	 */
 	public TankSpawner(){
 		tankSpawnPoints = new ArrayList<TankSpawnPoint>();
 		playersToSpawn = new ArrayList<Player>();

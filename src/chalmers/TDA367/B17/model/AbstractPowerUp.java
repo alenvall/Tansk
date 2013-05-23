@@ -14,6 +14,8 @@ public abstract class AbstractPowerUp extends Entity {
 
 	/**
 	 * Create a new AbstractPowerUp.
+	 * @param id The id
+	 * @param position THe position
 	 */
 	public AbstractPowerUp(int id, Vector2f position) {
 		super(id);

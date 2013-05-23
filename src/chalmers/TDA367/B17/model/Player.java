@@ -25,7 +25,8 @@ public class Player {
 	private String color;
 
 	/**
-	 * Create a new Player.
+	 * Create a new Player with a connection.
+	 * @param connection The connection
 	 * @param name The player's name
 	 */
 	public Player(Connection connection, String name){
@@ -44,6 +45,10 @@ public class Player {
 	}
 	
 	// only for single(Play)er state..
+	/**
+	 * Create a new player.
+	 * @param name The name
+	 */
 	public Player(String name){
 		this.connection = null;
 		this.id = 0;

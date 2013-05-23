@@ -12,6 +12,7 @@ public class ShieldPowerUp extends AbstractPowerUp {
 	
 	/**
 	 * Create a new ShieldPowerUp at a position.
+	 * @param id The id
 	 * @param position The position of this powerup
 	 */
 	public ShieldPowerUp(int id, Vector2f position) {

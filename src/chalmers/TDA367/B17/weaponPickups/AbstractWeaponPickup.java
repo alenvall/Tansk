@@ -14,6 +14,8 @@ public abstract class AbstractWeaponPickup extends Entity{
 
 	/**
 	 * Create a new AbstractWeaponPickup.
+	 * @param id The id
+	 * @param position The position
 	 */
 	public AbstractWeaponPickup(int id, Vector2f position) {
 		super(id);

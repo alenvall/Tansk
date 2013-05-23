@@ -7,6 +7,7 @@ public class AbstractObstacle extends Entity {
 	
 	/**
 	 * Create a new AbstractObstacle.
+	 * @param id The id
 	 * @param size The size of this object.
 	 * @param position The position of this object.
 	 */

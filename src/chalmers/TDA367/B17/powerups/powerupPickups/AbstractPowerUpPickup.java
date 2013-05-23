@@ -9,6 +9,11 @@ import chalmers.TDA367.B17.model.Entity;
 
 public abstract class AbstractPowerUpPickup extends Entity{
 
+	/**
+	 * Create a new AbstractPowerUpPickup.
+	 * @param id The id
+	 * @param position The position
+	 */
 	public AbstractPowerUpPickup(int id, Vector2f position) {
 		super(id);
 		Vector2f size = new Vector2f(35f, 35f);

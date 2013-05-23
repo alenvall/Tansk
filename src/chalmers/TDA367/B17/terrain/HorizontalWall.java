@@ -20,11 +20,4 @@ public class HorizontalWall extends AbstractObstacle {
 		GameController.getInstance().getWorld().addEntity(this);
 		renderLayer = RenderLayer.THIRD;
 	}
-	
-	@Override
-	public void didCollideWith(Entity entity){
-		if(entity instanceof AbstractProjectile){
-
-		}
-	}
 }

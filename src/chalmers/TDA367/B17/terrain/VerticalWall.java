@@ -21,11 +21,4 @@ public class VerticalWall extends AbstractObstacle {
 		renderLayer = RenderLayer.THIRD;
 		GameController.getInstance().getWorld().addEntity(this);
 	}
-	
-	@Override
-	public void didCollideWith(Entity entity){
-		if(entity instanceof AbstractProjectile){
-
-		}
-	}
 }

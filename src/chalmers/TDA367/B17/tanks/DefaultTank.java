@@ -16,8 +16,10 @@ public class DefaultTank extends AbstractTank {
 	
 	/**
 	 * Create a new DefaultTank with a color.
+	 * @param id The id
 	 * @param direction The direction the tank will face.
-	 * @param playerColor The color of this tank
+	 * @param player The player this tank belongs to
+	 * @param color The color of this tank
 	 */
 	public DefaultTank(int id, Vector2f direction, Player player, String color) {
 		super(id, direction, DEFAULT_MAXSPEED, DEFAULT_MINSPEED, player, color);
