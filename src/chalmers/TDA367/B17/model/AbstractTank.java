@@ -75,14 +75,6 @@ public abstract class AbstractTank extends MovableEntity {
 	public void setName(String name) {
 		this.name = name;
 	}
-	
-	/**
-	 * Return the max health of the tank.
-	 * @return max_health
-	 */
-	public double getMaxHealth(){
-		return MAX_HEALTH;
-	}
 
 	/**
 	 * Get the current health of this tank.

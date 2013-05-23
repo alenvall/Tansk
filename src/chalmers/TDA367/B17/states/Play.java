@@ -285,9 +285,9 @@ public class Play extends TanskState {
 		super.renderGUI(gc, g);
 		if(playerOne.getTank() != null){
 			if(playerOne.getTank().getShield() != null && playerOne.getTank().getShield().getHealth() <= 100){
-				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), playerOne.getTank().getShield().getHealth()/playerOne.getTank().getMaxShieldHealth(), g);
+				lifebar.render(playerOne.getTank().getHealth()/AbstractTank.MAX_HEALTH, playerOne.getTank().getShield().getHealth()/playerOne.getTank().getMaxShieldHealth(), g);
 			}else{
-				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), 0, g);
+				lifebar.render(playerOne.getTank().getHealth()/AbstractTank.MAX_HEALTH, 0, g);
 			}
 		}
 		soundSwitch.render(g);
