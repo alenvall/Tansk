@@ -96,109 +96,111 @@ public class Play extends TanskState {
 	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
 		super.update(gc, sbg, delta);
 		
-		if(input.isKeyDown(Input.KEY_W)){
-			if(playerOne.getTank() != null)
-				playerOne.getTank().accelerate(delta);
-		} else if (input.isKeyDown(Input.KEY_S)){
-			if(playerOne.getTank() != null)
-			playerOne.getTank().reverse(delta);
-		} else {
-			if(playerOne.getTank() != null)
-			playerOne.getTank().friction(delta);
-		}
-
-		if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
-			if(input.isKeyDown(Input.KEY_S)){
+		if(!controller.getGameMode().isGameOver()){
+			if(input.isKeyDown(Input.KEY_W)){
 				if(playerOne.getTank() != null)
-				playerOne.getTank().turnRight(delta);
+					playerOne.getTank().accelerate(delta);
+			} else if (input.isKeyDown(Input.KEY_S)){
+				if(playerOne.getTank() != null)
+				playerOne.getTank().reverse(delta);
 			} else {
 				if(playerOne.getTank() != null)
-				playerOne.getTank().turnLeft(delta);
+				playerOne.getTank().friction(delta);
 			}
-		}
-
-		if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
-			if(input.isKeyDown(Input.KEY_S)){
+	
+			if(input.isKeyDown(Input.KEY_A) && !input.isKeyDown(Input.KEY_D)){
+				if(input.isKeyDown(Input.KEY_S)){
+					if(playerOne.getTank() != null)
+					playerOne.getTank().turnRight(delta);
+				} else {
+					if(playerOne.getTank() != null)
+					playerOne.getTank().turnLeft(delta);
+				}
+			}
+	
+			if(input.isKeyDown(Input.KEY_D) && !input.isKeyDown(Input.KEY_A)){
+				if(input.isKeyDown(Input.KEY_S)){
+					if(playerOne.getTank() != null)
+					playerOne.getTank().turnLeft(delta);
+				} else {
+					if(playerOne.getTank() != null)
+					playerOne.getTank().turnRight(delta);
+				}
+			}
+	
+			if(input.isMouseButtonDown(0)){
 				if(playerOne.getTank() != null)
-				playerOne.getTank().turnLeft(delta);
-			} else {
-				if(playerOne.getTank() != null)
-				playerOne.getTank().turnRight(delta);
+					playerOne.getTank().fireWeapon(delta);
+				if(playerTwo.getTank() != null)
+					playerTwo.getTank().fireWeapon(delta);
 			}
-		}
-
-		if(input.isMouseButtonDown(0)){
-			if(playerOne.getTank() != null)
-				playerOne.getTank().fireWeapon(delta);
-			if(playerTwo.getTank() != null)
-				playerTwo.getTank().fireWeapon(delta);
-		}
-		
-		if(input.isKeyDown(Input.KEY_Q)){
-			new SlowspeedyPickup(GameController.getInstance().generateID(), new Vector2f(800, 300));
-		}
-						
-		for(Player player : players){
-			if(player.getTank() != null){
-				AbstractTurret turret = player.getTank().getTurret();
-				turret.setRotation((float) Math.toDegrees(Math.atan2(turret.getPosition().x - input.getMouseX() + 0, turret.getPosition().y - input.getMouseY() + 0)* -1)+180);		
+			
+			if(input.isKeyDown(Input.KEY_Q)){
+				new SlowspeedyPickup(GameController.getInstance().generateID(), new Vector2f(800, 300));
 			}
-		}
-		
-		if(input.isKeyDown(Input.KEY_UP)){
-			float tmp = controller.getSoundHandler().getVolume();
-			if(tmp + 0.05 < 1){
-				tmp+=0.05;
-			}else{
-				tmp = 1;
+							
+			for(Player player : players){
+				if(player.getTank() != null){
+					AbstractTurret turret = player.getTank().getTurret();
+					turret.setRotation((float) Math.toDegrees(Math.atan2(turret.getPosition().x - input.getMouseX() + 0, turret.getPosition().y - input.getMouseY() + 0)* -1)+180);		
+				}
 			}
-			controller.getSoundHandler().setVolume(tmp);
-		}
-		if(input.isKeyDown(Input.KEY_DOWN)){
-			float tmp = controller.getSoundHandler().getVolume();
-			if(tmp - 0.05 >= 0){
-				tmp-=0.05f;
-			}else if(tmp < 0.1f){
-				tmp = 0;
+			
+			if(input.isKeyDown(Input.KEY_UP)){
+				float tmp = controller.getSoundHandler().getVolume();
+				if(tmp + 0.05 < 1){
+					tmp+=0.05;
+				}else{
+					tmp = 1;
+				}
+				controller.getSoundHandler().setVolume(tmp);
 			}
-			controller.getSoundHandler().setVolume(tmp);
-		}
-		if(input.isKeyPressed(Input.KEY_S) && input.isKeyDown(Input.KEY_LCONTROL)){
-			if(controller.getSoundHandler().isSoundOn()){
-				soundSwitch.turnSoundOff(controller.getSoundHandler().getVolume());
-			}else{
-				soundSwitch.turnSoundOn();
+			if(input.isKeyDown(Input.KEY_DOWN)){
+				float tmp = controller.getSoundHandler().getVolume();
+				if(tmp - 0.05 >= 0){
+					tmp-=0.05f;
+				}else if(tmp < 0.1f){
+					tmp = 0;
+				}
+				controller.getSoundHandler().setVolume(tmp);
 			}
-		}
-		
-		//Weapons
-		if(playerOne.getTank() != null){
-			AbstractTank playerOneTank = playerOne.getTank();
-			AbstractTurret playerOneTurret = playerOneTank.getTurret();
-		
-			if(input.isKeyDown(Input.KEY_1)){
-				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new DefaultTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+			if(input.isKeyPressed(Input.KEY_S) && input.isKeyDown(Input.KEY_LCONTROL)){
+				if(controller.getSoundHandler().isSoundOn()){
+					soundSwitch.turnSoundOff(controller.getSoundHandler().getVolume());
+				}else{
+					soundSwitch.turnSoundOn();
+				}
 			}
-			if(input.isKeyDown(Input.KEY_2)){
-				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new FlamethrowerTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
-			}
-			if(input.isKeyDown(Input.KEY_3)){
-				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new ShotgunTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
-			}
-			if(input.isKeyDown(Input.KEY_4)){
-				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new SlowspeedyTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
-			}
-			if(input.isKeyDown(Input.KEY_5)){
-				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new ShockwaveTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
-			}
-			if(input.isKeyDown(Input.KEY_6)){
-				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new BounceTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+			
+			//Weapons
+			if(playerOne.getTank() != null){
+				AbstractTank playerOneTank = playerOne.getTank();
+				AbstractTurret playerOneTurret = playerOneTank.getTurret();
+			
+				if(input.isKeyDown(Input.KEY_1)){
+					if(playerOne.getTank() != null)
+						playerOne.getTank().setTurret(new DefaultTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+				}
+				if(input.isKeyDown(Input.KEY_2)){
+					if(playerOne.getTank() != null)
+						playerOne.getTank().setTurret(new FlamethrowerTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+				}
+				if(input.isKeyDown(Input.KEY_3)){
+					if(playerOne.getTank() != null)
+						playerOne.getTank().setTurret(new ShotgunTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+				}
+				if(input.isKeyDown(Input.KEY_4)){
+					if(playerOne.getTank() != null)
+						playerOne.getTank().setTurret(new SlowspeedyTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+				}
+				if(input.isKeyDown(Input.KEY_5)){
+					if(playerOne.getTank() != null)
+						playerOne.getTank().setTurret(new ShockwaveTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+				}
+				if(input.isKeyDown(Input.KEY_6)){
+					if(playerOne.getTank() != null)
+						playerOne.getTank().setTurret(new BounceTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+				}
 			}
 		}
 		
@@ -275,6 +277,7 @@ public class Play extends TanskState {
 		
 		controller.getAnimationHandler().renderAnimations();
 		renderGUI(container, g);
+		
 	}
 	
 	@Override
@@ -310,6 +313,25 @@ public class Play extends TanskState {
 		
 		g.setColor(Color.black);
 		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
+		
+
+		if(controller.getGameMode().isGameOver()){
+			g.setLineWidth(15);
+			g.setColor(new Color(100, 100, 100, 255));
+			int tmpSideLength = 350;
+			int tmpYOffset = 10;
+			Vector2f tmpPosition = new Vector2f(Tansk.SCREEN_WIDTH/2-tmpSideLength/2, Tansk.SCREEN_HEIGHT/2-tmpSideLength/2);
+			g.fillRect(tmpPosition.x, tmpPosition.y, tmpSideLength, tmpSideLength);
+			g.setColor(Color.black);
+			g.drawRect(tmpPosition.x, tmpPosition.y, tmpSideLength, tmpSideLength);
+			g.setLineWidth(1);
+			
+			g.setFont(new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true));
+			for(Player p: controller.getGameMode().getPlayerList()){
+				g.drawString(p.getName() + ": " + p.getScore(), tmpPosition.x+70, tmpPosition.y+tmpYOffset);
+				tmpYOffset += 30;
+			}
+		}
 	}	
 
 	private void renderEntities(ArrayList<Entity> entities){
