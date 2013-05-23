@@ -233,20 +233,20 @@ public class ServerState extends TanskState {
 				g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
 		}
 		
-		if(controller.getGameMode().isGameOver()){
+//		if(controller.getGameMode().isGameOver()){
 //			serverMessage("Game Over!");
-			g.drawString("Game Over!", 500, 300);
+//			g.drawString("Game Over!", 500, 300);
 //			serverMessage("Winner: " + controller.getGameMode().getWinningPlayer().getName());
-			for(Player p: controller.getGameMode().getWinningPlayers()){
-				g.drawString("Winner: " + p.getName(), 500, 400 + 10*controller.getGameMode().getWinningPlayers().indexOf(p));
-			}
-			int i = 0;
-			for(Player p : controller.getGameMode().getPlayerList()){
-				i++;
-				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
-				serverMessage(p.getName() + "'s score: " + p.getScore());
-			}
-		}
+//			for(Player p: controller.getGameMode().getWinningPlayers()){
+//				g.drawString("Winner: " + p.getName(), 500, 400 + 10*controller.getGameMode().getWinningPlayers().indexOf(p));
+//			}
+//			int i = 0;
+//			for(Player p : controller.getGameMode().getPlayerList()){
+//				i++;
+//				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
+//				serverMessage(p.getName() + "'s score: " + p.getScore());
+//			}
+//		}
 	
 	}
 	
@@ -521,7 +521,7 @@ public class ServerState extends TanskState {
 										else
 											GameController.getInstance().getConsole().addMsg("Player not found.");
 									}
-//									GameController.getInstance().getGameMode().removePlayer(matchedPlayer);
+									GameController.getInstance().getGameMode().removePlayer(matchedPlayer);
 								} else {
 									GameController.getInstance().getConsole()
                                             .addMsg("No players!");
