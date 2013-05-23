@@ -288,10 +288,18 @@ public class Player {
 		return tankType;
 	}
 	
+	/**
+	 * Set the color of this player.
+	 * @param color The new color
+	 */
 	public void setColor(String color){
 		this.color = color;
 	}
 	
+	/**
+	 * Get the color of this player.
+	 * @return The color
+	 */
 	public String getColor(){
 		return color;
 	}

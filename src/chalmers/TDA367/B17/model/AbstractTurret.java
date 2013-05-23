@@ -14,6 +14,11 @@ public abstract class AbstractTurret extends Entity {
 	
 	/**
 	 * Create a new AbstractTurret.
+	 * @param id The id
+	 * @param position The position
+	 * @param startingRotation The starting rotation
+	 * @param tank The tank
+	 * @param color The color
 	 */
 	public AbstractTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id);
@@ -123,6 +128,10 @@ public abstract class AbstractTurret extends Entity {
 //		this.setPosition(new Vector2f(newTurX, newTurY));
 	}
 	
+	/**
+	 * Get the color of this turret.
+	 * @return The color
+	 */
 	public String getColor(){
 		return color;
 	}

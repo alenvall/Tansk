@@ -17,7 +17,9 @@ public class ShotgunTurret extends AbstractTurret {
 	/**
 	 * Create a new ShotgunTurret.
 	 * @param id The id
+	 * @param startingRotation The starting rotation
 	 * @param tank The tank it belongs to
+	 * @param color The color
 	 */
 	public ShotgunTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id, position, startingRotation,  tank, color);

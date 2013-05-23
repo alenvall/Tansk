@@ -14,7 +14,9 @@ public class DefaultTurret extends AbstractTurret {
 	/**
 	 * Create a new DefaultTurret.
 	 * @param id The id
+	 * @param startingRotation The starting rotation
 	 * @param tank The tank it belongs to
+	 * @param color The color
 	 */
 	public DefaultTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id, position, startingRotation, tank, color);

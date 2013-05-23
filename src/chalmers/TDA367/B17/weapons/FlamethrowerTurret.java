@@ -17,7 +17,9 @@ public class FlamethrowerTurret extends AbstractTurret {
 	/**
 	 * Create a new FlamethrowerTurret.
 	 * @param id The id
+	 * @param startingRotation The starting rotation
 	 * @param tank The tank it belongs to
+	 * @param color The color
 	 */
 	public FlamethrowerTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color)  {
 		super(id, position, startingRotation,  tank, color);

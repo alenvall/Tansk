@@ -16,7 +16,9 @@ public class BounceTurret extends AbstractTurret {
 	/**
 	 * Create a new BounceTurret.
 	 * @param id The id
+	 * @param startingRotation The starting rotation
 	 * @param tank The tank it belongs to
+	 * @param color The color
 	 */
 	public BounceTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id, position, startingRotation, tank, color);

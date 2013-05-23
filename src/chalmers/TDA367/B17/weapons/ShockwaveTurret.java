@@ -17,7 +17,9 @@ public class ShockwaveTurret extends AbstractTurret{
 	/**
 	 * Create a new ShockwaveTurret.
 	 * @param id The id
+	 * @param startingRotation The starting rotation
 	 * @param tank The tank it belongs to
+	 * @param color The color
 	 */
 	public ShockwaveTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id, position, startingRotation,  tank, color);

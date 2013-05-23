@@ -38,6 +38,7 @@ public abstract class AbstractTank extends MovableEntity {
 	 * @param maxSpeed The maximum movement speed of this tank
 	 * @param minSpeed The minimum movement speed of this tank
 	 * @param player The owning player of this tank
+	 * @param color The color of this tank
 	 */
 	public AbstractTank(int id, Vector2f direction, float maxSpeed, float minSpeed, Player player, String color) {
 		super(id, direction, maxSpeed, minSpeed);
@@ -327,6 +328,10 @@ public abstract class AbstractTank extends MovableEntity {
 		return projectiles;
     }
 	
+	/**
+	 * Get the color of this tank.
+	 * @return The color
+	 */
 	public String getColor(){
 		return color;
 	}
