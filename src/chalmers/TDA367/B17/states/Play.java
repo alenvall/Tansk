@@ -1,44 +1,30 @@
 package chalmers.TDA367.B17.states;
 
+import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.newdawn.slick.Color;
-import org.newdawn.slick.GameContainer;
-import org.newdawn.slick.Graphics;
-import org.newdawn.slick.Image;
-import org.newdawn.slick.Input;
-import org.newdawn.slick.SlickException;
-import org.newdawn.slick.SpriteSheet;
-import org.newdawn.slick.geom.Shape;
-import org.newdawn.slick.geom.Transform;
-import org.newdawn.slick.geom.Vector2f;
-import org.newdawn.slick.state.BasicGameState;
-import org.newdawn.slick.state.StateBasedGame;
+import org.newdawn.slick.*;
+import org.newdawn.slick.geom.*;
+import org.newdawn.slick.state.*;
 
+import chalmers.TDA367.B17.MapLoader;
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.console.Console.OutputLevel;
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.model.AbstractSpawnPoint;
-import chalmers.TDA367.B17.model.AbstractTank;
-import chalmers.TDA367.B17.model.AbstractTurret;
-import chalmers.TDA367.B17.model.Entity;
-import chalmers.TDA367.B17.model.MovableEntity;
-import chalmers.TDA367.B17.model.Player;
-import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
-import chalmers.TDA367.B17.terrain.BrownWall;
+import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.view.Lifebar;
 import chalmers.TDA367.B17.view.SoundSwitch;
 import chalmers.TDA367.B17.weaponPickups.SlowspeedyPickup;
+import chalmers.TDA367.B17.weapons.*;
 
-public class Play extends BasicGameState{
+public class Play extends TanskState {
 	
 	public ArrayList<AbstractTurret> turrets;
 	
-	private GameController controller;
 	private ArrayList<Player> players;
 	private Player playerOne;
 	private Image map = null;
@@ -50,19 +36,14 @@ public class Play extends BasicGameState{
 	private Player playerTwo;
 	private Player playerThree;
 	private Player playerFour;
-
-	private int state;
 	
 	public Play(int state) {
-	    this.state = state;
-		controller = GameController.getInstance();
-		controller.setConsole(new Console(10, 565, 450, 192, OutputLevel.ALL, false));
+	    super(state);
 	}
 	
 	@Override
 	public void init(GameContainer gc, StateBasedGame sbg) throws SlickException {
-		gc.setAlwaysRender(true);
-		gc.setMouseCursor(new Image(Tansk.IMAGES_FOLDER + "/crosshair.png"), 16, 16);
+		super.init(gc, sbg);
 		
 		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
 		
@@ -73,9 +54,13 @@ public class Play extends BasicGameState{
 	@Override
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
-
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 10, 4, 1, 5000, 500000, 1500000, false);
+			
+		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
+		console.setBorder(false);
+		controller.setConsole(console);
+		
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
+		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, false);
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 
 		//Players
@@ -93,55 +78,21 @@ public class Play extends BasicGameState{
 		players.add(playerFour);
 		
 		for(Player player : players){
-			GameController.getInstance().getGameConditions().addPlayer(player);
-			player.setLives(GameController.getInstance().getGameConditions().getPlayerLives());
-			player.setRespawnTime(GameController.getInstance().getGameConditions().getSpawnTime());
+			GameController.getInstance().getGameMode().addPlayer(player);
+			player.setLives(GameController.getInstance().getGameMode().getPlayerLives());
+			player.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
 		}
-//		mouseCoords = new Point();
-
-		//WeaponPickups
-		/*
-		new FlamethrowerPickup(new Vector2f(400, 300));
-		new ShotgunPickup(new Vector2f(500, 300));
-		new ShockwavePickup(new Vector2f(600, 300));
-		new BouncePickup(new Vector2f(700, 300));
-		new SlowspeedyPickup(new Vector2f(800, 300));
-		*/
 		
-		//ObstacleTest
-		new BrownWall(GameController.getInstance().generateID(), new Vector2f(150, 50), new Vector2f(700, 600));
-		
-		//PowerUpSpawnPoints
-		/*
-		new PowerUpSpawnPoint(new Vector2f(250, 100), 10000, "shield");
-		new PowerUpSpawnPoint(new Vector2f(250, 500), 10000, "speed");
-		new PowerUpSpawnPoint(new Vector2f(500, 100), 10000, "damage");
-		new PowerUpSpawnPoint(new Vector2f(500, 250), 10000, "firerate");
-		new PowerUpSpawnPoint(new Vector2f(750, 500), 10000, "health");
-		*/
+		MapLoader.createEntities("");
 
-		//TankSpawnPoints
-		TankSpawnPoint tsp = new TankSpawnPoint(GameController.getInstance().generateID(), new Vector2f(100, 100));
-		tsp.setRotation(315);
-		tsp = new TankSpawnPoint(GameController.getInstance().generateID(), new Vector2f(900, 100));
-		tsp.setRotation(45);
-		tsp = new TankSpawnPoint(GameController.getInstance().generateID(), new Vector2f(100, 650));
-		tsp.setRotation(225);
-		tsp = new TankSpawnPoint(GameController.getInstance().generateID(), new Vector2f(900, 650));
-		tsp.setRotation(135);
-
-	//	turretSprite.setCenterOfRotation(playerOne.getTank().getTurret().getTurretCenter().x, playerOne.getTank().getTurret().getTurretCenter().y);
-
-	//	obstacle = new Entity() {};
-	//	obstacle.setShape(new Rectangle(75, 250, 40, 40));
-		
 		//Start a new round
-		controller.getGameConditions().newRoundDelayTimer(3000);
+		controller.getGameMode().newRoundDelayTimer(3000);
 	}
 	
 	@Override
-	public void update(GameContainer gc, StateBasedGame sbg, int delta)
-			throws SlickException {
+	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
+		super.update(gc, sbg, delta);
+		
 		if(input.isKeyDown(Input.KEY_W)){
 			if(playerOne.getTank() != null)
 				playerOne.getTank().accelerate(delta);
@@ -193,15 +144,17 @@ public class Play extends BasicGameState{
 		
 		if(input.isKeyDown(Input.KEY_UP)){
 			float tmp = controller.getSoundHandler().getVolume();
-			if(tmp < 1){
-				tmp+=0.1;
-				controller.getSoundHandler().setVolume(tmp);
+			if(tmp + 0.05 < 1){
+				tmp+=0.05;
+			}else{
+				tmp = 1;
 			}
+			controller.getSoundHandler().setVolume(tmp);
 		}
 		if(input.isKeyDown(Input.KEY_DOWN)){
 			float tmp = controller.getSoundHandler().getVolume();
-			if(tmp >= 0.1){
-				tmp-=0.1f;
+			if(tmp - 0.05 >= 0){
+				tmp-=0.05f;
 			}else if(tmp < 0.1f){
 				tmp = 0;
 			}
@@ -216,33 +169,36 @@ public class Play extends BasicGameState{
 		}
 		
 		//Weapons
-		/*
-		if(input.isKeyDown(Input.KEY_1)){
-			if(playerOne.getTank() != null)
-				playerOne.getTank().setTurret(new DefaultTurret(playerOne.getTank()));
+		if(playerOne.getTank() != null){
+			AbstractTank playerOneTank = playerOne.getTank();
+			AbstractTurret playerOneTurret = playerOneTank.getTurret();
+		
+			if(input.isKeyDown(Input.KEY_1)){
+				if(playerOne.getTank() != null)
+					playerOne.getTank().setTurret(new DefaultTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+			}
+			if(input.isKeyDown(Input.KEY_2)){
+				if(playerOne.getTank() != null)
+					playerOne.getTank().setTurret(new FlamethrowerTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+			}
+			if(input.isKeyDown(Input.KEY_3)){
+				if(playerOne.getTank() != null)
+					playerOne.getTank().setTurret(new ShotgunTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+			}
+			if(input.isKeyDown(Input.KEY_4)){
+				if(playerOne.getTank() != null)
+					playerOne.getTank().setTurret(new SlowspeedyTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+			}
+			if(input.isKeyDown(Input.KEY_5)){
+				if(playerOne.getTank() != null)
+					playerOne.getTank().setTurret(new ShockwaveTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+			}
+			if(input.isKeyDown(Input.KEY_6)){
+				if(playerOne.getTank() != null)
+					playerOne.getTank().setTurret(new BounceTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank));
+			}
 		}
 		
-		if(input.isKeyDown(Input.KEY_2)){
-			if(playerOne.getTank() != null)
-				playerOne.getTank().setTurret(new FlamethrowerTurret(playerOne.getTank()));
-		}
-		if(input.isKeyDown(Input.KEY_3)){
-			if(playerOne.getTank() != null)
-				playerOne.getTank().setTurret(new ShotgunTurret(playerOne.getTank()));
-		}
-		if(input.isKeyDown(Input.KEY_4)){
-			if(playerOne.getTank() != null)
-				playerOne.getTank().setTurret(new SlowspeedyTurret(playerOne.getTank()));
-		}
-		if(input.isKeyDown(Input.KEY_5)){
-			if(playerOne.getTank() != null)
-				playerOne.getTank().setTurret(new ShockwaveTurret(playerOne.getTank()));
-		}
-		if(input.isKeyDown(Input.KEY_6)){
-			if(playerOne.getTank() != null)
-				playerOne.getTank().setTurret(new BounceTurret(playerOne.getTank()));
-		}
-		*/
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
 			gc.exit();
 		}
@@ -252,17 +208,33 @@ public class Play extends BasicGameState{
 		
 		controller.getWorld().getSpawner().update(delta);
 		
-		//Update for getGameConditions()
-		controller.getGameConditions().update(delta);
+		//Update for getGameMode()
+		controller.getGameMode().update(delta);
 		
-		Iterator<Entry<Integer, Entity>> iterator = controller.getWorld().getEntities().entrySet().iterator();
-		while(iterator.hasNext()){
-			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) iterator.next();
+		updateWorld(delta);
+	}
+	
+	public void updateWorld(int delta){
+		Dimension worldSize = GameController.getInstance().getWorld().getSize();
+		
+		Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
+		while(updateIterator.hasNext()){
+			Map.Entry<Integer, Entity> entry = (Entry<Integer, Entity>) updateIterator.next();
 			Entity entity = entry.getValue();
 			
 			entity.update(delta);
 			
-			if(entity instanceof MovableEntity || entity instanceof AbstractSpawnPoint)
+			if(entity instanceof MovableEntity){
+				float x = entity.getPosition().getX();
+				float y = entity.getPosition().getY();
+				
+				if((x < 0) || (x > worldSize.width) || (y < 0) || (y > worldSize.height)){
+					entity.destroy();
+				} else {
+					controller.getWorld().checkCollisionsFor((MovableEntity)entity);
+				}
+			}
+			if(entity instanceof AbstractSpawnPoint)
 				controller.getWorld().checkCollisionsFor(entity);
 		}
 	}
@@ -293,33 +265,18 @@ public class Play extends BasicGameState{
 					fourthLayerEnts.add(entity);
 			}
 		}
-		
 		renderEntities(firstLayerEnts);
 		renderEntities(secondLayerEnts);
 		renderEntities(thirdLayerEnts);
 		renderEntities(fourthLayerEnts);
 		
-		//Cool timer
-		if(controller.getGameConditions().isDelaying()){
-			if(controller.getGameConditions().getDelayTimer() > 0)
-				g.drawString("Round starts in: " + 
-			(controller.getGameConditions().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
-		}
-		
-		if(controller.getGameConditions().isGameOver()){
-			g.drawString("Game Over!", 500, 300);
-			g.drawString("Winner: " + controller.getGameConditions().getWinningPlayer().getName(), 500, 400);
-			int i = 0;
-			for(Player p : controller.getGameConditions().getPlayerList()){
-				i++;
-				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
-			}
-		}
-		
 		controller.getAnimationHandler().renderAnimations();
-		controller.getConsole().renderMessages(g);
-		debugRender(g);
-		
+		renderGUI(container, g);
+	}
+	
+	@Override
+	public void renderGUI(GameContainer gc, Graphics g){
+		super.renderGUI(gc, g);
 		if(playerOne.getTank() != null){
 			if(playerOne.getTank().getShield() != null && playerOne.getTank().getShield().getHealth() <= 100){
 				lifebar.render(playerOne.getTank().getHealth()/playerOne.getTank().getMaxHealth(), playerOne.getTank().getShield().getHealth()/playerOne.getTank().getMaxShieldHealth(), g);
@@ -329,7 +286,28 @@ public class Play extends BasicGameState{
 		}
 		soundSwitch.render(g);
 		
-	}
+		//Cool timer
+		if(controller.getGameMode().isDelaying()){
+			if(controller.getGameMode().getDelayTimer() > 0)
+				g.drawString("Round starts in: " + 
+			(controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 350);
+		}
+		
+		if(controller.getGameMode().isGameOver()){
+			g.drawString("Game Over!", 500, 300);
+			for(Player p: controller.getGameMode().getWinningPlayers()){
+				g.drawString("Winner(s): " + p.getName(), 500, 400 + 25*controller.getGameMode().getWinningPlayers().indexOf(p));
+			}
+			int i = 0;
+			for(Player p : controller.getGameMode().getPlayerList()){
+				i++;
+				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (500+(i*25)));
+			}
+		}
+		
+		g.setColor(Color.black);
+		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
+	}	
 
 	private void renderEntities(ArrayList<Entity> entities){
 		for(Entity entity : entities){
@@ -356,48 +334,4 @@ public class Play extends BasicGameState{
 			}
 		}
 	}
-	
-	@Override
-	public int getID() {
-		return this.state;
-	}
-	
-	public void debugRender(Graphics g){
-		g.setColor(Color.black);
-		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
-		/*g.setColor(Color.black);
-		g.drawString("tankPosX:   " + playerOne.getTank().getPosition().x,  10, 30);
-		g.drawString("tankPosY:   " + playerOne.getTank().getPosition().y,  10, 50);
-		g.drawString("tankAng:    " + playerOne.getTank().getRotation(),	10, 70);
-//		g.drawString("tankImgAng: " + (tankSprite.getRotation()),			10, 90);
-
-		g.drawString("turPosX:   " + playerOne.getTank().getTurret().getPosition().x, 300, 30);
-		g.drawString("turPosY:   " + playerOne.getTank().getTurret().getPosition().y, 300, 50);
-		g.drawString("turAng:    " + playerOne.getTank().getTurret().getRotation(),	  300, 70);
-//		g.drawString("turImgAng: " + turretSprite.getRotation(),		 			  300, 90);
-
-		g.drawString("mouseX: " + mouseCoords.x, 530, 30);
-		g.drawString("mouseY: " + mouseCoords.y, 530, 50);
-
-		g.drawString("speed: " + Double.toString(playerOne.getTank().getSpeed()), 530, 90);
-		g.drawString("projs: " + playerOne.getTank().getProjectiles().size(), 530, 130);
-	
-	//	g.setColor(Color.blue);
-	//	g.draw(playerOne.getTank().getShape());
-
-		if(!playerOne.getTank().getProjectiles().isEmpty()){
-			g.drawString("projPos: "+playerOne.getTank()
-				.getProjectiles().get(0).getPosition().x+" , "+playerOne.getTank()
-				.getProjectiles().get(0).getPosition().y, 530, 110);
-		}*/
-	}
-
-//	public void mouseMoved(int oldx, int oldy, int newx, int newy){
-//		controller.setMouseCoordinates(newx, newy);
-//	}
-//	
-//	public void mouseDragged(int oldx, int oldy, int newx, int newy){
-//		controller.setMouseCoordinates(newx, newy);
-//	}
-	
 }

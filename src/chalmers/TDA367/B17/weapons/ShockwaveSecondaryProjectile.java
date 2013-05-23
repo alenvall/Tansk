@@ -3,11 +3,11 @@ package chalmers.TDA367.B17.weapons;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.model.AbstractObstacle;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.MapBounds;
-import chalmers.TDA367.B17.terrain.BrownWall;
 
 public class ShockwaveSecondaryProjectile extends AbstractProjectile {
 
@@ -41,7 +41,7 @@ public class ShockwaveSecondaryProjectile extends AbstractProjectile {
 	public void didCollideWith(Entity entity){
 		if(entity instanceof AbstractProjectile || entity == getTank()){
 			return;
-		}else if(entity instanceof MapBounds || entity instanceof BrownWall){
+		}else if(entity instanceof MapBounds || entity instanceof AbstractObstacle){
 			this.destroy();
 		}else if(entity instanceof AbstractTank){
 			/*

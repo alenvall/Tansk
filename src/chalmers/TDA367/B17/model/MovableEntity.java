@@ -153,7 +153,7 @@ public abstract class MovableEntity extends Entity {
 		
 		velocity.x = velocity.x * delta;
 		velocity.y = velocity.y * delta;
-
+		
 		lastPos = getPosition();
 		
 		setPosition(getPosition().add(velocity));
@@ -172,7 +172,7 @@ public abstract class MovableEntity extends Entity {
 	 * Decreases the speed of this object based on the deceleration.
 	 * @param delta The time that has passed since the last update
 	 */
-	public void friction(int delta){ //TODO fix the name of this method (friction)
+	public void friction(int delta){
 		//if the speed after deceleration is greater than zero the speed is decreased
 		if(speed-friction * delta > 0){
 			setSpeed(speed - friction * delta);

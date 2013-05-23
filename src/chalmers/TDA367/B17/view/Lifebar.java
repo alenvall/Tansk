@@ -13,6 +13,13 @@ private int height;
 private int x;
 private int y;
 
+	/**
+	 * Create a new lifebar att the given position with the given size.
+	 * @param x
+	 * @param y
+	 * @param width
+	 * @param height
+	 */
 	public Lifebar(int x, int y, int width, int height){
 		this.width = width;
 		this.height = height;
@@ -20,12 +27,24 @@ private int y;
 		this.y = y;
 	}
 	
+	/**
+	 * Create a new lifebar att the given position using default sizes.
+	 * @param x
+	 * @param y
+	 */
 	public Lifebar(int x, int y){
 		this.width = DEFAULT_WIDTH;
 		this.height = DEFAULT_HEIGHT;
 		this.x = x;
 		this.y = y;
 	}
+	
+	/**
+	 * Render the Lifebar on the given graphics object.
+	 * @param healthPercent
+	 * @param shieldPercent
+	 * @param g
+	 */
 	public void render(double healthPercent, double shieldPercent, Graphics g){
 		g.setColor(Color.black);
 		g.fillRoundRect(x, y, width, height, height/2);

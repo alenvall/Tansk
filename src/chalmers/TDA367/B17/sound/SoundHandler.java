@@ -73,13 +73,26 @@ public class SoundHandler {
         System.out.println("SoundHandler: Loaded sound.");
 	}
 
+	/**
+	 * Set the volume.
+	 * @param volume
+	 */
 	public void setVolume(float volume) {
 		this.volume = volume;
 	}
+	
+	/**
+	 * Get the volume.
+	 * @return volume
+	 */
 	public float getVolume() {
 		return volume;
 	}
 	
+	/**
+	 * Return whether the sound is muted or not.
+	 * @return isSoundOn
+	 */
 	public boolean isSoundOn(){
 		return volume != 0;
 	}
