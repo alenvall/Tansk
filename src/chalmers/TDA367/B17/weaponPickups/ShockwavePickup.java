@@ -22,6 +22,6 @@ public class ShockwavePickup extends AbstractWeaponPickup{
 	@Override
 	public void activate(AbstractTank absTank){
 		super.activate(absTank);
-		absTank.setTurret(new ShockwaveTurret(GameController.getInstance().generateID(), absTank.getTurret().getPosition(), absTank.getTurret().getRotation(), absTank));
+		absTank.setTurret(new ShockwaveTurret(GameController.getInstance().generateID(), absTank.getTurret().getPosition(), absTank.getTurret().getRotation(), absTank, absTank.getColor()));
 	}
 }

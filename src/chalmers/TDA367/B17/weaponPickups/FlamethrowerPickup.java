@@ -22,6 +22,6 @@ public class FlamethrowerPickup extends AbstractWeaponPickup{
 	@Override
 	public void activate(AbstractTank absTank){
 		super.activate(absTank);
-		absTank.setTurret(new FlamethrowerTurret(GameController.getInstance().generateID(), absTank.getTurret().getPosition(), absTank.getTurret().getRotation(), absTank));
+		absTank.setTurret(new FlamethrowerTurret(GameController.getInstance().generateID(), absTank.getTurret().getPosition(), absTank.getTurret().getRotation(), absTank, absTank.getColor()));
 	}
 }
