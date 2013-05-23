@@ -18,8 +18,8 @@ public class BounceTurret extends AbstractTurret {
 	 * @param id The id
 	 * @param tank The tank it belongs to
 	 */
-	public BounceTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
-		super(id, position, startingRotation, tank);
+	public BounceTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
+		super(id, position, startingRotation, tank, color);
 		ammoLeft = DEFAULT_AMMO;
 		turretCenter = new Vector2f(16.875f, 16.875f);
 		turretLength = 31.5f;
@@ -35,13 +35,12 @@ public class BounceTurret extends AbstractTurret {
 
 	@Override
 	public void fireWeapon(int delta, AbstractTank tank){
-//		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, "DEFAULTTURRET_FIRE_EVENT"));	
 		if(ammoLeft>0){
 			tank.addProjectile(spawnNewProjectile());
 			ammoLeft--;
 			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "DEFAULTTURRET_FIRE_EVENT"));
 		}else{
-			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank()));
+			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank(), getColor()));
 		}
 	}
 }

@@ -10,14 +10,14 @@ import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.AbstractTurret;
 
 public class DefaultTurret extends AbstractTurret {
-	
+
 	/**
 	 * Create a new DefaultTurret.
 	 * @param id The id
 	 * @param tank The tank it belongs to
 	 */
-	public DefaultTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
-		super(id, position, startingRotation,  tank);
+	public DefaultTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
+		super(id, position, startingRotation, tank, color);
 		turretCenter = new Vector2f(16.875f, 16.875f);
 		turretLength = 31.5f;
 		fireRate = 500;

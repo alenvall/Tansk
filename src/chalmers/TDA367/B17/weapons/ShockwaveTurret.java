@@ -19,8 +19,8 @@ public class ShockwaveTurret extends AbstractTurret{
 	 * @param id The id
 	 * @param tank The tank it belongs to
 	 */
-	public ShockwaveTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
-	super(id, position, startingRotation,  tank);
+	public ShockwaveTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
+		super(id, position, startingRotation,  tank, color);
 		ammoLeft = DEFAULT_AMMO;
 		turretCenter = new Vector2f(16.875f, 16.875f);
 		turretLength = 31.5f;
@@ -48,7 +48,7 @@ public class ShockwaveTurret extends AbstractTurret{
 			ammoLeft--;
 			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND,this, "SHOCKWAVE_FIRE_EVENT"));
 		}else{
-			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank()));
+			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank(), getColor()));
 		}
 	}
 
