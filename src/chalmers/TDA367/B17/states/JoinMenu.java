@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.states;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.network.Network;
+import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
 import chalmers.TDA367.B17.view.Label;
 import chalmers.TDA367.B17.view.MenuButton;
 import com.esotericsoftware.kryonet.Client;
@@ -22,6 +23,8 @@ public class JoinMenu extends BasicGameState{
 	private Label inputLabel;
 	private int state;
 	private StateBasedGame stateBasedGame;
+	private SpriteSheet background;
+	private MenuButton backButton;
 	
 	public JoinMenu(int state) {
 		this.state = state;
@@ -31,13 +34,23 @@ public class JoinMenu extends BasicGameState{
 			throws SlickException {
 		this.stateBasedGame = sbg;
 
-		inputLabel = new Label("Enter host IP:", Color.white, gc.getWidth()/2-200/2, gc.getHeight()/2-40);
-		serverIPField = new TextField(gc, gc.getDefaultFont(), gc.getWidth()/2-200/2, gc.getHeight()/2-20/2, 200, 20);
-		joinButton = new MenuButton(gc.getWidth()/2-MenuButton.WIDTH/2, gc.getHeight()/2+50,
+		serverIPField = new TextField(gc, gc.getDefaultFont(), 100, 175, 200, 20);
+		inputLabel = new Label("Enter host IP:", Color.black, 100, 150);
+		
+		joinButton = new MenuButton(100, 225,
 				GameController.getInstance().getImageHandler().getSprite("button_join"),
 				GameController.getInstance().getImageHandler().getSprite("button_join_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_join_hover"));
-		errorLabel = new Label("Invalid IP!", Color.red, gc.getWidth()/2-200/2, gc.getHeight()/2+20);
+		errorLabel = new Label("Invalid IP!", Color.red, 100, 195);
+
+		backButton = new MenuButton(100, 325, 
+				GameController.getInstance().getImageHandler().getSprite("button_back"),
+				GameController.getInstance().getImageHandler().getSprite("button_back_pressed"),
+				GameController.getInstance().getImageHandler().getSprite("button_back_hover"));
+
+		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
+				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
+		GameController.getInstance().getSoundHandler().playMusic(MusicType.MENU_MUSIC);
 	}
 
 	@Override
@@ -48,19 +61,24 @@ public class JoinMenu extends BasicGameState{
 	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
-		inputLabel.render(g);
+		background.draw();
 		g.drawRect(serverIPField.getX(), serverIPField.getY(), serverIPField.getWidth(), serverIPField.getHeight());
 		serverIPField.render(gc, g);
+		
 		if(client!=null && !client.isConnected())
 			errorLabel.render(g);
 		joinButton.draw();
-
+		
+		inputLabel.render(g);
+		backButton.draw();
 	}
 
 	@Override
 	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
 		if(joinButton.isClicked(gc.getInput()))
 			join();
+		else if(backButton.isClicked(gc.getInput()))
+			sbg.enterState(Tansk.MENU);
 	}
 
 	@Override
