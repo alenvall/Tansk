@@ -45,10 +45,10 @@ public class Menu extends BasicGameState{
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
 		background.draw(0,0);
-		playGame.draw(100,125);
-		exitGame.draw(100,225);
-		hostGame.draw(100,325);
-		joinGame.draw(100,425);
+		playGame.draw(100, 125);
+		joinGame.draw(100, 225);
+		hostGame.draw(100, 325);
+		exitGame.draw(100, 425);
 	}
 
 	@Override
@@ -75,7 +75,7 @@ public class Menu extends BasicGameState{
 			playPressed = false;
 		}
 		
-		if(x > 100 && x < 250 && y > 225 && y < 275){
+		if(x > 100 && x < 250 && y > 425 && y < 475){
 			exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit_hover"), 150, 50);
 			if(input.isMouseButtonDown(0)){
 				exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit_pressed"), 150, 50);
@@ -109,7 +109,7 @@ public class Menu extends BasicGameState{
 			hostPressed = false;
 		}		
 		
-		if(x > 100 && x < 250 && y > 425 && y < 475){
+		if(x > 100 && x < 250 && y > 225 && y < 275){
 			joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join_hover"), 150, 50);
 			if(input.isMouseButtonDown(0)){
 				joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join_pressed"), 150, 50);
