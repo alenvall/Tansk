@@ -38,6 +38,10 @@ public class SoundHandler {
 		}
 	}
 	
+	/**
+	 * Play the specified music.
+	 * @param music
+	 */
 	public void playMusic(MusicType music){
 		if(music == MusicType.MENU_MUSIC){
 			if(menuMusic != null){
@@ -50,6 +54,9 @@ public class SoundHandler {
 		}
 	}
 	
+	/**
+	 * Stop all music.
+	 */
 	public void stopAllMusic(){
 		if(menuMusic != null){
 			menuMusic.stop();
