@@ -1,15 +1,27 @@
 package chalmers.TDA367.B17.states;
 
+import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.network.Network;
+import chalmers.TDA367.B17.view.Label;
+import chalmers.TDA367.B17.view.MenuButton;
+import com.esotericsoftware.kryonet.Client;
+import com.esotericsoftware.minlog.Log;
 import org.newdawn.slick.*;
-import org.newdawn.slick.geom.*;
+import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
 import chalmers.TDA367.B17.Tansk;
 
+import java.io.IOException;
+
 public class JoinMenu extends BasicGameState{
-	
-	private Rectangle joinServer;
-	private Rectangle sendMsg;
+
+	private Client client;
+	private TextField serverIPField;
+	private MenuButton joinButton;
+	private Label errorLabel;
+	private Label inputLabel;
 	private int state;
+	private StateBasedGame stateBasedGame;
 	
 	public JoinMenu(int state) {
 		this.state = state;
@@ -17,41 +29,69 @@ public class JoinMenu extends BasicGameState{
 
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
-		joinServer = new Rectangle(100, 125, 150, 50);
-		sendMsg = new Rectangle(100, 225, 150, 50);
+		this.stateBasedGame = sbg;
+
+		inputLabel = new Label("Enter host IP:", Color.white, gc.getWidth()/2-200/2, gc.getHeight()/2-40);
+		serverIPField = new TextField(gc, gc.getDefaultFont(), gc.getWidth()/2-200/2, gc.getHeight()/2-20/2, 200, 20);
+		joinButton = new MenuButton(gc.getWidth()/2-MenuButton.WIDTH/2, gc.getHeight()/2+50,
+				GameController.getInstance().getImageHandler().getSprite("button_join"),
+				GameController.getInstance().getImageHandler().getSprite("button_join_pressed"));
+		errorLabel = new Label("Invalid IP!", Color.red, gc.getWidth()/2-200/2, gc.getHeight()/2+20);
+	}
+
+	@Override
+	public void enter(GameContainer gc, StateBasedGame stateBasedGame){
+		serverIPField.setFocus(true);
 	}
 
 	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
-		g.drawString("Join", 150, 140);
-		g.drawString("Send", 150, 240);
-		g.draw(joinServer);
-		g.draw(sendMsg);
+		inputLabel.render(g);
+		g.drawRect(serverIPField.getX(), serverIPField.getY(), serverIPField.getWidth(), serverIPField.getHeight());
+		serverIPField.render(gc, g);
+		if(client!=null && !client.isConnected())
+			errorLabel.render(g);
+		joinButton.draw();
+
 	}
 
 	@Override
-	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {	
-		Input input = gc.getInput();
-		int x = input.getMouseX();
-		int y = input.getMouseY();
-		
-		if(x > 100 && x < 250 && y > 125 && y < 175){
-			if(input.isMousePressed(0)){
-				System.out.println("Attempting to join server!");
-				sbg.enterState(Tansk.CLIENT);
+	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
+		if(joinButton.isClicked(gc.getInput()))
+			join();
+	}
+
+	@Override
+	public void keyReleased(int key, char c) {
+		super.keyReleased(key, c);
+		if(key == Input.KEY_ENTER){
+			if(serverIPField.hasFocus()){
+				join();
 			}
 		}
-		
-//		if(x > 100 && x < 250 && y > 225 && y < 275){
-//			if(input.isMousePressed(0)){
-//				if(client != null){
-//					System.out.println("Attempting to send message to server!");
-//					client.MessageToServer("Hey!");
-//				}
-//			}
-//		}
 	}
+
+	private void join(){
+		client = new Client();
+		Network.register(client);
+		client.start();
+
+		try {
+			client.connect(600000, serverIPField.getText(), Network.PORT, Network.PORT);
+		} catch (IOException e) {
+			Log.info("[CLIENT] Failed to connect!");
+			e.printStackTrace();
+			client.stop();
+			return;
+		}
+
+		ClientState.getInstance().setClient(client);
+
+		System.out.println("Attempting to join server...");
+		stateBasedGame.enterState(Tansk.CLIENT);
+	}
+
 
 	@Override
 	public int getID() {
