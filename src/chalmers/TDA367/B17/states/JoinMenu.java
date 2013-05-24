@@ -35,7 +35,8 @@ public class JoinMenu extends BasicGameState{
 		serverIPField = new TextField(gc, gc.getDefaultFont(), gc.getWidth()/2-200/2, gc.getHeight()/2-20/2, 200, 20);
 		joinButton = new MenuButton(gc.getWidth()/2-MenuButton.WIDTH/2, gc.getHeight()/2+50,
 				GameController.getInstance().getImageHandler().getSprite("button_join"),
-				GameController.getInstance().getImageHandler().getSprite("button_join_pressed"));
+				GameController.getInstance().getImageHandler().getSprite("button_join_pressed"),
+				GameController.getInstance().getImageHandler().getSprite("button_join_hover"));
 		errorLabel = new Label("Invalid IP!", Color.red, gc.getWidth()/2-200/2, gc.getHeight()/2+20);
 	}
 
