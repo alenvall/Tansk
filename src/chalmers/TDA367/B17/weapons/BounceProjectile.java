@@ -18,7 +18,7 @@ public class BounceProjectile extends AbstractProjectile {
 	 * @param position The position
 	 */
 	public BounceProjectile(int id, AbstractTank tank, Vector2f position) {
-		super(id, tank, position, new Vector2f(1,1), 100, -100, 5, 3000);
+		super(id, tank, position, new Vector2f(1,1), 100, -100, 8, 3000);
 		setSpeed(0.25f);
 		setSize(new Vector2f(5f, 10f));
 		spriteID = "proj_fire";
