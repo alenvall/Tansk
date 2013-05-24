@@ -1,7 +1,6 @@
 package chalmers.TDA367.B17.states;
 
 import java.awt.Dimension;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
@@ -34,7 +33,6 @@ import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
 import chalmers.TDA367.B17.model.KingOfTheHillZone;
 import chalmers.TDA367.B17.model.World;
-import chalmers.TDA367.B17.network.Network;
 import chalmers.TDA367.B17.network.Network.EntityPacket;
 import chalmers.TDA367.B17.network.Network.Packet;
 import chalmers.TDA367.B17.network.Network.Pck0_JoinRequest;
@@ -119,7 +117,7 @@ public class ClientState extends TanskState {
 			@Override
 			public void connected(Connection connection) {
 				Pck0_JoinRequest pck = new Pck0_JoinRequest();
-				pck.playerName = ClientState.getInstance().getPlayerName();
+				pck.playerName = GameController.getInstance().getPlayerName();;
 				client.sendTCP(pck);
 			}
 
@@ -146,13 +144,14 @@ public class ClientState extends TanskState {
 		super.init(gc, game);
 		
 		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
-		playerName = "Nisse" + Math.round(Math.random() * 1000);
     }
 	
 	@Override
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
 
+		playerName = GameController.getInstance().getPlayerName();
+		
 		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
 		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
 		console.setBorder(false);
@@ -419,11 +418,7 @@ public class ClientState extends TanskState {
 			}
 		}
     }
-
-	public String getPlayerName() {
-	    return playerName;
-    }
-		
+			
 	@Override
 	public void keyReleased(int key, char c){
 		super.keyReleased(key, c);

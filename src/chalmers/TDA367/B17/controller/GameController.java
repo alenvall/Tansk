@@ -24,6 +24,7 @@ public class GameController {
 	private AnimationHandler animationHandler;
 	private GameConditions gameMode;
 	private int latestID;
+	private String playerName;
 
 	
 	private GameController() {
@@ -167,5 +168,13 @@ public class GameController {
 	    } else if(event.getEventType().equals(EventType.ANIM)){
 	    	GameController.getInstance().getAnimationHandler().playAnimation(event);
 	    }	
+    }
+
+	public String getPlayerName() {
+	    return playerName;
+    }
+	
+	public void setPlayerName(String playerName) {
+	    this.playerName = playerName;
     }
 }

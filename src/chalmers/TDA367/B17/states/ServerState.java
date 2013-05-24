@@ -300,10 +300,6 @@ public class ServerState extends TanskState {
 	    		if(getPlayers().size() < 4){
 			    	if(!gameStarted){
 			    		createPlayer(pck.playerName, packet.getConnection());
-//		    			Player newPlayer = new Player(packet.getConnection(), pck.playerName);
-//		    			newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
-//		    			newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
-//		    			getPlayers().add(newPlayer);
 		    			responsePacket.accepted = true;
 			    	} else {
 			    		responsePacket.accepted = false;
@@ -342,6 +338,8 @@ public class ServerState extends TanskState {
     }
 
 	private void createPlayer(String playerName, Connection connection) {
+		if(playerName.equals("Unnamed"))
+			playerName = "Unnamed" + Math.round(Math.random() * 1000);
 		Player newPlayer = new Player(connection, playerName);
 		newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
 		newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());

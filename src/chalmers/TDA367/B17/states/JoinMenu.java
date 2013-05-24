@@ -59,6 +59,12 @@ public class JoinMenu extends BasicGameState{
 	}
 
 	@Override
+	public void leave(GameContainer gc, StateBasedGame stateBasedGame){
+		serverIPField.setFocus(false);
+		serverIPField.setText("");
+	}
+
+	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
 		background.draw();

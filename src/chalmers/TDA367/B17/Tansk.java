@@ -19,6 +19,7 @@ public class Tansk extends StateBasedGame {
 	public static final int JOIN = 2;
 	public static final int CLIENT = 3;
 	public static final int SERVER = 4;
+	public static final int SETTINGS = 6;
 
 	public Tansk(String name) {
 		super(name);
@@ -30,6 +31,7 @@ public class Tansk extends StateBasedGame {
 		this.addState(new Play(PLAY));
 		this.addState(new HostMenu(HOST));
 		this.addState(new JoinMenu(JOIN));
+		this.addState(new SettingsMenu(SETTINGS));
 		this.addState(ClientState.getInstance());
 		this.addState(ServerState.getInstance());
 	}

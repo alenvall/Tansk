@@ -72,8 +72,7 @@ public class Menu extends BasicGameState{
 		else if(joinButton.isClicked(gc.getInput()))
 			sbg.enterState(Tansk.JOIN);
 		else if(settingsButton.isClicked(gc.getInput()))
-			//do settings stuff
-			;
+			sbg.enterState(Tansk.SETTINGS);
 		else if(exitButton.isClicked(gc.getInput()))
 			gc.exit();
 	}
