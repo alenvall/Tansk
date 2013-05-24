@@ -5,17 +5,22 @@ import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Input;
 import org.newdawn.slick.SlickException;
+import org.newdawn.slick.SpriteSheet;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 import chalmers.TDA367.B17.Tansk;
+import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.view.MenuButton;
 
 public class HostMenu extends BasicGameState{
 	
-	private Rectangle startServer;
+	private MenuButton startButton;
+	private MenuButton backButton;
 	private boolean running = false;
 	private int state;
 	private String message;
+	private SpriteSheet background;
 	
 	public HostMenu(int state) {
 		this.state = state;
@@ -23,16 +28,25 @@ public class HostMenu extends BasicGameState{
 
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
-		startServer = new Rectangle(100, 125, 150, 50);
+		startButton = new MenuButton(100, 125, GameController.getInstance().getImageHandler().getSprite("button_start"),
+				GameController.getInstance().getImageHandler().getSprite("button_start_pressed"),
+				GameController.getInstance().getImageHandler().getSprite("button_start_hover"));
+
+		backButton = new MenuButton(100, 235, GameController.getInstance().getImageHandler().getSprite("button_back"),
+				GameController.getInstance().getImageHandler().getSprite("button_back_pressed"),
+				GameController.getInstance().getImageHandler().getSprite("button_back_hover"));
+		
+		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
+				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
 		message = "Not running.";
 	}
 
 	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
-		g.setColor(Color.white);
-		g.drawString("Start", 150, 140);
-		g.draw(startServer);
+		background.draw();
+		startButton.draw();
+		backButton.draw();
 		if(running){
 			g.setColor(Color.blue);
 			g.drawString(message, 120, 180);
@@ -43,27 +57,15 @@ public class HostMenu extends BasicGameState{
 	}
 
 	@Override
-	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {	
-		Input input = gc.getInput();
-		int x = input.getMouseX();
-		int y = input.getMouseY();
-		
-		if(x > 100 && x < 250 && y > 125 && y < 175){
-			if(input.isMousePressed(0)){
-				System.out.println("Starting server!");
-//				try {
-//	                GameServer server = new GameServer();
-	                running = true;
-	                message = "Running!";
-//					((ServerState) sbg.getState(Tansk.SERVER)).setServer(server);
-					sbg.enterState(Tansk.SERVER);
-//				} catch (java.net.BindException e) {
-//					message = "Address in use!";
-//                } catch (IOException e) {
-//	                System.out.println("Failed to start server!");
-//	                e.printStackTrace();
-//                }
-			}
+	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {			
+		if(backButton.isClicked(gc.getInput())){
+			sbg.enterState(Tansk.MENU);
+		}
+		else if(startButton.isClicked(gc.getInput())){
+			System.out.println("Starting server!");
+			running = true;
+			message = "Running!";
+			sbg.enterState(Tansk.SERVER);
 		}
 	}
 

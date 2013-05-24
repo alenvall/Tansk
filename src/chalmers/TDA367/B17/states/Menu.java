@@ -54,7 +54,7 @@ public class Menu extends BasicGameState{
 	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
-		background.draw(0,0);
+		background.draw();
 		playgroundButton.draw();
 		hostButton.draw();
 		joinButton.draw();
