@@ -19,9 +19,11 @@ public class Menu extends BasicGameState{
 	boolean exitPressed = false;
 	boolean joinPressed = false;
 	boolean hostPressed = false;
+	boolean settingsPressed = false;
 	SpriteSheet exitGame;
 	SpriteSheet hostGame;
 	SpriteSheet joinGame;
+	SpriteSheet settings;
 	private int state;
 	private SpriteSheet background;
 	
@@ -38,6 +40,7 @@ public class Menu extends BasicGameState{
 		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
 				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
 		GameController.getInstance().getSoundHandler().playMusic(MusicType.MENU_MUSIC);
+		settings = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_settings"), 150, 50);
 	}
 	
 
@@ -48,7 +51,8 @@ public class Menu extends BasicGameState{
 		playGame.draw(100, 125);
 		joinGame.draw(100, 225);
 		hostGame.draw(100, 325);
-		exitGame.draw(100, 425);
+		settings.draw(100, 425);
+		exitGame.draw(100, 525);
 	}
 
 	@Override
@@ -75,7 +79,7 @@ public class Menu extends BasicGameState{
 			playPressed = false;
 		}
 		
-		if(x > 100 && x < 250 && y > 425 && y < 475){
+		if(x > 100 && x < 250 && y > 525 && y < 575){
 			exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit_hover"), 150, 50);
 			if(input.isMouseButtonDown(0)){
 				exitGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_exit_pressed"), 150, 50);
@@ -124,6 +128,23 @@ public class Menu extends BasicGameState{
 		}else{
 			joinGame = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_join"), 150, 50);
 			joinPressed = false;
+		}
+		
+		if(x > 100 && x < 250 && y > 425 && y < 475){
+			settings = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_settings_hover"), 150, 50);
+			if(input.isMouseButtonDown(0)){
+				settings = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_settings_pressed"), 150, 50);
+				settingsPressed = true;
+			}
+			if(!input.isMouseButtonDown(0)){
+				if(settingsPressed){
+					settingsPressed = false;
+					//TODO what to do
+				}
+			}
+		}else{
+			settings = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_settings"), 150, 50);
+			settingsPressed = false;
 		}
 	}
 
