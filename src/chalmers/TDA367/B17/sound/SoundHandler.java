@@ -49,6 +49,15 @@ public class SoundHandler {
 			}
 		}
 	}
+	
+	public void stopAllMusic(){
+		if(menuMusic != null){
+			menuMusic.stop();
+		}
+		if(battleMusic != null){
+			battleMusic.stop();
+		}
+	}
 
 	/**
 	 * Play sound related to an event.
