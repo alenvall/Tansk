@@ -93,9 +93,11 @@ public class JoinMenu extends BasicGameState{
 
 	private void join(){
 		client = new Client();
+
+		ClientState.getInstance().setClient(client);
 		Network.register(client);
 		client.start();
-
+		
 		try {
 			client.connect(600000, serverIPField.getText(), Network.PORT, Network.PORT);
 		} catch (IOException e) {
@@ -104,8 +106,6 @@ public class JoinMenu extends BasicGameState{
 			client.stop();
 			return;
 		}
-
-		ClientState.getInstance().setClient(client);
 
 		System.out.println("Attempting to join server...");
 		stateBasedGame.enterState(Tansk.CLIENT);
