@@ -32,7 +32,7 @@ public class HostMenu extends BasicGameState{
 				GameController.getInstance().getImageHandler().getSprite("button_start_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_start_hover"));
 
-		backButton = new MenuButton(100, 235, GameController.getInstance().getImageHandler().getSprite("button_back"),
+		backButton = new MenuButton(100, 225, GameController.getInstance().getImageHandler().getSprite("button_back"),
 				GameController.getInstance().getImageHandler().getSprite("button_back_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_back_hover"));
 		
