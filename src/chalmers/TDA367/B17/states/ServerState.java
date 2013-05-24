@@ -73,7 +73,7 @@ public class ServerState extends TanskState {
 		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000);
 		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
 		
-		MapLoader.createEntities("whatever");
+		MapLoader.createEntities("standard");
 	
 		Log.set(Log.LEVEL_INFO);
 		server = new Server();
