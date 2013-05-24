@@ -117,8 +117,4 @@ public class SettingsMenu extends BasicGameState{
 	public int getID() {
 		return this.state;
 	}
-
-	public String getPlayerName() {
-	    return playerName;
-    }
 }
