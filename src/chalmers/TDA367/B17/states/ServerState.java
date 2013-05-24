@@ -74,7 +74,8 @@ public class ServerState extends TanskState {
 		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
 		
 		MapLoader.createEntities("standard");
-	
+		controller.getSoundHandler().stopAllMusic();
+		
 		Log.set(Log.LEVEL_INFO);
 		server = new Server();
 		Network.register(server);
