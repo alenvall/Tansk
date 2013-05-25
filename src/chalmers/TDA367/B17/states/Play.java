@@ -115,6 +115,11 @@ public class Play extends TanskState {
 	}
 	
 	@Override
+	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
+		super.leave(gc, sbg);
+	}
+	
+	@Override
 	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
 		super.update(gc, sbg, delta);
 		
@@ -225,7 +230,7 @@ public class Play extends TanskState {
 		}
 		
 		if(input.isKeyDown(Input.KEY_ESCAPE)){
-			gc.exit();
+			sbg.enterState(Tansk.MENU);
 		}
 		
 		//Update for tankspawner

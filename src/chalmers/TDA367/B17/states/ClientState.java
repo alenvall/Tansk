@@ -166,6 +166,12 @@ public class ClientState extends TanskState {
 		
 		input = gc.getInput();
 		input.addMouseListener(this);
+	}
+	
+	@Override
+	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
+		super.leave(gc, sbg);
+		client.close();
 	}	
 	
 	@Override
@@ -198,6 +204,10 @@ public class ClientState extends TanskState {
 			}else{
 				soundSwitch.turnSoundOn();
 			}
+		}
+		
+		if(input.isKeyDown(Input.KEY_ESCAPE)){
+			game.enterState(Tansk.MENU);
 		}
 		
 		GameController.getInstance().getConsole().update(delta);

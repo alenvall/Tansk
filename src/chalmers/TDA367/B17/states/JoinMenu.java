@@ -14,6 +14,8 @@ import chalmers.TDA367.B17.Tansk;
 
 import java.io.IOException;
 
+import javax.security.auth.login.FailedLoginException;
+
 public class JoinMenu extends BasicGameState{
 
 	private Client client;
@@ -25,6 +27,7 @@ public class JoinMenu extends BasicGameState{
 	private StateBasedGame stateBasedGame;
 	private SpriteSheet background;
 	private MenuButton backButton;
+	private boolean connectionFailed;
 	
 	public JoinMenu(int state) {
 		this.state = state;
@@ -41,7 +44,7 @@ public class JoinMenu extends BasicGameState{
 				GameController.getInstance().getImageHandler().getSprite("button_join"),
 				GameController.getInstance().getImageHandler().getSprite("button_join_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_join_hover"));
-		errorLabel = new Label("Invalid IP!", Color.red, 100, 225);
+		errorLabel = new Label("Connection failed!", Color.red, 100, 225);
 
 		backButton = new MenuButton(100, 575, 
 				GameController.getInstance().getImageHandler().getSprite("button_back"),
@@ -56,6 +59,7 @@ public class JoinMenu extends BasicGameState{
 	@Override
 	public void enter(GameContainer gc, StateBasedGame stateBasedGame){
 		serverIPField.setFocus(true);
+		connectionFailed = false;
 	}
 
 	@Override
@@ -71,7 +75,7 @@ public class JoinMenu extends BasicGameState{
 		g.drawRect(serverIPField.getX(), serverIPField.getY(), serverIPField.getWidth(), serverIPField.getHeight());
 		serverIPField.render(gc, g);
 		
-		if(client!=null && !client.isConnected())
+		if(connectionFailed)
 			errorLabel.render(g);
 		joinButton.draw();
 		
@@ -107,6 +111,7 @@ public class JoinMenu extends BasicGameState{
 		try {
 			client.connect(600000, serverIPField.getText(), Network.PORT, Network.PORT);
 		} catch (IOException e) {
+			connectionFailed = true;
 			Log.info("[CLIENT] Failed to connect!");
 			e.printStackTrace();
 			client.stop();

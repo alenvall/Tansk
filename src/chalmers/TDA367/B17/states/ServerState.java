@@ -116,7 +116,7 @@ public class ServerState extends TanskState {
         } catch (IOException e) {
     		controller.getConsole().addMsg("Address in use! Sever closed.", MsgLevel.ERROR);
     		controller.getConsole().addMsg("Another server running?", MsgLevel.INFO);
-    		controller.getConsole().addMsg("Sever closed.", MsgLevel.ERROR);
+    		controller.getConsole().addMsg("Server closed.", MsgLevel.ERROR);
 	        e.printStackTrace();
         }	
 		try {
@@ -125,10 +125,21 @@ public class ServerState extends TanskState {
 	        e1.printStackTrace();
         }
 	}
+	
+	@Override
+	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
+		super.leave(gc, sbg);
+		server.close();
+	}	
 		
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		super.update(gc, game, delta);
+		
+		if(gc.getInput().isKeyDown(Input.KEY_ESCAPE)){
+			game.enterState(Tansk.MENU);
+		}
+		
 		if(!gameStarted && serverStarted){
 			Input input = gc.getInput();
 			int x = input.getMouseX();

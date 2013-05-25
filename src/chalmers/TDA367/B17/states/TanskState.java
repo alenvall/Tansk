@@ -47,6 +47,14 @@ public abstract class TanskState extends BasicGameState {
 
 		controller = GameController.getInstance();
 		packetQueue = new ConcurrentLinkedQueue<Packet>();
+		
+		frameCounter = 0;
+		seconds = 0;
+	}	
+	
+	@Override
+	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
+
 	}
 		
 	@Override
