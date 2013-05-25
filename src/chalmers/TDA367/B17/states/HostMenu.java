@@ -5,10 +5,7 @@ import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.SpriteSheet;
-<<<<<<< HEAD
 import org.newdawn.slick.geom.Vector2f;
-=======
->>>>>>> e08ffad6a3b3cf0fe1faeebe6371e82c145946f9
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 import chalmers.TDA367.B17.Tansk;
