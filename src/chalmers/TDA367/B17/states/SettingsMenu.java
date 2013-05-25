@@ -6,8 +6,10 @@ import java.util.Scanner;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.view.Label;
 import chalmers.TDA367.B17.view.MenuButton;
+import chalmers.TDA367.B17.view.Slider;
 
 import org.newdawn.slick.*;
+import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
 
@@ -21,6 +23,8 @@ public class SettingsMenu extends BasicGameState{
 	private SpriteSheet background;
 	private MenuButton backButton;
 	private String playerName;
+	
+	private Slider slider;
 	
 	public SettingsMenu(int state) {
 		this.state = state;
@@ -40,6 +44,8 @@ public class SettingsMenu extends BasicGameState{
 
 		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
 				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
+		
+		slider = new Slider(100, 0, 35, new Vector2f(100, 500), gc, "Volume: ");
 		
 		Scanner scanner = null;
 		try {
@@ -95,12 +101,15 @@ public class SettingsMenu extends BasicGameState{
 				
 		inputLabel.render(g);
 		backButton.draw();
+		slider.draw(g);
 	}
 
 	@Override
 	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
 		if(backButton.isClicked(gc.getInput()))
 			sbg.enterState(Tansk.MENU);
+		slider.update();
+		GameController.getInstance().getSoundHandler().setVolume((float)slider.getValue()/100);
 	}
 
 	@Override
