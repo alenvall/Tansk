@@ -34,14 +34,14 @@ public class JoinMenu extends BasicGameState{
 			throws SlickException {
 		this.stateBasedGame = sbg;
 
-		serverIPField = new TextField(gc, gc.getDefaultFont(), 100, 175, 200, 20);
-		inputLabel = new Label("Enter host IP:", Color.black, 100, 150);
+		inputLabel = new Label("Enter host IP:", Color.black, 100, 175);
+		serverIPField = new TextField(gc, gc.getDefaultFont(), 100, 200, 200, 20);
 		
-		joinButton = new MenuButton(100, 225,
+		joinButton = new MenuButton(100, 275,
 				GameController.getInstance().getImageHandler().getSprite("button_join"),
 				GameController.getInstance().getImageHandler().getSprite("button_join_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_join_hover"));
-		errorLabel = new Label("Invalid IP!", Color.red, 100, 195);
+		errorLabel = new Label("Invalid IP!", Color.red, 100, 225);
 
 		backButton = new MenuButton(100, 575, 
 				GameController.getInstance().getImageHandler().getSprite("button_back"),

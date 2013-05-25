@@ -34,8 +34,10 @@ public class SettingsMenu extends BasicGameState{
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
 
-		nameField = new TextField(gc, gc.getDefaultFont(), 100, 275, 200, 20);
-		inputLabel = new Label("Player name:", Color.black, 100, 250);
+		slider = new Slider(100, 0, 35, new Vector2f(110, 200), gc, "Volume: ");
+		
+		inputLabel = new Label("Player name:", Color.black, 100, 225);
+		nameField = new TextField(gc, gc.getDefaultFont(), 100, 250, 200, 20);
 		
 		backButton = new MenuButton(100, 575, 
 				GameController.getInstance().getImageHandler().getSprite("button_back"),
@@ -45,7 +47,6 @@ public class SettingsMenu extends BasicGameState{
 		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
 				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
 		
-		slider = new Slider(100, 0, 35, new Vector2f(100, 500), gc, "Volume: ");
 		
 		Scanner scanner = null;
 		try {
