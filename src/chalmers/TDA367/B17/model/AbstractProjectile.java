@@ -3,6 +3,9 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+/**
+ * An abstract class that represents a projectile.
+ */
 public abstract class AbstractProjectile extends MovableEntity {
 	
 	private double damage;

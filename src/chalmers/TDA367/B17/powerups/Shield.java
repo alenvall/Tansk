@@ -8,11 +8,17 @@ import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 
+/**
+ * A class representing a shield that absorbs damage.
+ */
 public class Shield extends Entity {
 
+	/** The radius of the shield.*/
 	private static int shieldRadius = 53;
 	private AbstractTank absTank;
+	/** The health of the shield.*/
 	private double health;
+	/** The duration of the shield.*/
 	private int duration;
 	private boolean countDuration = true;
 
@@ -28,7 +34,7 @@ public class Shield extends Entity {
 			Vector2f position = absTank.getPosition();
 			setShape(new Circle(position.x, position.y, shieldRadius));
 			this.absTank = absTank;
-			setHealth(absTank.getMaxShieldHealth());
+			setHealth(AbstractTank.MAX_SHIELD_HEALTH);
 		}
 		spriteID = "shield";
 		active = true;

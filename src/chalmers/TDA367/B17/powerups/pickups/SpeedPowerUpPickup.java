@@ -7,6 +7,9 @@ import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.powerups.SpeedPowerUp;
 
+/**
+ * A PowerUpPickup for the SpeedPowerUp.
+ */
 public class SpeedPowerUpPickup extends AbstractPowerUpPickup {
 	
 	/**

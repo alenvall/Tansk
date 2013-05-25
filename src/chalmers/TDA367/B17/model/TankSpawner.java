@@ -9,11 +9,14 @@ import java.util.Map.Entry;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 
+/**
+ * A class used to handle the spawning of tanks.
+ */
 public class TankSpawner{
 	
-	//A list of all the TankSpawnPoints
+	/**A list of all the TankSpawnPoints.*/
 	private List<TankSpawnPoint> tankSpawnPoints;
-	//A list of all the players that wish to spawn.
+	/**A list of all the players that wish to spawn.*/
 	private List<Player> playersToSpawn;
 	
 	/**

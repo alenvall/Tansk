@@ -7,6 +7,9 @@ import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 
+/**
+ * A superclass to all of the individual power-up pickups.
+ */
 public abstract class AbstractPowerUpPickup extends Entity{
 
 	/**

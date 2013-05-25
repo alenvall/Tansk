@@ -7,6 +7,9 @@ import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.powerups.DamagePowerUp;
 
+/**
+ * A PowerUpPickup for the DamagePowerUp.
+ */
 public class DamagePowerUpPickup extends AbstractPowerUpPickup {
 
 	/**

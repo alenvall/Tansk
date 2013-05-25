@@ -9,12 +9,15 @@ import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractProjectile;
 
+/**
+ * A power-up that increases the damage done by a tank's projectiles.
+ */
 public class DamagePowerUp extends AbstractPowerUp{
 
-	//The damage multiplier
+	/**The damage multiplier*/
 	private final int MULTIPLIER = 2;
 	
-	//The tank's projectiles
+	/**The tank's projectiles*/
 	private List<AbstractProjectile> projectiles;
 	
 	/**

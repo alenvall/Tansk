@@ -13,44 +13,44 @@ import chalmers.TDA367.B17.powerups.pickups.AbstractPowerUpPickup;
 
 public abstract class GameConditions {
 
-	//The amount of rounds that will be played.
+	/**The amount of rounds that will be played.*/
 	private int rounds;
-	//The lives of each player.
+	/**The lives of each player.*/
 	private int playerLives;
-	//The time it takes for tanks to spawn (in milliseconds)
+	/**The time it takes for tanks to spawn (in milliseconds)*/
 	private int spawnTime;
 	private int roundCounter;
-	//How long each round should last
+	/**How long each round should last*/
 	private int roundTime;
 	private int roundTimer;
-	//How long each game should last
+	/**How long each game should last*/
 	private int gameTimer;
 
-	//Determines of the game is over.
+	/**Determines of the game is over.*/
 	private boolean gameOver;
 
-	//Used for delay between rounds
+	/**Used for delay between rounds*/
 	protected int delayTimer;
 	protected boolean delaying;
 
-	//keeps track of the amount of eliminated players
+	/**keeps track of the amount of eliminated players*/
 	protected int eliminatedPlayerCount;
 
-	//The winner of the game.
+	/**The winner of the game.*/
 	protected List<Player> winningPlayers;
-	//The winner of the latest round.
+	/**The winner of the latest round.*/
 	protected Player roundWinner;
 
-	//A list of all the players.
+	/**A list of all the players.*/
 	protected ArrayList<Player> players;
 
-	//The maximum amount of powerups that can be out at a time.
+	/**The maximum amount of powerups that can be out at a time.*/
 	private int powerupLimit = 6;
 
-	//The maximum amount of weapons that can be out at a time.
+	/**The maximum amount of weapons that can be out at a time.*/
 	private int weaponLimit = 6;
 	
-	//has the round been ended (map cleared and such)
+	/**has the round been ended (map cleared and such)*/
 	protected boolean roundEnded;
 	
 	/**
@@ -341,10 +341,18 @@ public abstract class GameConditions {
 		this.weaponLimit = weaponLimit;
 	}
 	
+	/**
+	 * Add a player to the winning players.
+	 * @param p The player to add
+	 */
 	public void addWinningPlayer(Player p){
 		winningPlayers.add(p);
 	}
 	
+	/**
+	 * Remove a player.
+	 * @param p The player to remove
+	 */
 	public void removePlayer(Player p){
 		if(p.getTank() != null){
 			p.getTank().tankDeath();

@@ -7,6 +7,9 @@ import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.powerups.HealthPowerUp;
 
+/**
+ * A PowerUpPickup for the HealthPowerUp.
+ */
 public class HealthPowerUpPickup extends AbstractPowerUpPickup {
 	
 	/**

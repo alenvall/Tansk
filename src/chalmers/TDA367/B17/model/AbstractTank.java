@@ -10,6 +10,9 @@ import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
 
+/**
+ * AbstractTank is the superclass to all tanks.
+ */
 public abstract class AbstractTank extends MovableEntity {
 	
 	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
@@ -17,7 +20,8 @@ public abstract class AbstractTank extends MovableEntity {
 	private String name;
 	private double health;
 	private AbstractPowerUp currentPowerUp;
-	private float turnSpeed; // How many degrees the tank will turn each update
+	/** How many degrees the tank will turn each update.*/
+	private float turnSpeed; 
 	protected AbstractTurret turret;
 	protected float turretOffset;
 	protected int timeSinceLastShot;
@@ -27,7 +31,6 @@ public abstract class AbstractTank extends MovableEntity {
 	private Shield shield;
 	private ArrayList<AbstractProjectile> projectiles;
 	private Player player;
-	private double maxShieldHealth;
 	private String color;
 	
 	/**
@@ -47,7 +50,6 @@ public abstract class AbstractTank extends MovableEntity {
 		currentPowerUp = null;
 		renderLayer = RenderLayer.SECOND;
 		projectiles = new ArrayList<AbstractProjectile>();
-		maxShieldHealth = MAX_SHIELD_HEALTH;
 		this.color = color;
 		setSpriteID("tank_" + color);
 	}
@@ -278,14 +280,6 @@ public abstract class AbstractTank extends MovableEntity {
 	 */
 	public void setTurretOffset(float turretOffset) {
 		this.turretOffset = turretOffset;
-	}
-	
-	/**
-	 * Get the max shield health of the tank.
-	 * @return
-	 */
-	public double getMaxShieldHealth(){
-		return maxShieldHealth;
 	}
 	
 	/**

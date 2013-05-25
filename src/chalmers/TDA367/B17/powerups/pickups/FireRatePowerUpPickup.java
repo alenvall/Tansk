@@ -6,7 +6,9 @@ import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.powerups.FireRatePowerUp;
-
+/**
+ * A PowerUpPickup for the FireRatePowerUp.
+ */
 public class FireRatePowerUpPickup extends AbstractPowerUpPickup{
 	
 	/**

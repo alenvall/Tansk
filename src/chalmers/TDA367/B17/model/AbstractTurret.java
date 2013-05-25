@@ -3,6 +3,9 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Point;
 import org.newdawn.slick.geom.Vector2f;
 
+/**
+ * AbstractTurret is the superclass to all turrets.
+ */
 public abstract class AbstractTurret extends Entity {
 	private double rotation;
 	protected Vector2f turretCenter;

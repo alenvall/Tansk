@@ -5,7 +5,7 @@ import chalmers.TDA367.B17.controller.GameController;
 import org.newdawn.slick.geom.*;
 
 /**
- * Entity represents a visible object in the world.
+ * Entity is a superclass for an object in the world.
  */
 public abstract class Entity{
 	protected int id; // The id of this object

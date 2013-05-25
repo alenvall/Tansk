@@ -6,6 +6,9 @@ import chalmers.TDA367.B17.controller.GameController;
 
 import com.esotericsoftware.kryonet.Connection;
 
+/**
+ * Represents a player in the game.
+ */
 public class Player {
 	private int id;
 	private String name;

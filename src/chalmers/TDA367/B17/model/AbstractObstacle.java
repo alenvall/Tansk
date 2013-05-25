@@ -3,6 +3,9 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+/**
+ * An abstract class for obstacles.
+ */
 public class AbstractObstacle extends Entity {
 	
 	/**

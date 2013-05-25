@@ -10,6 +10,9 @@ import chalmers.TDA367.B17.powerups.pickups.HealthPowerUpPickup;
 import chalmers.TDA367.B17.powerups.pickups.ShieldPowerUpPickup;
 import chalmers.TDA367.B17.powerups.pickups.SpeedPowerUpPickup;
 
+/**
+ * A factory for receiving a random power-up.
+ */
 public class PowerUpFactory {
 
 	private PowerUpFactory() {}

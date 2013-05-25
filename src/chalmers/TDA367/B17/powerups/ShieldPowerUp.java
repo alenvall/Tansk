@@ -6,6 +6,9 @@ import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTank;
 
+/**
+ * A power-up that gives the tank a protecting shield.
+ */
 public class ShieldPowerUp extends AbstractPowerUp {
 
 	/**

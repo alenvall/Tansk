@@ -21,17 +21,19 @@ import chalmers.TDA367.B17.states.ServerState;
 import chalmers.TDA367.B17.view.Console.MsgLevel;
 import chalmers.TDA367.B17.weapons.pickups.AbstractWeaponPickup;
 
+/**
+ * Represents the world inside the game. Entities are stored and handled in 
+ * this class.
+ */
 public class World {
-	//A map holding all entities with an ID
+	/**A map holding all entities with an ID*/
 	private Map<Integer, Entity> entities;
-	//The size of the map (world)
+	/**The size of the map (world)*/
 	private Dimension size;
 	
-	//A spawner that spawns/respawns tanks.
 	private TankSpawner tankSpawner;
 	private boolean serverWorld = false;
 	
-	//A spawner that spawns powerup and weapons.
 	private Spawner spawner;
 	
 	/**

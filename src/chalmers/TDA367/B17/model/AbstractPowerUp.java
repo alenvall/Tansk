@@ -4,6 +4,9 @@ import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
 
+/**
+ * An abstract class representing powerups.
+ */
 public abstract class AbstractPowerUp extends Entity {
 
 	private String name;

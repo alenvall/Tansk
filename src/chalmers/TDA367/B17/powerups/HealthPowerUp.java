@@ -6,9 +6,12 @@ import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTank;
 
+/**
+ * A power-up that restores a portion of a tank's health.
+ */
 public class HealthPowerUp extends AbstractPowerUp {
 	
-	//What the tank that picks up the power up should be healed for.
+	/**What the tank picking up the power up should be healed for.*/
 	public static final int HEALTH_BOOST = 25;
 
 	/**

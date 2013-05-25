@@ -4,8 +4,8 @@ import org.newdawn.slick.geom.Vector2f;
 
 public abstract class AbstractSpawnPoint extends Entity{
 	
-	//Used to check if the spawnpoint isn't colliding with anything 
-	//preventing it from spawning.
+	/**Used to check if the spawnpoint isn't colliding with anything 
+	preventing it from spawning.*/
 	private boolean spawnable;
 
 	/**

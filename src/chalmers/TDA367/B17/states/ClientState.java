@@ -263,7 +263,7 @@ public class ClientState extends TanskState {
 		
 		if(playerTank != null){
 			if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
-				lifebar.render(playerTank.getHealth()/AbstractTank.MAX_HEALTH, playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);
+				lifebar.render(playerTank.getHealth()/AbstractTank.MAX_HEALTH, playerTank.getShield().getHealth()/AbstractTank.MAX_SHIELD_HEALTH, g);
 			}else{
 				lifebar.render(playerTank.getHealth()/AbstractTank.MAX_HEALTH, 0, g);
 			}
