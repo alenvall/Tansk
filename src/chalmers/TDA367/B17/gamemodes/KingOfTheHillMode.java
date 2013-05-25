@@ -13,9 +13,8 @@ public class KingOfTheHillMode extends ScoreBasedGame{
 	private KingOfTheHillZone pointZone;
 	private HashMap<Player, Integer> playersInZone;
 	
-	public KingOfTheHillMode(Vector2f position){
+	public KingOfTheHillMode(){
 		playersInZone = new HashMap<Player, Integer>();
-//		pointZone = new KingOfTheHillZone(GameController.getInstance().generateID() , position);
 		setScoreLimit(15);
 	}
 	
