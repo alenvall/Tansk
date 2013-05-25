@@ -108,7 +108,7 @@ public class Play extends TanskState {
 			player.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
 		}
 		
-		MapLoader.createEntities("standard");
+		MapLoader.createEntities("map_standard");
 
 		//Start a new round
 		controller.getGameMode().newRoundDelayTimer(3000);

@@ -14,7 +14,7 @@ import chalmers.TDA367.B17.terrain.VerticalWall;
 
 public class MapLoader {
 
-	public static void createEntities(String mapName){
+	public static boolean createEntities(String mapName){
 		Scanner scanner = null;
 		try {
 	        scanner = new Scanner(new File(Tansk.DATA_FOLDER + "/" + mapName + ".map"));
@@ -52,6 +52,9 @@ public class MapLoader {
 					continue;
 				}
 			}
+			scanner.close();
+			return true;
 		}
-	}
+		return false;
+	}	
 }

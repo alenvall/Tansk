@@ -65,72 +65,79 @@ public class ServerState extends TanskState {
 	@Override
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
-		
+
+		controller.getSoundHandler().stopAllMusic();
 		controller.setConsole(new Console(10, 533, 600, 192, OutputLevel.ALL));
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		controller.getWorld().init();
 
-		controller.newGame();
 		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
 		
-		MapLoader.createEntities("standard");
-		controller.getSoundHandler().stopAllMusic();
+		if(MapLoader.createEntities("map_standard")){
+			GameController.getInstance().getConsole().addMsg("Map loaded!", MsgLevel.INFO);
 		
-		Log.set(Log.LEVEL_INFO);
-		server = new Server();
-		Network.register(server);
-		Listener listener = new Listener(){
-				public void received(Connection con, Object msg){
-					super.received(con, msg);
-					if (msg instanceof Packet) {
-						packetsReceived++;	
-						Packet packet = (Packet)msg;
-						packet.setConnection(con);
-						packetQueue.add(packet);
-					}
-				}
-				
-				@Override
-				public void connected(Connection connection) {
-//					GameController.getInstance().getConsole().addMsg("Connected.", MsgLevel.INFO);
-				}
-				
-				@Override
-				public void disconnected(Connection connection) {
-					if(getPlayer(connection) != null){
-						disconnectedPlayersTemp.add(getPlayer(connection));
-					} else {
-						GameController.getInstance().getConsole().addMsg("Player disconnected.", MsgLevel.INFO);
-						Log.info("[SERVER] Unkown player has  disconnected.");
-					}
-				}
-			};
 			
-			ThreadedListener threadListener = new ThreadedListener(listener);
-			server.addListener(threadListener);
-	
-		try {
-	        server.bind(Network.PORT, Network.PORT);
-			server.start();	
-			controller.getConsole().addMsg("Server loaded and ready!", MsgLevel.INFO);
-			serverStarted = true;
-        } catch (IOException e) {
-    		controller.getConsole().addMsg("Address in use! Sever closed.", MsgLevel.ERROR);
-    		controller.getConsole().addMsg("Another server running?", MsgLevel.INFO);
-    		controller.getConsole().addMsg("Server closed.", MsgLevel.ERROR);
-	        e.printStackTrace();
-        }	
-		try {
-			ipAddress = InetAddress.getLocalHost().getHostAddress();
-        } catch (UnknownHostException e1) {
-	        e1.printStackTrace();
-        }
+			Log.set(Log.LEVEL_INFO);
+			server = new Server();
+			Network.register(server);
+			Listener listener = new Listener(){
+					public void received(Connection con, Object msg){
+						super.received(con, msg);
+						if (msg instanceof Packet) {
+							packetsReceived++;	
+							Packet packet = (Packet)msg;
+							packet.setConnection(con);
+							packetQueue.add(packet);
+						}
+					}
+					
+					@Override
+					public void connected(Connection connection) {
+	//					GameController.getInstance().getConsole().addMsg("Connected.", MsgLevel.INFO);
+					}
+					
+					@Override
+					public void disconnected(Connection connection) {
+						if(getPlayer(connection) != null){
+							disconnectedPlayersTemp.add(getPlayer(connection));
+						} else {
+							GameController.getInstance().getConsole().addMsg("Player disconnected.", MsgLevel.INFO);
+							Log.info("[SERVER] Unkown player has  disconnected.");
+						}
+					}
+				};
+				
+				ThreadedListener threadListener = new ThreadedListener(listener);
+				server.addListener(threadListener);
+		
+			try {
+		        server.bind(Network.PORT, Network.PORT);
+				server.start();	
+				controller.getConsole().addMsg("Server loaded and ready!", MsgLevel.INFO);
+				serverStarted = true;
+	        } catch (IOException e) {
+	    		controller.getConsole().addMsg("Address in use! Sever closed.", MsgLevel.ERROR);
+	    		controller.getConsole().addMsg("Another server running?", MsgLevel.INFO);
+	    		controller.getConsole().addMsg("Server closed.", MsgLevel.ERROR);
+		        e.printStackTrace();
+	        }	
+			try {
+				ipAddress = InetAddress.getLocalHost().getHostAddress();
+	        } catch (UnknownHostException e1) {
+		        e1.printStackTrace();
+	        }
+			
+			controller.newGame();
+		}
 	}
 	
 	@Override
 	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
 		super.leave(gc, sbg);
-		server.close();
+		gameStarted = false;
+		serverStarted = false;
+		if(server != null)
+			server.close();
 	}	
 		
 	@Override

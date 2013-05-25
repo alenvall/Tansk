@@ -47,10 +47,13 @@ public class Menu extends BasicGameState{
 		
 		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
 				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
+	}
+	
+	@Override
+	public void enter(GameContainer gc, StateBasedGame stateBasedGame){
 		GameController.getInstance().getSoundHandler().playMusic(MusicType.MENU_MUSIC);
 	}
 	
-
 	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
@@ -61,7 +64,7 @@ public class Menu extends BasicGameState{
 		exitButton.draw();
 		settingsButton.draw();
 	}
-
+	
 	@Override
 	public void update(GameContainer gc, StateBasedGame sbg, int delta)
 			throws SlickException {

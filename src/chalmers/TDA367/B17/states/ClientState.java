@@ -57,6 +57,7 @@ import chalmers.TDA367.B17.powerups.powerupPickups.FireRatePowerUpPickup;
 import chalmers.TDA367.B17.powerups.powerupPickups.HealthPowerUpPickup;
 import chalmers.TDA367.B17.powerups.powerupPickups.ShieldPowerUpPickup;
 import chalmers.TDA367.B17.powerups.powerupPickups.SpeedPowerUpPickup;
+import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
 import chalmers.TDA367.B17.tanks.DefaultTank;
 import chalmers.TDA367.B17.view.Lifebar;
 import chalmers.TDA367.B17.view.SoundSwitch;
@@ -93,7 +94,7 @@ public class ClientState extends TanskState {
 	private Image map = null;
 	private SpriteSheet entSprite;
 	private String playerName;
-	private boolean mapLoaded;
+	private boolean mapLoadAttempted;
 	private AbstractTank playerTank;
 	private Lifebar lifebar;
 	private SoundSwitch soundSwitch;
@@ -150,8 +151,10 @@ public class ClientState extends TanskState {
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
 
+		mapLoadAttempted = false;
 		playerName = GameController.getInstance().getPlayerName();
 		
+		controller.getSoundHandler().stopAllMusic();
 		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
 		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
 		console.setBorder(false);
@@ -171,15 +174,19 @@ public class ClientState extends TanskState {
 	@Override
 	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
 		super.leave(gc, sbg);
+		isConnected = false;
 		client.close();
 	}	
 	
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		super.update(gc, game, delta);
-		if((isConnected) && (!mapLoaded)){
-			MapLoader.createEntities("whatever");
-			mapLoaded = true;
+		if((isConnected) && (!mapLoadAttempted)){
+			mapLoadAttempted = true;
+			if(!MapLoader.createEntities("map_standard")){
+				client.close();
+			}
+			controller.getSoundHandler().playMusic(MusicType.BATTLE_MUSIC);
 		}
 		
 		if(input.isKeyDown(Input.KEY_UP)){

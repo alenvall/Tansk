@@ -2,7 +2,6 @@ package chalmers.TDA367.B17.states;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.network.Network;
-import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
 import chalmers.TDA367.B17.view.Label;
 import chalmers.TDA367.B17.view.MenuButton;
 import com.esotericsoftware.kryonet.Client;
@@ -13,8 +12,6 @@ import org.newdawn.slick.state.*;
 import chalmers.TDA367.B17.Tansk;
 
 import java.io.IOException;
-
-import javax.security.auth.login.FailedLoginException;
 
 public class JoinMenu extends BasicGameState{
 
@@ -53,7 +50,6 @@ public class JoinMenu extends BasicGameState{
 
 		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
 				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
-		GameController.getInstance().getSoundHandler().playMusic(MusicType.MENU_MUSIC);
 	}
 
 	@Override

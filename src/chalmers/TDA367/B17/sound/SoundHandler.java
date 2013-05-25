@@ -45,7 +45,8 @@ public class SoundHandler {
 	public void playMusic(MusicType music){
 		if(music == MusicType.MENU_MUSIC){
 			if(menuMusic != null){
-				menuMusic.loop(1, volume);
+				if(!menuMusic.playing())
+					menuMusic.loop(1, volume);
 			}
 		}else if(music == MusicType.BATTLE_MUSIC){
 			if(battleMusic != null){
