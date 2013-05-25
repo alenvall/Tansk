@@ -5,8 +5,8 @@ package chalmers.TDA367.B17.gamemodes;
 public class StandardGameMode extends ScoreBasedGame {
 
 
-	public StandardGameMode(){
-		super();
+	public StandardGameMode(int scoreLimit){
+		super(scoreLimit);
 	}
 	
 	@Override

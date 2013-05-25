@@ -1,7 +1,6 @@
 package chalmers.TDA367.B17.states;
 
 import java.awt.Dimension;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
@@ -34,7 +33,6 @@ import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
 import chalmers.TDA367.B17.model.KingOfTheHillZone;
 import chalmers.TDA367.B17.model.World;
-import chalmers.TDA367.B17.network.Network;
 import chalmers.TDA367.B17.network.Network.EntityPacket;
 import chalmers.TDA367.B17.network.Network.Packet;
 import chalmers.TDA367.B17.network.Network.Pck0_JoinRequest;
@@ -111,19 +109,49 @@ public class ClientState extends TanskState {
 	
 		return instance;
 	}
+
+	public void setClient(final Client client){
+		this.client = client;
+
+		this.client.addListener(new Listener(){
+			@Override
+			public void connected(Connection connection) {
+				Pck0_JoinRequest pck = new Pck0_JoinRequest();
+				pck.playerName = GameController.getInstance().getPlayerName();;
+				client.sendTCP(pck);
+			}
+
+			public void received(Connection con, Object msg) {
+				super.received(con, msg);
+				if (msg instanceof Packet) {
+					Packet packet = (Packet)msg;
+					packet.setConnection(con);
+					packetQueue.add(packet);
+					packetsReceived++;
+				}
+			}
+
+			@Override
+			public void disconnected(Connection connection) {
+				GameController.getInstance().getConsole().addMsg("Disconnected from server.", MsgLevel.ERROR);
+				GameController.getInstance().getConsole().setTimerHide(false);
+			}
+		});
+	}
 	
 	@Override
     public void init(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.init(gc, game);
 		
 		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
-		playerName = "Nisse" + Math.round(Math.random() * 1000);
     }
 	
 	@Override
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
 
+		playerName = GameController.getInstance().getPlayerName();
+		
 		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
 		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
 		console.setBorder(false);
@@ -133,47 +161,17 @@ public class ClientState extends TanskState {
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
-		
-		client = new Client();
-		Network.register(client);
-		client.addListener(new Listener(){
-			@Override
-			public void connected(Connection connection) {
-				Pck0_JoinRequest pck = new Pck0_JoinRequest();
-				pck.playerName = ClientState.getInstance().getPlayerName();
-			    client.sendTCP(pck);
-			}
-			
-			public void received(Connection con, Object msg) {
-			   super.received(con, msg);
-			   if (msg instanceof Packet) {
-				   Packet packet = (Packet)msg;
-				   packet.setConnection(con);
-				   packetQueue.add(packet);
-				   packetsReceived++;
-			   }
-			}
-			
-			@Override
-			public void disconnected(Connection connection) {
-				GameController.getInstance().getConsole().addMsg("Disconnected from server.", MsgLevel.ERROR);
-				GameController.getInstance().getConsole().setTimerHide(false);
-			}
-		});
+
 		client.start();
-		
-		try {
-	        client.connect(600000, "127.0.0.1", Network.PORT, Network.PORT);
-        } catch (IOException e) {
-        	Log.info("[CLIENT] Failed to connect!");
-			GameController.getInstance().getConsole().addMsg("Failed to connect to server.", MsgLevel.ERROR);
-			GameController.getInstance().getConsole().setTimerHide(false);
-	        e.printStackTrace();
-	        client.stop();
-        } 
 		
 		input = gc.getInput();
 		input.addMouseListener(this);
+	}
+	
+	@Override
+	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
+		super.leave(gc, sbg);
+		client.close();
 	}	
 	
 	@Override
@@ -206,6 +204,10 @@ public class ClientState extends TanskState {
 			}else{
 				soundSwitch.turnSoundOn();
 			}
+		}
+		
+		if(input.isKeyDown(Input.KEY_ESCAPE)){
+			game.enterState(Tansk.MENU);
 		}
 		
 		GameController.getInstance().getConsole().update(delta);
@@ -426,11 +428,7 @@ public class ClientState extends TanskState {
 			}
 		}
     }
-
-	public String getPlayerName() {
-	    return playerName;
-    }
-		
+			
 	@Override
 	public void keyReleased(int key, char c){
 		super.keyReleased(key, c);
@@ -455,7 +453,7 @@ public class ClientState extends TanskState {
 			} else {
 				GameController.getInstance().getConsole().setVisible(true);
 				chatField.setFocus(true);
-			}	
+			}
 		}
 	}
 		

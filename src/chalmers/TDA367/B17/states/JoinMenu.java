@@ -1,15 +1,33 @@
 package chalmers.TDA367.B17.states;
 
+import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.network.Network;
+import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
+import chalmers.TDA367.B17.view.Label;
+import chalmers.TDA367.B17.view.MenuButton;
+import com.esotericsoftware.kryonet.Client;
+import com.esotericsoftware.minlog.Log;
 import org.newdawn.slick.*;
-import org.newdawn.slick.geom.*;
+import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
 import chalmers.TDA367.B17.Tansk;
 
+import java.io.IOException;
+
+import javax.security.auth.login.FailedLoginException;
+
 public class JoinMenu extends BasicGameState{
-	
-	private Rectangle joinServer;
-	private Rectangle sendMsg;
+
+	private Client client;
+	private TextField serverIPField;
+	private MenuButton joinButton;
+	private Label errorLabel;
+	private Label inputLabel;
 	private int state;
+	private StateBasedGame stateBasedGame;
+	private SpriteSheet background;
+	private MenuButton backButton;
+	private boolean connectionFailed;
 	
 	public JoinMenu(int state) {
 		this.state = state;
@@ -17,41 +35,93 @@ public class JoinMenu extends BasicGameState{
 
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
-		joinServer = new Rectangle(100, 125, 150, 50);
-		sendMsg = new Rectangle(100, 225, 150, 50);
+		this.stateBasedGame = sbg;
+
+		inputLabel = new Label("Enter host IP:", Color.black, 100, 175);
+		serverIPField = new TextField(gc, gc.getDefaultFont(), 100, 200, 200, 20);
+		
+		joinButton = new MenuButton(100, 275,
+				GameController.getInstance().getImageHandler().getSprite("button_join"),
+				GameController.getInstance().getImageHandler().getSprite("button_join_pressed"),
+				GameController.getInstance().getImageHandler().getSprite("button_join_hover"));
+		errorLabel = new Label("Connection failed!", Color.red, 100, 225);
+
+		backButton = new MenuButton(100, 575, 
+				GameController.getInstance().getImageHandler().getSprite("button_back"),
+				GameController.getInstance().getImageHandler().getSprite("button_back_pressed"),
+				GameController.getInstance().getImageHandler().getSprite("button_back_hover"));
+
+		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
+				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
+		GameController.getInstance().getSoundHandler().playMusic(MusicType.MENU_MUSIC);
+	}
+
+	@Override
+	public void enter(GameContainer gc, StateBasedGame stateBasedGame){
+		serverIPField.setFocus(true);
+		connectionFailed = false;
+	}
+
+	@Override
+	public void leave(GameContainer gc, StateBasedGame stateBasedGame){
+		serverIPField.setFocus(false);
+		serverIPField.setText("");
 	}
 
 	@Override
 	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
 			throws SlickException {
-		g.drawString("Join", 150, 140);
-		g.drawString("Send", 150, 240);
-		g.draw(joinServer);
-		g.draw(sendMsg);
+		background.draw();
+		g.drawRect(serverIPField.getX(), serverIPField.getY(), serverIPField.getWidth(), serverIPField.getHeight());
+		serverIPField.render(gc, g);
+		
+		if(connectionFailed)
+			errorLabel.render(g);
+		joinButton.draw();
+		
+		inputLabel.render(g);
+		backButton.draw();
 	}
 
 	@Override
-	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {	
-		Input input = gc.getInput();
-		int x = input.getMouseX();
-		int y = input.getMouseY();
-		
-		if(x > 100 && x < 250 && y > 125 && y < 175){
-			if(input.isMousePressed(0)){
-				System.out.println("Attempting to join server!");
-				sbg.enterState(Tansk.CLIENT);
+	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
+		if(joinButton.isClicked(gc.getInput()))
+			join();
+		else if(backButton.isClicked(gc.getInput()))
+			sbg.enterState(Tansk.MENU);
+	}
+
+	@Override
+	public void keyReleased(int key, char c) {
+		super.keyReleased(key, c);
+		if(key == Input.KEY_ENTER){
+			if(serverIPField.hasFocus()){
+				join();
 			}
 		}
-		
-//		if(x > 100 && x < 250 && y > 225 && y < 275){
-//			if(input.isMousePressed(0)){
-//				if(client != null){
-//					System.out.println("Attempting to send message to server!");
-//					client.MessageToServer("Hey!");
-//				}
-//			}
-//		}
 	}
+
+	private void join(){
+		client = new Client();
+
+		ClientState.getInstance().setClient(client);
+		Network.register(client);
+		client.start();
+		
+		try {
+			client.connect(600000, serverIPField.getText(), Network.PORT, Network.PORT);
+		} catch (IOException e) {
+			connectionFailed = true;
+			Log.info("[CLIENT] Failed to connect!");
+			e.printStackTrace();
+			client.stop();
+			return;
+		}
+
+		System.out.println("Attempting to join server...");
+		stateBasedGame.enterState(Tansk.CLIENT);
+	}
+
 
 	@Override
 	public int getID() {

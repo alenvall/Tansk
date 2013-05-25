@@ -70,7 +70,7 @@ public class ServerState extends TanskState {
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		controller.getWorld().init();
 
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000);
+		controller.newGame();
 		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
 		
 		MapLoader.createEntities("standard");
@@ -117,7 +117,7 @@ public class ServerState extends TanskState {
         } catch (IOException e) {
     		controller.getConsole().addMsg("Address in use! Sever closed.", MsgLevel.ERROR);
     		controller.getConsole().addMsg("Another server running?", MsgLevel.INFO);
-    		controller.getConsole().addMsg("Sever closed.", MsgLevel.ERROR);
+    		controller.getConsole().addMsg("Server closed.", MsgLevel.ERROR);
 	        e.printStackTrace();
         }	
 		try {
@@ -126,10 +126,21 @@ public class ServerState extends TanskState {
 	        e1.printStackTrace();
         }
 	}
+	
+	@Override
+	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
+		super.leave(gc, sbg);
+		server.close();
+	}	
 		
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		super.update(gc, game, delta);
+		
+		if(gc.getInput().isKeyDown(Input.KEY_ESCAPE)){
+			game.enterState(Tansk.MENU);
+		}
+		
 		if(!gameStarted && serverStarted){
 			Input input = gc.getInput();
 			int x = input.getMouseX();
@@ -297,14 +308,9 @@ public class ServerState extends TanskState {
 		    	controller.getConsole().addMsg(pck.playerName + " attempting to connect..", MsgLevel.INFO);
 		    	Pck1_LoginAnswer responsePacket = new Pck1_LoginAnswer();
 		    	
-		    	GameController.getInstance().getConsole().addMsg(getPlayers().size() + "");
 	    		if(getPlayers().size() < 4){
 			    	if(!gameStarted){
 			    		createPlayer(pck.playerName, packet.getConnection());
-//		    			Player newPlayer = new Player(packet.getConnection(), pck.playerName);
-//		    			newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
-//		    			newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
-//		    			getPlayers().add(newPlayer);
 		    			responsePacket.accepted = true;
 			    	} else {
 			    		responsePacket.accepted = false;
@@ -343,6 +349,19 @@ public class ServerState extends TanskState {
     }
 
 	private void createPlayer(String playerName, Connection connection) {
+		if(playerName.equals("Unnamed")){
+			String newName = "Unnamed" + Math.round(Math.random() * 1000);
+			serverMessage(playerName + " renamed to " + newName + ".");
+			playerName = newName;
+		}
+		
+		for(Player player : getPlayers()){
+			if(player.getName().equals(playerName)){
+				playerName = "Unnamed" + Math.round(Math.random() * 1000);
+				serverMessage(player.getName() + " renamed to " + playerName + ".");
+			}
+		}
+		
 		Player newPlayer = new Player(connection, playerName);
 		newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
 		newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
