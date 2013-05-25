@@ -3,15 +3,15 @@ package chalmers.TDA367.B17.states;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
-import org.newdawn.slick.Input;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.SpriteSheet;
-import org.newdawn.slick.geom.Rectangle;
+import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.view.MenuButton;
+import chalmers.TDA367.B17.view.Slider;
 
 public class HostMenu extends BasicGameState{
 	
@@ -21,6 +21,8 @@ public class HostMenu extends BasicGameState{
 	private int state;
 	private String message;
 	private SpriteSheet background;
+	
+	private Slider slider;
 	
 	public HostMenu(int state) {
 		this.state = state;
@@ -39,6 +41,8 @@ public class HostMenu extends BasicGameState{
 		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
 				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
 		message = "Not running.";
+		
+		slider = new Slider(30, 5, 15, new Vector2f(100, 500), gc, "Scorelimit: ");
 	}
 
 	@Override
@@ -54,6 +58,8 @@ public class HostMenu extends BasicGameState{
 			g.setColor(Color.red);
 			g.drawString(message, 120, 180);
 		}
+		
+		slider.draw(g);
 	}
 
 	@Override
@@ -67,6 +73,7 @@ public class HostMenu extends BasicGameState{
 			message = "Running!";
 			sbg.enterState(Tansk.SERVER);
 		}
+		slider.update();
 	}
 
 	@Override
