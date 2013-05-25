@@ -29,19 +29,19 @@ public class Menu extends BasicGameState{
 
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
-		playgroundButton = new MenuButton(100, 125, GameController.getInstance().getImageHandler().getSprite("button_playground"),
+		playgroundButton = new MenuButton(100, 175, GameController.getInstance().getImageHandler().getSprite("button_playground"),
 				GameController.getInstance().getImageHandler().getSprite("button_playground_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_playground_hover"));
-		hostButton = new MenuButton(100, 225, GameController.getInstance().getImageHandler().getSprite("button_host"),
+		hostButton = new MenuButton(100, 275, GameController.getInstance().getImageHandler().getSprite("button_host"),
 				GameController.getInstance().getImageHandler().getSprite("button_host_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_host_hover"));
-		joinButton = new MenuButton(100, 325, GameController.getInstance().getImageHandler().getSprite("button_join"),
+		joinButton = new MenuButton(100, 375, GameController.getInstance().getImageHandler().getSprite("button_join"),
 				GameController.getInstance().getImageHandler().getSprite("button_join_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_join_hover"));
-		settingsButton = new MenuButton(100, 425, GameController.getInstance().getImageHandler().getSprite("button_settings"),
+		settingsButton = new MenuButton(100, 475, GameController.getInstance().getImageHandler().getSprite("button_settings"),
 				GameController.getInstance().getImageHandler().getSprite("button_settings_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_settings_hover"));
-		exitButton = new MenuButton(100, 625, GameController.getInstance().getImageHandler().getSprite("button_exit"),
+		exitButton = new MenuButton(100, 675, GameController.getInstance().getImageHandler().getSprite("button_exit"),
 				GameController.getInstance().getImageHandler().getSprite("button_exit_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_exit_hover"));
 		

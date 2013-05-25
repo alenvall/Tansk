@@ -43,7 +43,7 @@ public class JoinMenu extends BasicGameState{
 				GameController.getInstance().getImageHandler().getSprite("button_join_hover"));
 		errorLabel = new Label("Invalid IP!", Color.red, 100, 195);
 
-		backButton = new MenuButton(100, 325, 
+		backButton = new MenuButton(100, 575, 
 				GameController.getInstance().getImageHandler().getSprite("button_back"),
 				GameController.getInstance().getImageHandler().getSprite("button_back_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_back_hover"));

@@ -37,7 +37,7 @@ public class SettingsMenu extends BasicGameState{
 		nameField = new TextField(gc, gc.getDefaultFont(), 100, 275, 200, 20);
 		inputLabel = new Label("Player name:", Color.black, 100, 250);
 		
-		backButton = new MenuButton(100, 325, 
+		backButton = new MenuButton(100, 575, 
 				GameController.getInstance().getImageHandler().getSprite("button_back"),
 				GameController.getInstance().getImageHandler().getSprite("button_back_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_back_hover"));
