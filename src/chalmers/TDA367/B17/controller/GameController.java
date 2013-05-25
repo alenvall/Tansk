@@ -2,6 +2,8 @@ package chalmers.TDA367.B17.controller;
 
 import java.awt.Dimension;
 
+import org.newdawn.slick.geom.Vector2f;
+
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.event.GameEvent;
@@ -60,7 +62,7 @@ public class GameController {
 
 		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
 		
-		gameMode = new KingOfTheHillMode();
+		gameMode = new KingOfTheHillMode(new Vector2f(512,384));
 		gameMode.init(rounds, playerLives, spawnTime, roundTime, gameTime);
 
 	}

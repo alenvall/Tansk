@@ -296,6 +296,7 @@ public class ServerState extends TanskState {
 		    	controller.getConsole().addMsg(pck.playerName + " attempting to connect..", MsgLevel.INFO);
 		    	Pck1_LoginAnswer responsePacket = new Pck1_LoginAnswer();
 		    	
+		    	GameController.getInstance().getConsole().addMsg(getPlayers().size() + "");
 	    		if(getPlayers().size() < 4){
 			    	if(!gameStarted){
 			    		createPlayer(pck.playerName, packet.getConnection());
@@ -337,19 +338,8 @@ public class ServerState extends TanskState {
     }
 
 	private void createPlayer(String playerName, Connection connection) {
-		if(playerName.equals("Unnamed")){
-			String newName = "Unnamed" + Math.round(Math.random() * 1000);
-			playerName = newName;
-			serverMessage(playerName + " renamed to " + newName + ".");
-		}
-		
-		for(Player player : getPlayers()){
-			if(player.getName().equals(playerName)){
-				playerName = "Unnamed" + Math.round(Math.random() * 1000);
-				serverMessage(player.getName() + " renamed to " + playerName + ".");
-			}
-		}
-		
+		if(playerName.equals("Unnamed"))
+			playerName = "Unnamed" + Math.round(Math.random() * 1000);
 		Player newPlayer = new Player(connection, playerName);
 		newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
 		newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
