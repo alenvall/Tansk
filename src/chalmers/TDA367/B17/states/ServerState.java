@@ -70,7 +70,7 @@ public class ServerState extends TanskState {
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		controller.getWorld().init();
 
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000);
+		controller.newGame();
 		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
 		
 		MapLoader.createEntities("whatever");
@@ -339,8 +339,8 @@ public class ServerState extends TanskState {
 	private void createPlayer(String playerName, Connection connection) {
 		if(playerName.equals("Unnamed")){
 			String newName = "Unnamed" + Math.round(Math.random() * 1000);
-			playerName = newName;
 			serverMessage(playerName + " renamed to " + newName + ".");
+			playerName = newName;
 		}
 		
 		for(Player player : getPlayers()){

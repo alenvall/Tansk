@@ -15,6 +15,7 @@ import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.console.Console.OutputLevel;
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.controller.GameController.GameSettings;
 import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
@@ -63,8 +64,19 @@ public class Play extends TanskState {
 		
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		controller.getWorld().init();
-
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000);
+		
+		GameSettings gameSettings = new GameSettings();
+		gameSettings.gameMode = "koth";
+		gameSettings.scorelimit = 15;
+		gameSettings.rounds = 4;
+		
+		// convert from seconds to milliseconds
+		gameSettings.spawnTime = 5000;
+		gameSettings.roundTime = 500000;
+		gameSettings.gameTime = 1500000;
+		
+		GameController.getInstance().setGameSettings(gameSettings);
+		controller.newGame();
 		if(controller.getGameMode() instanceof KingOfTheHillMode)
 			((KingOfTheHillMode)controller.getGameMode()).generateZone(new Vector2f(512, 384));
 		

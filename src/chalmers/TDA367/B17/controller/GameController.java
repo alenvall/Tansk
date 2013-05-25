@@ -1,7 +1,5 @@
 package chalmers.TDA367.B17.controller;
 
-import java.awt.Dimension;
-
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.event.GameEvent;
@@ -23,7 +21,17 @@ public class GameController {
 	private GameConditions gameMode;
 	private int latestID;
 	private String playerName;
+	private GameSettings gameSettings;
 
+	public static class GameSettings {
+		public String gameMode;
+		public int rounds;
+		public int playerLives; 
+		public int spawnTime; 
+		public int roundTime; 
+		public int gameTime;
+		public int scorelimit;
+	}
 	
 	private GameController() {
 		imgHandler = new ImageHandler();
@@ -55,24 +63,22 @@ public class GameController {
 	 * @param gameTime The total time the game takes.
 	 * @param serverWorld If the world should be on a server or not. 
 	 */
-	public void newGame(int width, int height, int rounds, 
-			int playerLives, int spawnTime, int roundTime, int gameTime){
-
+	public void newGame(){
 		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
 		
-		gameMode = new KingOfTheHillMode();
-		gameMode.init(rounds, playerLives, spawnTime, roundTime, gameTime);
-
+		if(gameSettings.gameMode.equals("koth"))
+			gameMode = new KingOfTheHillMode(gameSettings.scorelimit);
+		else if(gameSettings.equals("dm"))
+			// dm
+			
+		// temp
+		gameMode = new KingOfTheHillMode(gameSettings.scorelimit);	
+		
+		gameMode.init(gameSettings.rounds, gameSettings.playerLives, gameSettings.spawnTime, gameSettings.roundTime, gameSettings.gameTime);
 	}
 	
-	public void newGame(int width, int height, int rounds, 
-			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld, GameConditions gameMode){
-		world = new World(new Dimension(width, height), serverWorld);
-		world.init();
-		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
-		this.gameMode = gameMode;
-		gameMode.init(rounds, 
-				playerLives, spawnTime, roundTime, gameTime);
+	public void setGameSettings(GameSettings gameSettings){
+		this.gameSettings = gameSettings;
 	}
 	
 	/**
