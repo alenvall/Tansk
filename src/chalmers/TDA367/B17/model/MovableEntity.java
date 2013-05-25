@@ -203,11 +203,5 @@ public abstract class MovableEntity extends Entity {
 	@Override
 	public void update(int delta){
 		move(delta);
-
-//		if(getPosition().getX()<0 || getPosition().getX()> 
-//		GameController.getInstance().getWorld().getSize().width 
-//		|| getPosition().getY()<0 || getPosition().getY()> 
-//		GameController.getInstance().getWorld().getSize().height)
-//			destroy();
 	}
 }

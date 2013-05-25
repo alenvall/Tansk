@@ -92,10 +92,7 @@ public abstract class GameConditions {
 		roundWinner = null;
 		roundCounter += 1;
 		roundTimer = roundTime;
-
 		eliminatedPlayerCount = 0;
-
-
 
 		for(Player p : players){
 			if(p.getTank() != null){
@@ -140,15 +137,10 @@ public abstract class GameConditions {
 			gameTimer -= delta;
 			roundTimer -= delta;
 
-			if(gameTimer <= 0){
+			if(gameTimer <= 0)
 				gameOver();
-			}
 
-			
-
-			if((eliminatedPlayerCount >= players.size()-1 && !(players.size() <= 1))
-					|| roundTimer <= 0){
-				
+			if((eliminatedPlayerCount >= players.size()-1 && !(players.size() <= 1)) || roundTimer <= 0){
 				newRoundDelayTimer(5000);
 			}
 		}	
@@ -156,12 +148,11 @@ public abstract class GameConditions {
 			endRound();
 			delayTimer-=delta;
 			if(delayTimer <= 0){
-				
-			//Start a new round when the delay is over
-			newRound();
-			delaying = false;
-				}
+				//Start a new round when the delay is over
+				newRound();
+				delaying = false;
 			}
+		}
 	}
 
 	/**
@@ -223,7 +214,6 @@ public abstract class GameConditions {
 			players.get(i).setLives(this.playerLives);
 		}
 	}
-
 
 	/**
 	 * Add a player to the playerList.

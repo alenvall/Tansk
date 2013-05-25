@@ -68,6 +68,4 @@ private int y;
 			g.drawRoundRect(x, y+height+10, width, height, height/2);
 		}
 	}
-	
-	
 }

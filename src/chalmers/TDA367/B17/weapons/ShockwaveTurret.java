@@ -53,5 +53,4 @@ public class ShockwaveTurret extends AbstractTurret{
 			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank(), getColor()));
 		}
 	}
-
 }

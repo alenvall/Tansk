@@ -12,9 +12,7 @@ public class Shield extends Entity {
 
 	private static int shieldRadius = 53;
 	private AbstractTank absTank;
-	
 	private double health;
-
 	private int duration;
 	private boolean countDuration = true;
 

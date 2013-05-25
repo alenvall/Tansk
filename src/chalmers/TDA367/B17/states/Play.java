@@ -27,7 +27,6 @@ import chalmers.TDA367.B17.weapons.*;
 public class Play extends TanskState {
 	
 	public ArrayList<AbstractTurret> turrets;
-	
 	private ArrayList<Player> players;
 	private Player playerOne;
 	private Image map = null;
@@ -229,12 +228,8 @@ public class Play extends TanskState {
 			}
 		}
 		
-		//Update for tankspawner
 		controller.getWorld().getTankSpawner().update(delta);
-		
 		controller.getWorld().getSpawner().update(delta);
-		
-		//Update for getGameMode()
 		controller.getGameMode().update(delta);
 		
 		updateWorld(delta);

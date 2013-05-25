@@ -23,7 +23,7 @@ public class StandardGameMode extends ScoreBasedGame {
 
 		if(delaying){
 			endRound();
-			delayTimer-=delta;
+			delayTimer -= delta;
 			if(delayTimer <= 0){
 				
 				//Start a new round when the delay is over

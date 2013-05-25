@@ -122,10 +122,8 @@ public class JoinMenu extends BasicGameState{
 		stateBasedGame.enterState(Tansk.CLIENT);
 	}
 
-
 	@Override
 	public int getID() {
 		return this.state;
 	}
-
 }

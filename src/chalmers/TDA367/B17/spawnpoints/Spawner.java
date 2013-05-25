@@ -158,5 +158,4 @@ public class Spawner {
 	public void setWeaponCount(int weaponCount) {
 		this.weaponCount = weaponCount;
 	}
-
 }

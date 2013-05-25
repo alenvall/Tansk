@@ -11,6 +11,9 @@ import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
 
 public abstract class AbstractTank extends MovableEntity {
+	
+	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
+	
 	private String name;
 	private double health;
 	private AbstractPowerUp currentPowerUp;
@@ -25,10 +28,7 @@ public abstract class AbstractTank extends MovableEntity {
 	private ArrayList<AbstractProjectile> projectiles;
 	private Player player;
 	private double maxShieldHealth;
-	
 	private String color;
-	
-	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
 	
 	/**
 	 * Create a new AbstractTank.

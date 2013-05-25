@@ -39,5 +39,4 @@ public class SpeedPowerUp extends AbstractPowerUp {
 
 	@Override
 	public void updateEffect() {}
-
 }

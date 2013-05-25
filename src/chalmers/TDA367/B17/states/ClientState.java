@@ -86,8 +86,8 @@ import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.minlog.Log;
 
 public class ClientState extends TanskState {
-	private static ClientState instance;
 	
+	private static ClientState instance;
 	private Client client;
 	private boolean isConnected;
 	private Input input;
@@ -269,17 +269,6 @@ public class ClientState extends TanskState {
 			}
 		}
 		soundSwitch.render(g);
-		
-//		if(playerTank != null){
-//			g.setColor(Color.green);
-//			g.draw(playerTank.getShape());
-//			g.setColor(Color.yellow);
-//			g.drawLine(playerTank.getSpritePosition().x, playerTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//			g.setColor(Color.red);
-//			g.drawLine(playerTank.getPosition().x, playerTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//			g.setColor(Color.blue);
-//			g.drawLine(playerTank.getTurret().getTurretNozzle().x, playerTank.getTurret().getTurretNozzle().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//		}
 		
 		g.setColor(Color.black);
 		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);

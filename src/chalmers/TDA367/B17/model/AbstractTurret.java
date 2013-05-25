@@ -24,7 +24,6 @@ public abstract class AbstractTurret extends Entity {
 		super(id);
 		rotation = startingRotation;
 		this.tank = tank;
-//		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
 		setShape(new Point(position.x, position.y));
 		renderLayer = RenderLayer.THIRD;
 		this.color = color;
@@ -39,7 +38,6 @@ public abstract class AbstractTurret extends Entity {
 		return tank;
 	}
 
-	
 	/**
 	 * Get the fire rate.
 	 * @return the delay between shots in milliseconds

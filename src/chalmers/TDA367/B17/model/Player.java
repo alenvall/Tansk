@@ -39,7 +39,6 @@ public class Player {
 		for(int i = 0; i < 6; i++){
 			inputStatuses.add(false);
 		}
-		
 		color = "white";
 	}
 	

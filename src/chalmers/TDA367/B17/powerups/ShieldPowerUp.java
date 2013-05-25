@@ -8,8 +8,6 @@ import chalmers.TDA367.B17.model.AbstractTank;
 
 public class ShieldPowerUp extends AbstractPowerUp {
 
-
-	
 	/**
 	 * Create a new ShieldPowerUp at a position.
 	 * @param id The id

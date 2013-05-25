@@ -27,8 +27,6 @@ public abstract class Entity{
 	 */
 	public Entity(int id){
 		this.id = id;
-//		this.id = GameController.getInstance().getWorld().generateID();
-//		GameController.getInstance().getWorld().addEntity(this);
 		active = true;
 		shape = new Point(1, 1);
 		rotation = 0;
@@ -160,7 +158,6 @@ public abstract class Entity{
 	 */
 	public void destroy(){
 		GameController.getInstance().getWorld().removeEntity(this);
-//		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, ENTITY_REMOVED_EVENT));
 	}
 	
 	/**

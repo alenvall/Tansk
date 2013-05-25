@@ -18,7 +18,6 @@ public class Slider {
 	private Vector2f markerPosition;
 	
 	private Label label;
-	
 	private GameContainer gc;
 	
 	private SpriteSheet slider;
@@ -26,7 +25,6 @@ public class Slider {
 	public static final int SLIDER_HEIGHT = 20;
 	
 	private String labelText;
-	
 	private SpriteSheet sliderMarker;
 	
 	public Slider(int maxValue, int minValue, int defaultValue, Vector2f position, GameContainer gc, String labelText){

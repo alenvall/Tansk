@@ -50,5 +50,4 @@ public class SlowspeedyTurret extends AbstractTurret {
 	public AbstractProjectile createProjectile() {
 		return new SlowspeedyProjectile(GameController.getInstance().generateID(), getTank(), getTurretNozzle());
 	}
-
 }

@@ -15,7 +15,6 @@ public class MenuButton {
 	private SpriteSheet pressedSheet;
 	private SpriteSheet hoverSheet;
 
-
 	public MenuButton(int x, int y, SpriteSheet sheet, SpriteSheet pressedSheet, SpriteSheet hoverSheet) {
 		this.x = x;
 		this.y = y;
@@ -25,8 +24,6 @@ public class MenuButton {
 		this.pressedSheet = pressedSheet;
 		this.hoverSheet = hoverSheet;
 	}
-
-
 
 	public boolean isClicked(Input input) {
 		int mouseX = input.getMouseX();

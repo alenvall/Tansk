@@ -36,7 +36,6 @@ public class ServerState extends TanskState {
 	private ArrayList<Packet> allClientsPacketQueue;
 	private ArrayList<Packet> clientPacketQueue;
 	private ArrayList<Player> disconnectedPlayersTemp;
-
 	protected TextField chatField;
 	private boolean gameStarted = false;
 	private boolean serverStarted;
@@ -166,12 +165,8 @@ public class ServerState extends TanskState {
 		processPackets();
 		checkDisconnectedPlayers();
 		if(gameStarted){		
-			//Update for tankspawner
 			controller.getWorld().getTankSpawner().update(delta);
-			
 			controller.getWorld().getSpawner().update(delta);
-			
-			//Update for getGameMode()
 			controller.getGameMode().update(delta);
 
 			updatePlayerTanks(delta);
@@ -231,22 +226,7 @@ public class ServerState extends TanskState {
 		if(getPlayers() != null)
 			g.drawString("Players: " + getPlayers().size() + "/4", 18, 480);
 		g.drawString("LAN IP: " + ipAddress, 18, 500);
-		
-		// some debug stuff
-//		if(!getPlayers().isEmpty()){
-//			Player playerOne = getPlayers().get(0);
-//			if(playerOne.getTank() != null){
-//				AbstractTank playerOneTank = playerOne.getTank();
-//				g.setColor(Color.yellow);
-//				g.drawLine(playerOneTank.getSpritePosition().x, playerOneTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//				g.setColor(Color.red);
-//				g.drawLine(playerOneTank.getPosition().x, playerOneTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//				g.setColor(Color.blue);
-//				g.drawLine(playerOneTank.getTurret().getPosition().x, playerOneTank.getTurret().getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//			}
-//		}
-		
-			
+					
 //		TODO: not do this in render maybe
 		//Cool timer
 		if(gameStarted){
@@ -271,7 +251,6 @@ public class ServerState extends TanskState {
 //				serverMessage(p.getName() + "'s score: " + p.getScore());
 //			}
 //		}
-	
 	}
 	
 	private void renderEntities(ArrayList<Entity> entities, Graphics g){

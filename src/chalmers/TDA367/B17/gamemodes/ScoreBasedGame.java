@@ -90,7 +90,6 @@ protected int scoreLimit;
 				}
 			}
 		}
-
 		return winningPlayers;
 	}
 
