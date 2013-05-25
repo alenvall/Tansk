@@ -41,7 +41,7 @@ public class Menu extends BasicGameState{
 		settingsButton = new MenuButton(100, 425, GameController.getInstance().getImageHandler().getSprite("button_settings"),
 				GameController.getInstance().getImageHandler().getSprite("button_settings_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_settings_hover"));
-		exitButton = new MenuButton(100, 525, GameController.getInstance().getImageHandler().getSprite("button_exit"),
+		exitButton = new MenuButton(100, 625, GameController.getInstance().getImageHandler().getSprite("button_exit"),
 				GameController.getInstance().getImageHandler().getSprite("button_exit_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_exit_hover"));
 		
