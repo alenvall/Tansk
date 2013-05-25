@@ -144,10 +144,6 @@ public class ServerState extends TanskState {
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		super.update(gc, game, delta);
 		
-		if(gc.getInput().isKeyDown(Input.KEY_ESCAPE)){
-			game.enterState(Tansk.MENU);
-		}
-		
 		if(!gameStarted && serverStarted){
 			Input input = gc.getInput();
 			int x = input.getMouseX();

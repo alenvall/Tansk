@@ -229,10 +229,6 @@ public class Play extends TanskState {
 			}
 		}
 		
-		if(input.isKeyDown(Input.KEY_ESCAPE)){
-			sbg.enterState(Tansk.MENU);
-		}
-		
 		//Update for tankspawner
 		controller.getWorld().getTankSpawner().update(delta);
 		

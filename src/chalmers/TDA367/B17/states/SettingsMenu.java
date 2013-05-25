@@ -106,7 +106,10 @@ public class SettingsMenu extends BasicGameState{
 	}
 
 	@Override
-	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
+	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {				
+		if(gc.getInput().isKeyDown(Input.KEY_ESCAPE)){
+			sbg.enterState(Tansk.MENU);
+		}
 		if(backButton.isClicked(gc.getInput()))
 			sbg.enterState(Tansk.MENU);
 		slider.update();

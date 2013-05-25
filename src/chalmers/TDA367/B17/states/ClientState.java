@@ -213,10 +213,6 @@ public class ClientState extends TanskState {
 			}
 		}
 		
-		if(input.isKeyDown(Input.KEY_ESCAPE)){
-			game.enterState(Tansk.MENU);
-		}
-		
 		GameController.getInstance().getConsole().update(delta);
 		processPackets();			
 		sendClientInput(gc.getInput());

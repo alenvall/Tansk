@@ -3,6 +3,7 @@ package chalmers.TDA367.B17.states;
 import chalmers.TDA367.B17.view.MenuButton;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
+import org.newdawn.slick.Input;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.SpriteSheet;
 import org.newdawn.slick.state.BasicGameState;
@@ -66,8 +67,11 @@ public class Menu extends BasicGameState{
 	}
 	
 	@Override
-	public void update(GameContainer gc, StateBasedGame sbg, int delta)
-			throws SlickException {
+	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {				
+		if(gc.getInput().isKeyDown(Input.KEY_ESCAPE)){
+			gc.exit();
+		}
+		
 		if(playgroundButton.isClicked(gc.getInput()))
 			sbg.enterState(Tansk.PLAY);
 		else if(hostButton.isClicked(gc.getInput()))

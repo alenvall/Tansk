@@ -7,6 +7,7 @@ import org.newdawn.slick.Color;
 import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Image;
+import org.newdawn.slick.Input;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.state.BasicGameState;
 import org.newdawn.slick.state.StateBasedGame;
@@ -58,7 +59,11 @@ public abstract class TanskState extends BasicGameState {
 	}
 		
 	@Override
-	public void update(GameContainer container, StateBasedGame game, int delta) throws SlickException {
+	public void update(GameContainer container, StateBasedGame game, int delta) throws SlickException {				
+		if(container.getInput().isKeyDown(Input.KEY_ESCAPE)){
+			game.enterState(Tansk.MENU);
+		}
+		
 		frameCounter++;
 		long newTime = Calendar.getInstance().getTimeInMillis();
 		deltaTime = newTime - oldTime;

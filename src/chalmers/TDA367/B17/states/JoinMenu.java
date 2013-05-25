@@ -80,7 +80,10 @@ public class JoinMenu extends BasicGameState{
 	}
 
 	@Override
-	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
+	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {				
+		if(gc.getInput().isKeyDown(Input.KEY_ESCAPE)){
+			sbg.enterState(Tansk.MENU);
+		}
 		if(joinButton.isClicked(gc.getInput()))
 			join();
 		else if(backButton.isClicked(gc.getInput()))

@@ -75,7 +75,11 @@ public class HostMenu extends BasicGameState{
 	}
 
 	@Override
-	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {			
+	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {				
+		if(gc.getInput().isKeyDown(Input.KEY_ESCAPE)){
+			sbg.enterState(Tansk.MENU);
+		}
+		
 		roundSlider.update();
 		spawnTimeSlider.update();
 		roundTimeSlider.update();
