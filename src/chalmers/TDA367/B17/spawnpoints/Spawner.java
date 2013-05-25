@@ -10,9 +10,9 @@ import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.powerups.PowerUpFactory;
-import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
-import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
-import chalmers.TDA367.B17.weaponPickups.WeaponFactory;
+import chalmers.TDA367.B17.powerups.pickups.AbstractPowerUpPickup;
+import chalmers.TDA367.B17.weapons.pickups.AbstractWeaponPickup;
+import chalmers.TDA367.B17.weapons.pickups.WeaponFactory;
 
 public class Spawner {
 	

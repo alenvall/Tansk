@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.weaponPickups;
+package chalmers.TDA367.B17.weapons.pickups;
 
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;

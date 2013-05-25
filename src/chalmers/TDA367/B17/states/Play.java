@@ -10,19 +10,19 @@ import org.newdawn.slick.*;
 import org.newdawn.slick.geom.*;
 import org.newdawn.slick.state.*;
 
-import chalmers.TDA367.B17.MapLoader;
 import chalmers.TDA367.B17.Tansk;
-import chalmers.TDA367.B17.console.Console;
-import chalmers.TDA367.B17.console.Console.OutputLevel;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.controller.GameController.GameSettings;
 import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
 import chalmers.TDA367.B17.model.*;
-import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
+import chalmers.TDA367.B17.resource.MapLoader;
+import chalmers.TDA367.B17.resource.SoundHandler.MusicType;
+import chalmers.TDA367.B17.view.Console;
 import chalmers.TDA367.B17.view.Lifebar;
 import chalmers.TDA367.B17.view.SoundSwitch;
-import chalmers.TDA367.B17.weaponPickups.SlowspeedyPickup;
+import chalmers.TDA367.B17.view.Console.OutputLevel;
 import chalmers.TDA367.B17.weapons.*;
+import chalmers.TDA367.B17.weapons.pickups.SlowspeedyPickup;
 
 public class Play extends TanskState {
 	

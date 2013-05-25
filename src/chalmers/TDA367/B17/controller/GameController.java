@@ -1,15 +1,16 @@
 package chalmers.TDA367.B17.controller;
 
 import chalmers.TDA367.B17.Tansk;
-import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.gamemodes.GameConditions;
 import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
 import chalmers.TDA367.B17.gamemodes.StandardGameMode;
-import chalmers.TDA367.B17.animations.AnimationHandler;
 import chalmers.TDA367.B17.model.World;
-import chalmers.TDA367.B17.sound.SoundHandler;
+import chalmers.TDA367.B17.resource.AnimationHandler;
+import chalmers.TDA367.B17.resource.ImageHandler;
+import chalmers.TDA367.B17.resource.SoundHandler;
+import chalmers.TDA367.B17.view.Console;
 
 public class GameController {
 	private static GameController instance;

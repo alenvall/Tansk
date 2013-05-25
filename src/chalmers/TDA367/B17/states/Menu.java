@@ -11,7 +11,7 @@ import org.newdawn.slick.state.StateBasedGame;
 
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.sound.SoundHandler.MusicType;
+import chalmers.TDA367.B17.resource.SoundHandler.MusicType;
 
 public class Menu extends BasicGameState{
 	

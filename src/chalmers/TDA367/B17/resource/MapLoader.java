@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17;
+package chalmers.TDA367.B17.resource;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -6,11 +6,12 @@ import java.util.Scanner;
 
 import org.newdawn.slick.geom.Vector2f;
 
-import chalmers.TDA367.B17.console.Console.MsgLevel;
+import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.terrain.HorizontalWall;
 import chalmers.TDA367.B17.terrain.VerticalWall;
+import chalmers.TDA367.B17.view.Console.MsgLevel;
 
 public class MapLoader {
 

@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.powerups.powerupPickups;
+package chalmers.TDA367.B17.powerups.pickups;
 
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;

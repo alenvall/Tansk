@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.animations;
+package chalmers.TDA367.B17.resource;
 
 import java.util.Iterator;
 import java.util.Map;

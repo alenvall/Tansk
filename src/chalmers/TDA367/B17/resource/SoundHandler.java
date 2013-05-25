@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.sound;
+package chalmers.TDA367.B17.resource;
 
 import java.io.File;
 import java.util.HashMap;

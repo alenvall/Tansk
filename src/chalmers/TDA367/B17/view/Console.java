@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.console;
+package chalmers.TDA367.B17.view;
 
 import java.util.ArrayList;
 

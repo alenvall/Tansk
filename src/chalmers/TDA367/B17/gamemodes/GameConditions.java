@@ -8,8 +8,8 @@ import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.powerups.Shield;
-import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
-import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
+import chalmers.TDA367.B17.weapons.pickups.AbstractWeaponPickup;
+import chalmers.TDA367.B17.powerups.pickups.AbstractPowerUpPickup;
 
 public abstract class GameConditions {
 

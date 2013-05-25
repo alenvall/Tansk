@@ -1,4 +1,4 @@
-package chalmers.TDA367.B17.controller;
+package chalmers.TDA367.B17.resource;
 
 import org.newdawn.slick.Image;
 import org.newdawn.slick.SlickException;

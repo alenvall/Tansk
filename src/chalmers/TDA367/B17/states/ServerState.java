@@ -14,8 +14,6 @@ import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
 
 import chalmers.TDA367.B17.*;
-import chalmers.TDA367.B17.console.Console;
-import chalmers.TDA367.B17.console.Console.*;
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.event.*;
 import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
@@ -23,6 +21,9 @@ import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
 import chalmers.TDA367.B17.network.*;
 import chalmers.TDA367.B17.network.Network.*;
+import chalmers.TDA367.B17.resource.MapLoader;
+import chalmers.TDA367.B17.view.Console;
+import chalmers.TDA367.B17.view.Console.*;
 
 import com.esotericsoftware.kryonet.*;
 import com.esotericsoftware.kryonet.Listener.*;

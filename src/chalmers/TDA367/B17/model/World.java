@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
-import chalmers.TDA367.B17.console.Console.MsgLevel;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.model.KingOfTheHillZone;
@@ -15,11 +14,12 @@ import chalmers.TDA367.B17.network.Network.Pck11_StaticObjectCreated;
 import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
 import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
 import chalmers.TDA367.B17.powerups.Shield;
-import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
+import chalmers.TDA367.B17.powerups.pickups.AbstractPowerUpPickup;
 import chalmers.TDA367.B17.spawnpoints.Spawner;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
 import chalmers.TDA367.B17.states.ServerState;
-import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
+import chalmers.TDA367.B17.view.Console.MsgLevel;
+import chalmers.TDA367.B17.weapons.pickups.AbstractWeaponPickup;
 
 public class World {
 	//A map holding all entities with an ID

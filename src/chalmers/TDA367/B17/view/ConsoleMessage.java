@@ -1,8 +1,9 @@
-package chalmers.TDA367.B17.console;
+package chalmers.TDA367.B17.view;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import chalmers.TDA367.B17.console.Console.MsgLevel;
+
+import chalmers.TDA367.B17.view.Console.MsgLevel;
 
 /** A message for use with the console */
 public class ConsoleMessage {
