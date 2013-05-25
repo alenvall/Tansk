@@ -67,7 +67,7 @@ public class ServerState extends TanskState {
 		super.enter(container, game);
 
 		controller.getSoundHandler().stopAllMusic();
-		controller.setConsole(new Console(10, 533, 600, 192, OutputLevel.ALL));
+		controller.setConsole(new Console(10, 533, 600, 192, Color.white, OutputLevel.ALL));
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
 		controller.getWorld().init();
 
@@ -75,8 +75,7 @@ public class ServerState extends TanskState {
 		
 		if(MapLoader.createEntities("map_standard")){
 			GameController.getInstance().getConsole().addMsg("Map loaded!", MsgLevel.INFO);
-		
-			
+					
 			Log.set(Log.LEVEL_INFO);
 			server = new Server();
 			Network.register(server);

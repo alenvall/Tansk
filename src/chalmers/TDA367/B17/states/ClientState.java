@@ -156,7 +156,7 @@ public class ClientState extends TanskState {
 		
 		controller.getSoundHandler().stopAllMusic();
 		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
-		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
+		Console console = new Console(10, 533, 450, 192, Color.black, OutputLevel.ALL);
 		console.setBorder(false);
 		console.setTimerHide(true);
 		controller.setConsole(console);

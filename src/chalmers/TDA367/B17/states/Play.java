@@ -57,7 +57,7 @@ public class Play extends TanskState {
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 
-		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
+		Console console = new Console(10, 533, 450, 192, Color.black, OutputLevel.ALL);
 		console.setBorder(false);
 		controller.setConsole(console);
 		

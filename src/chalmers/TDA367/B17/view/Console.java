@@ -26,6 +26,7 @@ public class Console {
 	private boolean active;
 	private boolean timerHide;
 	private int timeSinceLastActive;
+	private Color textColor;
 	
 	/**
 	 * Create a new console at the given position and size with a starting output level and an optional border
@@ -33,10 +34,11 @@ public class Console {
 	 * @param posY
 	 * @param width
 	 * @param height
+	 * @param color 
 	 * @param initialOutputLevel
 	 * @param border
 	 */
-	public Console(int posX, int posY, int width, int height, OutputLevel initialOutputLevel){
+	public Console(int posX, int posY, int width, int height, Color color, OutputLevel initialOutputLevel){
 		messages = new ArrayList<ConsoleMessage>();
 		this.posX = posX;
 		this.posY = posY;
@@ -45,6 +47,7 @@ public class Console {
 		outputLevel = initialOutputLevel;
 		this.border = true;
 		visible = true;
+		textColor = color;
 		
 		maxMessages = (height-2*MESSAGE_OFFSETY) / (ROW_HEIGHT);
 		totalY = posY + height;
@@ -58,7 +61,7 @@ public class Console {
 		ERROR, 
 		/**	Yellow text color	 */
 		INFO, 
-		/**	White text color	 */
+		/**	Other text color	 */
 		STANDARD
 	}
 	
@@ -70,7 +73,7 @@ public class Console {
 		ERROR,
 		/** Only outputs error and info messages */
 		INFO,
-		/** Outputs  all messages */
+		/** Outputs all messages */
 		ALL
 	}
 		
@@ -154,7 +157,7 @@ public class Console {
 					MsgLevel msgLevel = currentMsg.getMessageLevel();
 			
 					// draw the timestamp of the message
-					graphics.setColor(Color.white);
+					graphics.setColor(textColor);
 					graphics.drawString("[" + currentMsg.getTimestamp() + "] ", posX + TIMESTAMP_OFFSET, totalY - ROW_HEIGHT*(messages.size()-i) - 10 + MESSAGE_OFFSETY);
 					
 					// set the color of the text depending on the message level
@@ -163,7 +166,7 @@ public class Console {
 					if(msgLevel == MsgLevel.INFO)
 						graphics.setColor(Color.yellow);
 					if(msgLevel == MsgLevel.STANDARD)
-						graphics.setColor(Color.white);
+						graphics.setColor(textColor);
 					
 					// draw the message
 					graphics.drawString(currentMsg.getMessage(), posX + TIMESTAMP_OFFSET + MESSAGE_OFFSETX, totalY - ROW_HEIGHT*(messages.size()-i) - MESSAGE_OFFSETY);
