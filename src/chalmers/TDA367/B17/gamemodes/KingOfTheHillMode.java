@@ -14,8 +14,8 @@ public class KingOfTheHillMode extends ScoreBasedGame{
 	private HashMap<Player, Integer> playersInZone;
 	
 	public KingOfTheHillMode(int scoreLimit){
+		super(scoreLimit);
 		playersInZone = new HashMap<Player, Integer>();
-		setScoreLimit(scoreLimit);
 	}
 	
 	@Override

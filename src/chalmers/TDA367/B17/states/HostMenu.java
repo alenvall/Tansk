@@ -7,6 +7,7 @@ import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.controller.GameController.GameSettings;
 import chalmers.TDA367.B17.view.MenuButton;
+import chalmers.TDA367.B17.view.RadioButton;
 import chalmers.TDA367.B17.view.Slider;
 
 public class HostMenu extends BasicGameState{
@@ -21,9 +22,9 @@ public class HostMenu extends BasicGameState{
 	private Slider roundTimeSlider;
 	private Slider gameTimeSlider;
 	private Slider scorelimitSlider;
-	private boolean koth;
-	private int tempScore;
 	private int tempLives;
+	private RadioButton kothRadioButton;
+	private RadioButton standardRadioButton;
 	
 	public HostMenu(int state) {
 		this.state = state;
@@ -42,7 +43,10 @@ public class HostMenu extends BasicGameState{
 		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
 				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
 
-		playerLivesSlider = new Slider(10, 1, 5, new Vector2f(110, 225), gc, "Player lives: ");
+		standardRadioButton = new RadioButton(new Vector2f(100, 75), true, "Standard");
+		kothRadioButton = new RadioButton(new Vector2f(100, 110), false, "King of the hill");
+		
+		playerLivesSlider = new Slider(10, 1, 5, new Vector2f(110, 175), gc, "Player lives: ");
 		scorelimitSlider = new Slider(100, 1, 15, new Vector2f(110, 225), gc, "Scorelimit: ");
 		roundSlider = new Slider(30, 1, 4, new Vector2f(110, 275), gc, "Rounds: ");
 		spawnTimeSlider = new Slider(20, 1, 5, new Vector2f(110, 325), gc, "Spawn time: ");
@@ -51,20 +55,22 @@ public class HostMenu extends BasicGameState{
 	}
 
 	@Override
-	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
-			throws SlickException {
+	public void render(GameContainer gc, StateBasedGame sbg, Graphics g) throws SlickException {
 		background.draw();
 		startButton.draw();
 		backButton.draw();
 
+		kothRadioButton.draw(g);
+		standardRadioButton.draw(g);
+		
 		roundSlider.draw(g);
 		spawnTimeSlider.draw(g);
 		roundTimeSlider.draw(g);
 		gameTimeSlider.draw(g);
 		
-		if(koth)
-			scorelimitSlider.draw(g);
-		else
+		scorelimitSlider.draw(g);
+		
+		if(standardRadioButton.isSelected())
 			playerLivesSlider.draw(g);
 	}
 
@@ -74,27 +80,25 @@ public class HostMenu extends BasicGameState{
 		spawnTimeSlider.update();
 		roundTimeSlider.update();
 		gameTimeSlider.update();
+		scorelimitSlider.update();
 		
 		if(playerLivesSlider != null){
 			playerLivesSlider.update();
 			tempLives = playerLivesSlider.getValue();
 		}
-		if(scorelimitSlider != null){
-			scorelimitSlider.update();
-			tempScore = scorelimitSlider.getValue();
+
+		if(kothRadioButton.isPressed(gc.getInput())){
+			kothRadioButton.setSelected(true);
+			standardRadioButton.setSelected(false);
+		}else if(standardRadioButton.isPressed(gc.getInput())){
+			standardRadioButton.setSelected(true);
+			kothRadioButton.setSelected(false);
 		}
 		
-		// debug
-		if(gc.getInput().isKeyPressed(Input.KEY_SPACE)){
-			if(koth){
-				playerLivesSlider = new Slider(10, 1, tempLives, new Vector2f(110, 225), gc, "Player lives: ");
-				scorelimitSlider = null;
-				koth = false;
-			} else {
-				scorelimitSlider = new Slider(100, 1, tempScore, new Vector2f(110, 225), gc, "Scorelimit: ");
-				playerLivesSlider = null;
-				koth = true;
-			}
+		if(standardRadioButton.isSelected()){
+			playerLivesSlider = new Slider(10, 1, tempLives, new Vector2f(110, 175), gc, "Player lives: ");
+		} else {
+			playerLivesSlider = null;
 		}
 				
 		if(backButton.isClicked(gc.getInput())){
@@ -102,14 +106,14 @@ public class HostMenu extends BasicGameState{
 		} else if(startButton.isClicked(gc.getInput())){
 			GameSettings gameSettings = new GameSettings();
 			
-			if(koth){
+			if(kothRadioButton.isSelected()){
 				gameSettings.gameMode = "koth";
-				gameSettings.scorelimit = scorelimitSlider.getValue();
 			} else {
-				gameSettings.gameMode = "dm";
+				gameSettings.gameMode = "standard";
 				gameSettings.playerLives = playerLivesSlider.getValue();
 			}
 			
+			gameSettings.scorelimit = scorelimitSlider.getValue();
 			gameSettings.rounds = roundSlider.getValue();
 			
 			// convert from seconds to milliseconds
@@ -127,5 +131,4 @@ public class HostMenu extends BasicGameState{
 	public int getID() {
 		return this.state;
 	}
-
 }

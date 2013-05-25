@@ -6,6 +6,7 @@ import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.gamemodes.GameConditions;
 import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
+import chalmers.TDA367.B17.gamemodes.StandardGameMode;
 import chalmers.TDA367.B17.animations.AnimationHandler;
 import chalmers.TDA367.B17.model.World;
 import chalmers.TDA367.B17.sound.SoundHandler;
@@ -66,14 +67,12 @@ public class GameController {
 	public void newGame(){
 		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
 		
-		if(gameSettings.gameMode.equals("koth"))
+		if(gameSettings.gameMode.equals("koth")){
 			gameMode = new KingOfTheHillMode(gameSettings.scorelimit);
-		else if(gameSettings.equals("dm"))
-			// dm
+		} else if(gameSettings.gameMode.equals("standard")){
+			gameMode = new StandardGameMode(gameSettings.scorelimit);
+		}
 			
-		// temp
-		gameMode = new KingOfTheHillMode(gameSettings.scorelimit);	
-		
 		gameMode.init(gameSettings.rounds, gameSettings.playerLives, gameSettings.spawnTime, gameSettings.roundTime, gameSettings.gameTime);
 	}
 	

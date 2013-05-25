@@ -22,15 +22,11 @@ public class RadioButton {
 	private Vector2f position;
 	
 	private Label label;
-	
-	private String labelText;
-	
+		
 	public RadioButton(Vector2f position, boolean selected, String labelText){
 		this.position = position;
 		this.selected = selected;
-		
-		this.labelText = labelText;
-		
+			
 		label = new Label(labelText, Color.black, (int)position.x+40, (int)position.y+5);
 		
 		selectedButton = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("button_radio_selected"), 25, 25);
@@ -66,5 +62,9 @@ public class RadioButton {
 	
 	public void setSelected(boolean selected){
 		this.selected = selected;
+	}
+	
+	public boolean isSelected(){
+		return selected;
 	}
 }
