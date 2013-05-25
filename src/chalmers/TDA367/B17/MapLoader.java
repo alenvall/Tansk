@@ -17,7 +17,7 @@ public class MapLoader {
 	public static boolean createEntities(String mapName){
 		Scanner scanner = null;
 		try {
-	        scanner = new Scanner(new File(Tansk.DATA_FOLDER + "/" + mapName + ".map"));
+	        scanner = new Scanner(new File(Tansk.DATA_FOLDER + "/" + mapName + ".txt"));
         } catch (FileNotFoundException e) {
 	        System.out.println("Couldn't find map: " + mapName + ".map");
 	        GameController.getInstance().getConsole().addMsg("Couldn't find map: " + mapName + ".map", MsgLevel.INFO);
