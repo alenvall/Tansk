@@ -60,7 +60,7 @@ public abstract class TanskState extends BasicGameState {
 		
 	@Override
 	public void update(GameContainer container, StateBasedGame game, int delta) throws SlickException {				
-		if(container.getInput().isKeyDown(Input.KEY_ESCAPE)){
+		if(container.getInput().isKeyPressed(Input.KEY_ESCAPE)){
 			game.enterState(Tansk.MENU);
 		}
 		

@@ -76,7 +76,7 @@ public class HostMenu extends BasicGameState{
 
 	@Override
 	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {				
-		if(gc.getInput().isKeyDown(Input.KEY_ESCAPE)){
+		if(gc.getInput().isKeyPressed(Input.KEY_ESCAPE)){
 			sbg.enterState(Tansk.MENU);
 		}
 		
