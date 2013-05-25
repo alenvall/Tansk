@@ -42,9 +42,9 @@ import chalmers.TDA367.B17.network.Network.Pck102_TankUpdate;
 import chalmers.TDA367.B17.network.Network.Pck103_ProjectileUpdate;
 import chalmers.TDA367.B17.network.Network.Pck10_TankCreated;
 import chalmers.TDA367.B17.network.Network.Pck11_StaticObjectCreated;
-import chalmers.TDA367.B17.network.Network.Pck1_LoginAnswer;
+import chalmers.TDA367.B17.network.Network.Pck1_JoinAnswer;
 import chalmers.TDA367.B17.network.Network.Pck2_ClientConfirmJoin;
-import chalmers.TDA367.B17.network.Network.Pck31_ChatMessage;
+import chalmers.TDA367.B17.network.Network.Pck3_1_ChatMessage;
 import chalmers.TDA367.B17.network.Network.Pck3_Message;
 import chalmers.TDA367.B17.network.Network.Pck4_ClientInput;
 import chalmers.TDA367.B17.network.Network.Pck5_PlayerKicked;
@@ -322,8 +322,8 @@ public class ClientState extends TanskState {
 	public void processPackets() {
 		Packet packet;
 		while ((packet = packetQueue.poll()) != null) {
-			if(packet instanceof Pck1_LoginAnswer) {
-				if(((Pck1_LoginAnswer) packet).accepted){
+			if(packet instanceof Pck1_JoinAnswer) {
+				if(((Pck1_JoinAnswer) packet).accepted){
 					Pck2_ClientConfirmJoin pck = new Pck2_ClientConfirmJoin();
 					pck.message = playerName + " connected!";
 					packet.getConnection().sendTCP(pck);
@@ -331,15 +331,15 @@ public class ClientState extends TanskState {
 					controller.getConsole().addMsg("Joined game!", MsgLevel.INFO);
 				} else {
 					GameController.getInstance().getConsole().addMsg("Connection refused by server.", MsgLevel.ERROR);
-					GameController.getInstance().getConsole().addMsg("Reason: " + ((Pck1_LoginAnswer) packet).reason, MsgLevel.ERROR);
+					GameController.getInstance().getConsole().addMsg("Reason: " + ((Pck1_JoinAnswer) packet).reason, MsgLevel.ERROR);
 					GameController.getInstance().getConsole().setTimerHide(false);
 					packet.getConnection().close();
 				}
 			}
 						
 			if(packet instanceof Pck3_Message){
-				if(packet instanceof Pck31_ChatMessage){
-					GameController.getInstance().getConsole().addMsg(((Pck31_ChatMessage)packet).message);
+				if(packet instanceof Pck3_1_ChatMessage){
+					GameController.getInstance().getConsole().addMsg(((Pck3_1_ChatMessage)packet).message);
 				} else {
 					String message = ((Pck3_Message) packet).message;
 					GameController.getInstance().getConsole().addMsg(message, MsgLevel.INFO);
@@ -432,7 +432,7 @@ public class ClientState extends TanskState {
 						msg = msg.replace('\n', ' ');
 						if(msg.length() > 39)
 							msg = msg.substring(0, 38);
-						Pck31_ChatMessage pck = new Pck31_ChatMessage();
+						Pck3_1_ChatMessage pck = new Pck3_1_ChatMessage();
 						pck.message = msg;
 						chatField.setText("");
 						client.sendTCP(pck);

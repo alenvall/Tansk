@@ -288,7 +288,7 @@ public class ServerState extends TanskState {
 		    	Pck0_JoinRequest pck = (Pck0_JoinRequest) packet;
 		    	
 		    	controller.getConsole().addMsg(pck.playerName + " attempting to connect..", MsgLevel.INFO);
-		    	Pck1_LoginAnswer responsePacket = new Pck1_LoginAnswer();
+		    	Pck1_JoinAnswer responsePacket = new Pck1_JoinAnswer();
 		    	
 	    		if(getPlayers().size() < 4){
 			    	if(!gameStarted){
@@ -321,9 +321,9 @@ public class ServerState extends TanskState {
  		    }
 		    
 		    if(packet instanceof Pck3_Message){
-			    if(packet instanceof Pck31_ChatMessage){
+			    if(packet instanceof Pck3_1_ChatMessage){
 			    	packet.setConnection(null);
-			    	GameController.getInstance().getConsole().addMsg(((Pck31_ChatMessage)packet).message);
+			    	GameController.getInstance().getConsole().addMsg(((Pck3_1_ChatMessage)packet).message);
 					addToAllClientsQueue(packet);
 			    }
  		    }

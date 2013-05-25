@@ -7,6 +7,7 @@ import org.newdawn.slick.geom.Vector2f;
 import com.esotericsoftware.kryo.*;
 import com.esotericsoftware.kryonet.*;
 
+/** Network utility class */
 public class Network {
 	static public final int PORT = 54555;
 	
@@ -17,25 +18,26 @@ public class Network {
 	static public void register(EndPoint endPoint) {
 		Kryo kryo = endPoint.getKryo();
 		kryo.register(Pck0_JoinRequest.class);
-		kryo.register(Pck1_LoginAnswer.class);
+		kryo.register(Pck1_JoinAnswer.class);
 		kryo.register(Pck2_ClientConfirmJoin.class);
 		kryo.register(Pck3_Message.class);
-		kryo.register(Pck31_ChatMessage.class);
+		kryo.register(Pck3_1_ChatMessage.class);
 		kryo.register(Pck4_ClientInput.class);
 		kryo.register(Pck5_PlayerKicked.class);
-		kryo.register(Vector2f.class);
 		kryo.register(Pck7_TankID.class);
-		kryo.register(ArrayList.class);
 		kryo.register(Pck8_EntityDestroyed.class);
-		kryo.register(Pck100_WorldState.class);
-		kryo.register(Pck11_StaticObjectCreated.class);
-		kryo.register(Pck102_TankUpdate.class);
-		kryo.register(Pck103_ProjectileUpdate.class);
 		kryo.register(Pck9_EntityCreated.class);
 		kryo.register(Pck10_TankCreated.class);
+		kryo.register(Pck11_StaticObjectCreated.class);
+		kryo.register(Pck100_WorldState.class);
+		kryo.register(Pck102_TankUpdate.class);
+		kryo.register(Pck103_ProjectileUpdate.class);
 		kryo.register(Pck1000_GameEvent.class);
+		kryo.register(ArrayList.class);
+		kryo.register(Vector2f.class);
 	}
-	
+
+	/** Packet */
 	public static class Packet{
 		private Connection connection;
 		
@@ -48,30 +50,37 @@ public class Network {
 		}
 	}
 	
+	/** Entity packet */
 	public static class EntityPacket extends Packet{
 		public int entityID;
 	}	
-		
+	
+	/** Sent by the client upon connection */		
 	public static class Pck0_JoinRequest extends Packet{
 		public String playerName;
 	}
-	
-	public static class Pck1_LoginAnswer extends Packet{
+
+	/** Answer sent by the server */
+	public static class Pck1_JoinAnswer extends Packet{
 		public boolean accepted = false;
 		public String reason = "N/A";
 	}
 
+	/** Sent by the client upon accepted join request */
 	public static class Pck2_ClientConfirmJoin extends Packet{
 		public String message;
 	}
-	
+
+	/** Message */
 	public static class Pck3_Message extends Packet{
 		public String message;
 	}
-	
-	public static class Pck31_ChatMessage extends Pck3_Message{
+
+	/** Chat message */
+	public static class Pck3_1_ChatMessage extends Pck3_Message{
 	}	
-		
+
+	/** Contains the clients key presses (and turret angle), sent by the client on every update */	
 	public static class Pck4_ClientInput extends Packet{
 		public boolean W_pressed;
 		public boolean A_pressed;
@@ -80,37 +89,45 @@ public class Network {
 		public boolean LMB_pressed;
         public float turretNewAngle;
 	}
-	
+
+	/** Player kicked */
 	public static class Pck5_PlayerKicked extends Packet{
 		public String reason;
 	}
-	
+
+	/** Clients players tank ID */
 	public static class Pck7_TankID extends Packet{
 		public int tankID;
 	}	
-	
+
+	/** Entity destroyed */
 	public static class Pck8_EntityDestroyed extends EntityPacket {
 	}
 
+	/** Entity created */
 	public static class Pck9_EntityCreated extends EntityPacket {
 		public String identifier;
 		public int possibleOwnerID;
 		public String color;
 	}
 
+	/** Tank created */
 	public static class Pck10_TankCreated extends Pck9_EntityCreated {
 		public Vector2f direction;
 		public String color;
 	}
-	
+
+	/** Static object created */
 	public static class Pck11_StaticObjectCreated extends Pck9_EntityCreated {
 		public Vector2f position;
 	}
-	
+
+	/** World state */
 	public static class Pck100_WorldState extends Packet {
 		public ArrayList<EntityPacket> updatePackets;
 	}
-	
+
+	/** Tank update */
 	public static class Pck102_TankUpdate extends EntityPacket{
 		public Vector2f tankPosition;
 		public Vector2f tankDirection;
@@ -120,12 +137,14 @@ public class Network {
 		public Vector2f shieldPosition;
 		public float turretAngle;
 	}	
-	
+
+	/** Projectile update */
 	public static class Pck103_ProjectileUpdate extends EntityPacket{
 		public Vector2f projPosition;
 		public Vector2f projDirection;
 	}
-		
+	
+	/** Game event */
 	public static class Pck1000_GameEvent extends Packet{
 		public int sourceID;
 		public String eventDesc;
