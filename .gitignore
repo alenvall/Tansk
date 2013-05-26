@@ -8,6 +8,6 @@
 .DS_Store
 
 # Package Files #
-*.jar
+#*.jar
 *.war
 *.ear
