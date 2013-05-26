@@ -1,7 +1,6 @@
 package chalmers.TDA367.B17.controller;
 
 import chalmers.TDA367.B17.Tansk;
-import chalmers.TDA367.B17.controller.GameController.GameSettings;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.gamemodes.GameConditions;

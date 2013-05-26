@@ -1,6 +1,6 @@
 package chalmers.TDA367.B17.view;
 
-import java.util.List;
+//import java.util.List;
 import java.util.ArrayList;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.Font;
@@ -11,7 +11,7 @@ import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.gamemodes.ScoreBasedGame;
+//import chalmers.TDA367.B17.gamemodes.ScoreBasedGame;
 import chalmers.TDA367.B17.model.Player;
 
 public class Scoreboard {
