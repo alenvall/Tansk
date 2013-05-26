@@ -330,18 +330,6 @@ public class Play extends TanskState {
 				g.drawString("Round starts in: " + 
 			(controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 350);
 		}
-		
-		if(controller.getGameMode().isGameOver()){
-			g.drawString("Game Over!", 500, 300);
-			for(Player p: controller.getGameMode().getWinningPlayers()){
-				g.drawString("Winner(s): " + p.getName(), 500, 400 + 25*controller.getGameMode().getWinningPlayers().indexOf(p));
-			}
-			int i = 0;
-			for(Player p : controller.getGameMode().getPlayerList()){
-				i++;
-				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (500+(i*25)));
-			}
-		}
 
 		if(controller.getGameMode() instanceof KingOfTheHillMode){
 			Vector2f tmpPosition = ((KingOfTheHillMode)controller.getGameMode()).getZone().getPosition();
