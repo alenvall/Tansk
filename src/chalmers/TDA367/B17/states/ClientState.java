@@ -228,6 +228,7 @@ public class ClientState extends TanskState {
 	public void renderGUI(GameContainer gc, Graphics g){
 		super.renderGUI(gc, g);
 		
+		g.setColor(Color.white);
 		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
 		chatField.render(gc, g);
 		
@@ -284,8 +285,7 @@ public class ClientState extends TanskState {
 			}
 			
 			if(gameSettings.gameMode.equals("koth")){
-				Vector2f tmpPosition = new Vector2f(512, 384);
-//	TODO						((KingOfTheHillMode)controller.getGameMode()).getZone().getPosition();
+				Vector2f tmpPosition = new Vector2f(KingOfTheHillMode.DEFAULT_ZONE_X, KingOfTheHillMode.DEFAULT_ZONE_Y);
 				g.setColor(Color.green);
 				g.fillRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75*
 						((float)localPlayer.getScore()/(float)gameSettings.scorelimit), 10, 10);
