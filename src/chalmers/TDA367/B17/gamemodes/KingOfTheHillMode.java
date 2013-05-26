@@ -20,30 +20,33 @@ public class KingOfTheHillMode extends ScoreBasedGame{
 	
 	@Override
 	public void update(int delta){
-		super.update(delta);
-		for(Player p: players){
-			if(!p.isActive()){
-				p.spawnTank();
-				
-			}
-			if(p.getTank() != null && playerInZone(p)){
-				if(!playersInZone.containsKey(p)){
-					playersInZone.put(p, 0);
-				}else{
-					Integer timeInZone = playersInZone.get(p);
-					timeInZone +=delta;
-					if(timeInZone > 1000){
-						incrementPlayerScore(p);
-						timeInZone = 0;
+		if(!isGameOver()){
+			super.update(delta);
+			for(Player p: players){
+				if(!p.isActive()){
+					p.spawnTank();
+					
+				}
+				if(p.getTank() != null && playerInZone(p)){
+					if(!playersInZone.containsKey(p)){
+						playersInZone.put(p, 0);
+					}else{
+						Integer timeInZone = playersInZone.get(p);
+						timeInZone +=delta;
+						GameController.getInstance().getConsole().addMsg("" + timeInZone);
+						if(timeInZone > 1000){
+							incrementPlayerScore(p);
+							timeInZone = 0;
+						}
+						playersInZone.put(p, timeInZone);
 					}
-					playersInZone.put(p, timeInZone);
 				}
 			}
-		}
-		for(Player p: players){
-			if(p.getScore() >= getScoreLimit()){
-				setGameOver(true);
-				addWinningPlayer(p);
+			for(Player p: players){
+				if(p.getScore() >= getScoreLimit()){
+					setGameOver(true);
+					addWinningPlayer(p);
+				}
 			}
 		}
 	}

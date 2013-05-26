@@ -38,6 +38,8 @@ public class Play extends TanskState {
 	private Player playerTwo;
 	private Player playerThree;
 	private Player playerFour;
+
+	private Font scoreboardFont;
 	
 	public Play(int state) {
 	    super(state);
@@ -48,6 +50,7 @@ public class Play extends TanskState {
 		super.init(gc, sbg);
 		
 		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
+		scoreboardFont = new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true);
 		
 		input = gc.getInput();
 		input.addMouseListener(this);
@@ -121,7 +124,7 @@ public class Play extends TanskState {
 	@Override
 	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {
 		super.update(gc, sbg, delta);
-		
+
 		if(input.isKeyDown(Input.KEY_W)){
 			if(playerOne.getTank() != null)
 				playerOne.getTank().accelerate(delta);
@@ -159,18 +162,18 @@ public class Play extends TanskState {
 			if(playerTwo.getTank() != null)
 				playerTwo.getTank().fireTurret(delta);
 		}
-		
+
 		if(input.isKeyDown(Input.KEY_Q)){
 			new SlowspeedyPickup(GameController.getInstance().generateID(), new Vector2f(800, 300));
 		}
-						
+
 		for(Player player : players){
 			if(player.getTank() != null){
 				AbstractTurret turret = player.getTank().getTurret();
 				turret.setRotation((float) Math.toDegrees(Math.atan2(turret.getPosition().x - input.getMouseX() + 0, turret.getPosition().y - input.getMouseY() + 0)* -1)+180);		
 			}
 		}
-		
+
 		if(input.isKeyDown(Input.KEY_UP)){
 			float tmp = controller.getSoundHandler().getVolume();
 			if(tmp + 0.05 < 1){
@@ -196,12 +199,12 @@ public class Play extends TanskState {
 				soundSwitch.turnSoundOn();
 			}
 		}
-		
+
 		//Weapons
 		if(playerOne.getTank() != null){
 			AbstractTank playerOneTank = playerOne.getTank();
 			AbstractTurret playerOneTurret = playerOneTank.getTurret();
-		
+
 			if(input.isKeyDown(Input.KEY_1)){
 				if(playerOne.getTank() != null)
 					playerOne.getTank().setTurret(new DefaultTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColor()));
@@ -227,11 +230,11 @@ public class Play extends TanskState {
 					playerOne.getTank().setTurret(new BounceTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColor()));
 			}
 		}
-		
+
 		controller.getWorld().getTankSpawner().update(delta);
 		controller.getWorld().getSpawner().update(delta);
 		controller.getGameMode().update(delta);
-		
+
 		updateWorld(delta);
 	}
 	
@@ -293,6 +296,7 @@ public class Play extends TanskState {
 		
 		controller.getAnimationHandler().renderAnimations();
 		renderGUI(container, g);
+		
 	}
 	
 	@Override
@@ -328,6 +332,25 @@ public class Play extends TanskState {
 		
 		g.setColor(Color.black);
 		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
+		
+
+		if(controller.getGameMode().isGameOver()){
+			g.setLineWidth(15);
+			g.setColor(new Color(100, 100, 100, 255));
+			int tmpSideLength = 350;
+			int tmpYOffset = 10;
+			Vector2f tmpPosition = new Vector2f(Tansk.SCREEN_WIDTH/2-tmpSideLength/2, Tansk.SCREEN_HEIGHT/2-tmpSideLength/2);
+			g.fillRect(tmpPosition.x, tmpPosition.y, tmpSideLength, tmpSideLength);
+			g.setColor(Color.black);
+			g.drawRect(tmpPosition.x, tmpPosition.y, tmpSideLength, tmpSideLength);
+			g.setLineWidth(1);
+			
+			g.setFont(scoreboardFont);
+			for(Player p: controller.getGameMode().getPlayerList()){
+				g.drawString(p.getName() + ": " + p.getScore(), tmpPosition.x+70, tmpPosition.y+tmpYOffset);
+				tmpYOffset += 30;
+			}
+		}
 	}	
 
 	private void renderEntities(ArrayList<Entity> entities){
