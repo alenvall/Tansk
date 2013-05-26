@@ -1,7 +1,5 @@
 package chalmers.TDA367.B17.model;
 
-import org.newdawn.slick.Color;
-import org.newdawn.slick.Graphics;
 import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.GameController;
