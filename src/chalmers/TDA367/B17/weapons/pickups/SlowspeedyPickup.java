@@ -4,6 +4,7 @@ import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractTank;
+import chalmers.TDA367.B17.model.AbstractWeaponPickup;
 import chalmers.TDA367.B17.weapons.SlowspeedyTurret;
 
 public class SlowspeedyPickup extends AbstractWeaponPickup{

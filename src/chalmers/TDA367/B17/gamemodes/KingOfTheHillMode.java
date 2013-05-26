@@ -5,7 +5,6 @@ import java.util.HashMap;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.model.KingOfTheHillZone;
 import chalmers.TDA367.B17.model.Player;
 
 public class KingOfTheHillMode extends ScoreBasedGame{

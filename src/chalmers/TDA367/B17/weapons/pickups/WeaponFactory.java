@@ -3,6 +3,7 @@ package chalmers.TDA367.B17.weapons.pickups;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.model.AbstractWeaponPickup;
 
 /**
  * A class used to generate a random weapon pickup.

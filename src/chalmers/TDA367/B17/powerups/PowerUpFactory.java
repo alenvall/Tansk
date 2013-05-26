@@ -3,7 +3,7 @@ package chalmers.TDA367.B17.powerups;
 import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.powerups.pickups.AbstractPowerUpPickup;
+import chalmers.TDA367.B17.model.AbstractPowerUpPickup;
 import chalmers.TDA367.B17.powerups.pickups.DamagePowerUpPickup;
 import chalmers.TDA367.B17.powerups.pickups.FireRatePowerUpPickup;
 import chalmers.TDA367.B17.powerups.pickups.HealthPowerUpPickup;

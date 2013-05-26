@@ -15,6 +15,7 @@ import chalmers.TDA367.B17.*;
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.controller.GameController.GameSettings;
 import chalmers.TDA367.B17.event.*;
+import chalmers.TDA367.B17.gamemodes.KingOfTheHillZone;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
 import chalmers.TDA367.B17.network.Network.*;

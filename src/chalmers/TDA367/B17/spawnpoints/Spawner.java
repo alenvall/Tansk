@@ -6,12 +6,12 @@ import org.newdawn.slick.geom.Vector2f;
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractObstacle;
+import chalmers.TDA367.B17.model.AbstractPowerUpPickup;
 import chalmers.TDA367.B17.model.AbstractSpawnPoint;
 import chalmers.TDA367.B17.model.AbstractTank;
+import chalmers.TDA367.B17.model.AbstractWeaponPickup;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.powerups.PowerUpFactory;
-import chalmers.TDA367.B17.powerups.pickups.AbstractPowerUpPickup;
-import chalmers.TDA367.B17.weapons.pickups.AbstractWeaponPickup;
 import chalmers.TDA367.B17.weapons.pickups.WeaponFactory;
 
 public class Spawner {

@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.model.AbstractPowerUpPickup;
 import chalmers.TDA367.B17.model.AbstractProjectile;
+import chalmers.TDA367.B17.model.AbstractWeaponPickup;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.Player;
 import chalmers.TDA367.B17.powerups.Shield;
-import chalmers.TDA367.B17.weapons.pickups.AbstractWeaponPickup;
-import chalmers.TDA367.B17.powerups.pickups.AbstractPowerUpPickup;
 
 public abstract class GameConditions {
 
