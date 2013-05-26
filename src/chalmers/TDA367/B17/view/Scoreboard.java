@@ -13,16 +13,19 @@ import chalmers.TDA367.B17.model.Player;
 
 public class Scoreboard {
 
+	public static final int RESTART_BUTTON = 1;
+	public static final int MENU_BUTTON = 2;
+	
 	private Font scoreboardFont;
 	private MenuButton toMenuButton;
 	private MenuButton restartButton;
 	private Vector2f position;
 	private int width;
 	private int height;
-	private ScoreboardButtons currentPressedButton;
-	
+	private int currentPressedButton;
 	
 	public Scoreboard(boolean isHost){
+		currentPressedButton = 0;
 		width = 350;
 		height = 350;
 		position = new Vector2f(Tansk.SCREEN_WIDTH/2-width/2, Tansk.SCREEN_HEIGHT/2-height/2);
@@ -39,10 +42,6 @@ public class Scoreboard {
 		}
 	}
 	
-	public enum ScoreboardButtons{
-		TO_MENU_BUTTON,
-		RESTART_BUTTON
-	}
 	
 	public void render(Graphics g){
 		g.setLineWidth(15);
@@ -66,11 +65,15 @@ public class Scoreboard {
 	
 	public void update(GameContainer gc){
 		if(toMenuButton.isClicked(gc.getInput())){
-			currentPressedButton = ScoreboardButtons.TO_MENU_BUTTON;
+			currentPressedButton = MENU_BUTTON;
 		}
 		
 		if(restartButton.isClicked(gc.getInput())){
-			currentPressedButton = ScoreboardButtons.RESTART_BUTTON;
+			currentPressedButton = RESTART_BUTTON;
 		}
+	}
+	
+	public int getCurrentPressedButton(){
+		return currentPressedButton;
 	}
 }
