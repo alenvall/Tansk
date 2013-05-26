@@ -29,11 +29,13 @@ public class KingOfTheHillMode extends ScoreBasedGame{
 					
 				}
 				if(p.getTank() != null && playerInZone(p)){
+//					if the player has not previously been in the zone this round, add him/her.
 					if(!playersInZone.containsKey(p)){
 						playersInZone.put(p, 0);
 					}else{
 						Integer timeInZone = playersInZone.get(p);
 						timeInZone +=delta;
+//						If the player has been in the KOTH zone for a whole second, award a point.
 						if(timeInZone > 1000){
 							incrementPlayerScore(p);
 							timeInZone = 0;
