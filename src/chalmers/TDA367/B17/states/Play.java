@@ -238,8 +238,8 @@ public class Play extends TanskState {
 
 		updateWorld(delta);
 		
-		scoreboard.update(gc);
 		if(controller.getGameMode().isGameOver()){
+			scoreboard.update(gc);
 			if(scoreboard.getCurrentPressedButton() == Scoreboard.MENU_BUTTON){
 				sbg.enterState(Tansk.MENU);
 			} else if (scoreboard.getCurrentPressedButton() == Scoreboard.RESTART_BUTTON){
