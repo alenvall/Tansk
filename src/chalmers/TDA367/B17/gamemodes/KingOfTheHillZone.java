@@ -4,7 +4,6 @@ import org.newdawn.slick.geom.*;
 
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.Entity;
-import chalmers.TDA367.B17.model.Entity.RenderLayer;
 
 /**
  * KingOfTheHillZone represents the zone that rewards points in KingOfTheHillMode.
