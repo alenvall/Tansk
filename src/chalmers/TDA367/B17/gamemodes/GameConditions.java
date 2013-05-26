@@ -78,7 +78,6 @@ public abstract class GameConditions {
 		this.roundTimer = roundTime;
 		winningPlayers = new ArrayList<Player>();
 		roundCounter = 0;
-		GameController.getInstance().getConsole().addMsg("GameConditions.init()");
 	}
 
 	/**
@@ -88,7 +87,6 @@ public abstract class GameConditions {
 	 */
 	public void newRound(){
 		roundEnded = false;
-		GameController.getInstance().getConsole().addMsg("GameConditions.newRound()");
 		roundWinner = null;
 		roundCounter += 1;
 		roundTimer = roundTime;

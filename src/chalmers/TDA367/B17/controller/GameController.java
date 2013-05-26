@@ -66,7 +66,6 @@ public class GameController {
 	 * @param serverWorld If the world should be on a server or not. 
 	 */
 	public void newGame(){
-		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
 		
 		if(gameSettings.gameMode.equals("koth")){
 			gameMode = new KingOfTheHillMode(gameSettings.scorelimit);
