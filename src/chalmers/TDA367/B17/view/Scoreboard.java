@@ -11,6 +11,7 @@ import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.Tansk;
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.gamemodes.ScoreBasedGame;
 import chalmers.TDA367.B17.model.Player;
 
 public class Scoreboard {
@@ -25,11 +26,13 @@ public class Scoreboard {
 	private int width;
 	private int height;
 	private int currentPressedButton;
+	private boolean isHost;
 	
 	public Scoreboard(boolean isHost){
 		currentPressedButton = 0;
 		width = 350;
 		height = 350;
+		this.isHost = isHost;
 		position = new Vector2f(Tansk.SCREEN_WIDTH/2-width/2, Tansk.SCREEN_HEIGHT/2-height/2);
 		
 		toMenuButton = new MenuButton((int)(position.x + 15), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_menu"),
@@ -39,9 +42,9 @@ public class Scoreboard {
 			restartButton = new MenuButton((int)(position.x + width - 165), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_restart"),
 					GameController.getInstance().getImageHandler().getSprite("button_restart_pressed"),
 					GameController.getInstance().getImageHandler().getSprite("button_restart_hover"));
-			
-			scoreboardFont = new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true);
 		}
+		scoreboardFont = new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true);
+		
 	}
 	
 	
@@ -74,16 +77,19 @@ public class Scoreboard {
 			}
 		}
 		g.drawString(winnerString, position.x+20, position.y+tmpYOffset);
-		
+		if(GameController.getInstance().getGameMode() instanceof ScoreBasedGame){
 		tmpYOffset += 45;
-		for(Player p: GameController.getInstance().getGameMode().getPlayerList()){
-			g.setColor(p.getColor());
-			g.drawString(p.getName() + ": " + p.getScore(), position.x+20, position.y+tmpYOffset);
-			tmpYOffset += 30;
+			for(Player p: GameController.getInstance().getGameMode().getPlayerList()){
+				g.setColor(p.getColor());
+				g.drawString(p.getName() + ": " + p.getScore(), position.x+20, position.y+tmpYOffset);
+				tmpYOffset += 30;
+			}
 		}
 		
 		toMenuButton.draw();
-		restartButton.draw();
+		if(isHost){
+			restartButton.draw();
+		}
 	}
 	
 	public void update(GameContainer gc){
@@ -91,7 +97,7 @@ public class Scoreboard {
 			currentPressedButton = MENU_BUTTON;
 		}
 		
-		if(restartButton.isClicked(gc.getInput())){
+		if(isHost && restartButton.isClicked(gc.getInput())){
 			currentPressedButton = RESTART_BUTTON;
 		}
 	}
