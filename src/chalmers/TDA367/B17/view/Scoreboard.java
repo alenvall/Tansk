@@ -1,5 +1,7 @@
 package chalmers.TDA367.B17.view;
 
+import java.util.List;
+
 import org.newdawn.slick.Color;
 import org.newdawn.slick.Font;
 import org.newdawn.slick.GameContainer;
@@ -44,6 +46,8 @@ public class Scoreboard {
 	
 	
 	public void render(Graphics g){
+		
+		
 		g.setLineWidth(15);
 		g.setColor(new Color(100, 100, 100, 255));
 		int tmpYOffset = 10;
@@ -52,7 +56,20 @@ public class Scoreboard {
 		g.drawRect(position.x, position.y, width, height);
 		g.setLineWidth(1);
 		
+
 		g.setFont(scoreboardFont);
+		String winnerString = "Winner(s): ";
+		List<Player> winningPlayers = GameController.getInstance().getGameMode().getWinningPlayers();
+		for(int i = 0; i<winningPlayers.size(); i++){
+			Player playerAtI = winningPlayers.get(i);
+			winnerString += playerAtI.getName();
+			if(winningPlayers.indexOf(playerAtI) < winningPlayers.size()-1){
+				winnerString += " & ";
+			}
+		}
+		g.drawString(winnerString, position.x+20, position.y+tmpYOffset);
+		
+		tmpYOffset += 45;
 		for(Player p: GameController.getInstance().getGameMode().getPlayerList()){
 			g.setColor(p.getColor());
 			g.drawString(p.getName() + ": " + p.getScore(), position.x+20, position.y+tmpYOffset);
