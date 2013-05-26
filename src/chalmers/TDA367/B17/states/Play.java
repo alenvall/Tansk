@@ -299,6 +299,15 @@ public class Play extends TanskState {
 					fourthLayerEnts.add(entity);
 			}
 		}
+		if(controller.getGameMode() instanceof KingOfTheHillMode){
+			Vector2f tmpPosition = ((KingOfTheHillMode)controller.getGameMode()).getZone().getPosition();
+			g.setColor(Color.green);
+			g.fillRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75*
+					((float)playerOne.getScore()/(float)((KingOfTheHillMode)controller.getGameMode()).getScoreLimit()), 10, 10);
+			g.setColor(Color.black);
+			g.drawRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75, 10, 10);
+		}
+		
 		renderEntities(firstLayerEnts);
 		renderEntities(secondLayerEnts);
 		renderEntities(thirdLayerEnts);
