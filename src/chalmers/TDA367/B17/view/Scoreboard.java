@@ -50,8 +50,7 @@ public class Scoreboard {
 	
 	public void render(Graphics g){
 		
-		
-		g.setLineWidth(10);
+		g.setLineWidth(7);
 		g.setColor(new Color(212, 212, 212, 255));
 		int tmpYOffset = 10;
 		g.fillRect(position.x, position.y, width, height);
