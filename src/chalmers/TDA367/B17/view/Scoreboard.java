@@ -47,7 +47,7 @@ public class Scoreboard {
 		
 		g.setFont(scoreboardFont);
 		for(Player p: GameController.getInstance().getGameMode().getPlayerList()){
-			g.drawString(p.getName() + ": " + p.getScore(), position.x+70, position.y+tmpYOffset);
+			g.drawString(p.getName() + ": " + p.getScore(), position.x+20, position.y+tmpYOffset);
 			tmpYOffset += 30;
 		}
 		
