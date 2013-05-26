@@ -9,6 +9,8 @@ import chalmers.TDA367.B17.model.Player;
 
 public class KingOfTheHillMode extends ScoreBasedGame{
 	
+	public static final float DEFAULT_ZONE_X = 512;
+	public static final float DEFAULT_ZONE_Y = 384;
 	private KingOfTheHillZone pointZone;
 	private HashMap<Player, Integer> playersInZone;
 	
