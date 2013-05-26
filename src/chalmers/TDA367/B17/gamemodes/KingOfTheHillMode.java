@@ -33,7 +33,6 @@ public class KingOfTheHillMode extends ScoreBasedGame{
 					}else{
 						Integer timeInZone = playersInZone.get(p);
 						timeInZone +=delta;
-						GameController.getInstance().getConsole().addMsg("" + timeInZone);
 						if(timeInZone > 1000){
 							incrementPlayerScore(p);
 							timeInZone = 0;
