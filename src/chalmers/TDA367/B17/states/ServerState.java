@@ -7,12 +7,12 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import org.newdawn.slick.*;
-import org.newdawn.slick.Color;
-import org.newdawn.slick.Graphics;
 import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
+import org.newdawn.slick.Color;
 
+import org.newdawn.slick.Graphics;
 import chalmers.TDA367.B17.*;
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.event.*;
@@ -23,6 +23,7 @@ import chalmers.TDA367.B17.network.*;
 import chalmers.TDA367.B17.network.Network.*;
 import chalmers.TDA367.B17.resource.MapLoader;
 import chalmers.TDA367.B17.view.Console;
+import chalmers.TDA367.B17.view.Scoreboard;
 import chalmers.TDA367.B17.view.Console.*;
 
 import com.esotericsoftware.kryonet.*;
@@ -41,6 +42,7 @@ public class ServerState extends TanskState {
 	private boolean gameStarted = false;
 	private boolean serverStarted;
 	private ArrayList<String>  colorPool;
+	private Scoreboard scoreboard;
 
 	private boolean gameOverActionTaken;
 	
@@ -137,6 +139,7 @@ public class ServerState extends TanskState {
 	        }
 			
 			controller.newGame();
+			scoreboard = new Scoreboard(true, controller.getGameMode().getPlayerList());
 		}
 	}
 	
@@ -157,13 +160,16 @@ public class ServerState extends TanskState {
 			Input input = gc.getInput();
 			int x = input.getMouseX();
 			int y = input.getMouseY();
-			if(x > 410 && x < 465 && y > 495 && y < 525){
+
+			int clickX = chatField.getX() + chatField.getWidth()+ 10;
+			int clickY = chatField.getY();
+			if(x > clickX && x < clickX + 140 && y > clickY && y < clickY + chatField.getHeight()){
 				if(input.isMousePressed(0)){
 					gameStarted = true;
 
 					//Start a new round
 					if(controller.getGameMode() instanceof KingOfTheHillMode)
-						((KingOfTheHillMode)controller.getGameMode()).generateZone(new Vector2f(512, 384));
+						((KingOfTheHillMode)controller.getGameMode()).generateZone(new Vector2f(KingOfTheHillMode.DEFAULT_ZONE_X, KingOfTheHillMode.DEFAULT_ZONE_Y));
 					Pck14_GameDelayStarted pck = new Pck14_GameDelayStarted();
 					pck.delayTimer = 5000;
 					addToAllClientsQueue(pck);
@@ -190,6 +196,14 @@ public class ServerState extends TanskState {
 				Pck15_GameOver pck = new Pck15_GameOver();
 				addToAllClientsQueue(pck);
 				gameOverActionTaken = true;
+			}	
+			if(controller.getGameMode().isGameOver()){
+				scoreboard.update(gc);
+				if(scoreboard.getCurrentPressedButton() == Scoreboard.MENU_BUTTON){
+					game.enterState(Tansk.MENU);
+				} else if (scoreboard.getCurrentPressedButton() == Scoreboard.RESTART_BUTTON){
+					game.enterState(Tansk.PLAY);
+				}
 			}
 		}
 		updateClients();
@@ -231,15 +245,18 @@ public class ServerState extends TanskState {
 	public void renderGUI(GameContainer gc, Graphics g){
 		super.renderGUI(gc, g);
 
+		if(controller.getGameMode().isGameOver()){
+			
+		}
+		
 		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
 		chatField.render(gc, g);
 		if(gameStarted)
-			
 			g.setColor(Color.green);
 		else
 			g.setColor(Color.red);
-		g.drawString("Run!", 415, 500);
-		g.drawRect(410, 495, 50, 30);
+		g.drawString("Start!", chatField.getX() + chatField.getWidth()+ 55, chatField.getY() + 2);
+		g.drawRect(chatField.getX() + chatField.getWidth()+ 10, chatField.getY(), 140, chatField.getHeight());
 
 		g.setColor(Color.white);
 		if(getPlayers() != null)
@@ -249,8 +266,11 @@ public class ServerState extends TanskState {
 		if(gameStarted){
 			if(controller.getGameMode().isDelaying()){
 				if(controller.getGameMode().getDelayTimer() > 0)
-					g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+					g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 390, 220);
 			}
+		}
+		if(controller.getGameMode().isGameOver()){
+			scoreboard.render(g);
 		}
 	}
 			
