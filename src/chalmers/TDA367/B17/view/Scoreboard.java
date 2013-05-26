@@ -26,21 +26,21 @@ public class Scoreboard {
 	private int width;
 	private int height;
 	private int currentPressedButton;
-	private boolean isHost;
+	private boolean singeplayer;
 	private ArrayList<Player> playerList;
 	
-	public Scoreboard(boolean isHost, ArrayList<Player> playerList){
+	public Scoreboard(boolean singeplayer, ArrayList<Player> playerList){
 		this.playerList = playerList;
 		currentPressedButton = 0;
 		width = 350;
 		height = 350;
-		this.isHost = isHost;
+		this.singeplayer = singeplayer;
 		position = new Vector2f(Tansk.SCREEN_WIDTH/2-width/2, Tansk.SCREEN_HEIGHT/2-height/2);
 		
 		toMenuButton = new MenuButton((int)(position.x + 15), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_menu"),
 				GameController.getInstance().getImageHandler().getSprite("button_menu_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_menu_hover"));
-		if(isHost){
+		if(singeplayer){
 			restartButton = new MenuButton((int)(position.x + width - 165), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_restart"),
 					GameController.getInstance().getImageHandler().getSprite("button_restart_pressed"),
 					GameController.getInstance().getImageHandler().getSprite("button_restart_hover"));
@@ -92,7 +92,7 @@ public class Scoreboard {
 		}
 		
 		toMenuButton.draw();
-		if(isHost){
+		if(singeplayer){
 			restartButton.draw();
 		}
 	}
@@ -102,7 +102,7 @@ public class Scoreboard {
 			currentPressedButton = MENU_BUTTON;
 		}
 
-		if(isHost && restartButton.isClicked(gc.getInput())){
+		if(singeplayer && restartButton.isClicked(gc.getInput())){
 			currentPressedButton = RESTART_BUTTON;
 		}
 	}
