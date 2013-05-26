@@ -2,6 +2,7 @@ package chalmers.TDA367.B17.view;
 
 import org.newdawn.slick.Color;
 import org.newdawn.slick.Font;
+import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.TrueTypeFont;
 import org.newdawn.slick.geom.Vector2f;
@@ -18,8 +19,10 @@ public class Scoreboard {
 	private Vector2f position;
 	private int width;
 	private int height;
+	private ScoreboardButtons currentPressedButton;
 	
-	public Scoreboard(){
+	
+	public Scoreboard(boolean isHost){
 		width = 350;
 		height = 350;
 		position = new Vector2f(Tansk.SCREEN_WIDTH/2-width/2, Tansk.SCREEN_HEIGHT/2-height/2);
@@ -27,13 +30,18 @@ public class Scoreboard {
 		toMenuButton = new MenuButton((int)(position.x + 15), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_menu"),
 				GameController.getInstance().getImageHandler().getSprite("button_menu_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_menu_hover"));
-		
-		restartButton = new MenuButton((int)(position.x + width - 165), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_restart"),
-				GameController.getInstance().getImageHandler().getSprite("button_restart_pressed"),
-				GameController.getInstance().getImageHandler().getSprite("button_restart_hover"));
-		
-		scoreboardFont = new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true);
-		
+		if(isHost){
+			restartButton = new MenuButton((int)(position.x + width - 165), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_restart"),
+					GameController.getInstance().getImageHandler().getSprite("button_restart_pressed"),
+					GameController.getInstance().getImageHandler().getSprite("button_restart_hover"));
+			
+			scoreboardFont = new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true);
+		}
+	}
+	
+	public enum ScoreboardButtons{
+		TO_MENU_BUTTON,
+		RESTART_BUTTON
 	}
 	
 	public void render(Graphics g){
@@ -47,11 +55,22 @@ public class Scoreboard {
 		
 		g.setFont(scoreboardFont);
 		for(Player p: GameController.getInstance().getGameMode().getPlayerList()){
+			g.setColor(p.getColor());
 			g.drawString(p.getName() + ": " + p.getScore(), position.x+20, position.y+tmpYOffset);
 			tmpYOffset += 30;
 		}
 		
 		toMenuButton.draw();
 		restartButton.draw();
+	}
+	
+	public void update(GameContainer gc){
+		if(toMenuButton.isClicked(gc.getInput())){
+			currentPressedButton = ScoreboardButtons.TO_MENU_BUTTON;
+		}
+		
+		if(restartButton.isClicked(gc.getInput())){
+			currentPressedButton = ScoreboardButtons.RESTART_BUTTON;
+		}
 	}
 }
