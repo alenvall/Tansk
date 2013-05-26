@@ -28,7 +28,7 @@ public class Scoreboard {
 				GameController.getInstance().getImageHandler().getSprite("button_menu_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_menu_hover"));
 		
-		restartButton = new MenuButton((int)(position.x + width - 15), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_restart"),
+		restartButton = new MenuButton((int)(position.x + width - 165), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_restart"),
 				GameController.getInstance().getImageHandler().getSprite("button_restart_pressed"),
 				GameController.getInstance().getImageHandler().getSprite("button_restart_hover"));
 		
