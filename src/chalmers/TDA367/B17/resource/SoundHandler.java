@@ -71,10 +71,7 @@ public class SoundHandler {
 	 * @param event a GameEvent
 	 */
 	public void playSound(GameEvent event){
-		if(event.getEventDesc().equals("MENU_MUSIC")) {
-			sounds.get("Tensions").play(1, volume);
-		}
-		else if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
+		if(event.getEventDesc().equals("TANK_DEATH_EVENT")) {
 			sounds.get("Tank_Destroyed").play(1, volume);
 		}else if(event.getEventDesc().equals("DEFAULTTURRET_FIRE_EVENT")){
 			sounds.get("Default_Firing").play(1, volume);
