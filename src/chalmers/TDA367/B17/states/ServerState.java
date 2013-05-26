@@ -41,6 +41,8 @@ public class ServerState extends TanskState {
 	private boolean gameStarted = false;
 	private boolean serverStarted;
 	private ArrayList<String>  colorPool;
+
+	private boolean gameOverActionTaken;
 	
 	private ServerState(int state) {
 		super(state);
@@ -67,6 +69,7 @@ public class ServerState extends TanskState {
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 
+		gameOverActionTaken = false;
 		colorPool = new ArrayList<String>();
 		colorPool.add("blue");
 		colorPool.add("red");
@@ -182,6 +185,12 @@ public class ServerState extends TanskState {
 			updatePlayerTanks(delta);
 			updateWorld(delta);
 			createWorldState();
+			
+			if(!gameOverActionTaken && controller.getGameMode().isGameOver()){
+				Pck15_GameOver pck = new Pck15_GameOver();
+				addToAllClientsQueue(pck);
+				gameOverActionTaken = true;
+			}
 		}
 		updateClients();
     }
@@ -237,32 +246,14 @@ public class ServerState extends TanskState {
 			g.drawString("Players: " + getPlayers().size() + "/4", 18, 480);
 		g.drawString("LAN IP: " + ipAddress, 18, 500);
 					
-//		TODO: not do this in render maybe
-		//Cool timer
 		if(gameStarted){
 			if(controller.getGameMode().isDelaying()){
 				if(controller.getGameMode().getDelayTimer() > 0)
-//					serverMessage("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!");
 					g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
 			}
 		}
-		
-//		if(controller.getGameMode().isGameOver()){
-//			serverMessage("Game Over!");
-//			g.drawString("Game Over!", 500, 300);
-//			serverMessage("Winner: " + controller.getGameMode().getWinningPlayer().getName());
-//			for(Player p: controller.getGameMode().getWinningPlayers()){
-//				g.drawString("Winner: " + p.getName(), 500, 400 + 10*controller.getGameMode().getWinningPlayers().indexOf(p));
-//			}
-//			int i = 0;
-//			for(Player p : controller.getGameMode().getPlayerList()){
-//				i++;
-//				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
-//				serverMessage(p.getName() + "'s score: " + p.getScore());
-//			}
-//		}
 	}
-	
+			
 	private void renderEntities(ArrayList<Entity> entities, Graphics g){
 		g.setColor(Color.yellow);
 		for(Entity entity : entities){

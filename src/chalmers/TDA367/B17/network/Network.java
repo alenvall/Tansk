@@ -35,6 +35,7 @@ public class Network {
 		kryo.register(Pck13_UpdatePlayer.class);
 		kryo.register(GameSettings.class);
 		kryo.register(Pck14_GameDelayStarted.class);
+		kryo.register(Pck15_GameOver.class);
 		kryo.register(Pck100_WorldState.class);
 		kryo.register(Pck102_TankUpdate.class);
 		kryo.register(Pck103_ProjectileUpdate.class);
@@ -158,6 +159,9 @@ public class Network {
 	
 	public static class Pck14_GameDelayStarted extends Packet {
 		public int delayTimer;
+	}
+
+	public static class Pck15_GameOver extends Packet {
 	}
 	
 	/** World state */

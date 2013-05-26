@@ -67,5 +67,7 @@ private int y;
 			g.setLineWidth(2);
 			g.drawRoundRect(x, y+height+10, width, height, height/2);
 		}
+		
+		g.setLineWidth(1);
 	}
 }
