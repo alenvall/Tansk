@@ -19,6 +19,7 @@ import chalmers.TDA367.B17.resource.MapLoader;
 import chalmers.TDA367.B17.resource.SoundHandler.MusicType;
 import chalmers.TDA367.B17.view.Console;
 import chalmers.TDA367.B17.view.Lifebar;
+import chalmers.TDA367.B17.view.Scoreboard;
 import chalmers.TDA367.B17.view.SoundSwitch;
 import chalmers.TDA367.B17.view.Console.OutputLevel;
 import chalmers.TDA367.B17.weapons.*;
@@ -34,12 +35,12 @@ public class Play extends TanskState {
 	private SpriteSheet entSprite = null;
 	private Lifebar lifebar;
 	private SoundSwitch soundSwitch;
+	private Scoreboard scoreboard;
 	
 	private Player playerTwo;
 	private Player playerThree;
 	private Player playerFour;
 
-	private Font scoreboardFont;
 	
 	public Play(int state) {
 	    super(state);
@@ -50,7 +51,6 @@ public class Play extends TanskState {
 		super.init(gc, sbg);
 		
 		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
-		scoreboardFont = new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true);
 		
 		input = gc.getInput();
 		input.addMouseListener(this);
@@ -86,6 +86,7 @@ public class Play extends TanskState {
 			
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
+		scoreboard = new Scoreboard();
 
 		//Players
 		playerOne = new Player("Euler");
@@ -335,21 +336,7 @@ public class Play extends TanskState {
 		
 
 		if(controller.getGameMode().isGameOver()){
-			g.setLineWidth(15);
-			g.setColor(new Color(100, 100, 100, 255));
-			int tmpSideLength = 350;
-			int tmpYOffset = 10;
-			Vector2f tmpPosition = new Vector2f(Tansk.SCREEN_WIDTH/2-tmpSideLength/2, Tansk.SCREEN_HEIGHT/2-tmpSideLength/2);
-			g.fillRect(tmpPosition.x, tmpPosition.y, tmpSideLength, tmpSideLength);
-			g.setColor(Color.black);
-			g.drawRect(tmpPosition.x, tmpPosition.y, tmpSideLength, tmpSideLength);
-			g.setLineWidth(1);
-			
-			g.setFont(scoreboardFont);
-			for(Player p: controller.getGameMode().getPlayerList()){
-				g.drawString(p.getName() + ": " + p.getScore(), tmpPosition.x+70, tmpPosition.y+tmpYOffset);
-				tmpYOffset += 30;
-			}
+			scoreboard.render(g);
 		}
 	}	
 
