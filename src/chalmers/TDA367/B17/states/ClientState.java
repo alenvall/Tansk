@@ -1,103 +1,59 @@
 package chalmers.TDA367.B17.states;
 
 import java.awt.Dimension;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.newdawn.slick.Color;
-import org.newdawn.slick.GameContainer;
-import org.newdawn.slick.Graphics;
-import org.newdawn.slick.Image;
-import org.newdawn.slick.Input;
-import org.newdawn.slick.SlickException;
-import org.newdawn.slick.SpriteSheet;
-import org.newdawn.slick.geom.Shape;
-import org.newdawn.slick.geom.Transform;
-import org.newdawn.slick.geom.Vector2f;
-import org.newdawn.slick.gui.TextField;
-import org.newdawn.slick.state.StateBasedGame;
+import org.newdawn.slick.*;
+import org.newdawn.slick.geom.*;
+import org.newdawn.slick.gui.*;
+import org.newdawn.slick.state.*;
 
-import chalmers.TDA367.B17.MapLoader;
-import chalmers.TDA367.B17.Tansk;
-import chalmers.TDA367.B17.console.Console;
-import chalmers.TDA367.B17.console.Console.MsgLevel;
-import chalmers.TDA367.B17.console.Console.OutputLevel;
-import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.event.GameEvent;
-import chalmers.TDA367.B17.model.AbstractProjectile;
-import chalmers.TDA367.B17.model.AbstractTank;
-import chalmers.TDA367.B17.model.AbstractTurret;
-import chalmers.TDA367.B17.model.Entity;
+import chalmers.TDA367.B17.*;
+import chalmers.TDA367.B17.controller.*;
+import chalmers.TDA367.B17.controller.GameController.GameSettings;
+import chalmers.TDA367.B17.event.*;
+import chalmers.TDA367.B17.gamemodes.*;
+import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
-import chalmers.TDA367.B17.model.World;
-import chalmers.TDA367.B17.network.Network;
-import chalmers.TDA367.B17.network.Network.EntityPacket;
-import chalmers.TDA367.B17.network.Network.Packet;
-import chalmers.TDA367.B17.network.Network.Pck0_JoinRequest;
-import chalmers.TDA367.B17.network.Network.Pck1000_GameEvent;
-import chalmers.TDA367.B17.network.Network.Pck100_WorldState;
-import chalmers.TDA367.B17.network.Network.Pck102_TankUpdate;
-import chalmers.TDA367.B17.network.Network.Pck103_ProjectileUpdate;
-import chalmers.TDA367.B17.network.Network.Pck10_TankCreated;
-import chalmers.TDA367.B17.network.Network.Pck11_PickupCreated;
-import chalmers.TDA367.B17.network.Network.Pck1_LoginAnswer;
-import chalmers.TDA367.B17.network.Network.Pck2_ClientConfirmJoin;
-import chalmers.TDA367.B17.network.Network.Pck31_ChatMessage;
-import chalmers.TDA367.B17.network.Network.Pck3_Message;
-import chalmers.TDA367.B17.network.Network.Pck4_ClientInput;
-import chalmers.TDA367.B17.network.Network.Pck7_TankID;
-import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
-import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
-import chalmers.TDA367.B17.powerups.Shield;
-import chalmers.TDA367.B17.powerups.powerupPickups.DamagePowerUpPickup;
-import chalmers.TDA367.B17.powerups.powerupPickups.FireRatePowerUpPickup;
-import chalmers.TDA367.B17.powerups.powerupPickups.HealthPowerUpPickup;
-import chalmers.TDA367.B17.powerups.powerupPickups.ShieldPowerUpPickup;
-import chalmers.TDA367.B17.powerups.powerupPickups.SpeedPowerUpPickup;
-import chalmers.TDA367.B17.tanks.DefaultTank;
-import chalmers.TDA367.B17.view.Lifebar;
-import chalmers.TDA367.B17.view.SoundSwitch;
-import chalmers.TDA367.B17.weaponPickups.BouncePickup;
-import chalmers.TDA367.B17.weaponPickups.FlamethrowerPickup;
-import chalmers.TDA367.B17.weaponPickups.ShockwavePickup;
-import chalmers.TDA367.B17.weaponPickups.ShotgunPickup;
-import chalmers.TDA367.B17.weaponPickups.SlowspeedyPickup;
-import chalmers.TDA367.B17.weapons.BounceProjectile;
-import chalmers.TDA367.B17.weapons.BounceTurret;
-import chalmers.TDA367.B17.weapons.DefaultProjectile;
-import chalmers.TDA367.B17.weapons.DefaultTurret;
-import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
-import chalmers.TDA367.B17.weapons.FlamethrowerTurret;
-import chalmers.TDA367.B17.weapons.ShockwaveProjectile;
-import chalmers.TDA367.B17.weapons.ShockwaveSecondaryProjectile;
-import chalmers.TDA367.B17.weapons.ShockwaveTurret;
-import chalmers.TDA367.B17.weapons.ShotgunProjectile;
-import chalmers.TDA367.B17.weapons.ShotgunTurret;
-import chalmers.TDA367.B17.weapons.SlowspeedyProjectile;
-import chalmers.TDA367.B17.weapons.SlowspeedyTurret;
+import chalmers.TDA367.B17.network.Network.*;
+import chalmers.TDA367.B17.powerups.*;
+import chalmers.TDA367.B17.powerups.pickups.*;
+import chalmers.TDA367.B17.resource.*;
+import chalmers.TDA367.B17.resource.SoundHandler.*;
+import chalmers.TDA367.B17.tanks.*;
+import chalmers.TDA367.B17.view.*;
+import chalmers.TDA367.B17.view.Console.*;
+import chalmers.TDA367.B17.weapons.*;
+import chalmers.TDA367.B17.weapons.pickups.*;
 
-import com.esotericsoftware.kryonet.Client;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.Listener;
+import com.esotericsoftware.kryonet.*;
 import com.esotericsoftware.minlog.Log;
 
 public class ClientState extends TanskState {
-	private static ClientState instance;
 	
+	private static ClientState instance;
 	private Client client;
 	private boolean isConnected;
 	private Input input;
 	private Image map = null;
 	private SpriteSheet entSprite;
 	private String playerName;
-	private boolean mapLoaded;
-	private AbstractTank playerTank;
+	private boolean mapLoadAttempted;
 	private Lifebar lifebar;
+	private Scoreboard scoreboard;
 	private SoundSwitch soundSwitch;
 	protected TextField chatField;
+	private ArrayList<Player> playerList;
+	private Player localPlayer;
+	private int uniqueIdentifier;
+	private GameSettings gameSettings;
+	private boolean gameDelaying;	
+	private boolean gameOver;
+	private int delayTimer;
+	private boolean showInfo;
 		
 	private ClientState(int state) {
 		super(state);
@@ -109,77 +65,93 @@ public class ClientState extends TanskState {
 	
 		return instance;
 	}
-	
-	@Override
-    public void init(GameContainer gc, StateBasedGame game) throws SlickException {
-		super.init(gc, game);
-		
-		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
-		playerName = "Nisse" + Math.round(Math.random() * 1000);
-    }
-	
-	@Override
-	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
-		super.enter(gc, game);
 
-		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
-		Console console = new Console(10, 533, 450, 192, OutputLevel.ALL);
-		console.setBorder(false);
-		console.setTimerHide(true);
-		controller.setConsole(console);
+	public void setClient(final Client client){
+		this.client = client;
 
-		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
-		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
-		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
-		
-		client = new Client();
-		Network.register(client);
-		client.addListener(new Listener(){
+		this.client.addListener(new Listener(){
 			@Override
 			public void connected(Connection connection) {
+				// send a request to join the server
 				Pck0_JoinRequest pck = new Pck0_JoinRequest();
-				pck.playerName = ClientState.getInstance().getPlayerName();
-			    client.sendTCP(pck);
+				uniqueIdentifier = (int) (Math.random()*1000*Math.random());
+				pck.unique = uniqueIdentifier;
+				pck.playerName = GameController.getInstance().getPlayerName();;
+				client.sendTCP(pck);
 			}
-			
+
 			public void received(Connection con, Object msg) {
-			   super.received(con, msg);
-			   if (msg instanceof Packet) {
-				   Packet packet = (Packet)msg;
-				   packet.setConnection(con);
-				   packetQueue.add(packet);
-				   packetsReceived++;
-			   }
+				super.received(con, msg);
+				if (msg instanceof Packet) {
+					Packet packet = (Packet)msg;
+					packet.setConnection(con);
+					packetQueue.add(packet);
+					packetsReceived++;
+				}
 			}
-			
+
 			@Override
 			public void disconnected(Connection connection) {
 				GameController.getInstance().getConsole().addMsg("Disconnected from server.", MsgLevel.ERROR);
 				GameController.getInstance().getConsole().setTimerHide(false);
 			}
 		});
-		client.start();
+	}
+	
+	@Override
+    public void init(GameContainer gc, StateBasedGame game) throws SlickException {
+		super.init(gc, game);
 		
-		try {
-	        client.connect(600000, "127.0.0.1", Network.PORT, Network.PORT);
-        } catch (IOException e) {
-        	Log.info("[CLIENT] Failed to connect!");
-			GameController.getInstance().getConsole().addMsg("Failed to connect to server.", MsgLevel.ERROR);
-			GameController.getInstance().getConsole().setTimerHide(false);
-	        e.printStackTrace();
-	        client.stop();
-        } 
+		map = new Image(Tansk.IMAGES_FOLDER + "/map.png");
+    }
+	
+	@Override
+	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
+		super.enter(gc, game);
+		
+		gameOver = false;
+		showInfo = true;
+		gameSettings = new GameSettings();
+		playerList = new ArrayList<Player>();
+		mapLoadAttempted = false;
+		playerName = GameController.getInstance().getPlayerName();
+		
+		controller.getSoundHandler().stopAllMusic();
+		chatField = new TextField(gc, gc.getDefaultFont(), 10, 733, 450, 23);
+		Console console = new Console(10, 533, 450, 192, Color.black, OutputLevel.ALL);
+		console.setBorder(false);
+		console.setTimerHide(true);
+		controller.setConsole(console);
+
+		scoreboard = new Scoreboard(false, playerList);
+		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
+		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
+		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
+
+		client.start();
 		
 		input = gc.getInput();
 		input.addMouseListener(this);
+	}
+	
+	@Override
+	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
+		// cleanup
+		super.leave(gc, sbg);
+		isConnected = false;
+		client.close();
 	}	
 	
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		super.update(gc, game, delta);
-		if((isConnected) && (!mapLoaded)){
-			MapLoader.createEntities("whatever");
-			mapLoaded = true;
+		delayTimer -= delta;
+		if((isConnected) && (!mapLoadAttempted)){
+			mapLoadAttempted = true;
+			if(!MapLoader.createEntities("map_standard")){
+				client.close();
+			}
+			controller.getSoundHandler().playMusic(MusicType.BATTLE_MUSIC);
 		}
 		
 		if(input.isKeyDown(Input.KEY_UP)){
@@ -207,12 +179,21 @@ public class ClientState extends TanskState {
 		}
 		
 		GameController.getInstance().getConsole().update(delta);
-		processPackets();			
-		sendClientInput(gc.getInput());
+		processPackets();
+		// only send input if the game is running
+		if(!gameOver){
+			sendClientInput(gc.getInput());
+		} else {
+			scoreboard.update(gc);
+			if(scoreboard.getCurrentPressedButton() == Scoreboard.MENU_BUTTON){
+				game.enterState(Tansk.MENU);
+			} 
+		}
 	}
 
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		// render the sprites in layers
 		if(isConnected){
 			g.drawImage(map, 0, 0);
 			if(controller.getWorld().getEntities() != null){
@@ -251,31 +232,87 @@ public class ClientState extends TanskState {
 	public void renderGUI(GameContainer gc, Graphics g){
 		super.renderGUI(gc, g);
 		
+		// render the chatfield
+		g.setColor(Color.white);
 		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
 		chatField.render(gc, g);
 		
-		if(playerTank != null){
-			if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
-				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), playerTank.getShield().getHealth()/playerTank.getMaxShieldHealth(), g);
-			}else{
-				lifebar.render(playerTank.getHealth()/playerTank.getMaxHealth(), 0, g);
+		// countdown timer
+		if(gameDelaying){
+			if(delayTimer > 0){
+				g.setColor(Color.black);
+				g.drawString("Round starts in: ", 440, 75);
+				g.drawString((delayTimer/1000 + 1) + " seconds!", 465, 95);
+				g.setColor(Color.white);
+				if(delayTimer < 3000)
+					showInfo = false;
+			} else {
+				gameDelaying = false;
 			}
 		}
+		
+		if(localPlayer != null){
+			// render game info
+			if(showInfo && client.isConnected()){
+				g.setColor(Color.black);
+				g.drawString("Waiting for host to start the game...", 350, 175);
+				g.drawString("You are:", 450, 195);
+				g.setColor(localPlayer.getColor());
+				g.drawString(localPlayer.getColorAsString().toUpperCase(), 528, 195);
+				
+				g.setColor(Color.black);
+				if(gameSettings.gameMode.equals("koth")){
+					g.drawString("KING OF THE HILL", 435, 235);
+					g.drawString("Score points by being in the zone in the center!", 295, 255);
+				} else if(gameSettings.gameMode.equals("standard")){
+					g.drawString("STANDARD", 465, 235);
+					g.drawString("The last one alive gets the most points!", 340, 255);
+				}
+				
+				g.drawString("Scorelimit: " + gameSettings.scorelimit, 445, 315);
+				g.drawString("Rounds: " + gameSettings.rounds, 445, 335);
+				g.drawString("Player lives: " + gameSettings.playerLives, 445, 355);
+				g.drawString("Spawn time: " + gameSettings.spawnTime/1000, 445, 375);
+				g.drawString("Round time: " + gameSettings.roundTime/1000, 445, 395);
+				g.drawString("Game time: " + gameSettings.gameTime/1000, 445, 415);
+
+
+				g.drawString("Players:", 445, 455);
+				int tempY = 475;
+				for(Player player : playerList){
+					g.setColor(player.getColor());
+					g.drawString(player.getName(), 445, tempY);
+					tempY += 20;
+				}
+
+				g.setColor(Color.black);
+				g.drawString("Press 'Enter' to chat...", 400, 575);
+				g.setColor(Color.white);
+			}
+			
+			if(gameSettings.gameMode.equals("koth")){
+				Vector2f tmpPosition = new Vector2f(KingOfTheHillMode.DEFAULT_ZONE_X, KingOfTheHillMode.DEFAULT_ZONE_Y);
+				g.setColor(Color.green);
+				g.fillRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75*
+						((float)localPlayer.getScore()/(float)gameSettings.scorelimit), 10, 10);
+				g.setColor(Color.black);
+				g.drawRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75, 10, 10);
+			}
+			
+			if(localPlayer.getTank() != null){
+				if(localPlayer.getTank().getShield() != null && localPlayer.getTank().getShield().getHealth() <= 100){
+					lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, localPlayer.getTank().getShield().getHealth()/AbstractTank.MAX_SHIELD_HEALTH, g);
+				}else{
+					lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, 0, g);
+				}
+			}
+		}
+		
+		if(gameOver){
+			scoreboard.render(g);
+		}
+		
 		soundSwitch.render(g);
-		
-//		if(playerTank != null){
-//			g.setColor(Color.green);
-//			g.draw(playerTank.getShape());
-//			g.setColor(Color.yellow);
-//			g.drawLine(playerTank.getSpritePosition().x, playerTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//			g.setColor(Color.red);
-//			g.drawLine(playerTank.getPosition().x, playerTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//			g.setColor(Color.blue);
-//			g.drawLine(playerTank.getTurret().getTurretNozzle().x, playerTank.getTurret().getTurretNozzle().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//		}
-		
-		g.setColor(Color.black);
-		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
 	}
 
 	private void renderEntities(ArrayList<Entity> entities){
@@ -306,7 +343,7 @@ public class ClientState extends TanskState {
 	
 	private void sendClientInput(Input input) {
 		if(isConnected){
-			if(playerTank != null){
+			if(localPlayer.getTank() != null){
 				Pck4_ClientInput clientPck = new Pck4_ClientInput();
 				clientPck.W_pressed = input.isKeyDown(Input.KEY_W);
 				clientPck.A_pressed = input.isKeyDown(Input.KEY_A);
@@ -314,7 +351,7 @@ public class ClientState extends TanskState {
 				clientPck.D_pressed = input.isKeyDown(Input.KEY_D);
 				clientPck.LMB_pressed = input.isMouseButtonDown(0);
 
-				AbstractTurret playerTurret = playerTank.getTurret();
+				AbstractTurret playerTurret = localPlayer.getTank().getTurret();
 				clientPck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
 			
 				client.sendTCP(clientPck);
@@ -326,59 +363,97 @@ public class ClientState extends TanskState {
 	public void processPackets() {
 		Packet packet;
 		while ((packet = packetQueue.poll()) != null) {
-			if(packet instanceof Pck1_LoginAnswer) {
-				if(((Pck1_LoginAnswer) packet).accepted){
+			if(packet instanceof Pck1_JoinAnswer) {
+				if(((Pck1_JoinAnswer) packet).accepted){
 					Pck2_ClientConfirmJoin pck = new Pck2_ClientConfirmJoin();
 					pck.message = playerName + " connected!";
 					packet.getConnection().sendTCP(pck);
 					isConnected = true;
 					controller.getConsole().addMsg("Joined game!", MsgLevel.INFO);
+					
+					for(Pck6_CreatePlayer oldPlayerPck : ((Pck1_JoinAnswer) packet).oldPlayers){
+						createPlayer(oldPlayerPck);
+					}
+					
+					GameSettings newGameSettings = ((Pck1_JoinAnswer) packet).gameSettings;
+					this.gameSettings.gameMode = newGameSettings.gameMode;
+					this.gameSettings.gameTime = newGameSettings.gameTime;
+					this.gameSettings.playerLives = newGameSettings.playerLives;
+					this.gameSettings.rounds = newGameSettings.rounds;
+					this.gameSettings.roundTime = newGameSettings.roundTime;
+					this.gameSettings.scorelimit = newGameSettings.scorelimit;
+					this.gameSettings.spawnTime = newGameSettings.spawnTime;
+					
 				} else {
 					GameController.getInstance().getConsole().addMsg("Connection refused by server.", MsgLevel.ERROR);
-					GameController.getInstance().getConsole().addMsg("Reason: " + ((Pck1_LoginAnswer) packet).reason, MsgLevel.ERROR);
+					GameController.getInstance().getConsole().addMsg("Reason: " + ((Pck1_JoinAnswer) packet).reason, MsgLevel.ERROR);
 					GameController.getInstance().getConsole().setTimerHide(false);
 					packet.getConnection().close();
 				}
 			}
 						
 			if(packet instanceof Pck3_Message){
-				if(packet instanceof Pck31_ChatMessage){
-					GameController.getInstance().getConsole().addMsg(((Pck31_ChatMessage)packet).message);
+				if(packet instanceof Pck3_1_ChatMessage){
+					GameController.getInstance().getConsole().addMsg(((Pck3_1_ChatMessage)packet).message);
 				} else {
 					String message = ((Pck3_Message) packet).message;
 					GameController.getInstance().getConsole().addMsg(message, MsgLevel.INFO);
 					Log.info(message);
 				}
-			}	
+			}
 			
-			if(packet instanceof Pck7_TankID){
-				Pck7_TankID pck = (Pck7_TankID) packet;
-				playerTank = (AbstractTank) controller.getWorld().getEntity(pck.tankID);
-			}		
+			if(packet instanceof Pck5_PlayerKicked){
+				GameController.getInstance().getConsole().addMsg("You have been kicked from the server.", MsgLevel.INFO);
+				client.close();
+			}
+
+			if(packet instanceof Pck6_CreatePlayer){
+				createPlayer((Pck6_CreatePlayer) packet);
+			}
 			
+			// also update the local player
 			if(packet instanceof Pck8_EntityDestroyed){
 				Pck8_EntityDestroyed pck = (Pck8_EntityDestroyed) packet;
 				controller.getWorld().removeEntity(pck.entityID);
-				if(playerTank != null){
-					if(pck.entityID == playerTank.getId()){
-						playerTank = null;			
+				if(localPlayer.getTank() != null){
+					if(pck.entityID == localPlayer.getTank().getId()){
+						localPlayer.setTank(null);			
 					}	
 				}
 			}
 			
 			if(packet instanceof Pck9_EntityCreated){
-				Pck9_EntityCreated pck = (Pck9_EntityCreated) packet;
-				createClientEntity(pck.entityID, pck.identifier, pck.possibleOwnerID);
+				createClientEntity((Pck9_EntityCreated) packet);
 			}
 			
 			if(packet instanceof Pck10_TankCreated){
 				Pck10_TankCreated pck = (Pck10_TankCreated) packet;
-				createClientTank(pck.entityID, pck.identifier, pck.direction);
+				createClientTank(pck.entityID, pck.identifier, pck.owner, pck.direction, pck.color);
 			}
 			
-			if(packet instanceof Pck11_PickupCreated){
-				Pck11_PickupCreated pck = (Pck11_PickupCreated) packet;
-				createClientPickup(pck.entityID, pck.identifier, pck.position);
+			if(packet instanceof Pck11_StaticObjectCreated){
+				Pck11_StaticObjectCreated pck = (Pck11_StaticObjectCreated) packet;
+				createStaticObject(pck.entityID, pck.identifier, pck.position);
+			}
+
+			if(packet instanceof Pck12_RemovePlayer){
+				Pck12_RemovePlayer pck = (Pck12_RemovePlayer) packet;
+				Player lostPlayer = null;
+				for(Player player : playerList){
+					if(player.getId() == pck.playerID)
+						lostPlayer = player;
+				}
+				if(lostPlayer != null)
+					playerList.remove(lostPlayer);
+			}
+			
+			if(packet instanceof Pck14_GameDelayStarted){
+				gameDelaying = true;
+				delayTimer = ((Pck14_GameDelayStarted)packet).delayTimer;
+			}
+			
+			if(packet instanceof Pck15_GameOver){
+				gameOver = true;
 			}
 			
 			if(packet instanceof Pck100_WorldState){
@@ -393,8 +468,24 @@ public class ClientState extends TanskState {
 		}
     }			
 
+	private void createPlayer(Pck6_CreatePlayer playerPck) {
+		Player newPlayer = new Player(playerPck.name);
+		newPlayer.setId(playerPck.id);
+		newPlayer.setScore(playerPck.score);
+		newPlayer.setLives(playerPck.lives);
+		newPlayer.setActive(playerPck.active);
+		newPlayer.setEliminated(playerPck.eliminated);
+		newPlayer.setColor(playerPck.color);
+		
+		if(playerPck.unique  == uniqueIdentifier){
+			localPlayer = newPlayer;
+		}
+		
+		playerList.add(newPlayer);
+    }
+
 	private void updateClientWorld(Pck100_WorldState worldState) {
-		for(EntityPacket pck : worldState.updatePackets){
+		for(Packet pck : worldState.updatePackets){
 			if(pck instanceof Pck102_TankUpdate){
 				Pck102_TankUpdate packet = (Pck102_TankUpdate) pck;
 				AbstractTank tank = (AbstractTank) controller.getWorld().getEntity(packet.entityID);
@@ -418,13 +509,27 @@ public class ClientState extends TanskState {
 					proj.setDirection(packet.projDirection);
 				}
 			}
+			
+			if(pck instanceof Pck13_UpdatePlayer){
+				Pck13_UpdatePlayer packet = (Pck13_UpdatePlayer) pck;
+
+				Player matchedPlayer = null;
+				for(Player player : playerList){
+					if(player.getId() == packet.id)
+						matchedPlayer = player;
+				}
+				
+				if(matchedPlayer != null){
+					matchedPlayer.setId(packet.id);
+					matchedPlayer.setScore(packet.score);
+					matchedPlayer.setLives(packet.lives);
+					matchedPlayer.setActive(packet.active);
+					matchedPlayer.setEliminated(packet.eliminated);
+				}
+			}
 		}
     }
-
-	public String getPlayerName() {
-	    return playerName;
-    }
-		
+			
 	@Override
 	public void keyReleased(int key, char c){
 		super.keyReleased(key, c);
@@ -432,11 +537,11 @@ public class ClientState extends TanskState {
 			if(chatField.hasFocus()){
 				if(!chatField.getText().equals("")){
 					if(client != null){
-						String msg = playerName + ": " + chatField.getText();
+						String msg = localPlayer.getName() + ": " + chatField.getText();
 						msg = msg.replace('\n', ' ');
 						if(msg.length() > 39)
 							msg = msg.substring(0, 38);
-						Pck31_ChatMessage pck = new Pck31_ChatMessage();
+						Pck3_1_ChatMessage pck = new Pck3_1_ChatMessage();
 						pck.message = msg;
 						chatField.setText("");
 						client.sendTCP(pck);
@@ -449,17 +554,19 @@ public class ClientState extends TanskState {
 			} else {
 				GameController.getInstance().getConsole().setVisible(true);
 				chatField.setFocus(true);
-			}	
+			}
 		}
 	}
 		
-	private void createClientTank(int entityID, String identifier, Vector2f direction) {
+	private void createClientTank(int entityID, String identifier, int ownerID, Vector2f direction, String playerColor) {
 	    if(identifier.equals("DefaultTank")){
-			new DefaultTank(entityID, direction, null);
+	    	DefaultTank newTank = new DefaultTank(entityID, direction, null, playerColor);
+	    	if(ownerID == localPlayer.getId())
+	    		localPlayer.setTank(newTank);
 	    }
     }
 	
-	private void createClientPickup(int entityID, String identifier, Vector2f position){
+	private void createStaticObject(int entityID, String identifier, Vector2f position){
 		if(identifier.equals("BouncePickup")){
 			new BouncePickup(entityID, position);
 		} else if(identifier.equals("FlamethrowerPickup")){
@@ -480,73 +587,75 @@ public class ClientState extends TanskState {
 			new ShieldPowerUpPickup(entityID, position);
 		}  else if(identifier.equals("SpeedPowerUpPickup")){
 			new SpeedPowerUpPickup(entityID, position);
-		} 
+		} else if(identifier.equals("KingOfTheHillZone")){
+			new KingOfTheHillZone(entityID, position);
+		}
 	}
 	
-	private void createClientEntity(int entityID, String identifier, int possibleOwnerID) {
-	    if(identifier.equals("DefaultProjectile")){
-			new DefaultProjectile(entityID, null, null);
-	    } else if(identifier.equals("BounceProjectile")){
-			new BounceProjectile(entityID, null, null);
-	    } else if(identifier.equals("FlamethrowerProjectile")){
-			new FlamethrowerProjectile(entityID, null, null);
-	    } else if(identifier.equals("ShockwaveProjectile")){
-			new ShockwaveProjectile(entityID, null, null);
-	    } else if(identifier.equals("ShockwaveSecondaryProjectile")){
-			new ShockwaveSecondaryProjectile(entityID, null, null, null);
-	    } else if(identifier.equals("ShotgunProjectile")){
-			new ShotgunProjectile(entityID, null, null);
-	    } else if(identifier.equals("SlowspeedyProjectile")){
-			new SlowspeedyProjectile(entityID, null, null);
-	    }  else if(identifier.equals("Shield")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
-	    	tank.setShield(new Shield(entityID, tank, 0));
-	    } else if(identifier.equals("DefaultTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	private void createClientEntity(Pck9_EntityCreated pck) {
+		if(pck.identifier.equals("DefaultProjectile")){
+			new DefaultProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("BounceProjectile")){
+			new BounceProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("FlamethrowerProjectile")){
+			new FlamethrowerProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("ShockwaveProjectile")){
+			new ShockwaveProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("ShockwaveSecondaryProjectile")){
+			new ShockwaveSecondaryProjectile(pck.entityID, null, null, null);
+	    } else if(pck.identifier.equals("ShotgunProjectile")){
+			new ShotgunProjectile(pck.entityID, null, null);
+	    } else if(pck.identifier.equals("SlowspeedyProjectile")){
+			new SlowspeedyProjectile(pck.entityID, null, null);
+	    }  else if(pck.identifier.equals("Shield")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
+	    	tank.setShield(new Shield(pck.entityID, tank, 0));
+	    } else if(pck.identifier.equals("DefaultTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new DefaultTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new DefaultTurret(pck.entityID, position, rotation, tank, pck.color);
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("BounceTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("BounceTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new BounceTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new BounceTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("FlamethrowerTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("FlamethrowerTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new FlamethrowerTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new FlamethrowerTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("ShockwaveTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("ShockwaveTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new ShockwaveTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new ShockwaveTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("ShotgunTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("ShotgunTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new ShotgunTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new ShotgunTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
-	    } else if(identifier.equals("SlowspeedyTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(possibleOwnerID);
+	    } else if(pck.identifier.equals("SlowspeedyTurret")){
+	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	if(tank != null){
 	    		double rotation = tank.getTurret().getRotation();
 	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new SlowspeedyTurret(entityID, position, rotation, tank);
+	    		AbstractTurret turret = new SlowspeedyTurret(pck.entityID, position, rotation, tank, tank.getColor());
 	    		tank.setTurret(turret);
 	    	}
 	    } 

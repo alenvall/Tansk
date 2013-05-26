@@ -39,11 +39,15 @@ public class ShockwaveSecondaryProjectile extends AbstractProjectile {
 
 	@Override
 	public void didCollideWith(Entity entity){
-		if(entity instanceof AbstractProjectile || entity == getTank()){
+		if(entity instanceof AbstractProjectile){
 			return;
 		}else if(entity instanceof MapBounds || entity instanceof AbstractObstacle){
 			this.destroy();
 		}else if(entity instanceof AbstractTank){
+			//deals less damage to self
+			if(entity == getTank()){
+				setDamage(2);
+			}
 			/*
 			 * Adds the amount of times the tank has been damaged.
 			 * One tank can only be damaged up to five times by a single shockwave.
@@ -52,6 +56,7 @@ public class ShockwaveSecondaryProjectile extends AbstractProjectile {
 			if(tmp <= 5){
 				damageTarget((AbstractTank)entity);
 			}
+			this.destroy();
 		}
 	}
 }

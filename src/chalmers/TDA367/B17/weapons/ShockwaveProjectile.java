@@ -13,10 +13,11 @@ import chalmers.TDA367.B17.model.AbstractProjectile;
 import chalmers.TDA367.B17.model.AbstractTank;
 import chalmers.TDA367.B17.model.Entity;
 import chalmers.TDA367.B17.model.MapBounds;
+import chalmers.TDA367.B17.powerups.Shield;
 
 public class ShockwaveProjectile extends AbstractProjectile {
 
-	private boolean activated = false;
+	private boolean detonated = false;
 
 	//Used to handle the amount of times a single tank has been hit by a shockwave.
 	protected Map<AbstractTank, Integer> tankMap = new HashMap<AbstractTank, Integer>();
@@ -39,11 +40,13 @@ public class ShockwaveProjectile extends AbstractProjectile {
 	 * Launch a shockwave of ShockwaveSecondaryProjectiles.
 	 */
 	public void detonate(){
-		GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND,this, "SHOCKWAVE_DETONATE_EVENT"));
-		activated = true;
+		GameController.getInstance().getWorld().handleEvent(new GameEvent(
+				EventType.SOUND,this, "SHOCKWAVE_DETONATE_EVENT"));
+		detonated = true;
 		for(int i = 0; i < 40; i++){
 			ShockwaveSecondaryProjectile projectile = 
-					new ShockwaveSecondaryProjectile(GameController.getInstance().generateID(), getTank(), new Vector2f(getPosition()), this);
+					new ShockwaveSecondaryProjectile(GameController.getInstance()
+							.generateID(), getTank(), new Vector2f(getPosition()), this);
 			projectile.setDirection(new Vector2f(getRotation() + i*9));
 
 			projectile.setPosition(getPosition());
@@ -54,7 +57,7 @@ public class ShockwaveProjectile extends AbstractProjectile {
 
 	@Override
 	public void update(int delta){
-		if(getDurationTimer() <= 20 && !activated){
+		if(getDurationTimer() <= 20 && !detonated){
 			detonate();
 		}
 		super.update(delta);
@@ -62,12 +65,12 @@ public class ShockwaveProjectile extends AbstractProjectile {
 
 	@Override
 	public void didCollideWith(Entity entity){
-		if(entity instanceof MapBounds || entity instanceof AbstractObstacle || entity instanceof AbstractTank){
-			if(entity instanceof AbstractTank){
-				if(!activated && (AbstractTank)entity != getTank()){
-					detonate();
-				}
-			} else if(!activated){
+		if(!detonated){
+			if(entity instanceof Shield && entity != getTank().getShield()){
+				detonate();
+			}else if(entity instanceof AbstractTank && entity != getTank()){
+				detonate();
+			}else if(entity instanceof MapBounds || entity instanceof AbstractObstacle){
 				detonate();
 			}
 		}

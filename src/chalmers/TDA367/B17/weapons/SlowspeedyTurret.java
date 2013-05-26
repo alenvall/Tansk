@@ -17,15 +17,15 @@ public class SlowspeedyTurret extends AbstractTurret {
 	/**
 	 * Create a new SlowspeedyTurret.
 	 * @param id The id
+	 * @param startingRotation The starting rotation
 	 * @param tank The tank it belongs to
+	 * @param color The color
 	 */
-	public SlowspeedyTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
-		super(id, position, startingRotation,  tank);
+	public SlowspeedyTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
+		super(id, position, startingRotation,  tank, color);
 		ammoLeft = DEFAULT_AMMO;
-		turretCenter = new Vector2f(16.875f, 16.875f);
-		turretLength = 31.5f;
-		fireRate = 750;
-		projectileType = "default";
+		setFireRate(750);
+		setProjectileType("default");
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 
@@ -40,7 +40,7 @@ public class SlowspeedyTurret extends AbstractTurret {
 			ammoLeft--;
 			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "SLOWSPEEDY_FIRE_EVENT"));
 		}else{
-			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank()));
+			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank(), getColor()));
 		}
 	}
 
@@ -48,5 +48,4 @@ public class SlowspeedyTurret extends AbstractTurret {
 	public AbstractProjectile createProjectile() {
 		return new SlowspeedyProjectile(GameController.getInstance().generateID(), getTank(), getTurretNozzle());
 	}
-
 }

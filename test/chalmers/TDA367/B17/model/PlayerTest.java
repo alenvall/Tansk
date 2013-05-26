@@ -20,13 +20,6 @@ public class PlayerTest {
 	}
 	
 	@Test
-	public void testSetPlayerID(){
-		Player player = new Player("Test Player");
-		player.setPlayerId(123);
-		assertTrue(player.getPlayerId()==123);
-	}
-	
-	@Test
 	public void testSetScore(){
 		Player player = new Player("Test Player");
 		player.setScore(123);
@@ -38,6 +31,13 @@ public class PlayerTest {
 		Player player = new Player("Test Player");
 		player.setEliminated(false);
 		assertTrue(!player.isEliminated());
+	}
+	
+	@Test
+	public void testSetId(){
+		Player player = new Player("Test Player");
+		player.setId(123);
+		assertTrue(player.getId() == 123);
 	}
 
 	@Test

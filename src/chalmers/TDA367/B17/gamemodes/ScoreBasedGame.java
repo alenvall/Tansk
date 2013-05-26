@@ -2,16 +2,16 @@ package chalmers.TDA367.B17.gamemodes;
 
 import java.util.*;
 
+import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.Player;
 
 
 
 public abstract class ScoreBasedGame extends GameConditions{
-private static int DEFAULT_SCORE_LIMIT = 8;	
 protected int scoreLimit;
 
-	public ScoreBasedGame(){
-		this.scoreLimit = DEFAULT_SCORE_LIMIT;
+	public ScoreBasedGame(int scoreLimit){
+		this.scoreLimit = scoreLimit;
 	}
 	
 	
@@ -22,6 +22,7 @@ protected int scoreLimit;
 			//Winning by score
 			for(Player p: players){
 				if(p.getScore() >= scoreLimit){
+					GameController.getInstance().getConsole().addMsg("hej");
 					setGameOver(true);
 				}
 			}
@@ -45,9 +46,7 @@ protected int scoreLimit;
 	@Override
 	public void gameOver(){
 		super.gameOver();
-		for(Player p : players){
-			System.out.println(p.getName() + "'s score: " + p.getScore());
-		}
+		sortByScore();
 	}
 	
 	@Override
@@ -89,8 +88,22 @@ protected int scoreLimit;
 				}
 			}
 		}
-
 		return winningPlayers;
+	}
+	
+	public void sortByScore(){
+		List<Player> sortedList = new ArrayList<Player>();
+		ArrayList<Player> tmpList = new ArrayList<Player>(getPlayerList());
+		
+		while(tmpList.size() > 0){
+			Player highestScoringPlayer = tmpList.get(0);
+			for(Player p: tmpList){
+				if(p.getScore() > highestScoringPlayer.getScore()){
+					highestScoringPlayer = p;
+				}
+			}
+			sortedList.add(highestScoringPlayer);
+		}
 	}
 
 	

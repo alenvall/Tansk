@@ -6,31 +6,33 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
-import chalmers.TDA367.B17.console.Console.MsgLevel;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.event.GameEvent;
+import chalmers.TDA367.B17.gamemodes.KingOfTheHillZone;
 import chalmers.TDA367.B17.network.Network.Pck10_TankCreated;
-import chalmers.TDA367.B17.network.Network.Pck11_PickupCreated;
+import chalmers.TDA367.B17.network.Network.Pck11_StaticObjectCreated;
 import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
 import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
 import chalmers.TDA367.B17.powerups.Shield;
-import chalmers.TDA367.B17.powerups.powerupPickups.AbstractPowerUpPickup;
 import chalmers.TDA367.B17.spawnpoints.Spawner;
 import chalmers.TDA367.B17.spawnpoints.TankSpawnPoint;
+import chalmers.TDA367.B17.spawnpoints.TankSpawner;
 import chalmers.TDA367.B17.states.ServerState;
-import chalmers.TDA367.B17.weaponPickups.AbstractWeaponPickup;
+import chalmers.TDA367.B17.view.Console.MsgLevel;
 
+/**
+ * Represents the world inside the game. Entities are stored and handled in 
+ * this class.
+ */
 public class World {
-	//A map holding all entities with an ID
+	/**A map holding all entities with an ID*/
 	private Map<Integer, Entity> entities;
-	//The size of the map (world)
+	/**The size of the map (world)*/
 	private Dimension size;
 	
-	//A spawner that spawns/respawns tanks.
 	private TankSpawner tankSpawner;
 	private boolean serverWorld = false;
 	
-	//A spawner that spawns powerup and weapons.
 	private Spawner spawner;
 	
 	/**
@@ -66,10 +68,12 @@ public class World {
 					Pck10_TankCreated tankPacket = new Pck10_TankCreated();
 					tankPacket.entityID = ((AbstractTank) newEntity).getId();
 					tankPacket.identifier = ((AbstractTank) newEntity).getClass().getSimpleName();
+					tankPacket.owner = ((AbstractTank) newEntity).getOwnerID();
 					tankPacket.direction = ((AbstractTank) newEntity).getDirection();
+					tankPacket.color = ((AbstractTank) newEntity).getColor();
 					ServerState.getInstance().addToAllClientsQueue(tankPacket);
-				} else if((newEntity instanceof AbstractWeaponPickup) || (newEntity instanceof AbstractPowerUpPickup)) {
-					Pck11_PickupCreated pickPck = new Pck11_PickupCreated();
+				} else if((newEntity instanceof AbstractWeaponPickup) || (newEntity instanceof AbstractPowerUpPickup) || (newEntity instanceof KingOfTheHillZone)) {
+					Pck11_StaticObjectCreated pickPck = new Pck11_StaticObjectCreated();
 					pickPck.entityID = newEntity.getId();
 					pickPck.identifier = newEntity.getClass().getSimpleName();
 					pickPck.position = newEntity.getPosition();
@@ -80,8 +84,10 @@ public class World {
 					packet.identifier = newEntity.getClass().getSimpleName();
 					if(newEntity instanceof Shield)
 						packet.possibleOwnerID = ((Shield)newEntity).getTank().getId();
-					else if(newEntity instanceof AbstractTurret)
+					else if(newEntity instanceof AbstractTurret){
 						packet.possibleOwnerID = ((AbstractTurret)newEntity).getTank().getId();
+						packet.color = ((AbstractTurret)newEntity).getColor();
+					}
 					ServerState.getInstance().addToAllClientsQueue(packet);	
 				}
 			}

@@ -7,20 +7,24 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import org.newdawn.slick.*;
-import org.newdawn.slick.Color;
-import org.newdawn.slick.Graphics;
+import org.newdawn.slick.geom.Vector2f;
 import org.newdawn.slick.gui.TextField;
 import org.newdawn.slick.state.*;
+import org.newdawn.slick.Color;
 
+import org.newdawn.slick.Graphics;
 import chalmers.TDA367.B17.*;
-import chalmers.TDA367.B17.console.Console;
-import chalmers.TDA367.B17.console.Console.*;
 import chalmers.TDA367.B17.controller.*;
 import chalmers.TDA367.B17.event.*;
+import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
 import chalmers.TDA367.B17.network.*;
 import chalmers.TDA367.B17.network.Network.*;
+import chalmers.TDA367.B17.resource.MapLoader;
+import chalmers.TDA367.B17.view.Console;
+import chalmers.TDA367.B17.view.Scoreboard;
+import chalmers.TDA367.B17.view.Console.*;
 
 import com.esotericsoftware.kryonet.*;
 import com.esotericsoftware.kryonet.Listener.*;
@@ -34,10 +38,13 @@ public class ServerState extends TanskState {
 	private ArrayList<Packet> allClientsPacketQueue;
 	private ArrayList<Packet> clientPacketQueue;
 	private ArrayList<Player> disconnectedPlayersTemp;
-
 	protected TextField chatField;
+	private ArrayList<String>  colorPool;
+	private Scoreboard scoreboard;
 	private boolean gameStarted = false;
 	private boolean serverStarted;
+
+	private boolean gameOverActionTaken;
 	
 	private ServerState(int state) {
 		super(state);
@@ -64,77 +71,114 @@ public class ServerState extends TanskState {
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 
-
-		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
-		controller.setConsole(new Console(10, 533, 600, 192, OutputLevel.ALL));
-		controller.newGame(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT, 4, 1, 5000, 500000, 1500000, true);
+		gameOverActionTaken = false;
 		
-		MapLoader.createEntities("whatever");
-	
-		Log.set(Log.LEVEL_INFO);
-		server = new Server();
-		Network.register(server);
-		Listener listener = new Listener(){
-				public void received(Connection con, Object msg){
-					super.received(con, msg);
-					if (msg instanceof Packet) {
-						packetsReceived++;	
-						Packet packet = (Packet)msg;
-						packet.setConnection(con);
-						packetQueue.add(packet);
+		// player colors
+		colorPool = new ArrayList<String>();
+		colorPool.add("blue");
+		colorPool.add("red");
+		colorPool.add("yellow");
+		colorPool.add("green");
+		
+		controller.getSoundHandler().stopAllMusic();
+		controller.setConsole(new Console(10, 533, 600, 192, Color.white, OutputLevel.ALL));
+		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
+		controller.getWorld().init();
+		chatField = new TextField(container, container.getDefaultFont(), 10, 733, 450, 23);
+		
+		// only continue if the map is loaded
+		if(MapLoader.createEntities("map_standard")){
+			GameController.getInstance().getConsole().addMsg("Map loaded!", MsgLevel.INFO);
+					
+			Log.set(Log.LEVEL_INFO);
+			server = new Server();
+			Network.register(server);
+			Listener listener = new Listener(){
+					public void received(Connection con, Object msg){
+						super.received(con, msg);
+						if (msg instanceof Packet) {
+							// put new packets in the queue
+							packetsReceived++;	
+							Packet packet = (Packet)msg;
+							packet.setConnection(con);
+							packetQueue.add(packet);
+						}
 					}
-				}
-				
-				@Override
-				public void connected(Connection connection) {
-//					GameController.getInstance().getConsole().addMsg("Connected.", MsgLevel.INFO);
-				}
-				
-				@Override
-				public void disconnected(Connection connection) {
-					if(getPlayer(connection) != null){
-						disconnectedPlayersTemp.add(getPlayer(connection));
-					} else {
-						GameController.getInstance().getConsole().addMsg("Player disconnected.", MsgLevel.INFO);
-						Log.info("[SERVER] Unkown player has  disconnected.");
+					
+					@Override
+					public void connected(Connection connection) {
+	//					GameController.getInstance().getConsole().addMsg("Connected.", MsgLevel.INFO);
 					}
-				}
-			};
+					
+					@Override
+					public void disconnected(Connection connection) {
+						if(getPlayer(connection) != null){
+							disconnectedPlayersTemp.add(getPlayer(connection));
+						} else {
+							GameController.getInstance().getConsole().addMsg("Player disconnected.", MsgLevel.INFO);
+							Log.info("[SERVER] Unkown player has  disconnected.");
+						}
+					}
+				};
+				
+				ThreadedListener threadListener = new ThreadedListener(listener);
+				server.addListener(threadListener);
+		
+			try {
+		        server.bind(Network.PORT, Network.PORT);
+				server.start();	
+				controller.getConsole().addMsg("Server loaded and ready!", MsgLevel.INFO);
+				serverStarted = true;
+	        } catch (IOException e) {
+	    		controller.getConsole().addMsg("Address in use! Sever closed.", MsgLevel.ERROR);
+	    		controller.getConsole().addMsg("Another server running?", MsgLevel.INFO);
+	    		controller.getConsole().addMsg("Server closed.", MsgLevel.ERROR);
+		        e.printStackTrace();
+	        }	
+			try {
+				ipAddress = InetAddress.getLocalHost().getHostAddress();
+	        } catch (UnknownHostException e1) {
+		        e1.printStackTrace();
+	        }
 			
-			ThreadedListener threadListener = new ThreadedListener(listener);
-			server.addListener(threadListener);
-	
-		try {
-	        server.bind(Network.PORT, Network.PORT);
-			server.start();	
-			controller.getConsole().addMsg("Server loaded and ready!", MsgLevel.INFO);
-			serverStarted = true;
-        } catch (IOException e) {
-    		controller.getConsole().addMsg("Address in use! Sever closed.", MsgLevel.ERROR);
-    		controller.getConsole().addMsg("Another server running?", MsgLevel.INFO);
-    		controller.getConsole().addMsg("Sever closed.", MsgLevel.ERROR);
-	        e.printStackTrace();
-        }	
-		try {
-			ipAddress = InetAddress.getLocalHost().getHostAddress();
-        } catch (UnknownHostException e1) {
-	        e1.printStackTrace();
-        }
+			controller.newGame();
+			scoreboard = new Scoreboard(true, controller.getGameMode().getPlayerList());
+		}
 	}
+	
+	@Override
+	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
+		super.leave(gc, sbg);
+		// clean up
+		gameStarted = false;
+		serverStarted = false;
+		if(server != null)
+			server.close();
+	}	
 		
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		super.update(gc, game, delta);
+		
 		if(!gameStarted && serverStarted){
 			Input input = gc.getInput();
 			int x = input.getMouseX();
 			int y = input.getMouseY();
-			if(x > 410 && x < 465 && y > 495 && y < 525){
+
+			// start button
+			int clickX = chatField.getX() + chatField.getWidth()+ 10;
+			int clickY = chatField.getY();
+			if(x > clickX && x < clickX + 140 && y > clickY && y < clickY + chatField.getHeight()){
 				if(input.isMousePressed(0)){
 					gameStarted = true;
 
-					//Start a new round
-					controller.getGameMode().newRoundDelayTimer(3000);
+					// start the game
+					if(controller.getGameMode() instanceof KingOfTheHillMode)
+						((KingOfTheHillMode)controller.getGameMode()).generateZone(new Vector2f(KingOfTheHillMode.DEFAULT_ZONE_X, KingOfTheHillMode.DEFAULT_ZONE_Y));
+					Pck14_GameDelayStarted pck = new Pck14_GameDelayStarted();
+					pck.delayTimer = 5000;
+					addToAllClientsQueue(pck);
+					controller.getGameMode().newRoundDelayTimer(5000);
 					GameController.getInstance().getConsole().addMsg("Game started!", MsgLevel.INFO);
 				}
 			}
@@ -145,23 +189,36 @@ public class ServerState extends TanskState {
 		processPackets();
 		checkDisconnectedPlayers();
 		if(gameStarted){		
-			//Update for tankspawner
 			controller.getWorld().getTankSpawner().update(delta);
-			
 			controller.getWorld().getSpawner().update(delta);
-			
-			//Update for getGameMode()
 			controller.getGameMode().update(delta);
 
 			updatePlayerTanks(delta);
 			updateWorld(delta);
 			createWorldState();
+			
+			// game over
+			if(!gameOverActionTaken && controller.getGameMode().isGameOver()){
+				Pck15_GameOver pck = new Pck15_GameOver();
+				addToAllClientsQueue(pck);
+				gameOverActionTaken = true;
+			}	
+			if(controller.getGameMode().isGameOver()){
+				scoreboard.update(gc);
+				if(scoreboard.getCurrentPressedButton() == Scoreboard.MENU_BUTTON){
+					game.enterState(Tansk.MENU);
+				} else if (scoreboard.getCurrentPressedButton() == Scoreboard.RESTART_BUTTON){
+					game.enterState(Tansk.PLAY);
+				}
+			}
 		}
+		// send updates to clients
 		updateClients();
     }
 
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		// render sprites in layers
 		if(controller.getWorld().getEntities() != null){
 			ArrayList<Entity> firstLayerEnts = new ArrayList<Entity>();
 			ArrayList<Entity> secondLayerEnts = new ArrayList<Entity>();
@@ -196,60 +253,36 @@ public class ServerState extends TanskState {
 	public void renderGUI(GameContainer gc, Graphics g){
 		super.renderGUI(gc, g);
 
+		// render chatfield
+		g.setColor(Color.white);
 		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
 		chatField.render(gc, g);
+		
+		// render start button
 		if(gameStarted)
-			
 			g.setColor(Color.green);
 		else
 			g.setColor(Color.red);
-		g.drawString("Run!", 415, 500);
-		g.drawRect(410, 495, 50, 30);
+		g.drawString("Start!", chatField.getX() + chatField.getWidth()+ 55, chatField.getY() + 2);
+		g.drawRect(chatField.getX() + chatField.getWidth()+ 10, chatField.getY(), 140, chatField.getHeight());
 
 		g.setColor(Color.white);
-		g.drawString("Players: " + getPlayers().size(), 18, 480);
+		if(getPlayers() != null)
+			g.drawString("Players: " + getPlayers().size() + "/4", 18, 480);
 		g.drawString("LAN IP: " + ipAddress, 18, 500);
-		
-		// some debug stuff
-//		if(!getPlayers().isEmpty()){
-//			Player playerOne = getPlayers().get(0);
-//			if(playerOne.getTank() != null){
-//				AbstractTank playerOneTank = playerOne.getTank();
-//				g.setColor(Color.yellow);
-//				g.drawLine(playerOneTank.getSpritePosition().x, playerOneTank.getSpritePosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//				g.setColor(Color.red);
-//				g.drawLine(playerOneTank.getPosition().x, playerOneTank.getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//				g.setColor(Color.blue);
-//				g.drawLine(playerOneTank.getTurret().getPosition().x, playerOneTank.getTurret().getPosition().y, Tansk.SCREEN_WIDTH/2, Tansk.SCREEN_HEIGHT/2);
-//			}
-//		}
-		
-			
-//		TODO: not do this in render maybe
-		//Cool timer
-		if(controller.getGameMode().isDelaying()){
-			if(controller.getGameMode().getDelayTimer() > 0)
-//				serverMessage("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!");
-				g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 500, 400);
+					
+		if(gameStarted){
+			if(controller.getGameMode().isDelaying()){
+				if(controller.getGameMode().getDelayTimer() > 0)
+					g.drawString("Round starts in: " + (controller.getGameMode().getDelayTimer()/1000 + 1) + " seconds!", 390, 220);
+			}
 		}
 		
 		if(controller.getGameMode().isGameOver()){
-//			serverMessage("Game Over!");
-			g.drawString("Game Over!", 500, 300);
-//			serverMessage("Winner: " + controller.getGameMode().getWinningPlayer().getName());
-			for(Player p: controller.getGameMode().getWinningPlayers()){
-				g.drawString("Winner: " + p.getName(), 500, 400 + 10*controller.getGameMode().getWinningPlayers().indexOf(p));
-			}
-			int i = 0;
-			for(Player p : controller.getGameMode().getPlayerList()){
-				i++;
-				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (450+(i*25)));
-				serverMessage(p.getName() + "'s score: " + p.getScore());
-			}
+			scoreboard.render(g);
 		}
-	
 	}
-	
+			
 	private void renderEntities(ArrayList<Entity> entities, Graphics g){
 		g.setColor(Color.yellow);
 		for(Entity entity : entities){
@@ -264,6 +297,7 @@ public class ServerState extends TanskState {
 	}
 	
 	public void checkDisconnectedPlayers(){
+		// check and take action if a player has disconnected
 		for(Player lostPlayer : disconnectedPlayersTemp){
 			if(lostPlayer != null){
 		    	String msg = lostPlayer.getName() + " disconnected.";
@@ -271,6 +305,13 @@ public class ServerState extends TanskState {
 		    	Pck3_Message disconnectedMsg = new Pck3_Message();
 		    	disconnectedMsg.message = msg;
 		    	server.sendToAllExceptTCP(lostPlayer.getConnection().getID(), disconnectedMsg);
+		    	
+		    	Pck12_RemovePlayer rmPck = new Pck12_RemovePlayer();
+		    	rmPck.playerID = lostPlayer.getId();
+		    	addToAllClientsQueue(rmPck);
+		    	
+		    	colorPool.add(lostPlayer.getColorAsString());
+		    	
 		    	controller.getGameMode().removePlayer(lostPlayer);
 		    	Log.info("[SERVER] " + msg);
 			}
@@ -281,26 +322,50 @@ public class ServerState extends TanskState {
 	public void processPackets() {
 		Packet packet;
 		while ((packet = packetQueue.poll()) != null) {
+			// a player wants to join
 			if(packet instanceof Pck0_JoinRequest){
 		    	Pck0_JoinRequest pck = (Pck0_JoinRequest) packet;
-		    	
 		    	controller.getConsole().addMsg(pck.playerName + " attempting to connect..", MsgLevel.INFO);
-		    	Pck1_LoginAnswer responsePacket = new Pck1_LoginAnswer();
+		    	Pck1_JoinAnswer responsePacket = new Pck1_JoinAnswer();
 		    	
-		    	if(!gameStarted){
-			    	Player newPlayer = new Player(packet.getConnection(), pck.playerName);
-			    	newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
-			    	newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
-			    	getPlayers().add(newPlayer);
-			    	responsePacket.accepted = true;
-		    	} else {
-		    		responsePacket.accepted = false;
-		    		responsePacket.reason = "Game started.";
-		    		GameController.getInstance().getConsole().addMsg(pck.playerName + " kicked, game has started.", MsgLevel.INFO);
-		    	}
+		    	// check if the server is full
+	    		if(getPlayers().size() < 4){
+	    			// don't allow joining if the game has started
+			    	if(!gameStarted){
+			    		
+			    		// send the already connected players to the newly connected player
+			    		responsePacket.oldPlayers = new ArrayList<Pck6_CreatePlayer>();
+			    		for(Player oldPlayer : getPlayers()){
+			    			Pck6_CreatePlayer playerPck = new Pck6_CreatePlayer();
+			    			playerPck.id = oldPlayer.getId();
+			    			playerPck.name = oldPlayer.getName();
+			    			playerPck.score = oldPlayer.getScore();
+			    			playerPck.lives = oldPlayer.getLives();
+			    			playerPck.active = oldPlayer.isActive();
+			    			playerPck.eliminated = oldPlayer.isEliminated();
+			    			playerPck.color = oldPlayer.getColorAsString();
+			    			responsePacket.oldPlayers.add(playerPck);
+			    		}
+			    	
+			    		// send the gamesettings and the local ID which the players uses to refer to itself
+			    		responsePacket.gameSettings = GameController.getInstance().getGameSettings();
+			    		responsePacket.localID = packet.getConnection().getID();
+			    		
+			    		createPlayer(pck.playerName, packet.getConnection(), pck.unique);
+		    			responsePacket.accepted = true;
+			    	} else {
+			    		responsePacket.accepted = false;
+			    		responsePacket.reason = "Game started.";
+			    		GameController.getInstance().getConsole().addMsg(pck.playerName + " kicked, game has started.", MsgLevel.INFO); 	
+			    	}
+	    		} else {
+	    			responsePacket.accepted = false;
+	    			responsePacket.reason = "Server full.";
+	    		}
 			   	packet.getConnection().sendTCP(responsePacket);
 		    }
 		    
+			// received when the player joins
 		    if(packet instanceof Pck2_ClientConfirmJoin){
 		    	String msg = getPlayer(packet.getConnection()).getName() + " joined.";
 				controller.getConsole().addMsg(msg, MsgLevel.INFO);
@@ -310,22 +375,63 @@ public class ServerState extends TanskState {
 				Log.info(msg);
 		    }
 		    
+		    // client input (WASD keys)
 		    if(packet instanceof Pck4_ClientInput){
 		    	if(gameStarted)
 		    		receiveClientInput((Pck4_ClientInput) packet);
  		    }
 		    
+		    // simple message
 		    if(packet instanceof Pck3_Message){
-			    if(packet instanceof Pck31_ChatMessage){
+			    if(packet instanceof Pck3_1_ChatMessage){
 			    	packet.setConnection(null);
-			    	GameController.getInstance().getConsole().addMsg(((Pck31_ChatMessage)packet).message);
+			    	GameController.getInstance().getConsole().addMsg(((Pck3_1_ChatMessage)packet).message);
 					addToAllClientsQueue(packet);
 			    }
  		    }
 	   	}
     }
 
+	private void createPlayer(String playerName, Connection connection, int unique) {
+		// don't allow players to be unnamed
+		if(playerName.equals("Unnamed")){
+			String newName = "Unnamed" + Math.round(Math.random() * 1000);
+			serverMessage(playerName + " renamed to " + newName + ".");
+			playerName = newName;
+		}
+		
+		// rename the player if it has the same name as a already connected
+		for(Player player : getPlayers()){
+			if(player.getName().equals(playerName)){
+				playerName = "Unnamed" + Math.round(Math.random() * 1000);
+				serverMessage(player.getName() + " renamed to " + playerName + ".");
+			}
+		}
+		
+		// create the new player
+		Player newPlayer = new Player(connection, playerName);
+		newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
+		newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
+		newPlayer.setColor(colorPool.get(0));
+		colorPool.remove(0);
+		
+		// send the new player to all clients
+		Pck6_CreatePlayer playerPck = new Pck6_CreatePlayer();
+		playerPck.unique = unique;
+		playerPck.id = newPlayer.getId();
+		playerPck.name = newPlayer.getName();
+		playerPck.score = newPlayer.getScore();
+		playerPck.lives = newPlayer.getLives();
+		playerPck.active = newPlayer.isActive();
+		playerPck.eliminated = newPlayer.isEliminated();
+		playerPck.color = newPlayer.getColorAsString();
+		
+		addToAllClientsQueue(playerPck);		
+		getPlayers().add(newPlayer);
+    }
+
 	private void receiveClientInput(Pck4_ClientInput pck) {
+		// set the players input
 		Player playerToUpdate = getPlayer(pck.getConnection());
 		playerToUpdate.setInputStatus(Player.INPT_W, pck.W_pressed);
 		playerToUpdate.setInputStatus(Player.INPT_A, pck.A_pressed);
@@ -337,6 +443,7 @@ public class ServerState extends TanskState {
     }
 	
 	public void updatePlayerTanks(int delta){
+		// update the tanks according to the input
 		for(Player player : getPlayers()){		
 			ArrayList<Boolean> pressedKeys = player.getInput();
 			if(player.getTank() != null){
@@ -365,13 +472,14 @@ public class ServerState extends TanskState {
 				}
 				
 				if(pressedKeys.get(Player.INPT_LMB)){
-					player.getTank().fireWeapon(delta);
+					player.getTank().fireTurret(delta);
 				}	
 			}
 		}
 	}
 	
 	public void updateWorld(int delta){
+		// update all entities
 		Dimension worldSize = GameController.getInstance().getWorld().getSize();
 		
 		Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
@@ -397,8 +505,9 @@ public class ServerState extends TanskState {
 	}
 	
 	private void createWorldState(){
+		// create a world state which contains info about entities
 		Pck100_WorldState worldState = new Pck100_WorldState();
-		worldState.updatePackets = new ArrayList<EntityPacket>();
+		worldState.updatePackets = new ArrayList<Packet>();
 		
 		Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
 		while(updateIterator.hasNext()){
@@ -431,16 +540,33 @@ public class ServerState extends TanskState {
 					worldState.updatePackets.add(pck);
 				}
 			}
-		}			
+		}
+		
+		// update players (score, status etc)
+		for(Player player : getPlayers()){
+			Pck13_UpdatePlayer pck = new Pck13_UpdatePlayer();
+			pck.id = player.getId();
+			pck.active = player.isActive();
+			pck.eliminated = player.isEliminated();
+			pck.lives = player.getLives();
+			pck.score = player.getScore();
+			if(player.getTank() != null)
+				pck.tankID = player.getTank().getId();
+			worldState.updatePackets.add(pck);
+		}
+		
 		addToAllClientsQueue(worldState);
 	}
 		
 	private void updateClients(){
+		// only update if the server is running
 		if(server != null){
+			// send packets to all clients
 			for(Packet packet : allClientsPacketQueue){
 				server.sendToAllTCP(packet);
 				packetsSent++;
 			}
+			// send packets to a single client
 			for(Packet clientPacket : clientPacketQueue){
 				if(clientPacket != null){
 					Connection con = clientPacket.getConnection();
@@ -474,7 +600,10 @@ public class ServerState extends TanskState {
 	}
 	
 	public ArrayList<Player> getPlayers(){
-		return controller.getGameMode().getPlayerList();
+		if(controller.getGameMode() != null)
+			return controller.getGameMode().getPlayerList();
+		else
+			return null;
 	}
 	
 	public void serverMessage(String message){
@@ -504,7 +633,14 @@ public class ServerState extends TanskState {
 			if(chatField.hasFocus()){
 				if(!chatField.getText().equals("")){
 					if(server != null){
-						serverMessage("Server: " + chatField.getText());
+						if((chatField.getText().charAt(0) + "").equals("/")){
+							if(chatField.getText().length() >= 4){
+								if(chatField.getText().substring(0, 3).equals("/k "))
+									doCommand("kick");
+							}
+						} else {
+							serverMessage("Server: " + chatField.getText());
+						}
 						chatField.setText("");
 					}
 				}
@@ -512,6 +648,30 @@ public class ServerState extends TanskState {
 			} else {
 				chatField.setFocus(true);
 			}	
+		}
+	}
+	
+	private void doCommand(String cmd){
+		if(cmd.equals("kick")){
+			if(getPlayers().size() > 0){
+				Player matchedPlayer = null;
+				String playerName = chatField.getText().substring(3).trim();
+				for(Player player : getPlayers()){
+					if(player.getName().equals(playerName))
+						matchedPlayer = player;
+					else
+						GameController.getInstance().getConsole().addMsg("Player: " + playerName + " not found.");
+				}
+				if(matchedPlayer != null){
+					Pck5_PlayerKicked kickPck = new Pck5_PlayerKicked();
+					kickPck.reason = "";
+					matchedPlayer.getConnection().sendTCP(kickPck);
+					GameController.getInstance().getConsole().addMsg("Kicked " + matchedPlayer.getName() + ".");
+					serverMessage(matchedPlayer.getName() + " kicked.");
+				}
+			} else {
+				GameController.getInstance().getConsole().addMsg("No players to kick!");
+			}
 		}
 	}
 }

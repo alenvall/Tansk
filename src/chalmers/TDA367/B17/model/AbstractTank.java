@@ -10,43 +10,61 @@ import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.powerups.Shield;
 import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
 
-
+/**
+ * AbstractTank is the superclass to all tanks.
+ */
 public abstract class AbstractTank extends MovableEntity {
+	
+	/** The event that is triggered upon death.*/
+	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
+	
+	/** The name of the tank.*/
 	private String name;
+	/**The health of the tank.*/
 	private double health;
+	/** The current power-up of this tank.*/
 	private AbstractPowerUp currentPowerUp;
-	private float turnSpeed; // How many degrees the tank will turn each update
+	/** How many degrees the tank will turn each update.*/
+	private float turnSpeed; 
+	/** The current turret of this tank.*/
 	protected AbstractTurret turret;
 	protected float turretOffset;
+	/** The since last firing.*/
 	protected int timeSinceLastShot;
-	private boolean fire;
+	/** The most recent direction.*/
 	private double lastDirection;
+	/** The maximum health of this tank.*/
 	public static final double MAX_HEALTH = 100;
+	/** The maximum shieldhealth of this tank.*/
 	public static final double MAX_SHIELD_HEALTH = 50;
+	/** The current shield.*/
 	private Shield shield;
+	/** The tank's projectiles.*/
 	private ArrayList<AbstractProjectile> projectiles;
+	/** The owner of this tank.*/
 	private Player player;
-	private double maxShieldHealth;
-	
-	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
+	/** The color of this tank.*/
+	private String color;
 	
 	/**
 	 * Create a new AbstractTank.
+	 * @param id The id
+	 * @param direction The direction
 	 * @param velocity The velocity of this tank
 	 * @param maxSpeed The maximum movement speed of this tank
 	 * @param minSpeed The minimum movement speed of this tank
 	 * @param player The owning player of this tank
+	 * @param color The color of this tank
 	 */
-	public AbstractTank(int id, Vector2f direction, float maxSpeed, float minSpeed, Player player) {
+	public AbstractTank(int id, Vector2f direction, float maxSpeed, float minSpeed, Player player, String color) {
 		super(id, direction, maxSpeed, minSpeed);
 		this.player = player;
 		turnSpeed = 0.15f;
 		currentPowerUp = null;
-		spriteID = "turret";
 		renderLayer = RenderLayer.SECOND;
-		fire = true;
 		projectiles = new ArrayList<AbstractProjectile>();
-		maxShieldHealth = MAX_SHIELD_HEALTH;
+		this.color = color;
+		setSpriteID("tank_" + color);
 	}
 	
 	/**
@@ -71,14 +89,6 @@ public abstract class AbstractTank extends MovableEntity {
 	 */
 	public void setName(String name) {
 		this.name = name;
-	}
-	
-	/**
-	 * Return the max health of the tank.
-	 * @return max_health
-	 */
-	public double getMaxHealth(){
-		return MAX_HEALTH;
 	}
 
 	/**
@@ -199,8 +209,8 @@ public abstract class AbstractTank extends MovableEntity {
 	 * Fire the tanks turret if the turrets has cooled down.
 	 * @param delta
 	 */
-	public void fireWeapon(int delta){
-		if(timeSinceLastShot <= 0 && fire){
+	public void fireTurret(int delta){
+		if(timeSinceLastShot <= 0){
 			turret.fireWeapon(delta, this);
 			timeSinceLastShot = turret.getFireRate();
 		}
@@ -227,10 +237,15 @@ public abstract class AbstractTank extends MovableEntity {
 	 * The tank takes damage and take appropriate action is taken.
 	 * @param projectile
 	 */
-	public void recieveDamage(AbstractProjectile projectile){
-		if(!(projectile instanceof FlamethrowerProjectile))
+	public void receiveDamage(AbstractProjectile projectile){
+		if(!(projectile instanceof FlamethrowerProjectile)){
 			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "TANK_HIT_EVENT"));
-		setHealth(getHealth() - projectile.getDamage());
+		}
+		if(shield != null && shield.getHealth() > 0){
+			shield.damageShield(projectile.getDamage());
+		}else{
+			setHealth(getHealth() - projectile.getDamage());
+		}
 	}
 	
 	/**
@@ -250,9 +265,10 @@ public abstract class AbstractTank extends MovableEntity {
 		super.destroy();
 		if(getCurrentPowerUp() != null)
 			getCurrentPowerUp().deactivate();
-		fire = false;
 		active = false;
 		getTurret().destroy();
+		if(shield != null)
+			shield.destroy();
 	}
 
 	/**
@@ -277,14 +293,6 @@ public abstract class AbstractTank extends MovableEntity {
 	 */
 	public void setTurretOffset(float turretOffset) {
 		this.turretOffset = turretOffset;
-	}
-	
-	/**
-	 * Get the max shield health of the tank.
-	 * @return
-	 */
-	public double getMaxShieldHealth(){
-		return maxShieldHealth;
 	}
 	
 	/**
@@ -317,6 +325,22 @@ public abstract class AbstractTank extends MovableEntity {
 	 */
 	public ArrayList<AbstractProjectile> getProjectiles() {
 		return projectiles;
+    }
+	
+	/**
+	 * Get the color of this tank.
+	 * @return The color
+	 */
+	public String getColor(){
+		return color;
+	}
+
+	/**
+	 * Get the ID of the Tank's owner (player).
+	 * @return ownerID
+	 */
+	public int getOwnerID() {
+		return player.getId();
     }
 }
 

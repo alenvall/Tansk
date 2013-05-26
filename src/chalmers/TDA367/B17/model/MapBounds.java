@@ -6,6 +6,9 @@ import chalmers.TDA367.B17.controller.GameController;
 
 import java.awt.*;
 
+/**
+ * A class representing the border of the world.
+ */
 public class MapBounds extends Entity {
 
 	/**

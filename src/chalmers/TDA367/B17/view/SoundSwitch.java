@@ -56,5 +56,4 @@ public class SoundSwitch {
 	public void turnSoundOn(){
 		controller.getSoundHandler().setVolume(storedVolume);
 	}
-	
 }

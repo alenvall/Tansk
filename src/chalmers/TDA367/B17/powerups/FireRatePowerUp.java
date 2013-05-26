@@ -6,14 +6,23 @@ import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTurret;
 
+/**
+ * A power-up that increases the fire-rate of a tank's weapon.
+ */
 public class FireRatePowerUp extends AbstractPowerUp {
 
+	/** The firerate multiplier.*/
 	private final float MULTIPLIER = 0.5f;
+	
+	/** The affected turret.*/
 	private AbstractTurret turret;
+	
+	/** The default firerate. */
 	private int firerate;
 
 	/**
 	 * Create a new FireRatePowerUp at a position.
+	 * @param id The id
 	 * @param position The position of this powerup
 	 */
 	public FireRatePowerUp(int id, Vector2f position) {

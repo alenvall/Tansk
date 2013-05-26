@@ -17,15 +17,15 @@ public class ShotgunTurret extends AbstractTurret {
 	/**
 	 * Create a new ShotgunTurret.
 	 * @param id The id
+	 * @param startingRotation The starting rotation
 	 * @param tank The tank it belongs to
+	 * @param color The color
 	 */
-	public ShotgunTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
-		super(id, position, startingRotation,  tank);
+	public ShotgunTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
+		super(id, position, startingRotation,  tank, color);
 		ammoLeft = DEFAULT_AMMO;
-		turretCenter = new Vector2f(16.875f, 16.875f);
-		turretLength = 31.5f;
-		fireRate = 1000;
-		projectileType = "shotgun";
+		setFireRate(1000);
+		setProjectileType("shotgun");
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 
@@ -56,7 +56,7 @@ public class ShotgunTurret extends AbstractTurret {
 			ammoLeft--;
 			GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "SHOTGUN_FIRE_EVENT"));
 		}else{
-			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank()));
+			tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank(), getColor()));
 		}
 	}
 }

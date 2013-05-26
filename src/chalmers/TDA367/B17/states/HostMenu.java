@@ -1,21 +1,30 @@
 package chalmers.TDA367.B17.states;
 
-import org.newdawn.slick.Color;
-import org.newdawn.slick.GameContainer;
-import org.newdawn.slick.Graphics;
-import org.newdawn.slick.Input;
-import org.newdawn.slick.SlickException;
-import org.newdawn.slick.geom.Rectangle;
-import org.newdawn.slick.state.BasicGameState;
-import org.newdawn.slick.state.StateBasedGame;
+import org.newdawn.slick.*;
+import org.newdawn.slick.geom.*;
+import org.newdawn.slick.state.*;
 import chalmers.TDA367.B17.Tansk;
+import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.controller.GameController.GameSettings;
+import chalmers.TDA367.B17.view.MenuButton;
+import chalmers.TDA367.B17.view.RadioButton;
+import chalmers.TDA367.B17.view.Slider;
 
 public class HostMenu extends BasicGameState{
 	
-	private Rectangle startServer;
-	private boolean running = false;
+	private MenuButton startButton;
+	private MenuButton backButton;
 	private int state;
-	private String message;
+	private SpriteSheet background;
+	private Slider roundSlider;
+	private Slider playerLivesSlider;
+	private Slider spawnTimeSlider;
+	private Slider roundTimeSlider;
+	private Slider gameTimeSlider;
+	private Slider scorelimitSlider;
+	private int tempLives;
+	private RadioButton kothRadioButton;
+	private RadioButton standardRadioButton;
 	
 	public HostMenu(int state) {
 		this.state = state;
@@ -23,47 +32,102 @@ public class HostMenu extends BasicGameState{
 
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
-		startServer = new Rectangle(100, 125, 150, 50);
-		message = "Not running.";
-	}
+		startButton = new MenuButton(100, 475, GameController.getInstance().getImageHandler().getSprite("button_start"),
+				GameController.getInstance().getImageHandler().getSprite("button_start_pressed"),
+				GameController.getInstance().getImageHandler().getSprite("button_start_hover"));
 
-	@Override
-	public void render(GameContainer gc, StateBasedGame sbg, Graphics g)
-			throws SlickException {
-		g.setColor(Color.white);
-		g.drawString("Start", 150, 140);
-		g.draw(startServer);
-		if(running){
-			g.setColor(Color.blue);
-			g.drawString(message, 120, 180);
-		} else {
-			g.setColor(Color.red);
-			g.drawString(message, 120, 180);
-		}
-	}
-
-	@Override
-	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {	
-		Input input = gc.getInput();
-		int x = input.getMouseX();
-		int y = input.getMouseY();
+		backButton = new MenuButton(100, 575, GameController.getInstance().getImageHandler().getSprite("button_back"),
+				GameController.getInstance().getImageHandler().getSprite("button_back_pressed"),
+				GameController.getInstance().getImageHandler().getSprite("button_back_hover"));
 		
-		if(x > 100 && x < 250 && y > 125 && y < 175){
-			if(input.isMousePressed(0)){
-				System.out.println("Starting server!");
-//				try {
-//	                GameServer server = new GameServer();
-	                running = true;
-	                message = "Running!";
-//					((ServerState) sbg.getState(Tansk.SERVER)).setServer(server);
-					sbg.enterState(Tansk.SERVER);
-//				} catch (java.net.BindException e) {
-//					message = "Address in use!";
-//                } catch (IOException e) {
-//	                System.out.println("Failed to start server!");
-//	                e.printStackTrace();
-//                }
+		background = new SpriteSheet(GameController.getInstance().getImageHandler().getSprite("background"),
+				Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT);
+
+		standardRadioButton = new RadioButton(new Vector2f(100, 75), true, "Standard");
+		kothRadioButton = new RadioButton(new Vector2f(100, 110), false, "King of the hill");
+		
+		playerLivesSlider = new Slider(10, 1, 5, new Vector2f(110, 175), gc, "Player lives: ");
+		scorelimitSlider = new Slider(100, 1, 15, new Vector2f(110, 225), gc, "Scorelimit: ");
+		roundSlider = new Slider(30, 1, 4, new Vector2f(110, 275), gc, "Rounds: ");
+		spawnTimeSlider = new Slider(20, 1, 5, new Vector2f(110, 325), gc, "Spawn time: ");
+		roundTimeSlider = new Slider(600, 30, 300, new Vector2f(110, 375), gc, "Round time: ");
+		gameTimeSlider = new Slider(1800, 60, 900, new Vector2f(110, 425), gc, "Game time: ");
+	}
+
+	@Override
+	public void render(GameContainer gc, StateBasedGame sbg, Graphics g) throws SlickException {
+		background.draw();
+		startButton.draw();
+		backButton.draw();
+
+		kothRadioButton.draw(g);
+		standardRadioButton.draw(g);
+		
+		roundSlider.draw(g);
+		spawnTimeSlider.draw(g);
+		roundTimeSlider.draw(g);
+		gameTimeSlider.draw(g);
+		
+		scorelimitSlider.draw(g);
+		
+		if(standardRadioButton.isSelected())
+			playerLivesSlider.draw(g);
+	}
+
+	@Override
+	public void update(GameContainer gc, StateBasedGame sbg, int delta) throws SlickException {				
+		if(gc.getInput().isKeyPressed(Input.KEY_ESCAPE)){
+			sbg.enterState(Tansk.MENU);
+		}
+		
+		roundSlider.update();
+		spawnTimeSlider.update();
+		roundTimeSlider.update();
+		gameTimeSlider.update();
+		scorelimitSlider.update();
+		
+		if(playerLivesSlider != null){
+			playerLivesSlider.update();
+			tempLives = playerLivesSlider.getValue();
+		}
+
+		if(kothRadioButton.isPressed(gc.getInput())){
+			kothRadioButton.setSelected(true);
+			standardRadioButton.setSelected(false);
+		}else if(standardRadioButton.isPressed(gc.getInput())){
+			standardRadioButton.setSelected(true);
+			kothRadioButton.setSelected(false);
+		}
+		
+		if(standardRadioButton.isSelected()){
+			playerLivesSlider = new Slider(10, 1, tempLives, new Vector2f(110, 175), gc, "Player lives: ");
+		} else {
+			playerLivesSlider = null;
+		}
+				
+		if(backButton.isClicked(gc.getInput())){
+			sbg.enterState(Tansk.MENU);
+		} else if(startButton.isClicked(gc.getInput())){
+			GameSettings gameSettings = new GameSettings();
+			
+			if(kothRadioButton.isSelected()){
+				gameSettings.gameMode = "koth";
+			} else {
+				gameSettings.gameMode = "standard";
+				gameSettings.playerLives = playerLivesSlider.getValue();
 			}
+			
+			gameSettings.scorelimit = scorelimitSlider.getValue();
+			gameSettings.rounds = roundSlider.getValue();
+			
+			// convert from seconds to milliseconds
+			gameSettings.spawnTime = spawnTimeSlider.getValue()*1000;
+			gameSettings.roundTime = roundTimeSlider.getValue()*1000;
+			gameSettings.gameTime = gameTimeSlider.getValue()*1000;
+			
+			GameController.getInstance().setGameSettings(gameSettings);
+			System.out.println("Starting server!");
+			sbg.enterState(Tansk.SERVER);
 		}
 	}
 
@@ -71,5 +135,4 @@ public class HostMenu extends BasicGameState{
 	public int getID() {
 		return this.state;
 	}
-
 }

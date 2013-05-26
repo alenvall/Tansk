@@ -5,8 +5,8 @@ package chalmers.TDA367.B17.gamemodes;
 public class StandardGameMode extends ScoreBasedGame {
 
 
-	public StandardGameMode(){
-		super();
+	public StandardGameMode(int scoreLimit){
+		super(scoreLimit);
 	}
 	
 	@Override
@@ -18,17 +18,6 @@ public class StandardGameMode extends ScoreBasedGame {
 				players.get(i).setActive(false);
 				eliminatedPlayerCount++;
 				incrementAllPlayerScores();
-			}
-		}
-
-		if(delaying){
-			endRound();
-			delayTimer-=delta;
-			if(delayTimer <= 0){
-				
-				//Start a new round when the delay is over
-				newRound();
-				delaying = false;
 			}
 		}
 	}

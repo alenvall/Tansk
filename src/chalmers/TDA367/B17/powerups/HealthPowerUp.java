@@ -6,13 +6,17 @@ import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTank;
 
+/**
+ * A power-up that restores a portion of a tank's health.
+ */
 public class HealthPowerUp extends AbstractPowerUp {
 	
-	//What the tank that picks up the power up should be healed for.
+	/**What the tank picking up the power up should be healed for.*/
 	public static final int HEALTH_BOOST = 25;
 
 	/**
 	 * Create a new HealthPowerUp at a position.
+	 * @param id The id
 	 * @param position The position of this powerup
 	 */
 	public HealthPowerUp(int id, Vector2f position) {
@@ -42,7 +46,7 @@ public class HealthPowerUp extends AbstractPowerUp {
 		this.absTank = absTank;
 		effect();
 		active = false;
-		effectActive = true;
+		setEffectActive(true);
 		spriteID = "";
 		//Decrease the powerup count
 		GameController.getInstance().getWorld().getSpawner().setPowerupCount

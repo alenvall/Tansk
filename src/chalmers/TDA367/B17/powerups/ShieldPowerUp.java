@@ -6,17 +6,19 @@ import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.AbstractPowerUp;
 import chalmers.TDA367.B17.model.AbstractTank;
 
+/**
+ * A power-up that gives the tank a protecting shield.
+ */
 public class ShieldPowerUp extends AbstractPowerUp {
 
-
-	
 	/**
 	 * Create a new ShieldPowerUp at a position.
+	 * @param id The id
 	 * @param position The position of this powerup
 	 */
 	public ShieldPowerUp(int id, Vector2f position) {
 		super(id, position);
-		effectDuration = 1;
+		setEffectDuration(1);
 		spriteID = "shield_powerup";
 		GameController.getInstance().getWorld().addEntity(this);
 	}
@@ -48,7 +50,7 @@ public class ShieldPowerUp extends AbstractPowerUp {
 		this.absTank = absTank;
 		effect();
 		active = false;
-		effectActive = true;
+		setEffectActive(true);
 		spriteID = "";
 		//Decrease the powerup count
 		GameController.getInstance().getWorld().getSpawner().setPowerupCount

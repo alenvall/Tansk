@@ -2,28 +2,34 @@ package chalmers.TDA367.B17.model;
 
 import java.util.ArrayList;
 
+import org.newdawn.slick.Color;
+
 import chalmers.TDA367.B17.controller.GameController;
 
 import com.esotericsoftware.kryonet.Connection;
 
+/**
+ * Represents a player in the game.
+ */
 public class Player {
 	private int id;
 	private String name;
-	private int playerId;
 	private int score;
 	private AbstractTank tank;
 	private int lives;
 	private int respawnTimer;
 	private int respawnTime;
-	public boolean tankDead;
-	public String tankType;
-	public boolean active;
-	public boolean eliminated;
+	private String tankType;
+	private boolean active;
+	private boolean eliminated;
 	private Connection connection;
 	private ArrayList<Boolean> inputStatuses;
+	
+	private String color;
 
 	/**
-	 * Create a new Player.
+	 * Create a new Player with a connection.
+	 * @param connection The connection
 	 * @param name The player's name
 	 */
 	public Player(Connection connection, String name){
@@ -37,9 +43,14 @@ public class Player {
 		for(int i = 0; i < 6; i++){
 			inputStatuses.add(false);
 		}
+		color = "white";
 	}
 	
 	// only for single(Play)er state..
+	/**
+	 * Create a new player.
+	 * @param name The name
+	 */
 	public Player(String name){
 		this.connection = null;
 		this.id = 0;
@@ -51,6 +62,8 @@ public class Player {
 		for(int i = 0; i < 6; i++){
 			inputStatuses.add(false);
 		}
+		
+		color = "white";
 	}
 	
 	public static final int INPT_W = 0;
@@ -73,14 +86,6 @@ public class Player {
 	 */
 	public String getName() {
 		return name;
-	}
-	
-	/**
-	 * Get the players ID.
-	 * @return The ID
-	 */
-	public int getPlayerId() {
-		return playerId;
 	}
 	
 	/**
@@ -138,15 +143,7 @@ public class Player {
 	public void setName(String name){
 		this.name = name;
 	}
-	
-	/**
-	 * Set the players ID.
-	 * @param id The new ID
-	 */
-	public void setPlayerId(int id){
-		this.playerId = id;
-	}
-	
+		
 	/**
 	 * Set the players score.
 	 * @param score The new score
@@ -224,6 +221,14 @@ public class Player {
 	public int getId() {
 	    return id;
     }
+	
+	/**
+	 * Set the id of this player.
+	 * @param id
+	 */
+	public void setId(int id){
+		this.id = id;
+	}
 
 	/**
 	 * Get the connection associated with the player.
@@ -280,5 +285,42 @@ public class Player {
 	 */
 	public String getTankType() {
 		return tankType;
+	}
+	
+	/**
+	 * Set the color of this player.
+	 * @param color The new color
+	 */
+	public void setColor(String color){
+		this.color = color;
+	}
+	
+	/**
+	 * Get the color of this player as a string.
+	 * @return The color
+	 */
+	public String getColorAsString(){
+		return color;
+	}		
+	
+	/**
+	 * Get the color of this player.
+	 * @return color
+	 */
+	public Color getColor(){
+		if(getColorAsString().equals("blue")){
+			return Color.blue;
+		} else if(getColorAsString().equals("red")){
+			return Color.red;
+		} else if(getColorAsString().equals("yellow")){
+			return Color.yellow;
+		} else if(getColorAsString().equals("green")){
+			return Color.green;
+		} else if(getColorAsString().equals("white")){
+			return Color.white;
+		}else if(getColorAsString().equals("pink")){
+			return Color.pink;
+		}
+		return Color.black;
 	}
 }

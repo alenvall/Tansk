@@ -3,28 +3,62 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Point;
 import org.newdawn.slick.geom.Vector2f;
 
+/**
+ * AbstractTurret is the superclass to all turrets.
+ */
 public abstract class AbstractTurret extends Entity {
+	
+	/** The rotation of this turret.*/
 	private double rotation;
-	protected Vector2f turretCenter;
-	protected float turretLength;
-	protected int fireRate;
-	protected String projectileType;
-	protected AbstractTank tank;
-
-
+	/** The centerposition of this turret.*/
+	private Vector2f turretCenter;
+	/** The length of this turret.*/
+	private float turretLength;
+	/** The fire-rate of this turret.*/
+	private int fireRate;
+	/** The projectile-type of this turret.*/
+	private String projectileType;
+	/** The turret's tank.*/
+	private AbstractTank tank;
+	/** The color of this turret.*/
+	private String color;
+	
 	/**
 	 * Create a new AbstractTurret.
+	 * @param id The id
+	 * @param position The position
+	 * @param startingRotation The starting rotation
+	 * @param tank The tank
+	 * @param color The color
 	 */
-	public AbstractTurret(int id, Vector2f position, double startingRotation, AbstractTank tank) {
+	public AbstractTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id);
 		rotation = startingRotation;
-		spriteID = "turret_blue";
 		this.tank = tank;
-//		setShape(new Point(tank.getPosition().x, tank.getPosition().y+tank.getTurretOffset()));
 		setShape(new Point(position.x, position.y));
 		renderLayer = RenderLayer.THIRD;
+		this.color = color;
+		setSpriteID("turret_" + color);
+		turretCenter = new Vector2f(16.875f, 16.875f);
+		turretLength = 31.5f;
 	}
 	
+	/**
+	 * Get the projectile-type.
+	 * @return The projectile-type
+	 */
+	public String getProjectileType() {
+		return projectileType;
+	}
+
+	/**
+	 * Set the projectile-type.
+	 * @param projectileType The new projectile type
+	 */
+	public void setProjectileType(String projectileType) {
+		this.projectileType = projectileType;
+	}
+
 	/**
 	 * Get the tank of this turret.
 	 * @return The tank
@@ -33,7 +67,6 @@ public abstract class AbstractTurret extends Entity {
 		return tank;
 	}
 
-	
 	/**
 	 * Get the fire rate.
 	 * @return the delay between shots in milliseconds
@@ -111,14 +144,12 @@ public abstract class AbstractTurret extends Entity {
 		projectile.setPosition(getTurretNozzle());
 		return projectile;
 	}
-
-	// moved func. to AbstractTank
-	public void update(int delta){
-		super.update(delta);
-//		double tankRotation = tank.getRotation() - 90;
-//		float newTurX = (float) (tank.getPosition().x + tank.getTurretOffset() * Math.cos(Math.toRadians(tankRotation + 180)));
-//		float newTurY = (float) (tank.getPosition().y - tank.getTurretOffset() * Math.sin(Math.toRadians(tankRotation)));
-//
-//		this.setPosition(new Vector2f(newTurX, newTurY));
+	
+	/**
+	 * Get the color of this turret.
+	 * @return The color
+	 */
+	public String getColor(){
+		return color;
 	}
 }

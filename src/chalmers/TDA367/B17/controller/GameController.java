@@ -1,20 +1,16 @@
 package chalmers.TDA367.B17.controller;
 
-import java.awt.Dimension;
-
-import org.newdawn.slick.geom.Vector2f;
-
 import chalmers.TDA367.B17.Tansk;
-import chalmers.TDA367.B17.console.Console;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.gamemodes.GameConditions;
 import chalmers.TDA367.B17.gamemodes.KingOfTheHillMode;
 import chalmers.TDA367.B17.gamemodes.StandardGameMode;
-import chalmers.TDA367.B17.animations.AnimationHandler;
-import chalmers.TDA367.B17.model.KingOfTheHillZone;
 import chalmers.TDA367.B17.model.World;
-import chalmers.TDA367.B17.sound.SoundHandler;
+import chalmers.TDA367.B17.resource.AnimationHandler;
+import chalmers.TDA367.B17.resource.ImageHandler;
+import chalmers.TDA367.B17.resource.SoundHandler;
+import chalmers.TDA367.B17.view.Console;
 
 public class GameController {
 	private static GameController instance;
@@ -26,7 +22,18 @@ public class GameController {
 	private AnimationHandler animationHandler;
 	private GameConditions gameMode;
 	private int latestID;
+	private String playerName;
+	private GameSettings gameSettings;
 
+	public static class GameSettings {
+		public String gameMode = "";
+		public int rounds;
+		public int playerLives; 
+		public int spawnTime; 
+		public int roundTime; 
+		public int gameTime;
+		public int scorelimit;
+	}
 	
 	private GameController() {
 		imgHandler = new ImageHandler();
@@ -58,25 +65,19 @@ public class GameController {
 	 * @param gameTime The total time the game takes.
 	 * @param serverWorld If the world should be on a server or not. 
 	 */
-	public void newGame(int width, int height, int rounds, 
-			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld){
-		world = new World(new Dimension(width, height), serverWorld);
-		world.init();
-		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
+	public void newGame(){
 		
-		gameMode = new KingOfTheHillMode(new Vector2f(512,384));
-		gameMode.init(rounds, playerLives, spawnTime, roundTime, gameTime);
-
+		if(gameSettings.gameMode.equals("koth")){
+			gameMode = new KingOfTheHillMode(gameSettings.scorelimit);
+		} else if(gameSettings.gameMode.equals("standard")){
+			gameMode = new StandardGameMode(gameSettings.scorelimit);
+		}
+			
+		gameMode.init(gameSettings.rounds, gameSettings.playerLives, gameSettings.spawnTime, gameSettings.roundTime, gameSettings.gameTime);
 	}
 	
-	public void newGame(int width, int height, int rounds, 
-			int playerLives, int spawnTime, int roundTime, int gameTime, boolean serverWorld, GameConditions gameMode){
-		world = new World(new Dimension(width, height), serverWorld);
-		world.init();
-		GameController.getInstance().getConsole().addMsg("GameController.newGame()");
-		this.gameMode = gameMode;
-		gameMode.init(rounds, 
-				playerLives, spawnTime, roundTime, gameTime);
+	public void setGameSettings(GameSettings gameSettings){
+		this.gameSettings = gameSettings;
 	}
 	
 	/**
@@ -170,5 +171,17 @@ public class GameController {
 	    } else if(event.getEventType().equals(EventType.ANIM)){
 	    	GameController.getInstance().getAnimationHandler().playAnimation(event);
 	    }	
+    }
+
+	public String getPlayerName() {
+	    return playerName;
+    }
+	
+	public void setPlayerName(String playerName) {
+	    this.playerName = playerName;
+    }
+
+	public GameSettings getGameSettings() {
+	    return gameSettings;
     }
 }

@@ -3,16 +3,26 @@ package chalmers.TDA367.B17.model;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.geom.Vector2f;
 
+/**
+ * An abstract class that represents a projectile.
+ */
 public abstract class AbstractProjectile extends MovableEntity {
 	
+	/** The damage of this projectile.*/
 	private double damage;
+	/** The duration of this projectile in milliseconds.*/
 	private int duration;
+	/** The remaining duration of this projectile in milliseconds.*/
 	private int durationTimer;
+	/** The owning tank.*/
 	private AbstractTank tank;
 
 	/**
 	 * Create a new AbstractProjectile.
-	 * @param velocity the initial velocity
+	 * @param id The id
+	 * @param tank The tank this projectile belongs to
+	 * @param position The position
+	 * @param direction The direction
 	 * @param maxSpeed the maximum speed
 	 * @param minSpeed the minimum speed
 	 * @param damage the damage this projectile does
@@ -31,6 +41,10 @@ public abstract class AbstractProjectile extends MovableEntity {
 			setShape(new Rectangle(position.x, position.y, 1,1));
 	}
 	
+	/**
+	 * Get the owning tank.
+	 * @return The owning tank
+	 */
 	public AbstractTank getTank(){
 		return tank;
 	}
@@ -112,6 +126,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 			this.destroy();
 		}else if(entity instanceof AbstractTank){
 			damageTarget((AbstractTank)entity);
+			this.destroy();
 		}
 	}
 
@@ -126,7 +141,7 @@ public abstract class AbstractProjectile extends MovableEntity {
 	 * @param target The target tank
 	 */
 	public void damageTarget(AbstractTank target){
-		target.recieveDamage(this);
+		target.receiveDamage(this);
 		this.destroy();
 	}
 }

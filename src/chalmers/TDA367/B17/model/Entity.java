@@ -4,6 +4,9 @@ import chalmers.TDA367.B17.controller.GameController;
 //import chalmers.TDA367.B17.event.GameEvent;
 import org.newdawn.slick.geom.*;
 
+/**
+ * Entity is a superclass for an object in the world.
+ */
 public abstract class Entity{
 	protected int id; // The id of this object
 	protected boolean active;
@@ -20,11 +23,10 @@ public abstract class Entity{
 
 	/**
 	 * Create a new Entity.
+	 * @param id The id
 	 */
 	public Entity(int id){
 		this.id = id;
-//		this.id = GameController.getInstance().getWorld().generateID();
-//		GameController.getInstance().getWorld().addEntity(this);
 		active = true;
 		shape = new Point(1, 1);
 		rotation = 0;
@@ -156,7 +158,6 @@ public abstract class Entity{
 	 */
 	public void destroy(){
 		GameController.getInstance().getWorld().removeEntity(this);
-//		GameController.getInstance().getWorld().handleEvent(new GameEvent(this, ENTITY_REMOVED_EVENT));
 	}
 	
 	/**

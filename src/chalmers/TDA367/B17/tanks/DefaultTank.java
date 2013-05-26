@@ -15,16 +15,17 @@ public class DefaultTank extends AbstractTank {
 	public static final float DEFAULT_MINSPEED = -0.04f;
 	
 	/**
-	 * Create a new DefaultTank.
+	 * Create a new DefaultTank with a color.
+	 * @param id The id
 	 * @param direction The direction the tank will face.
-	 * @param player The owner of this tank.
+	 * @param player The player this tank belongs to
+	 * @param color The color of this tank
 	 */
-	public DefaultTank(int id, Vector2f direction, Player player) {
-		super(id, direction, DEFAULT_MAXSPEED, DEFAULT_MINSPEED, player);
+	public DefaultTank(int id, Vector2f direction, Player player, String color) {
+		super(id, direction, DEFAULT_MAXSPEED, DEFAULT_MINSPEED, player, color);
 		setShape(new Rectangle(100, 150, 48, 63));
 		setTurretOffset(6);
-		turret = new DefaultTurret(1000+id, new Vector2f(this.getPosition().x, this.getPosition().y+this.getTurretOffset()), direction.getTheta(), this);
-		spriteID = "tank_blue";
+		turret = new DefaultTurret(1000+id, new Vector2f(this.getPosition().x, this.getPosition().y+this.getTurretOffset()), direction.getTheta(), this, color);
 		setHealth(100);
 		GameController.getInstance().getWorld().addEntity(this);
 	}

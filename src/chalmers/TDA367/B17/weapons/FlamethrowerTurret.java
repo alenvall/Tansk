@@ -17,16 +17,16 @@ public class FlamethrowerTurret extends AbstractTurret {
 	/**
 	 * Create a new FlamethrowerTurret.
 	 * @param id The id
+	 * @param startingRotation The starting rotation
 	 * @param tank The tank it belongs to
+	 * @param color The color
 	 */
-	public FlamethrowerTurret(int id, Vector2f position, double startingRotation, AbstractTank tank)  {
-		super(id, position, startingRotation,  tank);
+	public FlamethrowerTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color)  {
+		super(id, position, startingRotation,  tank, color);
 		ammoLeft = DEFAULT_AMMO;
-		turretCenter = new Vector2f(16.875f, 16.875f);
-		turretLength = 31.5f;
 		setSize(new Vector2f(45f, 65f));
-		fireRate = 33;
-		projectileType = "fire";
+		setFireRate(33);
+		setProjectileType("fire");
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 	
@@ -45,7 +45,7 @@ public class FlamethrowerTurret extends AbstractTurret {
 					GameController.getInstance().getWorld().handleEvent(new GameEvent(EventType.SOUND, this, "FLAMETHROWER_EVENT"));
 				}
 			}else{
-				tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank()));
+				tank.setTurret(new DefaultTurret(GameController.getInstance().generateID(), getPosition(), getRotation(), getTank(), getColor()));
 			}
 		}
 	}

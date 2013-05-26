@@ -13,7 +13,6 @@ import chalmers.TDA367.B17.tanks.TankFactory;
 
 public class TankSpawnPoint extends AbstractSpawnPoint {
 
-
 	/**
 	 * Create a new TankSpawnPoint.
 	 * @param position The position of this spawn-point
@@ -56,5 +55,4 @@ public class TankSpawnPoint extends AbstractSpawnPoint {
 			setSpawnable(false);
 		}
 	}
-
 }

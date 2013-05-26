@@ -4,16 +4,26 @@ import org.newdawn.slick.geom.Vector2f;
 
 import chalmers.TDA367.B17.controller.GameController;
 
+/**
+ * An abstract class representing powerups.
+ */
 public abstract class AbstractPowerUp extends Entity {
 
+	/** The name of this power-up.*/
 	private String name;
-	protected int duration;
-	protected int effectDuration;
-	protected boolean effectActive;
+	/** The duration of this power-up in milliseconds.*/
+	private int duration;
+	/** The remaining time in milliseconds.*/
+	private int effectDuration;
+	/** If the power-up is active or not.*/
+	private boolean effectActive;
+	/** The owning tank of this power-up.*/
 	protected AbstractTank absTank;
 
 	/**
 	 * Create a new AbstractPowerUp.
+	 * @param id The id
+	 * @param position THe position
 	 */
 	public AbstractPowerUp(int id, Vector2f position) {
 		super(id);
@@ -140,4 +150,12 @@ public abstract class AbstractPowerUp extends Entity {
 	 * Runs every update, includes what will happen during the effect.
 	 */
 	public abstract void updateEffect();
+	
+	/**
+	 * Set the state of effectActive.
+	 * @param bool The new state
+	 */
+	public void setEffectActive(Boolean bool){
+		effectActive = bool;
+	}
 }
