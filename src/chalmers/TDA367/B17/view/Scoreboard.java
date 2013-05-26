@@ -58,8 +58,14 @@ public class Scoreboard {
 		
 
 		g.setFont(scoreboardFont);
-		String winnerString = "Winner(s): ";
 		List<Player> winningPlayers = GameController.getInstance().getGameMode().getWinningPlayers();
+		String winnerString = "";
+		if(winningPlayers.size()>1){
+			winnerString = "Winners: ";
+		}else{
+
+			winnerString = "Winner: ";
+		}
 		for(int i = 0; i<winningPlayers.size(); i++){
 			Player playerAtI = winningPlayers.get(i);
 			winnerString += playerAtI.getName();
