@@ -316,6 +316,10 @@ public class Player {
 			return Color.yellow;
 		} else if(getColorAsString().equals("green")){
 			return Color.green;
+		} else if(getColorAsString().equals("white")){
+			return Color.white;
+		}else if(getColorAsString().equals("pink")){
+			return Color.pink;
 		}
 		return Color.black;
 	}
