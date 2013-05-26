@@ -56,7 +56,8 @@ public class JoinMenu extends BasicGameState{
 	public void enter(GameContainer gc, StateBasedGame stateBasedGame){
 		serverIPField.setFocus(true);
 		connectionFailed = false;
-		serverIPField.setText("");
+		serverIPField.setText("192.168.0.");
+		serverIPField.setCursorPos(25);
 	}
 
 	@Override
