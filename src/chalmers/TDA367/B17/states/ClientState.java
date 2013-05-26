@@ -228,9 +228,6 @@ public class ClientState extends TanskState {
 		}
 		
 		soundSwitch.render(g);
-		
-		g.setColor(Color.black);
-		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
 	}
 
 	private void renderEntities(ArrayList<Entity> entities){
