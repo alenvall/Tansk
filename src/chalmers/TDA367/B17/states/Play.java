@@ -299,14 +299,6 @@ public class Play extends TanskState {
 					fourthLayerEnts.add(entity);
 			}
 		}
-		if(controller.getGameMode() instanceof KingOfTheHillMode){
-			Vector2f tmpPosition = ((KingOfTheHillMode)controller.getGameMode()).getZone().getPosition();
-			g.setColor(Color.green);
-			g.fillRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75*
-					((float)playerOne.getScore()/(float)((KingOfTheHillMode)controller.getGameMode()).getScoreLimit()), 10, 10);
-			g.setColor(Color.black);
-			g.drawRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75, 10, 10);
-		}
 		
 		renderEntities(firstLayerEnts);
 		renderEntities(secondLayerEnts);
@@ -347,7 +339,16 @@ public class Play extends TanskState {
 				i++;
 				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (500+(i*25)));
 			}
-		}	
+		}
+
+		if(controller.getGameMode() instanceof KingOfTheHillMode){
+			Vector2f tmpPosition = ((KingOfTheHillMode)controller.getGameMode()).getZone().getPosition();
+			g.setColor(Color.green);
+			g.fillRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75*
+					((float)playerOne.getScore()/(float)((KingOfTheHillMode)controller.getGameMode()).getScoreLimit()), 10, 10);
+			g.setColor(Color.black);
+			g.drawRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75, 10, 10);
+		}
 
 		if(controller.getGameMode().isGameOver()){
 			scoreboard.render(g);
