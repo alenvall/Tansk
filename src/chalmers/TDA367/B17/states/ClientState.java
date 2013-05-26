@@ -72,6 +72,7 @@ public class ClientState extends TanskState {
 		this.client.addListener(new Listener(){
 			@Override
 			public void connected(Connection connection) {
+				// send a request to join the server
 				Pck0_JoinRequest pck = new Pck0_JoinRequest();
 				uniqueIdentifier = (int) (Math.random()*1000*Math.random());
 				pck.unique = uniqueIdentifier;
@@ -135,6 +136,7 @@ public class ClientState extends TanskState {
 	
 	@Override
 	public void leave(GameContainer gc, StateBasedGame sbg) throws SlickException {
+		// cleanup
 		super.leave(gc, sbg);
 		isConnected = false;
 		client.close();
@@ -177,7 +179,8 @@ public class ClientState extends TanskState {
 		}
 		
 		GameController.getInstance().getConsole().update(delta);
-		processPackets();	
+		processPackets();
+		// only send input if the game is running
 		if(!gameOver){
 			sendClientInput(gc.getInput());
 		} else {
@@ -190,6 +193,7 @@ public class ClientState extends TanskState {
 
 	@Override
     public void render(GameContainer container, StateBasedGame game, Graphics g) throws SlickException {
+		// render the sprites in layers
 		if(isConnected){
 			g.drawImage(map, 0, 0);
 			if(controller.getWorld().getEntities() != null){
@@ -228,11 +232,12 @@ public class ClientState extends TanskState {
 	public void renderGUI(GameContainer gc, Graphics g){
 		super.renderGUI(gc, g);
 		
+		// render the chatfield
 		g.setColor(Color.white);
 		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
 		chatField.render(gc, g);
 		
-		//Cool timer
+		// countdown timer
 		if(gameDelaying){
 			if(delayTimer > 0){
 				g.setColor(Color.black);
@@ -247,6 +252,7 @@ public class ClientState extends TanskState {
 		}
 		
 		if(localPlayer != null){
+			// render game info
 			if(showInfo && client.isConnected()){
 				g.setColor(Color.black);
 				g.drawString("Waiting for host to start the game...", 350, 175);
@@ -405,6 +411,7 @@ public class ClientState extends TanskState {
 				createPlayer((Pck6_CreatePlayer) packet);
 			}
 			
+			// also update the local player
 			if(packet instanceof Pck8_EntityDestroyed){
 				Pck8_EntityDestroyed pck = (Pck8_EntityDestroyed) packet;
 				controller.getWorld().removeEntity(pck.entityID);
