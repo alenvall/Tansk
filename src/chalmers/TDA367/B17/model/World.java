@@ -69,6 +69,7 @@ public class World {
 					Pck10_TankCreated tankPacket = new Pck10_TankCreated();
 					tankPacket.entityID = ((AbstractTank) newEntity).getId();
 					tankPacket.identifier = ((AbstractTank) newEntity).getClass().getSimpleName();
+					tankPacket.owner = ((AbstractTank) newEntity).getOwnerID();
 					tankPacket.direction = ((AbstractTank) newEntity).getDirection();
 					tankPacket.color = ((AbstractTank) newEntity).getColor();
 					ServerState.getInstance().addToAllClientsQueue(tankPacket);

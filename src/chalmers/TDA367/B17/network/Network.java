@@ -24,11 +24,13 @@ public class Network {
 		kryo.register(Pck3_1_ChatMessage.class);
 		kryo.register(Pck4_ClientInput.class);
 		kryo.register(Pck5_PlayerKicked.class);
-		kryo.register(Pck7_TankID.class);
+		kryo.register(Pck6_CreatePlayer.class);
 		kryo.register(Pck8_EntityDestroyed.class);
 		kryo.register(Pck9_EntityCreated.class);
 		kryo.register(Pck10_TankCreated.class);
 		kryo.register(Pck11_StaticObjectCreated.class);
+		kryo.register(Pck12_RemovePlayer.class);
+		kryo.register(Pck13_UpdatePlayer.class);
 		kryo.register(Pck100_WorldState.class);
 		kryo.register(Pck102_TankUpdate.class);
 		kryo.register(Pck103_ProjectileUpdate.class);
@@ -58,12 +60,15 @@ public class Network {
 	/** Sent by the client upon connection */		
 	public static class Pck0_JoinRequest extends Packet{
 		public String playerName;
+		public int unique;
 	}
 
 	/** Answer sent by the server */
 	public static class Pck1_JoinAnswer extends Packet{
 		public boolean accepted = false;
 		public String reason = "N/A";
+		public ArrayList<Pck6_CreatePlayer> oldPlayers;
+		public int localID;
 	}
 
 	/** Sent by the client upon accepted join request */
@@ -94,11 +99,19 @@ public class Network {
 	public static class Pck5_PlayerKicked extends Packet{
 		public String reason;
 	}
-
-	/** Clients players tank ID */
-	public static class Pck7_TankID extends Packet{
+	
+	/** Player joined */
+	public static class Pck6_CreatePlayer extends Packet{
+		public int id;
+		public String name;
+		public int score;
 		public int tankID;
-	}	
+		public int lives;
+		public boolean active;
+		public boolean eliminated;
+		public String color;
+		public int unique;
+	}
 
 	/** Entity destroyed */
 	public static class Pck8_EntityDestroyed extends EntityPacket {
@@ -115,6 +128,7 @@ public class Network {
 	public static class Pck10_TankCreated extends Pck9_EntityCreated {
 		public Vector2f direction;
 		public String color;
+		public int owner;
 	}
 
 	/** Static object created */
@@ -122,9 +136,24 @@ public class Network {
 		public Vector2f position;
 	}
 
+	/** Player removed */
+	public static class Pck12_RemovePlayer extends Packet {
+		public int playerID;
+	}
+	
+	/** Player update */
+	public static class Pck13_UpdatePlayer extends Packet {
+		public int id;
+		public int score;
+		public int tankID;
+		public int lives;
+		public boolean active;
+		public boolean eliminated;
+	}
+	
 	/** World state */
 	public static class Pck100_WorldState extends Packet {
-		public ArrayList<EntityPacket> updatePackets;
+		public ArrayList<Packet> updatePackets;
 	}
 
 	/** Tank update */
