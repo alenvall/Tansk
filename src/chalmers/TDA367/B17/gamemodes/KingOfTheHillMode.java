@@ -50,6 +50,10 @@ public class KingOfTheHillMode extends ScoreBasedGame{
 		}
 	}
 	
+	public KingOfTheHillZone getZone(){
+		return pointZone;
+	}
+	
 	public void generateZone(Vector2f position){
 		pointZone = new KingOfTheHillZone(GameController.getInstance().generateID(), position);
 	}
