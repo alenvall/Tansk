@@ -88,20 +88,20 @@ public class Play extends TanskState {
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
 
 		//Players
-		playerOne = new Player("Player One");
+		playerOne = new Player("Euler");
 		playerOne.setColor("pink");
 		players = new ArrayList<Player>();
 		players.add(playerOne);
 		
-		playerTwo = new Player("Player Two");
+		playerTwo = new Player("Newton");
 		playerTwo.setColor("red");
 		players.add(playerTwo);
 		
-		playerThree = new Player("Player Three");
+		playerThree = new Player("Gauss");
 		playerThree.setColor("yellow");
 		players.add(playerThree);
 		
-		playerFour = new Player("Player Four");
+		playerFour = new Player("Leibniz");
 		players.add(playerFour);
 		
 		for(Player player : players){
