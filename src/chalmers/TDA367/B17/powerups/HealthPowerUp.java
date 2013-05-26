@@ -46,7 +46,7 @@ public class HealthPowerUp extends AbstractPowerUp {
 		this.absTank = absTank;
 		effect();
 		active = false;
-		effectActive = true;
+		setEffectActive(true);
 		spriteID = "";
 		//Decrease the powerup count
 		GameController.getInstance().getWorld().getSpawner().setPowerupCount

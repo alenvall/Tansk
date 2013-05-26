@@ -24,10 +24,8 @@ public class ShotgunTurret extends AbstractTurret {
 	public ShotgunTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id, position, startingRotation,  tank, color);
 		ammoLeft = DEFAULT_AMMO;
-		turretCenter = new Vector2f(16.875f, 16.875f);
-		turretLength = 31.5f;
-		fireRate = 1000;
-		projectileType = "shotgun";
+		setFireRate(1000);
+		setProjectileType("shotgun");
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 

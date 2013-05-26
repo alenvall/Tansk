@@ -17,7 +17,7 @@ import chalmers.TDA367.B17.powerups.Shield;
 
 public class ShockwaveProjectile extends AbstractProjectile {
 
-	private boolean activated = false;
+	private boolean detonated = false;
 
 	//Used to handle the amount of times a single tank has been hit by a shockwave.
 	protected Map<AbstractTank, Integer> tankMap = new HashMap<AbstractTank, Integer>();
@@ -42,7 +42,7 @@ public class ShockwaveProjectile extends AbstractProjectile {
 	public void detonate(){
 		GameController.getInstance().getWorld().handleEvent(new GameEvent(
 				EventType.SOUND,this, "SHOCKWAVE_DETONATE_EVENT"));
-		activated = true;
+		detonated = true;
 		for(int i = 0; i < 40; i++){
 			ShockwaveSecondaryProjectile projectile = 
 					new ShockwaveSecondaryProjectile(GameController.getInstance()
@@ -57,7 +57,7 @@ public class ShockwaveProjectile extends AbstractProjectile {
 
 	@Override
 	public void update(int delta){
-		if(getDurationTimer() <= 20 && !activated){
+		if(getDurationTimer() <= 20 && !detonated){
 			detonate();
 		}
 		super.update(delta);
@@ -65,7 +65,7 @@ public class ShockwaveProjectile extends AbstractProjectile {
 
 	@Override
 	public void didCollideWith(Entity entity){
-		if(!activated){
+		if(!detonated){
 			if(entity instanceof Shield && entity != getTank().getShield()){
 				detonate();
 			}else if(entity instanceof AbstractTank && entity != getTank()){

@@ -24,10 +24,7 @@ public class ShockwaveTurret extends AbstractTurret{
 	public ShockwaveTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id, position, startingRotation,  tank, color);
 		ammoLeft = DEFAULT_AMMO;
-		turretCenter = new Vector2f(16.875f, 16.875f);
-		turretLength = 31.5f;
-		fireRate = 3000;
-		projectileType = "";
+		setFireRate(3000);
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 

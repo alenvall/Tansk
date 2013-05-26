@@ -15,22 +15,35 @@ import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
  */
 public abstract class AbstractTank extends MovableEntity {
 	
+	/** The event that is triggered upon death.*/
 	public static final String TANK_DEATH_EVENT = "TANK_DEATH_EVENT";
 	
+	/** The name of the tank.*/
 	private String name;
+	/**The health of the tank.*/
 	private double health;
+	/** The current power-up of this tank.*/
 	private AbstractPowerUp currentPowerUp;
 	/** How many degrees the tank will turn each update.*/
 	private float turnSpeed; 
+	/** The current turret of this tank.*/
 	protected AbstractTurret turret;
 	protected float turretOffset;
+	/** The since last firing.*/
 	protected int timeSinceLastShot;
+	/** The most recent direction.*/
 	private double lastDirection;
+	/** The maximum health of this tank.*/
 	public static final double MAX_HEALTH = 100;
+	/** The maximum shieldhealth of this tank.*/
 	public static final double MAX_SHIELD_HEALTH = 50;
+	/** The current shield.*/
 	private Shield shield;
+	/** The tank's projectiles.*/
 	private ArrayList<AbstractProjectile> projectiles;
+	/** The owner of this tank.*/
 	private Player player;
+	/** The color of this tank.*/
 	private String color;
 	
 	/**

@@ -18,7 +18,7 @@ public class ShieldPowerUp extends AbstractPowerUp {
 	 */
 	public ShieldPowerUp(int id, Vector2f position) {
 		super(id, position);
-		effectDuration = 1;
+		setEffectDuration(1);
 		spriteID = "shield_powerup";
 		GameController.getInstance().getWorld().addEntity(this);
 	}
@@ -50,7 +50,7 @@ public class ShieldPowerUp extends AbstractPowerUp {
 		this.absTank = absTank;
 		effect();
 		active = false;
-		effectActive = true;
+		setEffectActive(true);
 		spriteID = "";
 		//Decrease the powerup count
 		GameController.getInstance().getWorld().getSpawner().setPowerupCount

@@ -8,9 +8,13 @@ import org.newdawn.slick.geom.Vector2f;
  */
 public abstract class AbstractProjectile extends MovableEntity {
 	
+	/** The damage of this projectile.*/
 	private double damage;
+	/** The duration of this projectile in milliseconds.*/
 	private int duration;
+	/** The remaining duration of this projectile in milliseconds.*/
 	private int durationTimer;
+	/** The owning tank.*/
 	private AbstractTank tank;
 
 	/**
@@ -37,6 +41,10 @@ public abstract class AbstractProjectile extends MovableEntity {
 			setShape(new Rectangle(position.x, position.y, 1,1));
 	}
 	
+	/**
+	 * Get the owning tank.
+	 * @return The owning tank
+	 */
 	public AbstractTank getTank(){
 		return tank;
 	}

@@ -20,10 +20,8 @@ public class DefaultTurret extends AbstractTurret {
 	 */
 	public DefaultTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color) {
 		super(id, position, startingRotation, tank, color);
-		turretCenter = new Vector2f(16.875f, 16.875f);
-		turretLength = 31.5f;
-		fireRate = 500;
-		projectileType = "default";
+		setFireRate(500);
+		setProjectileType("default");
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 

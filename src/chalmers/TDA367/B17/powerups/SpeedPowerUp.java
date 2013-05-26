@@ -24,7 +24,7 @@ public class SpeedPowerUp extends AbstractPowerUp {
 	 */
 	public SpeedPowerUp(int id, Vector2f position) {
 		super(id, position);
-		effectDuration = 7000;
+		setEffectDuration(7000);
 		spriteID = "speed_powerup";
 		GameController.getInstance().getWorld().addEntity(this);
 	}

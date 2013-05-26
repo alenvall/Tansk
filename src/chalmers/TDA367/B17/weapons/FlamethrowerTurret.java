@@ -24,11 +24,9 @@ public class FlamethrowerTurret extends AbstractTurret {
 	public FlamethrowerTurret(int id, Vector2f position, double startingRotation, AbstractTank tank, String color)  {
 		super(id, position, startingRotation,  tank, color);
 		ammoLeft = DEFAULT_AMMO;
-		turretCenter = new Vector2f(16.875f, 16.875f);
-		turretLength = 31.5f;
 		setSize(new Vector2f(45f, 65f));
-		fireRate = 33;
-		projectileType = "fire";
+		setFireRate(33);
+		setProjectileType("fire");
 		GameController.getInstance().getWorld().addEntity(this);
 	}
 	

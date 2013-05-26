@@ -7,12 +7,20 @@ import org.newdawn.slick.geom.Vector2f;
  * AbstractTurret is the superclass to all turrets.
  */
 public abstract class AbstractTurret extends Entity {
+	
+	/** The rotation of this turret.*/
 	private double rotation;
-	protected Vector2f turretCenter;
-	protected float turretLength;
-	protected int fireRate;
-	protected String projectileType;
-	protected AbstractTank tank;
+	/** The centerposition of this turret.*/
+	private Vector2f turretCenter;
+	/** The length of this turret.*/
+	private float turretLength;
+	/** The fire-rate of this turret.*/
+	private int fireRate;
+	/** The projectile-type of this turret.*/
+	private String projectileType;
+	/** The turret's tank.*/
+	private AbstractTank tank;
+	/** The color of this turret.*/
 	private String color;
 	
 	/**
@@ -31,8 +39,26 @@ public abstract class AbstractTurret extends Entity {
 		renderLayer = RenderLayer.THIRD;
 		this.color = color;
 		setSpriteID("turret_" + color);
+		turretCenter = new Vector2f(16.875f, 16.875f);
+		turretLength = 31.5f;
 	}
 	
+	/**
+	 * Get the projectile-type.
+	 * @return The projectile-type
+	 */
+	public String getProjectileType() {
+		return projectileType;
+	}
+
+	/**
+	 * Set the projectile-type.
+	 * @param projectileType The new projectile type
+	 */
+	public void setProjectileType(String projectileType) {
+		this.projectileType = projectileType;
+	}
+
 	/**
 	 * Get the tank of this turret.
 	 * @return The tank
