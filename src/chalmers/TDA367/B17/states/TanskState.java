@@ -31,6 +31,7 @@ public abstract class TanskState extends BasicGameState {
 	protected int updates;
 	protected int seconds;
 	private boolean renderDebug;
+	private int delta;
 	
 	protected TanskState(int state) {
 	    this.state = state;
@@ -60,7 +61,8 @@ public abstract class TanskState extends BasicGameState {
 	}
 		
 	@Override
-	public void update(GameContainer container, StateBasedGame game, int delta) throws SlickException {				
+	public void update(GameContainer container, StateBasedGame game, int delta) throws SlickException {	
+		this.delta = delta;
 		if(container.getInput().isKeyPressed(Input.KEY_ESCAPE)){
 			game.enterState(Tansk.MENU);
 		}			
@@ -90,7 +92,8 @@ public abstract class TanskState extends BasicGameState {
 			g.setLineWidth(1);
 		
 			g.setColor(Color.white);
-			g.drawString("Time: " + seconds, 18, 300);
+			g.drawString("Time: " + seconds, 18, 280);
+			g.drawString("Delta: " + delta, 18, 300);
 			g.drawString("Packet rec/sec: " + packetsRecPerSecond, 18, 320);
 			g.drawString("Packet sent/sec: " + packetsSentPerSecond, 18, 340);
 			g.drawString("Update/sec: " + updatesPerSecond, 18, 360);

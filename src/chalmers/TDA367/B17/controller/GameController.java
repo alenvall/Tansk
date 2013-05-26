@@ -1,6 +1,7 @@
 package chalmers.TDA367.B17.controller;
 
 import chalmers.TDA367.B17.Tansk;
+import chalmers.TDA367.B17.controller.GameController.GameSettings;
 import chalmers.TDA367.B17.event.GameEvent;
 import chalmers.TDA367.B17.event.GameEvent.EventType;
 import chalmers.TDA367.B17.gamemodes.GameConditions;
@@ -26,7 +27,7 @@ public class GameController {
 	private GameSettings gameSettings;
 
 	public static class GameSettings {
-		public String gameMode;
+		public String gameMode = "";
 		public int rounds;
 		public int playerLives; 
 		public int spawnTime; 
@@ -180,5 +181,9 @@ public class GameController {
 	
 	public void setPlayerName(String playerName) {
 	    this.playerName = playerName;
+    }
+
+	public GameSettings getGameSettings() {
+	    return gameSettings;
     }
 }

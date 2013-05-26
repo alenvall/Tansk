@@ -13,6 +13,7 @@ import org.newdawn.slick.state.*;
 
 import chalmers.TDA367.B17.*;
 import chalmers.TDA367.B17.controller.*;
+import chalmers.TDA367.B17.controller.GameController.GameSettings;
 import chalmers.TDA367.B17.event.*;
 import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
@@ -46,6 +47,10 @@ public class ClientState extends TanskState {
 	private ArrayList<Player> playerList;
 	private Player localPlayer;
 	private int uniqueIdentifier;
+	private GameSettings gameSettings;
+	private boolean gameDelaying;
+	private int delayTimer;
+	private boolean showInfo;
 		
 	private ClientState(int state) {
 		super(state);
@@ -100,6 +105,8 @@ public class ClientState extends TanskState {
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
 		
+		showInfo = true;
+		gameSettings = new GameSettings();
 		playerList = new ArrayList<Player>();
 		mapLoadAttempted = false;
 		playerName = GameController.getInstance().getPlayerName();
@@ -131,6 +138,7 @@ public class ClientState extends TanskState {
 	@Override
     public void update(GameContainer gc, StateBasedGame game, int delta) throws SlickException {
 		super.update(gc, game, delta);
+		delayTimer -= delta;
 		if((isConnected) && (!mapLoadAttempted)){
 			mapLoadAttempted = true;
 			if(!MapLoader.createEntities("map_standard")){
@@ -211,13 +219,58 @@ public class ClientState extends TanskState {
 		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
 		chatField.render(gc, g);
 		
-		int tempY = 200;
-		for(Player player : playerList){
-			g.setColor(player.getColor());
-			g.drawString(player.getName() + " " + player.getScore(), 200, tempY);
-			tempY += 20;
+		//Cool timer
+		if(gameDelaying){
+			if(delayTimer > 0){
+				g.setColor(Color.black);
+				g.drawString("Round starts in: ", 440, 75);
+				g.drawString((delayTimer/1000 + 1) + " seconds!", 465, 95);
+				g.setColor(Color.white);
+				if(delayTimer < 3000)
+					showInfo = false;
+			} else {
+				gameDelaying = false;
+			}
 		}
+		
 		if(localPlayer != null){
+			if(showInfo){
+				g.setColor(Color.black);
+				g.drawString("Waiting for host to start the game...", 350, 175);
+				g.drawString("You are:", 450, 195);
+				g.setColor(localPlayer.getColor());
+				g.drawString(localPlayer.getColorAsString().toUpperCase(), 528, 195);
+				
+				g.setColor(Color.black);
+				if(gameSettings.gameMode.equals("koth")){
+					g.drawString("KING OF THE HILL", 435, 235);
+					g.drawString("Score points by being in the zone in the center!", 295, 255);
+				} else if(gameSettings.gameMode.equals("standard")){
+					g.drawString("STANDARD", 465, 235);
+					g.drawString("The last one alive gets the most points!", 340, 255);
+				}
+				
+				g.drawString("Scorelimit: " + gameSettings.scorelimit, 445, 315);
+				g.drawString("Rounds: " + gameSettings.rounds, 445, 335);
+				g.drawString("Player lives: " + gameSettings.playerLives, 445, 355);
+				g.drawString("Spawn time: " + gameSettings.spawnTime/1000, 445, 375);
+				g.drawString("Round time: " + gameSettings.roundTime/1000, 445, 395);
+				g.drawString("Game time: " + gameSettings.gameTime/1000, 445, 415);
+
+
+				g.drawString("Players:", 445, 455);
+				int tempY = 475;
+				for(Player player : playerList){
+					g.setColor(player.getColor());
+					g.drawString(player.getName(), 445, tempY);
+					tempY += 20;
+				}
+
+				g.setColor(Color.black);
+				g.drawString("Press 'Enter' to chat...", 400, 575);
+				g.setColor(Color.white);
+			}
+		
 			if(localPlayer.getTank() != null){
 					if(localPlayer.getTank().getShield() != null && localPlayer.getTank().getShield().getHealth() <= 100){
 						lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, localPlayer.getTank().getShield().getHealth()/AbstractTank.MAX_SHIELD_HEALTH, g);
@@ -290,6 +343,15 @@ public class ClientState extends TanskState {
 						createPlayer(oldPlayerPck);
 					}
 					
+					GameSettings newGameSettings = ((Pck1_JoinAnswer) packet).gameSettings;
+					this.gameSettings.gameMode = newGameSettings.gameMode;
+					this.gameSettings.gameTime = newGameSettings.gameTime;
+					this.gameSettings.playerLives = newGameSettings.playerLives;
+					this.gameSettings.rounds = newGameSettings.rounds;
+					this.gameSettings.roundTime = newGameSettings.roundTime;
+					this.gameSettings.scorelimit = newGameSettings.scorelimit;
+					this.gameSettings.spawnTime = newGameSettings.spawnTime;
+					
 				} else {
 					GameController.getInstance().getConsole().addMsg("Connection refused by server.", MsgLevel.ERROR);
 					GameController.getInstance().getConsole().addMsg("Reason: " + ((Pck1_JoinAnswer) packet).reason, MsgLevel.ERROR);
@@ -352,6 +414,10 @@ public class ClientState extends TanskState {
 					playerList.remove(lostPlayer);
 			}
 			
+			if(packet instanceof Pck14_GameDelayStarted){
+				gameDelaying = true;
+				delayTimer = ((Pck14_GameDelayStarted)packet).delayTimer;
+			}
 			
 			if(packet instanceof Pck100_WorldState){
 				if(isConnected)

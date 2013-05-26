@@ -40,6 +40,7 @@ public class ServerState extends TanskState {
 	protected TextField chatField;
 	private boolean gameStarted = false;
 	private boolean serverStarted;
+	private ArrayList<String>  colorPool;
 	
 	private ServerState(int state) {
 		super(state);
@@ -66,6 +67,12 @@ public class ServerState extends TanskState {
 	public void enter(GameContainer container, StateBasedGame game) throws SlickException {
 		super.enter(container, game);
 
+		colorPool = new ArrayList<String>();
+		colorPool.add("blue");
+		colorPool.add("red");
+		colorPool.add("yellow");
+		colorPool.add("green");
+		
 		controller.getSoundHandler().stopAllMusic();
 		controller.setConsole(new Console(10, 533, 600, 192, Color.white, OutputLevel.ALL));
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), true));
@@ -154,7 +161,10 @@ public class ServerState extends TanskState {
 					//Start a new round
 					if(controller.getGameMode() instanceof KingOfTheHillMode)
 						((KingOfTheHillMode)controller.getGameMode()).generateZone(new Vector2f(512, 384));
-					controller.getGameMode().newRoundDelayTimer(3000);
+					Pck14_GameDelayStarted pck = new Pck14_GameDelayStarted();
+					pck.delayTimer = 5000;
+					addToAllClientsQueue(pck);
+					controller.getGameMode().newRoundDelayTimer(5000);
 					GameController.getInstance().getConsole().addMsg("Game started!", MsgLevel.INFO);
 				}
 			}
@@ -279,6 +289,8 @@ public class ServerState extends TanskState {
 		    	rmPck.playerID = lostPlayer.getId();
 		    	addToAllClientsQueue(rmPck);
 		    	
+		    	colorPool.add(lostPlayer.getColorAsString());
+		    	
 		    	controller.getGameMode().removePlayer(lostPlayer);
 		    	Log.info("[SERVER] " + msg);
 			}
@@ -291,13 +303,11 @@ public class ServerState extends TanskState {
 		while ((packet = packetQueue.poll()) != null) {
 			if(packet instanceof Pck0_JoinRequest){
 		    	Pck0_JoinRequest pck = (Pck0_JoinRequest) packet;
-		    	
 		    	controller.getConsole().addMsg(pck.playerName + " attempting to connect..", MsgLevel.INFO);
 		    	Pck1_JoinAnswer responsePacket = new Pck1_JoinAnswer();
 		    	
 	    		if(getPlayers().size() < 4){
 			    	if(!gameStarted){
-			    		
 			    		responsePacket.oldPlayers = new ArrayList<Pck6_CreatePlayer>();
 			    		for(Player oldPlayer : getPlayers()){
 			    			Pck6_CreatePlayer playerPck = new Pck6_CreatePlayer();
@@ -310,7 +320,8 @@ public class ServerState extends TanskState {
 			    			playerPck.color = oldPlayer.getColorAsString();
 			    			responsePacket.oldPlayers.add(playerPck);
 			    		}
-
+			    		
+			    		responsePacket.gameSettings = GameController.getInstance().getGameSettings();
 			    		responsePacket.localID = packet.getConnection().getID();
 			    		
 			    		createPlayer(pck.playerName, packet.getConnection(), pck.unique);
@@ -368,16 +379,8 @@ public class ServerState extends TanskState {
 		Player newPlayer = new Player(connection, playerName);
 		newPlayer.setLives(GameController.getInstance().getGameMode().getPlayerLives());
 		newPlayer.setRespawnTime(GameController.getInstance().getGameMode().getSpawnTime());
-		int numberOfPlayers = getPlayers().size();
-		if(numberOfPlayers == 0){
-			newPlayer.setColor("blue");
-		} else if (numberOfPlayers == 1) {
-			newPlayer.setColor("red");
-		} else if (numberOfPlayers == 2) {
-			newPlayer.setColor("yellow");
-		} else if (numberOfPlayers == 3) {
-			newPlayer.setColor("green");
-		}
+		newPlayer.setColor(colorPool.get(0));
+		colorPool.remove(0);
 		
 		Pck6_CreatePlayer playerPck = new Pck6_CreatePlayer();
 		playerPck.unique = unique;

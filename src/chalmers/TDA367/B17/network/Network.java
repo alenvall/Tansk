@@ -4,6 +4,8 @@ import java.util.ArrayList;
 
 import org.newdawn.slick.geom.Vector2f;
 
+import chalmers.TDA367.B17.controller.GameController.GameSettings;
+
 import com.esotericsoftware.kryo.*;
 import com.esotericsoftware.kryonet.*;
 
@@ -31,6 +33,8 @@ public class Network {
 		kryo.register(Pck11_StaticObjectCreated.class);
 		kryo.register(Pck12_RemovePlayer.class);
 		kryo.register(Pck13_UpdatePlayer.class);
+		kryo.register(GameSettings.class);
+		kryo.register(Pck14_GameDelayStarted.class);
 		kryo.register(Pck100_WorldState.class);
 		kryo.register(Pck102_TankUpdate.class);
 		kryo.register(Pck103_ProjectileUpdate.class);
@@ -69,6 +73,7 @@ public class Network {
 		public String reason = "N/A";
 		public ArrayList<Pck6_CreatePlayer> oldPlayers;
 		public int localID;
+		public GameSettings gameSettings;
 	}
 
 	/** Sent by the client upon accepted join request */
@@ -149,6 +154,10 @@ public class Network {
 		public int lives;
 		public boolean active;
 		public boolean eliminated;
+	}
+	
+	public static class Pck14_GameDelayStarted extends Packet {
+		public int delayTimer;
 	}
 	
 	/** World state */
