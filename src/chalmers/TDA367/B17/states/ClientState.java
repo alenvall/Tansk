@@ -43,13 +43,15 @@ public class ClientState extends TanskState {
 	private String playerName;
 	private boolean mapLoadAttempted;
 	private Lifebar lifebar;
+	private Scoreboard scoreboard;
 	private SoundSwitch soundSwitch;
 	protected TextField chatField;
 	private ArrayList<Player> playerList;
 	private Player localPlayer;
 	private int uniqueIdentifier;
 	private GameSettings gameSettings;
-	private boolean gameDelaying;
+	private boolean gameDelaying;	
+	private boolean gameOver;
 	private int delayTimer;
 	private boolean showInfo;
 		
@@ -106,6 +108,7 @@ public class ClientState extends TanskState {
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
 		
+		gameOver = false;
 		showInfo = true;
 		gameSettings = new GameSettings();
 		playerList = new ArrayList<Player>();
@@ -119,6 +122,7 @@ public class ClientState extends TanskState {
 		console.setTimerHide(true);
 		controller.setConsole(console);
 
+		scoreboard = new Scoreboard(false, playerList);
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		controller.setWorld(new World(new Dimension(Tansk.SCREEN_WIDTH, Tansk.SCREEN_HEIGHT), false));
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
@@ -173,8 +177,15 @@ public class ClientState extends TanskState {
 		}
 		
 		GameController.getInstance().getConsole().update(delta);
-		processPackets();			
-		sendClientInput(gc.getInput());
+		processPackets();	
+		if(!gameOver){
+			sendClientInput(gc.getInput());
+		} else {
+			scoreboard.update(gc);
+			if(scoreboard.getCurrentPressedButton() == Scoreboard.MENU_BUTTON){
+				game.enterState(Tansk.MENU);
+			} 
+		}
 	}
 
 	@Override
@@ -235,7 +246,7 @@ public class ClientState extends TanskState {
 		}
 		
 		if(localPlayer != null){
-			if(showInfo){
+			if(showInfo && client.isConnected()){
 				g.setColor(Color.black);
 				g.drawString("Waiting for host to start the game...", 350, 175);
 				g.drawString("You are:", 450, 195);
@@ -271,14 +282,28 @@ public class ClientState extends TanskState {
 				g.drawString("Press 'Enter' to chat...", 400, 575);
 				g.setColor(Color.white);
 			}
-		
-			if(localPlayer.getTank() != null){
-					if(localPlayer.getTank().getShield() != null && localPlayer.getTank().getShield().getHealth() <= 100){
-						lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, localPlayer.getTank().getShield().getHealth()/AbstractTank.MAX_SHIELD_HEALTH, g);
-					}else{
-						lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, 0, g);
-					}
+			
+			if(gameSettings.gameMode.equals("koth")){
+				Vector2f tmpPosition = new Vector2f(512, 384);
+//	TODO						((KingOfTheHillMode)controller.getGameMode()).getZone().getPosition();
+				g.setColor(Color.green);
+				g.fillRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75*
+						((float)localPlayer.getScore()/(float)gameSettings.scorelimit), 10, 10);
+				g.setColor(Color.black);
+				g.drawRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75, 10, 10);
 			}
+			
+			if(localPlayer.getTank() != null){
+				if(localPlayer.getTank().getShield() != null && localPlayer.getTank().getShield().getHealth() <= 100){
+					lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, localPlayer.getTank().getShield().getHealth()/AbstractTank.MAX_SHIELD_HEALTH, g);
+				}else{
+					lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, 0, g);
+				}
+			}
+		}
+		
+		if(gameOver){
+			scoreboard.render(g);
 		}
 		
 		soundSwitch.render(g);
@@ -418,6 +443,10 @@ public class ClientState extends TanskState {
 			if(packet instanceof Pck14_GameDelayStarted){
 				gameDelaying = true;
 				delayTimer = ((Pck14_GameDelayStarted)packet).delayTimer;
+			}
+			
+			if(packet instanceof Pck15_GameOver){
+				gameOver = true;
 			}
 			
 			if(packet instanceof Pck100_WorldState){

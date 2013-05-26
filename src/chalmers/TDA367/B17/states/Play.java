@@ -86,7 +86,7 @@ public class Play extends TanskState {
 			
 		lifebar = new Lifebar((Tansk.SCREEN_WIDTH/2)-100, 10);
 		soundSwitch = new SoundSwitch(Tansk.SCREEN_WIDTH-40, 10);
-		scoreboard = new Scoreboard(true);
+		scoreboard = new Scoreboard(true, GameController.getInstance().getGameMode().getPlayerList());
 
 		//Players
 		playerOne = new Player("Euler");
