@@ -239,11 +239,12 @@ public class Play extends TanskState {
 		updateWorld(delta);
 		
 		scoreboard.update(gc);
-		
-		if(scoreboard.getCurrentPressedButton() == Scoreboard.MENU_BUTTON){
-			sbg.enterState(Tansk.MENU);
-		} else if (scoreboard.getCurrentPressedButton() == Scoreboard.RESTART_BUTTON){
-			sbg.enterState(Tansk.PLAY);
+		if(controller.getGameMode().isGameOver()){
+			if(scoreboard.getCurrentPressedButton() == Scoreboard.MENU_BUTTON){
+				sbg.enterState(Tansk.MENU);
+			} else if (scoreboard.getCurrentPressedButton() == Scoreboard.RESTART_BUTTON){
+				sbg.enterState(Tansk.PLAY);
+			}
 		}
 	}
 	
@@ -337,11 +338,7 @@ public class Play extends TanskState {
 				i++;
 				g.drawString(p.getName() + "'s score: " + p.getScore(), 500, (500+(i*25)));
 			}
-		}
-		
-		g.setColor(Color.black);
-		g.drawString("Volume: " + ((int)(controller.getSoundHandler().getVolume() * 100)) + " %",  10, 50);
-		
+		}	
 
 		if(controller.getGameMode().isGameOver()){
 			scoreboard.render(g);
