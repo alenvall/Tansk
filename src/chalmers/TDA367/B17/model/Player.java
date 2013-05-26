@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import org.newdawn.slick.Color;
 
 import chalmers.TDA367.B17.controller.GameController;
+import chalmers.TDA367.B17.gamemodes.StandardGameMode;
 
 import com.esotericsoftware.kryonet.Connection;
 
@@ -166,6 +167,8 @@ public class Player {
 		}else{
 			eliminated = true;
 		}
+		if(GameController.getInstance().getGameMode() instanceof StandardGameMode)
+			((chalmers.TDA367.B17.gamemodes.ScoreBasedGame)GameController.getInstance().getGameMode()).incrementAllPlayerScores();
 	}
 	
 	/**

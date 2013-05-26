@@ -16,13 +16,13 @@ public abstract class GameConditions {
 	/**The amount of rounds that will be played.*/
 	private int rounds;
 	/**The lives of each player.*/
-	private int playerLives;
+	protected int playerLives;
 	/**The time it takes for tanks to spawn (in milliseconds)*/
 	private int spawnTime;
 	private int roundCounter;
 	/**How long each round should last*/
 	private int roundTime;
-	private int roundTimer;
+	protected int roundTimer;
 	/**How long each game should last*/
 	private int gameTimer;
 
@@ -140,9 +140,6 @@ public abstract class GameConditions {
 			if(gameTimer <= 0)
 				gameOver();
 
-			if((eliminatedPlayerCount >= players.size()-1 && !(players.size() <= 1)) || roundTimer <= 0){
-				newRoundDelayTimer(5000);
-			}
 		}	
 		if(delaying){
 			endRound();

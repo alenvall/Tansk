@@ -5,9 +5,8 @@ import java.util.*;
 import chalmers.TDA367.B17.controller.GameController;
 import chalmers.TDA367.B17.model.Player;
 
-
-
 public abstract class ScoreBasedGame extends GameConditions{
+
 protected int scoreLimit;
 
 	public ScoreBasedGame(int scoreLimit){
