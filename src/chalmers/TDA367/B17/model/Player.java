@@ -2,6 +2,8 @@ package chalmers.TDA367.B17.model;
 
 import java.util.ArrayList;
 
+import org.newdawn.slick.Color;
+
 import chalmers.TDA367.B17.controller.GameController;
 
 import com.esotericsoftware.kryonet.Connection;
@@ -12,7 +14,6 @@ import com.esotericsoftware.kryonet.Connection;
 public class Player {
 	private int id;
 	private String name;
-	private int playerId;
 	private int score;
 	private AbstractTank tank;
 	private int lives;
@@ -88,14 +89,6 @@ public class Player {
 	}
 	
 	/**
-	 * Get the players ID.
-	 * @return The ID
-	 */
-	public int getPlayerId() {
-		return playerId;
-	}
-	
-	/**
 	 * Get the players score.
 	 * @return The score
 	 */
@@ -150,15 +143,7 @@ public class Player {
 	public void setName(String name){
 		this.name = name;
 	}
-	
-	/**
-	 * Set the players ID.
-	 * @param id The new ID
-	 */
-	public void setPlayerId(int id){
-		this.playerId = id;
-	}
-	
+		
 	/**
 	 * Set the players score.
 	 * @param score The new score
@@ -236,6 +221,14 @@ public class Player {
 	public int getId() {
 	    return id;
     }
+	
+	/**
+	 * Set the id of this player.
+	 * @param id
+	 */
+	public void setId(int id){
+		this.id = id;
+	}
 
 	/**
 	 * Get the connection associated with the player.
@@ -303,10 +296,27 @@ public class Player {
 	}
 	
 	/**
-	 * Get the color of this player.
+	 * Get the color of this player as a string.
 	 * @return The color
 	 */
-	public String getColor(){
+	public String getColorAsString(){
 		return color;
+	}		
+	
+	/**
+	 * Get the color of this player.
+	 * @return color
+	 */
+	public Color getColor(){
+		if(getColorAsString().equals("blue")){
+			return Color.blue;
+		} else if(getColorAsString().equals("red")){
+			return Color.red;
+		} else if(getColorAsString().equals("yellow")){
+			return Color.yellow;
+		} else if(getColorAsString().equals("green")){
+			return Color.green;
+		}
+		return Color.black;
 	}
 }

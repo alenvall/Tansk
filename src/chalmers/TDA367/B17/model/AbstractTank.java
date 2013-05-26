@@ -321,6 +321,14 @@ public abstract class AbstractTank extends MovableEntity {
 	public String getColor(){
 		return color;
 	}
+
+	/**
+	 * Get the ID of the Tank's owner (player).
+	 * @return ownerID
+	 */
+	public int getOwnerID() {
+		return player.getId();
+    }
 }
 
 

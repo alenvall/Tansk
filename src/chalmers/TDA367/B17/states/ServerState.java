@@ -274,6 +274,11 @@ public class ServerState extends TanskState {
 		    	Pck3_Message disconnectedMsg = new Pck3_Message();
 		    	disconnectedMsg.message = msg;
 		    	server.sendToAllExceptTCP(lostPlayer.getConnection().getID(), disconnectedMsg);
+		    	
+		    	Pck12_RemovePlayer rmPck = new Pck12_RemovePlayer();
+		    	rmPck.playerID = lostPlayer.getId();
+		    	addToAllClientsQueue(rmPck);
+		    	
 		    	controller.getGameMode().removePlayer(lostPlayer);
 		    	Log.info("[SERVER] " + msg);
 			}
@@ -292,7 +297,23 @@ public class ServerState extends TanskState {
 		    	
 	    		if(getPlayers().size() < 4){
 			    	if(!gameStarted){
-			    		createPlayer(pck.playerName, packet.getConnection());
+			    		
+			    		responsePacket.oldPlayers = new ArrayList<Pck6_CreatePlayer>();
+			    		for(Player oldPlayer : getPlayers()){
+			    			Pck6_CreatePlayer playerPck = new Pck6_CreatePlayer();
+			    			playerPck.id = oldPlayer.getId();
+			    			playerPck.name = oldPlayer.getName();
+			    			playerPck.score = oldPlayer.getScore();
+			    			playerPck.lives = oldPlayer.getLives();
+			    			playerPck.active = oldPlayer.isActive();
+			    			playerPck.eliminated = oldPlayer.isEliminated();
+			    			playerPck.color = oldPlayer.getColorAsString();
+			    			responsePacket.oldPlayers.add(playerPck);
+			    		}
+
+			    		responsePacket.localID = packet.getConnection().getID();
+			    		
+			    		createPlayer(pck.playerName, packet.getConnection(), pck.unique);
 		    			responsePacket.accepted = true;
 			    	} else {
 			    		responsePacket.accepted = false;
@@ -330,7 +351,7 @@ public class ServerState extends TanskState {
 	   	}
     }
 
-	private void createPlayer(String playerName, Connection connection) {
+	private void createPlayer(String playerName, Connection connection, int unique) {
 		if(playerName.equals("Unnamed")){
 			String newName = "Unnamed" + Math.round(Math.random() * 1000);
 			serverMessage(playerName + " renamed to " + newName + ".");
@@ -355,8 +376,20 @@ public class ServerState extends TanskState {
 		} else if (numberOfPlayers == 2) {
 			newPlayer.setColor("yellow");
 		} else if (numberOfPlayers == 3) {
-			newPlayer.setColor("white");
+			newPlayer.setColor("green");
 		}
+		
+		Pck6_CreatePlayer playerPck = new Pck6_CreatePlayer();
+		playerPck.unique = unique;
+		playerPck.id = newPlayer.getId();
+		playerPck.name = newPlayer.getName();
+		playerPck.score = newPlayer.getScore();
+		playerPck.lives = newPlayer.getLives();
+		playerPck.active = newPlayer.isActive();
+		playerPck.eliminated = newPlayer.isEliminated();
+		playerPck.color = newPlayer.getColorAsString();
+		
+		addToAllClientsQueue(playerPck);		
 		getPlayers().add(newPlayer);
     }
 
@@ -433,7 +466,7 @@ public class ServerState extends TanskState {
 	
 	private void createWorldState(){
 		Pck100_WorldState worldState = new Pck100_WorldState();
-		worldState.updatePackets = new ArrayList<EntityPacket>();
+		worldState.updatePackets = new ArrayList<Packet>();
 		
 		Iterator<Entry<Integer, Entity>> updateIterator = controller.getWorld().getEntities().entrySet().iterator();
 		while(updateIterator.hasNext()){
@@ -466,7 +499,20 @@ public class ServerState extends TanskState {
 					worldState.updatePackets.add(pck);
 				}
 			}
-		}			
+		}
+		
+		for(Player player : getPlayers()){
+			Pck13_UpdatePlayer pck = new Pck13_UpdatePlayer();
+			pck.id = player.getId();
+			pck.active = player.isActive();
+			pck.eliminated = player.isEliminated();
+			pck.lives = player.getLives();
+			pck.score = player.getScore();
+			if(player.getTank() != null)
+				pck.tankID = player.getTank().getId();
+			worldState.updatePackets.add(pck);
+		}
+		
 		addToAllClientsQueue(worldState);
 	}
 		

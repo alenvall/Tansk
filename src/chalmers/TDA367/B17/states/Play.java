@@ -208,27 +208,27 @@ public class Play extends TanskState {
 
 			if(input.isKeyDown(Input.KEY_1)){
 				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new DefaultTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColor()));
+					playerOne.getTank().setTurret(new DefaultTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColorAsString()));
 			}
 			if(input.isKeyDown(Input.KEY_2)){
 				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new FlamethrowerTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColor()));
+					playerOne.getTank().setTurret(new FlamethrowerTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColorAsString()));
 			}
 			if(input.isKeyDown(Input.KEY_3)){
 				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new ShotgunTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColor()));
+					playerOne.getTank().setTurret(new ShotgunTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColorAsString()));
 			}
 			if(input.isKeyDown(Input.KEY_4)){
 				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new SlowspeedyTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColor()));
+					playerOne.getTank().setTurret(new SlowspeedyTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColorAsString()));
 			}
 			if(input.isKeyDown(Input.KEY_5)){
 				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new ShockwaveTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColor()));
+					playerOne.getTank().setTurret(new ShockwaveTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColorAsString()));
 			}
 			if(input.isKeyDown(Input.KEY_6)){
 				if(playerOne.getTank() != null)
-					playerOne.getTank().setTurret(new BounceTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColor()));
+					playerOne.getTank().setTurret(new BounceTurret(controller.generateID(), playerOneTurret.getPosition(), playerOneTurret.getRotation(), playerOneTank, playerOne.getColorAsString()));
 			}
 		}
 

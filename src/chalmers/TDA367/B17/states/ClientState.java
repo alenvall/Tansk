@@ -6,83 +6,28 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.newdawn.slick.Color;
-import org.newdawn.slick.GameContainer;
-import org.newdawn.slick.Graphics;
-import org.newdawn.slick.Image;
-import org.newdawn.slick.Input;
-import org.newdawn.slick.SlickException;
-import org.newdawn.slick.SpriteSheet;
-import org.newdawn.slick.geom.Shape;
-import org.newdawn.slick.geom.Transform;
-import org.newdawn.slick.geom.Vector2f;
-import org.newdawn.slick.gui.TextField;
-import org.newdawn.slick.state.StateBasedGame;
+import org.newdawn.slick.*;
+import org.newdawn.slick.geom.*;
+import org.newdawn.slick.gui.*;
+import org.newdawn.slick.state.*;
 
-import chalmers.TDA367.B17.Tansk;
-import chalmers.TDA367.B17.controller.GameController;
-import chalmers.TDA367.B17.event.GameEvent;
-import chalmers.TDA367.B17.model.AbstractProjectile;
-import chalmers.TDA367.B17.model.AbstractTank;
-import chalmers.TDA367.B17.model.AbstractTurret;
-import chalmers.TDA367.B17.model.Entity;
+import chalmers.TDA367.B17.*;
+import chalmers.TDA367.B17.controller.*;
+import chalmers.TDA367.B17.event.*;
+import chalmers.TDA367.B17.model.*;
 import chalmers.TDA367.B17.model.Entity.RenderLayer;
-import chalmers.TDA367.B17.model.KingOfTheHillZone;
-import chalmers.TDA367.B17.model.World;
-import chalmers.TDA367.B17.network.Network.EntityPacket;
-import chalmers.TDA367.B17.network.Network.Packet;
-import chalmers.TDA367.B17.network.Network.Pck0_JoinRequest;
-import chalmers.TDA367.B17.network.Network.Pck1000_GameEvent;
-import chalmers.TDA367.B17.network.Network.Pck100_WorldState;
-import chalmers.TDA367.B17.network.Network.Pck102_TankUpdate;
-import chalmers.TDA367.B17.network.Network.Pck103_ProjectileUpdate;
-import chalmers.TDA367.B17.network.Network.Pck10_TankCreated;
-import chalmers.TDA367.B17.network.Network.Pck11_StaticObjectCreated;
-import chalmers.TDA367.B17.network.Network.Pck1_JoinAnswer;
-import chalmers.TDA367.B17.network.Network.Pck2_ClientConfirmJoin;
-import chalmers.TDA367.B17.network.Network.Pck3_1_ChatMessage;
-import chalmers.TDA367.B17.network.Network.Pck3_Message;
-import chalmers.TDA367.B17.network.Network.Pck4_ClientInput;
-import chalmers.TDA367.B17.network.Network.Pck5_PlayerKicked;
-import chalmers.TDA367.B17.network.Network.Pck7_TankID;
-import chalmers.TDA367.B17.network.Network.Pck8_EntityDestroyed;
-import chalmers.TDA367.B17.network.Network.Pck9_EntityCreated;
-import chalmers.TDA367.B17.powerups.Shield;
-import chalmers.TDA367.B17.powerups.pickups.DamagePowerUpPickup;
-import chalmers.TDA367.B17.powerups.pickups.FireRatePowerUpPickup;
-import chalmers.TDA367.B17.powerups.pickups.HealthPowerUpPickup;
-import chalmers.TDA367.B17.powerups.pickups.ShieldPowerUpPickup;
-import chalmers.TDA367.B17.powerups.pickups.SpeedPowerUpPickup;
-import chalmers.TDA367.B17.resource.MapLoader;
-import chalmers.TDA367.B17.resource.SoundHandler.MusicType;
-import chalmers.TDA367.B17.tanks.DefaultTank;
-import chalmers.TDA367.B17.view.Console;
-import chalmers.TDA367.B17.view.Lifebar;
-import chalmers.TDA367.B17.view.SoundSwitch;
-import chalmers.TDA367.B17.view.Console.MsgLevel;
-import chalmers.TDA367.B17.view.Console.OutputLevel;
-import chalmers.TDA367.B17.weapons.BounceProjectile;
-import chalmers.TDA367.B17.weapons.BounceTurret;
-import chalmers.TDA367.B17.weapons.DefaultProjectile;
-import chalmers.TDA367.B17.weapons.DefaultTurret;
-import chalmers.TDA367.B17.weapons.FlamethrowerProjectile;
-import chalmers.TDA367.B17.weapons.FlamethrowerTurret;
-import chalmers.TDA367.B17.weapons.ShockwaveProjectile;
-import chalmers.TDA367.B17.weapons.ShockwaveSecondaryProjectile;
-import chalmers.TDA367.B17.weapons.ShockwaveTurret;
-import chalmers.TDA367.B17.weapons.ShotgunProjectile;
-import chalmers.TDA367.B17.weapons.ShotgunTurret;
-import chalmers.TDA367.B17.weapons.SlowspeedyProjectile;
-import chalmers.TDA367.B17.weapons.SlowspeedyTurret;
-import chalmers.TDA367.B17.weapons.pickups.BouncePickup;
-import chalmers.TDA367.B17.weapons.pickups.FlamethrowerPickup;
-import chalmers.TDA367.B17.weapons.pickups.ShockwavePickup;
-import chalmers.TDA367.B17.weapons.pickups.ShotgunPickup;
-import chalmers.TDA367.B17.weapons.pickups.SlowspeedyPickup;
+import chalmers.TDA367.B17.network.Network.*;
+import chalmers.TDA367.B17.powerups.*;
+import chalmers.TDA367.B17.powerups.pickups.*;
+import chalmers.TDA367.B17.resource.*;
+import chalmers.TDA367.B17.resource.SoundHandler.*;
+import chalmers.TDA367.B17.tanks.*;
+import chalmers.TDA367.B17.view.*;
+import chalmers.TDA367.B17.view.Console.*;
+import chalmers.TDA367.B17.weapons.*;
+import chalmers.TDA367.B17.weapons.pickups.*;
 
-import com.esotericsoftware.kryonet.Client;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.Listener;
+import com.esotericsoftware.kryonet.*;
 import com.esotericsoftware.minlog.Log;
 
 public class ClientState extends TanskState {
@@ -95,10 +40,12 @@ public class ClientState extends TanskState {
 	private SpriteSheet entSprite;
 	private String playerName;
 	private boolean mapLoadAttempted;
-	private AbstractTank playerTank;
 	private Lifebar lifebar;
 	private SoundSwitch soundSwitch;
 	protected TextField chatField;
+	private ArrayList<Player> playerList;
+	private Player localPlayer;
+	private int uniqueIdentifier;
 		
 	private ClientState(int state) {
 		super(state);
@@ -118,6 +65,8 @@ public class ClientState extends TanskState {
 			@Override
 			public void connected(Connection connection) {
 				Pck0_JoinRequest pck = new Pck0_JoinRequest();
+				uniqueIdentifier = (int) (Math.random()*1000*Math.random());
+				pck.unique = uniqueIdentifier;
 				pck.playerName = GameController.getInstance().getPlayerName();;
 				client.sendTCP(pck);
 			}
@@ -150,7 +99,8 @@ public class ClientState extends TanskState {
 	@Override
 	public void enter(GameContainer gc, StateBasedGame game) throws SlickException {
 		super.enter(gc, game);
-
+		
+		playerList = new ArrayList<Player>();
 		mapLoadAttempted = false;
 		playerName = GameController.getInstance().getPlayerName();
 		
@@ -261,13 +211,22 @@ public class ClientState extends TanskState {
 		g.drawRect(chatField.getX(), chatField.getY(), chatField.getWidth(), chatField.getHeight());
 		chatField.render(gc, g);
 		
-		if(playerTank != null){
-			if(playerTank.getShield() != null && playerTank.getShield().getHealth() <= 100){
-				lifebar.render(playerTank.getHealth()/AbstractTank.MAX_HEALTH, playerTank.getShield().getHealth()/AbstractTank.MAX_SHIELD_HEALTH, g);
-			}else{
-				lifebar.render(playerTank.getHealth()/AbstractTank.MAX_HEALTH, 0, g);
+		int tempY = 200;
+		for(Player player : playerList){
+			g.setColor(player.getColor());
+			g.drawString(player.getName() + " " + player.getScore(), 200, tempY);
+			tempY += 20;
+		}
+		if(localPlayer != null){
+			if(localPlayer.getTank() != null){
+					if(localPlayer.getTank().getShield() != null && localPlayer.getTank().getShield().getHealth() <= 100){
+						lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, localPlayer.getTank().getShield().getHealth()/AbstractTank.MAX_SHIELD_HEALTH, g);
+					}else{
+						lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, 0, g);
+					}
 			}
 		}
+		
 		soundSwitch.render(g);
 		
 		g.setColor(Color.black);
@@ -302,7 +261,7 @@ public class ClientState extends TanskState {
 	
 	private void sendClientInput(Input input) {
 		if(isConnected){
-			if(playerTank != null){
+			if(localPlayer.getTank() != null){
 				Pck4_ClientInput clientPck = new Pck4_ClientInput();
 				clientPck.W_pressed = input.isKeyDown(Input.KEY_W);
 				clientPck.A_pressed = input.isKeyDown(Input.KEY_A);
@@ -310,7 +269,7 @@ public class ClientState extends TanskState {
 				clientPck.D_pressed = input.isKeyDown(Input.KEY_D);
 				clientPck.LMB_pressed = input.isMouseButtonDown(0);
 
-				AbstractTurret playerTurret = playerTank.getTurret();
+				AbstractTurret playerTurret = localPlayer.getTank().getTurret();
 				clientPck.turretNewAngle = (float) Math.toDegrees(Math.atan2(playerTurret.getPosition().x - input.getMouseX() + 0, playerTurret.getPosition().y - input.getMouseY() + 0)* -1)+180;		
 			
 				client.sendTCP(clientPck);
@@ -329,6 +288,11 @@ public class ClientState extends TanskState {
 					packet.getConnection().sendTCP(pck);
 					isConnected = true;
 					controller.getConsole().addMsg("Joined game!", MsgLevel.INFO);
+					
+					for(Pck6_CreatePlayer oldPlayerPck : ((Pck1_JoinAnswer) packet).oldPlayers){
+						createPlayer(oldPlayerPck);
+					}
+					
 				} else {
 					GameController.getInstance().getConsole().addMsg("Connection refused by server.", MsgLevel.ERROR);
 					GameController.getInstance().getConsole().addMsg("Reason: " + ((Pck1_JoinAnswer) packet).reason, MsgLevel.ERROR);
@@ -351,18 +315,17 @@ public class ClientState extends TanskState {
 				GameController.getInstance().getConsole().addMsg("You have been kicked from the server.", MsgLevel.INFO);
 				client.close();
 			}
-			
-			if(packet instanceof Pck7_TankID){
-				Pck7_TankID pck = (Pck7_TankID) packet;
-				playerTank = (AbstractTank) controller.getWorld().getEntity(pck.tankID);
-			}		
+
+			if(packet instanceof Pck6_CreatePlayer){
+				createPlayer((Pck6_CreatePlayer) packet);
+			}
 			
 			if(packet instanceof Pck8_EntityDestroyed){
 				Pck8_EntityDestroyed pck = (Pck8_EntityDestroyed) packet;
 				controller.getWorld().removeEntity(pck.entityID);
-				if(playerTank != null){
-					if(pck.entityID == playerTank.getId()){
-						playerTank = null;			
+				if(localPlayer.getTank() != null){
+					if(pck.entityID == localPlayer.getTank().getId()){
+						localPlayer.setTank(null);			
 					}	
 				}
 			}
@@ -373,13 +336,25 @@ public class ClientState extends TanskState {
 			
 			if(packet instanceof Pck10_TankCreated){
 				Pck10_TankCreated pck = (Pck10_TankCreated) packet;
-				createClientTank(pck.entityID, pck.identifier, pck.direction, pck.color);
+				createClientTank(pck.entityID, pck.identifier, pck.owner, pck.direction, pck.color);
 			}
 			
 			if(packet instanceof Pck11_StaticObjectCreated){
 				Pck11_StaticObjectCreated pck = (Pck11_StaticObjectCreated) packet;
 				createStaticObject(pck.entityID, pck.identifier, pck.position);
 			}
+
+			if(packet instanceof Pck12_RemovePlayer){
+				Pck12_RemovePlayer pck = (Pck12_RemovePlayer) packet;
+				Player lostPlayer = null;
+				for(Player player : playerList){
+					if(player.getId() == pck.playerID)
+						lostPlayer = player;
+				}
+				if(lostPlayer != null)
+					playerList.remove(lostPlayer);
+			}
+			
 			
 			if(packet instanceof Pck100_WorldState){
 				if(isConnected)
@@ -393,8 +368,24 @@ public class ClientState extends TanskState {
 		}
     }			
 
+	private void createPlayer(Pck6_CreatePlayer playerPck) {
+		Player newPlayer = new Player(playerPck.name);
+		newPlayer.setId(playerPck.id);
+		newPlayer.setScore(playerPck.score);
+		newPlayer.setLives(playerPck.lives);
+		newPlayer.setActive(playerPck.active);
+		newPlayer.setEliminated(playerPck.eliminated);
+		newPlayer.setColor(playerPck.color);
+		
+		if(playerPck.unique  == uniqueIdentifier){
+			localPlayer = newPlayer;
+		}
+		
+		playerList.add(newPlayer);
+    }
+
 	private void updateClientWorld(Pck100_WorldState worldState) {
-		for(EntityPacket pck : worldState.updatePackets){
+		for(Packet pck : worldState.updatePackets){
 			if(pck instanceof Pck102_TankUpdate){
 				Pck102_TankUpdate packet = (Pck102_TankUpdate) pck;
 				AbstractTank tank = (AbstractTank) controller.getWorld().getEntity(packet.entityID);
@@ -418,6 +409,24 @@ public class ClientState extends TanskState {
 					proj.setDirection(packet.projDirection);
 				}
 			}
+			
+			if(pck instanceof Pck13_UpdatePlayer){
+				Pck13_UpdatePlayer packet = (Pck13_UpdatePlayer) pck;
+
+				Player matchedPlayer = null;
+				for(Player player : playerList){
+					if(player.getId() == packet.id)
+						matchedPlayer = player;
+				}
+				
+				if(matchedPlayer != null){
+					matchedPlayer.setId(packet.id);
+					matchedPlayer.setScore(packet.score);
+					matchedPlayer.setLives(packet.lives);
+					matchedPlayer.setActive(packet.active);
+					matchedPlayer.setEliminated(packet.eliminated);
+				}
+			}
 		}
     }
 			
@@ -428,7 +437,7 @@ public class ClientState extends TanskState {
 			if(chatField.hasFocus()){
 				if(!chatField.getText().equals("")){
 					if(client != null){
-						String msg = playerName + ": " + chatField.getText();
+						String msg = localPlayer.getName() + ": " + chatField.getText();
 						msg = msg.replace('\n', ' ');
 						if(msg.length() > 39)
 							msg = msg.substring(0, 38);
@@ -449,9 +458,11 @@ public class ClientState extends TanskState {
 		}
 	}
 		
-	private void createClientTank(int entityID, String identifier, Vector2f direction, String playerColor) {
+	private void createClientTank(int entityID, String identifier, int ownerID, Vector2f direction, String playerColor) {
 	    if(identifier.equals("DefaultTank")){
-			new DefaultTank(entityID, direction, null, playerColor);
+	    	DefaultTank newTank = new DefaultTank(entityID, direction, null, playerColor);
+	    	if(ownerID == localPlayer.getId())
+	    		localPlayer.setTank(newTank);
 	    }
     }
 	
