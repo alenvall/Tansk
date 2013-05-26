@@ -359,4 +359,14 @@ public abstract class GameConditions {
 		}
 		getPlayerList().remove(p);
 	}
+	
+	public List<Player> getActivePlayers(){
+		List<Player> tmpList = new ArrayList<Player>();
+		for(Player p: players){
+			if(p.isActive()){
+				tmpList.add(p);
+			}
+		}
+		return tmpList;
+	}
 }
