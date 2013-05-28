@@ -299,15 +299,16 @@ public class ClientState extends TanskState {
 					g.setColor(Color.black);
 					g.drawRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75, 10, 10);
 				}
-			}
-			
-			if(localPlayer.getTank() != null){
-				if(localPlayer.getTank().getShield() != null && localPlayer.getTank().getShield().getHealth() <= 100){
+				if(localPlayer.getTank() != null){
+					if(localPlayer.getTank().getShield() != null && localPlayer.getTank().getShield().getHealth() <= 100){
 					lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, localPlayer.getTank().getShield().getHealth()/AbstractTank.MAX_SHIELD_HEALTH, g);
-				}else{
-					lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, 0, g);
+					}else{
+						lifebar.render(localPlayer.getTank().getHealth()/AbstractTank.MAX_HEALTH, 0, g);
+					}
 				}
 			}
+			
+			
 		}
 		
 		if(gameOver){
