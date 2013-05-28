@@ -25,6 +25,7 @@ public class JoinMenu extends BasicGameState{
 	private SpriteSheet background;
 	private MenuButton backButton;
 	private boolean connectionFailed;
+	private String tempIP;
 	
 	public JoinMenu(int state) {
 		this.state = state;
@@ -32,6 +33,7 @@ public class JoinMenu extends BasicGameState{
 
 	public void init(GameContainer gc, StateBasedGame sbg)
 			throws SlickException {
+		tempIP = "192.168.0.";
 		this.stateBasedGame = sbg;
 
 		inputLabel = new Label("Enter host IP:", Color.black, 100, 175);
@@ -56,14 +58,14 @@ public class JoinMenu extends BasicGameState{
 	public void enter(GameContainer gc, StateBasedGame stateBasedGame){
 		serverIPField.setFocus(true);
 		connectionFailed = false;
-		serverIPField.setText("192.168.0.");
+		serverIPField.setText(tempIP);
 		serverIPField.setCursorPos(25);
 	}
 
 	@Override
 	public void leave(GameContainer gc, StateBasedGame stateBasedGame){
 		serverIPField.setFocus(false);
-		serverIPField.setText("");
+		tempIP = serverIPField.getText();
 	}
 
 	@Override
