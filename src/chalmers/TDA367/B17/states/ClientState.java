@@ -290,13 +290,15 @@ public class ClientState extends TanskState {
 				g.setColor(Color.white);
 			}
 			
-			if(gameSettings.gameMode.equals("koth")){
-				Vector2f tmpPosition = new Vector2f(KingOfTheHillMode.DEFAULT_ZONE_X, KingOfTheHillMode.DEFAULT_ZONE_Y);
-				g.setColor(Color.green);
-				g.fillRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75*
-						((float)localPlayer.getScore()/(float)gameSettings.scorelimit), 10, 10);
-				g.setColor(Color.black);
-				g.drawRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75, 10, 10);
+			if(!gameDelaying && !showInfo){
+				if(gameSettings.gameMode.equals("koth")){
+					Vector2f tmpPosition = new Vector2f(KingOfTheHillMode.DEFAULT_ZONE_X, KingOfTheHillMode.DEFAULT_ZONE_Y);
+					g.setColor(Color.green);
+					g.fillRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75*
+							((float)localPlayer.getScore()/(float)gameSettings.scorelimit), 10, 10);
+					g.setColor(Color.black);
+					g.drawRoundRect(tmpPosition.x-42, tmpPosition.y-60, 75, 10, 10);
+				}
 			}
 			
 			if(localPlayer.getTank() != null){
