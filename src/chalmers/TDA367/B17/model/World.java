@@ -34,7 +34,7 @@ public class World {
 	private boolean serverWorld = false;
 	
 	private Spawner spawner;
-	
+		
 	/**
 	 * Create a new world.
 	 * @param size The size of the world
@@ -62,7 +62,6 @@ public class World {
 	public void addEntity(Entity newEntity){
 		if(serverWorld){
 			if(!(newEntity instanceof MapBounds) || !(newEntity instanceof AbstractObstacle) || !(newEntity instanceof TankSpawnPoint)){
-				GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
 				
 				if(newEntity instanceof AbstractTank){
 					Pck10_TankCreated tankPacket = new Pck10_TankCreated();
@@ -87,6 +86,10 @@ public class World {
 					else if(newEntity instanceof AbstractTurret){
 						packet.possibleOwnerID = ((AbstractTurret)newEntity).getTank().getId();
 						packet.color = ((AbstractTurret)newEntity).getColor();
+						GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + ", " + packet.possibleOwnerID + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+					} else {
+						GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+						
 					}
 					ServerState.getInstance().addToAllClientsQueue(packet);	
 				}

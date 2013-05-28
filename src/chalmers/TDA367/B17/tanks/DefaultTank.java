@@ -25,7 +25,7 @@ public class DefaultTank extends AbstractTank {
 		super(id, direction, DEFAULT_MAXSPEED, DEFAULT_MINSPEED, player, color);
 		setShape(new Rectangle(100, 150, 48, 63));
 		setTurretOffset(6);
-		turret = new DefaultTurret(1000+id, new Vector2f(this.getPosition().x, this.getPosition().y+this.getTurretOffset()), direction.getTheta(), this, color);
+		turret = new DefaultTurret(GameController.getInstance().generateID(), new Vector2f(this.getPosition().x, this.getPosition().y+this.getTurretOffset()), direction.getTheta(), this, color);
 		setHealth(100);
 		GameController.getInstance().getWorld().addEntity(this);
 	}

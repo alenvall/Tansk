@@ -36,6 +36,7 @@ public class GameController {
 	}
 	
 	private GameController() {
+		latestID = 1;
 		imgHandler = new ImageHandler();
 		imgHandler.loadAllImages(Tansk.IMAGES_FOLDER);
 		soundHandler = new SoundHandler();
@@ -157,7 +158,7 @@ public class GameController {
 	 * @return id
 	 */
 	public int generateID(){
-		latestID += 1;
+		latestID += 2;
 		return latestID;
 	}
 
