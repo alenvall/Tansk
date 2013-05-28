@@ -613,12 +613,17 @@ public class ClientState extends TanskState {
 	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
 	    	tank.setShield(new Shield(pck.entityID, tank, 0));
 	    } else if(pck.identifier.equals("DefaultTurret")){
-	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
-	    	if(tank != null){
-	    		double rotation = tank.getTurret().getRotation();
-	    		Vector2f position = tank.getTurret().getPosition();
-	    		AbstractTurret turret = new DefaultTurret(pck.entityID, position, rotation, tank, pck.color);
-	    		tank.setTurret(turret);
+	    	try{
+	    		AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
+	    		if(tank != null){
+		    		double rotation = tank.getTurret().getRotation();
+		    		Vector2f position = tank.getTurret().getPosition();
+		    		AbstractTurret turret = new DefaultTurret(pck.entityID, position, rotation, tank, pck.color);
+		    		tank.setTurret(turret);
+	    		}
+	    	}
+	    	catch(Exception e){
+	    		System.out.println("hej");
 	    	}
 	    } else if(pck.identifier.equals("BounceTurret")){
 	    	AbstractTank tank = (AbstractTank)GameController.getInstance().getWorld().getEntity(pck.possibleOwnerID);
