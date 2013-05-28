@@ -86,13 +86,15 @@ public class World {
 					else if(newEntity instanceof AbstractTurret){
 						packet.possibleOwnerID = ((AbstractTurret)newEntity).getTank().getId();
 						packet.color = ((AbstractTurret)newEntity).getColor();
-						GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + ", " + packet.possibleOwnerID + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
-					} else {
-						GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
-						
 					}
 					ServerState.getInstance().addToAllClientsQueue(packet);	
 				}
+				if(newEntity instanceof AbstractTurret)
+					GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + ", " + ((AbstractTurret)newEntity).getTank().getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+				else
+					GameController.getInstance().getConsole().addMsg("Created (ID" + newEntity.getId() + "): "+  newEntity.getClass().getSimpleName(), MsgLevel.STANDARD);
+				
+					
 			}
 		}
 		entities.put(newEntity.getId(), newEntity);
