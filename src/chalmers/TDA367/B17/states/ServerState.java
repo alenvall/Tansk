@@ -142,7 +142,7 @@ public class ServerState extends TanskState {
 	        }
 			
 			controller.newGame();
-			scoreboard = new Scoreboard(true, controller.getGameMode().getPlayerList());
+			scoreboard = new Scoreboard(false, controller.getGameMode().getPlayerList());
 		}
 	}
 	
@@ -201,6 +201,15 @@ public class ServerState extends TanskState {
 			if(!gameOverActionTaken && controller.getGameMode().isGameOver()){
 				Pck15_GameOver pck = new Pck15_GameOver();
 				addToAllClientsQueue(pck);
+				
+				for(Player player : getPlayers()){
+					player.setInputStatus(Player.INPT_W, false);
+					player.setInputStatus(Player.INPT_A, false);
+					player.setInputStatus(Player.INPT_S, false);
+					player.setInputStatus(Player.INPT_D, false);
+					player.setInputStatus(Player.INPT_LMB, false);
+				}
+				
 				gameOverActionTaken = true;
 			}	
 			if(controller.getGameMode().isGameOver()){
@@ -377,7 +386,7 @@ public class ServerState extends TanskState {
 		    
 		    // client input (WASD keys)
 		    if(packet instanceof Pck4_ClientInput){
-		    	if(gameStarted)
+		    	if(gameStarted && !gameOverActionTaken)
 		    		receiveClientInput((Pck4_ClientInput) packet);
  		    }
 		    
