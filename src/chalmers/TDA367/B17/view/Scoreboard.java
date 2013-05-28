@@ -37,13 +37,21 @@ public class Scoreboard {
 		this.singeplayer = singeplayer;
 		position = new Vector2f(Tansk.SCREEN_WIDTH/2-width/2, Tansk.SCREEN_HEIGHT/2-height/2);
 		
-		toMenuButton = new MenuButton((int)(position.x + 15), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_menu"),
-				GameController.getInstance().getImageHandler().getSprite("button_menu_pressed"),
-				GameController.getInstance().getImageHandler().getSprite("button_menu_hover"));
 		if(singeplayer){
 			restartButton = new MenuButton((int)(position.x + width - 165), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_restart"),
 					GameController.getInstance().getImageHandler().getSprite("button_restart_pressed"),
 					GameController.getInstance().getImageHandler().getSprite("button_restart_hover"));
+		
+			toMenuButton = new MenuButton((int)(position.x + 15), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_menu"),
+					GameController.getInstance().getImageHandler().getSprite("button_menu_pressed"),
+					GameController.getInstance().getImageHandler().getSprite("button_menu_hover"));
+			
+		} else {
+			// center if only 1 button
+			toMenuButton = new MenuButton((int)(position.x + 100), (int)(position.y + height-60), GameController.getInstance().getImageHandler().getSprite("button_menu"),
+					GameController.getInstance().getImageHandler().getSprite("button_menu_pressed"),
+					GameController.getInstance().getImageHandler().getSprite("button_menu_hover"));
+			
 		}
 		scoreboardFont = new TrueTypeFont(new java.awt.Font("Verdana", java.awt.Font.PLAIN, 22), true);
 	}
