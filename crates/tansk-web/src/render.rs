@@ -55,6 +55,10 @@ pub struct Hud<'a> {
     pub own_turret: Option<f32>,
     pub debug: Option<Vec<String>>,
     pub copied: bool,
+    /// False when the 3D view draws the world: then only the GUI is drawn here.
+    pub world: bool,
+    /// Where the king-of-the-hill bar goes, when the 3D view moves the zone on screen.
+    pub zone_bar: Option<V2>,
 }
 
 /// Slick's named colours, as the original used them for players.
@@ -102,6 +106,11 @@ pub fn draw(ctx: &Ctx, imgs: &Images, v: Option<&GameView>, hud: &Hud) {
     ctx.set_global_alpha(1.0);
     ctx.set_text_baseline("top");
     ctx.set_font("14px Verdana, sans-serif");
+    if !hud.world {
+        ctx.clear_rect(0.0, 0.0, W, H);
+        draw_gui(ctx, imgs, v, hud);
+        return;
+    }
     match imgs.get("map") {
         Some(map) => {
             let _ = ctx.draw_image_with_html_image_element(&map, 0.0, 0.0);
@@ -220,13 +229,17 @@ fn draw_gui(ctx: &Ctx, imgs: &Images, v: Option<&GameView>, hud: &Hud) {
     if let (Some(me), Some(v)) = (me, v) {
         if hud.settings.koth {
             let z = v.zone.unwrap_or(ZONE_POS);
+            let (bx, by) = match hud.zone_bar {
+                Some(p) => (p.x as f64 - 37.5, p.y as f64),
+                None => (z.x as f64 - 42.0, z.y as f64 - 60.0),
+            };
             let frac = (me.score as f64 / hud.settings.score_limit.max(1) as f64).min(1.0);
             ctx.set_fill_style_str("#00ff00");
-            round_rect(ctx, z.x as f64 - 42.0, z.y as f64 - 60.0, 75.0 * frac, 10.0, 5.0);
+            round_rect(ctx, bx, by, 75.0 * frac, 10.0, 5.0);
             ctx.fill();
             ctx.set_stroke_style_str("#000");
             ctx.set_line_width(1.0);
-            round_rect(ctx, z.x as f64 - 42.0, z.y as f64 - 60.0, 75.0, 10.0, 5.0);
+            round_rect(ctx, bx, by, 75.0, 10.0, 5.0);
             ctx.stroke();
         }
         if let Some(t) = v.tanks.iter().find(|t| t.player == me.id) {

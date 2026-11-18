@@ -25,5 +25,7 @@ features = [
   "AudioContext", "BaseAudioContext", "AudioBuffer", "AudioBufferSourceNode", "AudioNode",
   "AudioDestinationNode", "AudioScheduledSourceNode", "GainNode", "AudioParam",
   "Response", "Request", "RequestInit", "Performance", "CssStyleDeclaration", "DomTokenList",
-  "NodeList", "Node", "Navigator", "Clipboard", "console",
+  "NodeList", "Node", "Navigator", "Clipboard", "console", "CanvasGradient",
+  "WebGl2RenderingContext", "WebGlBuffer", "WebGlProgram", "WebGlShader", "WebGlTexture",
+  "WebGlUniformLocation", "WebGlVertexArrayObject",
 ]

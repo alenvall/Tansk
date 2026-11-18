@@ -10,7 +10,7 @@ playable in the browser.
 |-|-|
 | `crates/tansk-sim` | the game rules, ported from the Java model: tanks, six weapons, five power-ups, Standard and King of the Hill |
 | `crates/tansk-server` | axum server: game rooms over WebSocket at `/ws`, open games at `/api/rooms`, the web client at `/` |
-| `crates/tansk-web` | the browser client (WASM, canvas): menus, rendering, sound, and the offline playground |
+| `crates/tansk-web` | the browser client (WASM): menus, the 2D canvas view and the WebGL2 3D view, sound, and the offline playground |
 | `assets/` | the original sprites, sounds and map (music converted to MP3) |
 | `java/` | the original Java version, untouched |
 
@@ -26,7 +26,11 @@ cargo run --release -p tansk-server     # http://localhost:8080
 ## Playing
 
 Host a game to get a four-letter code (or share the link), others join with
-it. Up to 4 players. WASD drive, mouse aims, click fires, Enter chats,
+it. Up to 4 players. The game is 3D by default; V (or Settings) switches to
+the original 2D view. The view is only a camera: the rules are the same flat
+game, so 2D and 3D players play together.
+
+Up to 4 players. WASD drive, mouse aims, click fires, Enter chats,
 Esc back to the menu. Playground (offline): keys 1-6 swap weapons, Q drops a
 pickup.
 

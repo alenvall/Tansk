@@ -13,6 +13,7 @@
 </head>
 <body>
   <div id="stage">
+    <canvas id="game3d" width="1024" height="768"></canvas>
     <canvas id="game" width="1024" height="768"></canvas>
 
     <!-- Main menu (states/Menu.java) -->
@@ -22,7 +23,7 @@
       <button class="btn" data-action="join-menu" style="left:100px;top:375px;--n:url(images/button_join.png);--h:url(images/button_join_hover.png);--p:url(images/button_join_pressed.png)" title="Join"></button>
       <button class="btn" data-action="settings-menu" style="left:100px;top:475px;--n:url(images/button_settings.png);--h:url(images/button_settings_hover.png);--p:url(images/button_settings_pressed.png)" title="Settings"></button>
       <div class="help" style="left:100px;top:600px">
-        WASD drive &middot; mouse aim &middot; click fire &middot; Enter chat &middot; Esc menu<br>
+        WASD drive &middot; mouse aim &middot; click fire &middot; V 2D/3D &middot; Enter chat &middot; Esc menu<br>
         Playground: keys 1&ndash;6 swap weapons, Q drops a pickup
       </div>
     </div>
@@ -57,6 +58,9 @@
       <label class="slider" style="left:110px;top:175px">Volume: <b>35</b><input type="range" id="s-volume" min="0" max="100" value="35"></label>
       <div class="label" style="left:100px;top:225px">Player name:</div>
       <input id="player-name" class="field" style="left:100px;top:250px;width:200px" maxlength="10" autocomplete="off" spellcheck="false">
+      <div class="label" style="left:100px;top:300px">View (V in game):</div>
+      <div class="radio" id="radio-3d" data-action="view-3d" style="left:100px;top:325px">3D</div>
+      <div class="radio" id="radio-2d" data-action="view-2d" style="left:100px;top:360px">2D (the original)</div>
       <button class="btn" data-action="back" style="left:100px;top:575px;--n:url(images/button_back.png);--h:url(images/button_back_hover.png);--p:url(images/button_back_pressed.png)" title="Back"></button>
     </div>
 

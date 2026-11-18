@@ -28,6 +28,14 @@ html, body {
   background: url(images/background.png);
 }
 
+#game3d {
+  position: absolute;
+  inset: 0;
+  width: 1024px;
+  height: 768px;
+  pointer-events: none;
+}
+
 #game {
   position: absolute;
   inset: 0;

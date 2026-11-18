@@ -5,6 +5,7 @@
 mod assets;
 mod net;
 mod render;
+mod render3d;
 
 use std::cell::RefCell;
 use std::collections::{HashSet, VecDeque};
@@ -121,6 +122,8 @@ struct App {
     fps: (u32, f64, u32),
     rooms_fetched_at: f64,
     rooms: Rc<RefCell<Option<Vec<serde_json::Value>>>>,
+    three: Option<render3d::Renderer3d>,
+    view3d: bool,
 }
 
 impl App {
@@ -151,6 +154,7 @@ impl App {
         let in_game = screen.is_empty();
         let chat_visible = in_game && matches!(self.mode, Mode::Online(_));
         let _ = self.chat.class_list().toggle_with_force("hidden", !chat_visible);
+        self.sync_view();
         if screen == "join" {
             self.rooms_fetched_at = -1e9;
             let _ = self.input("join-code").focus();
@@ -160,6 +164,43 @@ impl App {
             self.audio.play_music(Music::Menu);
             let _ = window().history().map(|h| h.replace_state_with_url(&JsValue::NULL, "", Some("/")));
         }
+    }
+
+    fn uses_3d(&self) -> bool {
+        self.view3d && self.three.is_some()
+    }
+
+    fn sync_view(&self) {
+        let show = self.uses_3d() && self.screen.is_empty();
+        if let Some(r) = &self.three {
+            let _ = r.canvas.class_list().toggle_with_force("hidden", !show);
+        }
+        let _ = self.el("radio-3d").class_list().toggle_with_force("selected", self.view3d);
+        let _ = self.el("radio-2d").class_list().toggle_with_force("selected", !self.view3d);
+    }
+
+    fn set_view(&mut self, three: bool) {
+        self.view3d = three;
+        storage_set("tansk.view", if three { "3d" } else { "2d" });
+        self.sync_view();
+    }
+
+    /// The point on the map the mouse is over: in 3D, where its ray meets the ground.
+    fn aim(&self, mouse: V2) -> V2 {
+        match &self.three {
+            Some(r) if self.view3d => r.unproject(mouse),
+            _ => mouse,
+        }
+    }
+
+    /// Draws the 3D world if that view is on; returns where the zone's bar goes.
+    fn draw3d(&mut self, v: Option<&GameView>) -> Option<V2> {
+        if !self.view3d {
+            return None;
+        }
+        let r = self.three.as_mut()?;
+        r.draw(&self.images, v, &self.explosions, now());
+        v.and_then(|v| v.zone).map(|z| r.project([z.x, 75.0, z.y]))
     }
 
     fn back_to_menu(&mut self) {
@@ -247,6 +288,8 @@ impl App {
                 self.show("join");
             }
             "settings-menu" => self.show("settings"),
+            "view-3d" => self.set_view(true),
+            "view-2d" => self.set_view(false),
             "back" => {
                 storage_set("tansk.name", &self.input("player-name").value());
                 self.show("menu");
@@ -287,9 +330,9 @@ impl App {
             .unwrap_or(false)
     }
 
-    fn game_input(&self, sh: &Shared) -> Input {
+    fn game_input(&self, sh: &Shared, aim: V2) -> Input {
         if self.typing() {
-            return Input { aim: sh.mouse, ..Input::default() };
+            return Input { aim, ..Input::default() };
         }
         let k = |c: &str| sh.keys.contains(c);
         Input {
@@ -298,7 +341,7 @@ impl App {
             down: k("KeyS"),
             right: k("KeyD"),
             fire: sh.mouse_down,
-            aim: sh.mouse,
+            aim,
         }
     }
 
@@ -340,6 +383,7 @@ impl App {
             "ArrowUp" => self.audio.set_volume(self.audio.volume + 0.05),
             "ArrowDown" => self.audio.set_volume(self.audio.volume - 0.05),
             "KeyS" if ctrl => self.audio.toggle_mute(),
+            "KeyV" => self.set_view(!self.view3d),
             _ => {}
         }
         if let Mode::Playground(l) = &mut self.mode {
@@ -492,9 +536,10 @@ impl App {
     }
 
     fn frame_local(&mut self, mut l: Box<Local>, dt: f64) -> Mode {
-        let (input, mouse, mouse_down) = {
+        let (input, mouse, mouse_down, aim) = {
             let sh = self.shared.borrow();
-            (self.game_input(&sh), sh.mouse, sh.mouse_down)
+            let aim = self.aim(sh.mouse);
+            (self.game_input(&sh, aim), sh.mouse, sh.mouse_down, aim)
         };
         l.acc += dt;
         let mut events = Vec::new();
@@ -506,7 +551,7 @@ impl App {
                 // mouse and Newton fires when you do.
                 for (i, &o) in l.others.iter().enumerate() {
                     let fire = i == 0 && mouse_down;
-                    l.game.set_input(o, Input { aim: mouse, fire, ..Input::default() });
+                    l.game.set_input(o, Input { aim, fire, ..Input::default() });
                 }
                 l.game.step();
             }
@@ -516,7 +561,10 @@ impl App {
         }
         self.events(&events);
         let view = lerp_view(&l.prev, &l.cur, (l.acc / TICK) as f32);
-        let hud = self.hud(Some(l.me), Settings::playground(), None, false, false, true, false, mouse, mouse_down);
+        let zone_bar = self.draw3d(Some(&view));
+        let mut hud = self.hud(Some(l.me), Settings::playground(), None, false, false, true, false, mouse, mouse_down);
+        hud.world = !self.uses_3d();
+        hud.zone_bar = zone_bar;
         render::draw(&self.ctx, &self.images, Some(&view), &hud);
         Mode::Playground(l)
     }
@@ -600,9 +648,10 @@ impl App {
             None
         };
 
-        let (input, mouse, mouse_down) = {
+        let (input, mouse, mouse_down, aim) = {
             let sh = self.shared.borrow();
-            (self.game_input(&sh), sh.mouse, sh.mouse_down)
+            let aim = self.aim(sh.mouse);
+            (self.game_input(&sh, aim), sh.mouse, sh.mouse_down, aim)
         };
         let t = now();
         if o.me.is_some() && !o.closed && (o.last_sent != Some(input) && t - o.last_send_at >= TICK || t - o.last_send_at > 500.0) {
@@ -615,17 +664,20 @@ impl App {
         let own_turret = view.as_ref().and_then(|v| {
             let t = v.tanks.iter().find(|t| Some(t.player) == o.me)?;
             let tp = t.turret_pos;
-            Some((((tp.x - mouse.x) as f64).atan2((tp.y - mouse.y) as f64).to_degrees() * -1.0 + 180.0) as f32)
+            Some((((tp.x - aim.x) as f64).atan2((tp.y - aim.y) as f64).to_degrees() * -1.0 + 180.0) as f32)
         });
         let show_info = view.as_ref().is_some_and(|v| {
             v.phase == Phase::Lobby || (v.phase == Phase::Countdown && v.round == 0 && v.delay_ms >= 3000)
         });
         let link = share_link(o.code.as_deref());
         let copied = t - o.copied_at < 2000.0;
+        let zone_bar = self.draw3d(view.as_ref());
         let mut hud = self.hud(o.me, o.settings, o.code.as_deref(), o.host, true, o.connected, show_info, mouse, mouse_down);
         hud.link = link.as_deref();
         hud.own_turret = own_turret;
         hud.copied = copied;
+        hud.world = !self.uses_3d();
+        hud.zone_bar = zone_bar;
         render::draw(&self.ctx, &self.images, view.as_ref(), &hud);
         Mode::Online(o)
     }
@@ -669,6 +721,8 @@ impl App {
                 ]
             }),
             copied: false,
+            world: true,
+            zone_bar: None,
         }
     }
 }
@@ -823,6 +877,11 @@ fn main() {
         fps: (0, now(), 0),
         rooms_fetched_at: -1e9,
         rooms: Rc::default(),
+        three: doc
+            .get_element_by_id("game3d")
+            .and_then(|c| c.dyn_into::<HtmlCanvasElement>().ok())
+            .and_then(render3d::Renderer3d::new),
+        view3d: storage_get("tansk.view").as_deref() != Some("2d"),
     };
     app.input("player-name").set_value(&storage_get("tansk.name").unwrap_or_else(|| "Unnamed".into()));
     app.show("menu");
