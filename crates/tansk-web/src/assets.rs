@@ -97,14 +97,26 @@ impl Audio {
     }
 
     pub fn play(&self, sound: Sound) {
+        self.play_at(sound, 1.0);
+    }
+
+    /// Plays `sound` at `level` (0..1) of the master volume: distant things are quieter.
+    pub fn play_at(&self, sound: Sound, level: f32) {
         let (Some(ctx), Some(gain)) = (&self.ctx, &self.gain) else { return };
-        if self.volume <= 0.0 {
+        if self.volume <= 0.0 || level <= 0.01 {
             return;
         }
         let Some(buf) = self.buffers.borrow().get(sound.file()).cloned() else { return };
         let Ok(src) = ctx.create_buffer_source() else { return };
         src.set_buffer(Some(&buf));
-        let _ = src.connect_with_audio_node(gain);
+        if level >= 0.999 {
+            let _ = src.connect_with_audio_node(gain);
+        } else {
+            let Ok(g) = ctx.create_gain() else { return };
+            g.gain().set_value(level);
+            let _ = src.connect_with_audio_node(&g);
+            let _ = g.connect_with_audio_node(gain);
+        }
         let _ = src.start();
     }
 

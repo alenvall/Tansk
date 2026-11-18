@@ -55,10 +55,6 @@ pub struct Hud<'a> {
     pub own_turret: Option<f32>,
     pub debug: Option<Vec<String>>,
     pub copied: bool,
-    /// False when the 3D view draws the world: then only the GUI is drawn here.
-    pub world: bool,
-    /// Where the king-of-the-hill bar goes, when the 3D view moves the zone on screen.
-    pub zone_bar: Option<V2>,
 }
 
 /// Slick's named colours, as the original used them for players.
@@ -91,7 +87,7 @@ fn sprite_centered(ctx: &Ctx, imgs: &Images, name: &str, c: V2, rot_deg: f64) {
     ctx.restore();
 }
 
-fn round_rect(ctx: &Ctx, x: f64, y: f64, w: f64, h: f64, r: f64) {
+pub fn round_rect(ctx: &Ctx, x: f64, y: f64, w: f64, h: f64, r: f64) {
     let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
     ctx.begin_path();
     ctx.move_to(x + r, y);
@@ -106,11 +102,6 @@ pub fn draw(ctx: &Ctx, imgs: &Images, v: Option<&GameView>, hud: &Hud) {
     ctx.set_global_alpha(1.0);
     ctx.set_text_baseline("top");
     ctx.set_font("14px Verdana, sans-serif");
-    if !hud.world {
-        ctx.clear_rect(0.0, 0.0, W, H);
-        draw_gui(ctx, imgs, v, hud);
-        return;
-    }
     match imgs.get("map") {
         Some(map) => {
             let _ = ctx.draw_image_with_html_image_element(&map, 0.0, 0.0);
@@ -229,10 +220,7 @@ fn draw_gui(ctx: &Ctx, imgs: &Images, v: Option<&GameView>, hud: &Hud) {
     if let (Some(me), Some(v)) = (me, v) {
         if hud.settings.koth {
             let z = v.zone.unwrap_or(ZONE_POS);
-            let (bx, by) = match hud.zone_bar {
-                Some(p) => (p.x as f64 - 37.5, p.y as f64),
-                None => (z.x as f64 - 42.0, z.y as f64 - 60.0),
-            };
+            let (bx, by) = (z.x as f64 - 42.0, z.y as f64 - 60.0);
             let frac = (me.score as f64 / hud.settings.score_limit.max(1) as f64).min(1.0);
             ctx.set_fill_style_str("#00ff00");
             round_rect(ctx, bx, by, 75.0 * frac, 10.0, 5.0);
@@ -279,7 +267,7 @@ fn draw_gui(ctx: &Ctx, imgs: &Images, v: Option<&GameView>, hud: &Hud) {
     }
 }
 
-fn draw_lifebar(ctx: &Ctx, health: f64, shield: Option<f64>) {
+pub fn draw_lifebar(ctx: &Ctx, health: f64, shield: Option<f64>) {
     let (x, y, w, h) = (412.0, 10.0, 200.0, 14.0);
     let bar = |y: f64, frac: f64, color: &str| {
         ctx.set_fill_style_str("#000");
@@ -393,7 +381,7 @@ fn draw_scoreboard(ctx: &Ctx, imgs: &Images, players: &[PlayerView], hud: &Hud) 
     }
 }
 
-fn draw_button(ctx: &Ctx, imgs: &Images, name: &str, r: (f64, f64, f64, f64), hud: &Hud) {
+pub fn draw_button(ctx: &Ctx, imgs: &Images, name: &str, r: (f64, f64, f64, f64), hud: &Hud) {
     let state = if hit(r, hud.mouse) {
         if hud.mouse_down {
             "_pressed"

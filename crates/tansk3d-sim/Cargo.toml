@@ -1,0 +1,11 @@
+[package]
+name = "tansk3d-sim"
+description = "Tansk 3D: the game rules in three dimensions (terrain, ballistics), shared by the server and the browser"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+tansk-sim = { path = "../tansk-sim" }
+serde.workspace = true
+bincode.workspace = true

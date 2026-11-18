@@ -53,6 +53,31 @@ html, body {
 
 .hidden { display: none !important; }
 
+/* One page for both games: main.rs puts .is3d on <body> under /3d. */
+body:not(.is3d) .only3d { display: none !important; }
+body.is3d .only2d { display: none !important; }
+body.is3d #game { cursor: default; }
+
+.title3d {
+  left: 706px;
+  top: 66px;
+  font: bold 44px Verdana, sans-serif;
+  color: #c00000;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.25);
+  transform: rotate(-8deg);
+}
+
+.modelink {
+  font-size: 15px;
+  font-weight: bold;
+  color: #c00000;
+  text-decoration: none;
+  padding: 6px 10px;
+  border: 1px solid #000;
+  background: rgba(255, 255, 255, 0.6);
+}
+.modelink:hover { background: rgba(255, 255, 255, 0.95); }
+
 .screen > * { position: absolute; }
 
 .btn {
@@ -173,3 +198,6 @@ html, body {
 }
 #chat:focus { background: rgba(255, 255, 255, 0.6); }
 #chat::placeholder { color: rgba(0, 0, 0, 0.45); }
+body.is3d #chat { color: #fff; border-color: rgba(255, 255, 255, 0.7); background: rgba(0, 0, 0, 0.3); }
+body.is3d #chat:focus { background: rgba(0, 0, 0, 0.55); }
+body.is3d #chat::placeholder { color: rgba(255, 255, 255, 0.6); }

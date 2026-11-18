@@ -1,21 +1,21 @@
-//! One room: a `Game` stepped every tick, its players' sockets, its chat.
-//! The original's ServerState, minus the window.
+//! One room: a game (2D or 3D, see [`RoomGame`]) stepped every tick, its
+//! players' sockets, its chat. The original's ServerState, minus the window.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use tansk_sim::proto::{ClientMsg, MsgLevel, Phase, ServerMsg, Settings};
-use tansk_sim::{Game, Input, MAX_PLAYERS, TICK_MS};
+use crate::games::{Incoming, Outgoing, RoomGame};
+use tansk_sim::proto::{MsgLevel, Phase, Settings};
 use tokio::sync::mpsc;
 use tokio::time::MissedTickBehavior;
 
-pub type Outbox = mpsc::Sender<ServerMsg>;
+pub type Outbox<G> = mpsc::Sender<<G as RoomGame>::ServerMsg>;
 
-pub enum RoomCmd {
-    Join { conn: u64, name: String, out: Outbox },
+pub enum RoomCmd<G: RoomGame> {
+    Join { conn: u64, name: String, out: Outbox<G> },
     Leave { conn: u64 },
-    Msg { conn: u64, msg: ClientMsg },
+    Msg { conn: u64, msg: Incoming<G::Input> },
 }
 
 /// What the lobby list shows about a room.
@@ -29,19 +29,25 @@ pub struct RoomInfo {
     pub started: bool,
 }
 
-struct Member {
+struct Member<G: RoomGame> {
     conn: u64,
     player: u32,
     name: String,
     color: u8,
-    out: Outbox,
+    out: Outbox<G>,
 }
 
-pub struct Room {
+impl<G: RoomGame> Member<G> {
+    fn send(&self, msg: Outgoing) {
+        let _ = self.out.try_send(G::outgoing(msg));
+    }
+}
+
+pub struct Room<G: RoomGame> {
     code: String,
     settings: Settings,
-    game: Game,
-    members: Vec<Member>,
+    game: G,
+    members: Vec<Member<G>>,
     info: Arc<Mutex<RoomInfo>>,
     seed: u64,
     announced_game_over: bool,
@@ -52,10 +58,10 @@ const COLOR_POOL: [u8; 4] = [0, 1, 2, 3];
 const MAX_NAME: usize = 10;
 const MAX_CHAT: usize = 60;
 
-impl Room {
+impl<G: RoomGame> Room<G> {
     pub fn new(code: String, settings: Settings, seed: u64, info: Arc<Mutex<RoomInfo>>) -> Self {
         Room {
-            game: Game::new(settings, seed),
+            game: G::new(settings, seed),
             settings: settings.clamped(),
             code,
             members: Vec::new(),
@@ -66,8 +72,8 @@ impl Room {
     }
 
     /// Runs the room until its last player leaves.
-    pub async fn run(mut self, mut rx: mpsc::UnboundedReceiver<RoomCmd>) {
-        let mut tick = tokio::time::interval(Duration::from_millis(TICK_MS as u64));
+    pub async fn run(mut self, mut rx: mpsc::UnboundedReceiver<RoomCmd<G>>) {
+        let mut tick = tokio::time::interval(Duration::from_millis(G::TICK_MS as u64));
         tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
         loop {
             tokio::select! {
@@ -89,14 +95,14 @@ impl Room {
             self.announced_game_over = true;
             self.broadcast_info("Game over!");
         }
-        let view = ServerMsg::View(self.game.view());
+        let view = self.game.view_msg();
         for m in &self.members {
             // A client that can't keep up misses views rather than queueing them.
             let _ = m.out.try_send(view.clone());
         }
     }
 
-    fn handle(&mut self, cmd: RoomCmd) {
+    fn handle(&mut self, cmd: RoomCmd<G>) {
         match cmd {
             RoomCmd::Join { conn, name, out } => self.join(conn, name, out),
             RoomCmd::Leave { conn } => self.leave(conn),
@@ -105,13 +111,13 @@ impl Room {
         self.publish_info();
     }
 
-    fn join(&mut self, conn: u64, name: String, out: Outbox) {
-        if self.members.len() >= MAX_PLAYERS {
-            let _ = out.try_send(ServerMsg::Rejected("Server full.".into()));
+    fn join(&mut self, conn: u64, name: String, out: Outbox<G>) {
+        if self.members.len() >= G::MAX_PLAYERS {
+            let _ = out.try_send(G::outgoing(Outgoing::Rejected("Server full.".into())));
             return;
         }
-        if self.game.started {
-            let _ = out.try_send(ServerMsg::Rejected("Game started.".into()));
+        if self.game.started() {
+            let _ = out.try_send(G::outgoing(Outgoing::Rejected("Game started.".into())));
             return;
         }
         let name = self.unique_name(&name);
@@ -122,12 +128,12 @@ impl Room {
             .unwrap_or(4);
         let player = self.game.add_player(&name, color);
         let host = self.members.is_empty();
-        let _ = out.try_send(ServerMsg::Welcome {
+        let _ = out.try_send(G::outgoing(Outgoing::Welcome {
             code: self.code.clone(),
             you: player,
             host,
             settings: self.settings,
-        });
+        }));
         self.members.push(Member { conn, player, name: name.clone(), color, out });
         self.broadcast_info(&format!("{name} joined."));
     }
@@ -157,20 +163,20 @@ impl Room {
         self.broadcast_info(&format!("{} disconnected.", m.name));
         if was_host {
             if let Some(h) = self.members.first() {
-                let _ = h.out.try_send(ServerMsg::Host(true));
+                h.send(Outgoing::Host(true));
                 let text = format!("{} is now the host.", h.name);
                 self.broadcast_info(&text);
             }
         }
     }
 
-    fn message(&mut self, conn: u64, msg: ClientMsg) {
+    fn message(&mut self, conn: u64, msg: Incoming<G::Input>) {
         let Some(i) = self.members.iter().position(|m| m.conn == conn) else { return };
         let is_host = i == 0;
         let player = self.members[i].player;
         match msg {
-            ClientMsg::Input(input) => self.game.set_input(player, sanitize(input)),
-            ClientMsg::Chat(text) => {
+            Incoming::Input(input) => self.game.set_input(player, input),
+            Incoming::Chat(text) => {
                 let text: String = text.chars().filter(|c| !c.is_control()).collect();
                 let text = text.trim();
                 if text.is_empty() {
@@ -183,13 +189,13 @@ impl Room {
                     return;
                 }
                 let line: String = format!("{}: {}", self.members[i].name, text).chars().take(MAX_CHAT).collect();
-                self.broadcast(ServerMsg::Message { text: line, level: MsgLevel::Chat });
+                self.broadcast(Outgoing::Message { text: line, level: MsgLevel::Chat });
             }
-            ClientMsg::Start if is_host && !self.game.started => {
+            Incoming::Start if is_host && !self.game.started() => {
                 self.game.start();
                 self.broadcast_info("Game started!");
             }
-            ClientMsg::Restart if is_host && self.game.is_game_over() => self.restart(),
+            Incoming::Restart if is_host && self.game.is_game_over() => self.restart(),
             _ => {}
         }
     }
@@ -197,10 +203,7 @@ impl Room {
     fn kick(&mut self, name: &str) {
         let Some(i) = self.members.iter().position(|m| m.name == name) else {
             if let Some(h) = self.members.first() {
-                let _ = h.out.try_send(ServerMsg::Message {
-                    text: format!("Player: {name} not found."),
-                    level: MsgLevel::Error,
-                });
+                h.send(Outgoing::Message { text: format!("Player: {name} not found."), level: MsgLevel::Error });
             }
             return;
         };
@@ -208,7 +211,7 @@ impl Room {
             return;
         }
         let m = self.members.remove(i);
-        let _ = m.out.try_send(ServerMsg::Kicked);
+        m.send(Outgoing::Kicked);
         self.game.remove_player(m.player);
         self.broadcast_info(&format!("{} kicked.", m.name));
     }
@@ -216,57 +219,51 @@ impl Room {
     /// A new game with the same players and settings, back in the lobby.
     fn restart(&mut self) {
         self.seed = self.seed.wrapping_add(0x9E37_79B9);
-        self.game = Game::new(self.settings, self.seed);
+        self.game = G::new(self.settings, self.seed);
         self.announced_game_over = false;
         for (i, m) in self.members.iter_mut().enumerate() {
             m.player = self.game.add_player(&m.name, m.color);
-            let _ = m.out.try_send(ServerMsg::Welcome {
-                code: self.code.clone(),
-                you: m.player,
-                host: i == 0,
-                settings: self.settings,
-            });
+            m.send(Outgoing::Welcome { code: self.code.clone(), you: m.player, host: i == 0, settings: self.settings });
         }
         self.broadcast_info("Back to the lobby.");
     }
 
-    fn broadcast(&self, msg: ServerMsg) {
+    fn broadcast(&self, msg: Outgoing) {
+        let msg = G::outgoing(msg);
         for m in &self.members {
             let _ = m.out.try_send(msg.clone());
         }
     }
 
     fn broadcast_info(&self, text: &str) {
-        self.broadcast(ServerMsg::Message { text: text.to_string(), level: MsgLevel::Info });
+        self.broadcast(Outgoing::Message { text: text.to_string(), level: MsgLevel::Info });
     }
 
     fn publish_info(&self) {
         let mut info = self.info.lock().unwrap();
         info.players = self.members.len();
-        info.started = self.game.started;
+        info.started = self.game.started();
         if let Some(h) = self.members.first() {
             info.host = h.name.clone();
         }
     }
 }
 
-/// Inputs come from the network: keep the aim point finite.
-fn sanitize(mut i: Input) -> Input {
-    if !i.aim.x.is_finite() || !i.aim.y.is_finite() {
-        i.aim = tansk_sim::V2::new(512.0, 384.0);
+/// A room registry: one per game, so a code only finds rooms of its game.
+pub struct Rooms<G: RoomGame> {
+    pub rooms: Mutex<HashMap<String, RoomEntry<G>>>,
+}
+
+/// A room's command channel and its lobby-list entry.
+pub type RoomEntry<G> = (mpsc::UnboundedSender<RoomCmd<G>>, Arc<Mutex<RoomInfo>>);
+
+impl<G: RoomGame> Default for Rooms<G> {
+    fn default() -> Self {
+        Rooms { rooms: Mutex::default() }
     }
-    i.aim.x = i.aim.x.clamp(-2000.0, 3000.0);
-    i.aim.y = i.aim.y.clamp(-2000.0, 3000.0);
-    i
 }
 
-/// The room registry.
-#[derive(Default)]
-pub struct Rooms {
-    pub rooms: Mutex<HashMap<String, (mpsc::UnboundedSender<RoomCmd>, Arc<Mutex<RoomInfo>>)>>,
-}
-
-impl Rooms {
+impl<G: RoomGame> Rooms<G> {
     pub fn list(&self) -> Vec<RoomInfo> {
         let rooms = self.rooms.lock().unwrap();
         let mut v: Vec<RoomInfo> = rooms
@@ -277,5 +274,88 @@ impl Rooms {
             .collect();
         v.sort_by(|a, b| a.code.cmp(&b.code));
         v
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tansk_sim::proto::ServerMsg;
+    use tansk_sim::Game;
+
+    fn settings() -> Settings {
+        tansk_sim::proto::Settings::default()
+    }
+
+    async fn next(rx: &mut mpsc::Receiver<ServerMsg>) -> ServerMsg {
+        loop {
+            match tokio::time::timeout(Duration::from_secs(2), rx.recv()).await.expect("timeout").expect("closed") {
+                ServerMsg::View(_) => continue,
+                m => return m,
+            }
+        }
+    }
+
+    async fn until(rx: &mut mpsc::Receiver<ServerMsg>, f: impl Fn(&ServerMsg) -> bool) -> ServerMsg {
+        loop {
+            let m = next(rx).await;
+            if f(&m) {
+                return m;
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn rooms_2d_join_chat_kick_handover() {
+        let info = Arc::new(Mutex::new(RoomInfo {
+            code: "ABCD".into(),
+            host: "a".into(),
+            koth: false,
+            players: 0,
+            max_players: 4,
+            started: false,
+        }));
+        let room = Room::<Game>::new("ABCD".into(), settings(), 7, info.clone());
+        let (tx, rx) = mpsc::unbounded_channel();
+        let task = tokio::spawn(room.run(rx));
+
+        let mut outs = Vec::new();
+        for (conn, name) in [(1, "alice"), (2, "alice"), (3, "carol"), (4, "dave"), (5, "eve")] {
+            let (out, orx) = mpsc::channel(1024);
+            tx.send(RoomCmd::Join { conn, name: name.into(), out }).unwrap();
+            outs.push(orx);
+        }
+        match next(&mut outs[0]).await {
+            ServerMsg::Welcome { code, host, .. } => assert!(code == "ABCD" && host),
+            m => panic!("{m:?}"),
+        }
+        assert!(matches!(next(&mut outs[1]).await, ServerMsg::Welcome { host: false, .. }));
+        // Fifth player: room full.
+        assert!(matches!(next(&mut outs[4]).await, ServerMsg::Rejected(_)));
+
+        // Duplicate name got renamed; chat reaches everyone.
+        tx.send(RoomCmd::Msg { conn: 3, msg: Incoming::Chat("hi".into()) }).unwrap();
+        let chat = until(&mut outs[0], |m| matches!(m, ServerMsg::Message { level: MsgLevel::Chat, .. })).await;
+        assert!(matches!(chat, ServerMsg::Message { text, .. } if text == "carol: hi"));
+
+        // Only the host kicks.
+        tx.send(RoomCmd::Msg { conn: 3, msg: Incoming::Chat("/k dave".into()) }).unwrap();
+        tx.send(RoomCmd::Msg { conn: 1, msg: Incoming::Chat("/k carol".into()) }).unwrap();
+        assert!(matches!(until(&mut outs[2], |m| matches!(m, ServerMsg::Kicked)).await, ServerMsg::Kicked));
+
+        // Host leaves: the next player becomes host.
+        tx.send(RoomCmd::Leave { conn: 1 }).unwrap();
+        until(&mut outs[1], |m| matches!(m, ServerMsg::Host(true))).await;
+        tx.send(RoomCmd::Msg { conn: 2, msg: Incoming::Start }).unwrap();
+        until(&mut outs[1], |m| matches!(m, ServerMsg::Message { text, .. } if text == "Game started!")).await;
+        {
+            let i = info.lock().unwrap();
+            assert_eq!(i.players, 2);
+            assert!(i.started);
+        }
+
+        tx.send(RoomCmd::Leave { conn: 2 }).unwrap();
+        tx.send(RoomCmd::Leave { conn: 4 }).unwrap();
+        tokio::time::timeout(Duration::from_secs(2), task).await.expect("room ends").unwrap();
     }
 }

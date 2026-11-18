@@ -1,18 +1,19 @@
 //! Tansk in the browser. The menus are HTML over the original's art; the game
 //! draws to a 1024x768 canvas. Online games run on the server; the
-//! playground runs the same simulation right here.
+//! playground runs the same simulation right here. Under `/3d` the same
+//! binary runs Tansk 3D instead (`game3d`).
 
 mod assets;
+mod game3d;
 mod net;
 mod render;
-mod render3d;
 
 use std::cell::RefCell;
 use std::collections::{HashSet, VecDeque};
 use std::rc::Rc;
 
 use assets::{Audio, Images, Music};
-use net::{Net, NetEvent};
+use net::NetEvent;
 use render::{ConsoleMsg, Explosion, Hud};
 use tansk_sim::proto::{ClientMsg, Event, GameView, MsgLevel, Phase, PickupKind, ServerMsg, Settings, Weapon};
 use tansk_sim::{Game, Input, V2, TICK_MS};
@@ -22,23 +23,25 @@ use web_sys::{
     MouseEvent,
 };
 
+type Net = net::Net<ClientMsg, ServerMsg>;
+
 const TICK: f64 = TICK_MS as f64;
 /// How far behind the newest server view the online game is drawn, in ticks.
 const BUFFER_TICKS: f64 = 2.5;
 
-fn window() -> web_sys::Window {
+pub(crate) fn window() -> web_sys::Window {
     web_sys::window().unwrap()
 }
 
-fn now() -> f64 {
+pub(crate) fn now() -> f64 {
     window().performance().map(|p| p.now()).unwrap_or(0.0)
 }
 
-fn storage_get(key: &str) -> Option<String> {
+pub(crate) fn storage_get(key: &str) -> Option<String> {
     window().local_storage().ok().flatten().and_then(|s| s.get_item(key).ok().flatten())
 }
 
-fn storage_set(key: &str, value: &str) {
+pub(crate) fn storage_set(key: &str, value: &str) {
     if let Some(s) = window().local_storage().ok().flatten() {
         let _ = s.set_item(key, value);
     }
@@ -122,8 +125,6 @@ struct App {
     fps: (u32, f64, u32),
     rooms_fetched_at: f64,
     rooms: Rc<RefCell<Option<Vec<serde_json::Value>>>>,
-    three: Option<render3d::Renderer3d>,
-    view3d: bool,
 }
 
 impl App {
@@ -154,7 +155,6 @@ impl App {
         let in_game = screen.is_empty();
         let chat_visible = in_game && matches!(self.mode, Mode::Online(_));
         let _ = self.chat.class_list().toggle_with_force("hidden", !chat_visible);
-        self.sync_view();
         if screen == "join" {
             self.rooms_fetched_at = -1e9;
             let _ = self.input("join-code").focus();
@@ -164,43 +164,6 @@ impl App {
             self.audio.play_music(Music::Menu);
             let _ = window().history().map(|h| h.replace_state_with_url(&JsValue::NULL, "", Some("/")));
         }
-    }
-
-    fn uses_3d(&self) -> bool {
-        self.view3d && self.three.is_some()
-    }
-
-    fn sync_view(&self) {
-        let show = self.uses_3d() && self.screen.is_empty();
-        if let Some(r) = &self.three {
-            let _ = r.canvas.class_list().toggle_with_force("hidden", !show);
-        }
-        let _ = self.el("radio-3d").class_list().toggle_with_force("selected", self.view3d);
-        let _ = self.el("radio-2d").class_list().toggle_with_force("selected", !self.view3d);
-    }
-
-    fn set_view(&mut self, three: bool) {
-        self.view3d = three;
-        storage_set("tansk.view", if three { "3d" } else { "2d" });
-        self.sync_view();
-    }
-
-    /// The point on the map the mouse is over: in 3D, where its ray meets the ground.
-    fn aim(&self, mouse: V2) -> V2 {
-        match &self.three {
-            Some(r) if self.view3d => r.unproject(mouse),
-            _ => mouse,
-        }
-    }
-
-    /// Draws the 3D world if that view is on; returns where the zone's bar goes.
-    fn draw3d(&mut self, v: Option<&GameView>) -> Option<V2> {
-        if !self.view3d {
-            return None;
-        }
-        let r = self.three.as_mut()?;
-        r.draw(&self.images, v, &self.explosions, now());
-        v.and_then(|v| v.zone).map(|z| r.project([z.x, 75.0, z.y]))
     }
 
     fn back_to_menu(&mut self) {
@@ -221,7 +184,7 @@ impl App {
     fn start_online(&mut self, first: ClientMsg) {
         self.console.clear();
         self.explosions.clear();
-        match Net::connect() {
+        match Net::connect("/ws") {
             Ok(net) => {
                 self.mode = Mode::Online(Box::new(Online {
                     net,
@@ -288,8 +251,6 @@ impl App {
                 self.show("join");
             }
             "settings-menu" => self.show("settings"),
-            "view-3d" => self.set_view(true),
-            "view-2d" => self.set_view(false),
             "back" => {
                 storage_set("tansk.name", &self.input("player-name").value());
                 self.show("menu");
@@ -383,7 +344,6 @@ impl App {
             "ArrowUp" => self.audio.set_volume(self.audio.volume + 0.05),
             "ArrowDown" => self.audio.set_volume(self.audio.volume - 0.05),
             "KeyS" if ctrl => self.audio.toggle_mute(),
-            "KeyV" => self.set_view(!self.view3d),
             _ => {}
         }
         if let Mode::Playground(l) = &mut self.mode {
@@ -527,7 +487,7 @@ impl App {
             let t = now();
             if t - self.rooms_fetched_at > 3000.0 {
                 self.rooms_fetched_at = t;
-                fetch_rooms(self.rooms.clone());
+                fetch_rooms("/api/rooms", self.rooms.clone());
             }
             if let Some(rooms) = self.rooms.borrow_mut().take() {
                 render_rooms(&self.doc, &rooms);
@@ -538,7 +498,7 @@ impl App {
     fn frame_local(&mut self, mut l: Box<Local>, dt: f64) -> Mode {
         let (input, mouse, mouse_down, aim) = {
             let sh = self.shared.borrow();
-            let aim = self.aim(sh.mouse);
+            let aim = sh.mouse;
             (self.game_input(&sh, aim), sh.mouse, sh.mouse_down, aim)
         };
         l.acc += dt;
@@ -561,10 +521,7 @@ impl App {
         }
         self.events(&events);
         let view = lerp_view(&l.prev, &l.cur, (l.acc / TICK) as f32);
-        let zone_bar = self.draw3d(Some(&view));
-        let mut hud = self.hud(Some(l.me), Settings::playground(), None, false, false, true, false, mouse, mouse_down);
-        hud.world = !self.uses_3d();
-        hud.zone_bar = zone_bar;
+        let hud = self.hud(Some(l.me), Settings::playground(), None, false, false, true, false, mouse, mouse_down);
         render::draw(&self.ctx, &self.images, Some(&view), &hud);
         Mode::Playground(l)
     }
@@ -650,7 +607,7 @@ impl App {
 
         let (input, mouse, mouse_down, aim) = {
             let sh = self.shared.borrow();
-            let aim = self.aim(sh.mouse);
+            let aim = sh.mouse;
             (self.game_input(&sh, aim), sh.mouse, sh.mouse_down, aim)
         };
         let t = now();
@@ -671,13 +628,10 @@ impl App {
         });
         let link = share_link(o.code.as_deref());
         let copied = t - o.copied_at < 2000.0;
-        let zone_bar = self.draw3d(view.as_ref());
         let mut hud = self.hud(o.me, o.settings, o.code.as_deref(), o.host, true, o.connected, show_info, mouse, mouse_down);
         hud.link = link.as_deref();
         hud.own_turret = own_turret;
         hud.copied = copied;
-        hud.world = !self.uses_3d();
-        hud.zone_bar = zone_bar;
         render::draw(&self.ctx, &self.images, view.as_ref(), &hud);
         Mode::Online(o)
     }
@@ -721,8 +675,6 @@ impl App {
                 ]
             }),
             copied: false,
-            world: true,
-            zone_bar: None,
         }
     }
 }
@@ -748,7 +700,7 @@ fn sample(views: &VecDeque<GameView>, tick: f64) -> GameView {
     views.back().unwrap().clone()
 }
 
-fn lerp_angle(a: f32, b: f32, t: f32) -> f32 {
+pub(crate) fn lerp_angle(a: f32, b: f32, t: f32) -> f32 {
     let d = ((b - a + 540.0) % 360.0) - 180.0;
     a + d * t
 }
@@ -782,9 +734,10 @@ fn lerp_view(a: &GameView, b: &GameView, t: f32) -> GameView {
     v
 }
 
-fn fetch_rooms(into: Rc<RefCell<Option<Vec<serde_json::Value>>>>) {
+/// GETs the open games list (`/api/rooms` or `/api/rooms3d`) into `into`.
+pub(crate) fn fetch_rooms(url: &'static str, into: Rc<RefCell<Option<Vec<serde_json::Value>>>>) {
     wasm_bindgen_futures::spawn_local(async move {
-        let Ok(resp) = wasm_bindgen_futures::JsFuture::from(window().fetch_with_str("/api/rooms")).await else { return };
+        let Ok(resp) = wasm_bindgen_futures::JsFuture::from(window().fetch_with_str(url)).await else { return };
         let Ok(resp) = resp.dyn_into::<web_sys::Response>() else { return };
         let Ok(p) = resp.text() else { return };
         let Ok(text) = wasm_bindgen_futures::JsFuture::from(p).await else { return };
@@ -793,7 +746,7 @@ fn fetch_rooms(into: Rc<RefCell<Option<Vec<serde_json::Value>>>>) {
     });
 }
 
-fn render_rooms(doc: &Document, rooms: &[serde_json::Value]) {
+pub(crate) fn render_rooms(doc: &Document, rooms: &[serde_json::Value]) {
     let Some(list) = doc.get_element_by_id("room-list") else { return };
     list.set_inner_html("");
     let open: Vec<&serde_json::Value> = rooms.iter().filter(|r| r["started"] == false).collect();
@@ -829,7 +782,7 @@ fn render_rooms(doc: &Document, rooms: &[serde_json::Value]) {
 
 // ------------------------------------------------------------------ setup
 
-fn listen<E: wasm_bindgen::convert::FromWasmAbi + 'static>(
+pub(crate) fn listen<E: wasm_bindgen::convert::FromWasmAbi + 'static>(
     target: &web_sys::EventTarget,
     name: &str,
     f: impl FnMut(E) + 'static,
@@ -839,7 +792,7 @@ fn listen<E: wasm_bindgen::convert::FromWasmAbi + 'static>(
     c.forget();
 }
 
-fn canvas_point(canvas: &HtmlCanvasElement, x: i32, y: i32) -> V2 {
+pub(crate) fn canvas_point(canvas: &HtmlCanvasElement, x: i32, y: i32) -> V2 {
     let r = canvas.get_bounding_client_rect();
     let sx = 1024.0 / r.width().max(1.0);
     let sy = 768.0 / r.height().max(1.0);
@@ -848,6 +801,10 @@ fn canvas_point(canvas: &HtmlCanvasElement, x: i32, y: i32) -> V2 {
 
 fn main() {
     console_error_panic_hook::set_once();
+    if window().location().pathname().unwrap_or_default().starts_with("/3d") {
+        game3d::run();
+        return;
+    }
     let doc = window().document().unwrap();
     let canvas: HtmlCanvasElement = doc.get_element_by_id("game").unwrap().dyn_into().unwrap();
     let ctx: CanvasRenderingContext2d = canvas.get_context("2d").unwrap().unwrap().dyn_into().unwrap();
@@ -877,18 +834,15 @@ fn main() {
         fps: (0, now(), 0),
         rooms_fetched_at: -1e9,
         rooms: Rc::default(),
-        three: doc
-            .get_element_by_id("game3d")
-            .and_then(|c| c.dyn_into::<HtmlCanvasElement>().ok())
-            .and_then(render3d::Renderer3d::new),
-        view3d: storage_get("tansk.view").as_deref() != Some("2d"),
     };
     app.input("player-name").set_value(&storage_get("tansk.name").unwrap_or_else(|| "Unnamed".into()));
+    // Read before show() tidies the address bar.
+    let params = window().location().search().ok().and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok());
+    let room = params.and_then(|p| p.get("room"));
     app.show("menu");
 
     // ?room=CODE opens the join screen with the code filled in.
-    let params = window().location().search().ok().and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok());
-    if let Some(code) = params.and_then(|p| p.get("room")) {
+    if let Some(code) = room {
         app.show("join");
         app.input("join-code").set_value(&code.to_uppercase());
     }

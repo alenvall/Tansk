@@ -727,6 +727,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tansk-sim",
+ "tansk3d-sim",
  "tokio",
  "tower-http",
 ]
@@ -748,9 +749,19 @@ dependencies = [
  "serde",
  "serde_json",
  "tansk-sim",
+ "tansk3d-sim",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "tansk3d-sim"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "serde",
+ "tansk-sim",
 ]
 
 [[package]]

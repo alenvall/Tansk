@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/tansk-sim", "crates/tansk-server", "crates/tansk-web"]
+members = ["crates/tansk-sim", "crates/tansk3d-sim", "crates/tansk-server", "crates/tansk-web"]
 
 [workspace.package]
 edition = "2021"

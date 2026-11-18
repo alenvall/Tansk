@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Relative asset paths resolve from the root, also under /3d. -->
+  <base href="/">
   <title>Tansk!</title>
   <link data-trunk rel="css" href="style.css">
   <link data-trunk rel="copy-dir" href="../../assets/images">
@@ -12,8 +14,9 @@
   <link data-trunk rel="rust" data-bin="tansk-web" data-wasm-opt="s">
 </head>
 <body>
+  <script>if (location.pathname.indexOf("/3d") === 0) document.body.classList.add("is3d");</script>
   <div id="stage">
-    <canvas id="game3d" width="1024" height="768"></canvas>
+    <canvas id="game3d" class="only3d" width="1024" height="768"></canvas>
     <canvas id="game" width="1024" height="768"></canvas>
 
     <!-- Main menu (states/Menu.java) -->
@@ -22,10 +25,18 @@
       <button class="btn" data-action="host-menu" style="left:100px;top:275px;--n:url(images/button_host.png);--h:url(images/button_host_hover.png);--p:url(images/button_host_pressed.png)" title="Host"></button>
       <button class="btn" data-action="join-menu" style="left:100px;top:375px;--n:url(images/button_join.png);--h:url(images/button_join_hover.png);--p:url(images/button_join_pressed.png)" title="Join"></button>
       <button class="btn" data-action="settings-menu" style="left:100px;top:475px;--n:url(images/button_settings.png);--h:url(images/button_settings_hover.png);--p:url(images/button_settings_pressed.png)" title="Settings"></button>
-      <div class="help" style="left:100px;top:600px">
-        WASD drive &middot; mouse aim &middot; click fire &middot; V 2D/3D &middot; Enter chat &middot; Esc menu<br>
+      <div class="title3d only3d">3D</div>
+      <div class="help only2d" style="left:100px;top:600px">
+        WASD drive &middot; mouse aim &middot; click fire &middot; Enter chat &middot; Esc menu<br>
         Playground: keys 1&ndash;6 swap weapons, Q drops a pickup
       </div>
+      <div class="help only3d" style="left:100px;top:600px">
+        Mouse look &amp; aim &middot; click fire &middot; WASD drive<br>
+        Enter chat &middot; Tab scores &middot; Esc frees the mouse<br>
+        Playground: 1&ndash;6 weapons, Q drops a pickup
+      </div>
+      <a class="modelink only2d" href="/3d" style="left:100px;top:680px">Play Tansk 3D &rarr;</a>
+      <a class="modelink only3d" href="/" style="left:100px;top:690px">&larr; Classic 2D</a>
     </div>
 
     <!-- Host settings (states/HostMenu.java) -->
@@ -58,9 +69,7 @@
       <label class="slider" style="left:110px;top:175px">Volume: <b>35</b><input type="range" id="s-volume" min="0" max="100" value="35"></label>
       <div class="label" style="left:100px;top:225px">Player name:</div>
       <input id="player-name" class="field" style="left:100px;top:250px;width:200px" maxlength="10" autocomplete="off" spellcheck="false">
-      <div class="label" style="left:100px;top:300px">View (V in game):</div>
-      <div class="radio" id="radio-3d" data-action="view-3d" style="left:100px;top:325px">3D</div>
-      <div class="radio" id="radio-2d" data-action="view-2d" style="left:100px;top:360px">2D (the original)</div>
+      <label class="slider only3d" style="left:110px;top:300px">Mouse sensitivity: <b>10</b><input type="range" id="s-sens" min="1" max="30" value="10"></label>
       <button class="btn" data-action="back" style="left:100px;top:575px;--n:url(images/button_back.png);--h:url(images/button_back_hover.png);--p:url(images/button_back_pressed.png)" title="Back"></button>
     </div>
 
