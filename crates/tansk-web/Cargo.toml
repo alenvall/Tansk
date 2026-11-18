@@ -1,0 +1,29 @@
+[package]
+name = "tansk-web"
+description = "Tansk in the browser: canvas renderer, menus, sound, and the offline test arena"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+tansk-sim = { path = "../tansk-sim" }
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"
+serde.workspace = true
+serde_json = "1"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "Window", "Document", "Element", "HtmlElement", "HtmlCanvasElement", "HtmlImageElement",
+  "HtmlInputElement", "HtmlAudioElement", "HtmlMediaElement", "CanvasRenderingContext2d",
+  "TextMetrics", "DomRect", "Location", "Storage", "History", "Url", "UrlSearchParams",
+  "KeyboardEvent", "MouseEvent", "Event", "EventTarget", "FocusEvent",
+  "WebSocket", "BinaryType", "MessageEvent", "CloseEvent",
+  "AudioContext", "BaseAudioContext", "AudioBuffer", "AudioBufferSourceNode", "AudioNode",
+  "AudioDestinationNode", "AudioScheduledSourceNode", "GainNode", "AudioParam",
+  "Response", "Request", "RequestInit", "Performance", "CssStyleDeclaration", "DomTokenList",
+  "NodeList", "Node", "Navigator", "Clipboard", "console",
+]

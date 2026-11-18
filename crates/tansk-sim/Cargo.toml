@@ -1,0 +1,10 @@
+[package]
+name = "tansk-sim"
+description = "Tansk's game rules: a headless, deterministic simulation shared by the server and the browser"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+bincode.workspace = true

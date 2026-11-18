@@ -1,0 +1,15 @@
+[package]
+name = "tansk-server"
+description = "Tansk's game server: rooms over WebSocket, and the web client's files"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+tansk-sim = { path = "../tansk-sim" }
+axum = { version = "0.8", features = ["ws"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "signal"] }
+tower-http = { version = "0.6", features = ["fs", "compression-gzip", "compression-br", "set-header"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+serde.workspace = true
+serde_json = "1"

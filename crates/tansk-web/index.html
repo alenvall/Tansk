@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tansk!</title>
+  <link data-trunk rel="css" href="style.css">
+  <link data-trunk rel="copy-dir" href="../../assets/images">
+  <link data-trunk rel="copy-dir" href="../../assets/sounds">
+  <link data-trunk rel="copy-dir" href="../../assets/music">
+  <link data-trunk rel="icon" href="../../assets/images/tank_green.png">
+  <link data-trunk rel="rust" data-bin="tansk-web" data-wasm-opt="s">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game" width="1024" height="768"></canvas>
+
+    <!-- Main menu (states/Menu.java) -->
+    <div id="menu" class="screen">
+      <button class="btn" data-action="playground" style="left:100px;top:175px;--n:url(images/button_playground.png);--h:url(images/button_playground_hover.png);--p:url(images/button_playground_pressed.png)" title="Playground"></button>
+      <button class="btn" data-action="host-menu" style="left:100px;top:275px;--n:url(images/button_host.png);--h:url(images/button_host_hover.png);--p:url(images/button_host_pressed.png)" title="Host"></button>
+      <button class="btn" data-action="join-menu" style="left:100px;top:375px;--n:url(images/button_join.png);--h:url(images/button_join_hover.png);--p:url(images/button_join_pressed.png)" title="Join"></button>
+      <button class="btn" data-action="settings-menu" style="left:100px;top:475px;--n:url(images/button_settings.png);--h:url(images/button_settings_hover.png);--p:url(images/button_settings_pressed.png)" title="Settings"></button>
+      <div class="help" style="left:100px;top:600px">
+        WASD drive &middot; mouse aim &middot; click fire &middot; Enter chat &middot; Esc menu<br>
+        Playground: keys 1&ndash;6 swap weapons, Q drops a pickup
+      </div>
+    </div>
+
+    <!-- Host settings (states/HostMenu.java) -->
+    <div id="host" class="screen hidden">
+      <div class="radio selected" id="radio-standard" data-action="radio-standard" style="left:100px;top:75px">Standard</div>
+      <div class="radio" id="radio-koth" data-action="radio-koth" style="left:100px;top:110px">King of the hill</div>
+      <label class="slider" id="row-lives" style="left:110px;top:150px">Player lives: <b>5</b><input type="range" id="s-lives" min="1" max="10" value="5"></label>
+      <label class="slider" style="left:110px;top:200px">Scorelimit: <b>15</b><input type="range" id="s-score" min="1" max="100" value="15"></label>
+      <label class="slider" style="left:110px;top:250px">Rounds: <b>4</b><input type="range" id="s-rounds" min="1" max="30" value="4"></label>
+      <label class="slider" style="left:110px;top:300px">Spawn time: <b>5</b><input type="range" id="s-spawn" min="1" max="20" value="5"></label>
+      <label class="slider" style="left:110px;top:350px">Round time: <b>300</b><input type="range" id="s-round" min="30" max="600" value="300"></label>
+      <label class="slider" style="left:110px;top:400px">Game time: <b>900</b><input type="range" id="s-game" min="60" max="1800" value="900"></label>
+      <button class="btn" data-action="host-start" style="left:100px;top:475px;--n:url(images/button_start.png);--h:url(images/button_start_hover.png);--p:url(images/button_start_pressed.png)" title="Start"></button>
+      <button class="btn" data-action="back" style="left:100px;top:575px;--n:url(images/button_back.png);--h:url(images/button_back_hover.png);--p:url(images/button_back_pressed.png)" title="Back"></button>
+    </div>
+
+    <!-- Join (states/JoinMenu.java): a room code instead of an IP -->
+    <div id="join" class="screen hidden">
+      <div class="label" style="left:100px;top:175px">Game code:</div>
+      <input id="join-code" class="field" style="left:100px;top:200px;width:200px" maxlength="4" autocomplete="off" spellcheck="false">
+      <div id="join-error" class="label error" style="left:100px;top:235px"></div>
+      <button class="btn" data-action="join-go" style="left:100px;top:275px;--n:url(images/button_join.png);--h:url(images/button_join_hover.png);--p:url(images/button_join_pressed.png)" title="Join"></button>
+      <div class="label" style="left:450px;top:175px">Open games:</div>
+      <div id="room-list" style="left:450px;top:200px"></div>
+      <button class="btn" data-action="back" style="left:100px;top:575px;--n:url(images/button_back.png);--h:url(images/button_back_hover.png);--p:url(images/button_back_pressed.png)" title="Back"></button>
+    </div>
+
+    <!-- Settings (states/SettingsMenu.java) -->
+    <div id="settings" class="screen hidden">
+      <label class="slider" style="left:110px;top:175px">Volume: <b>35</b><input type="range" id="s-volume" min="0" max="100" value="35"></label>
+      <div class="label" style="left:100px;top:225px">Player name:</div>
+      <input id="player-name" class="field" style="left:100px;top:250px;width:200px" maxlength="10" autocomplete="off" spellcheck="false">
+      <button class="btn" data-action="back" style="left:100px;top:575px;--n:url(images/button_back.png);--h:url(images/button_back_hover.png);--p:url(images/button_back_pressed.png)" title="Back"></button>
+    </div>
+
+    <!-- In game: the chat field (ClientState.chatField) -->
+    <input id="chat" class="hidden" maxlength="60" autocomplete="off" spellcheck="false" placeholder="Press Enter to chat...">
+  </div>
+  <noscript>Tansk needs JavaScript and WebAssembly.</noscript>
+</body>
+</html>

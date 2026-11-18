@@ -1,0 +1,167 @@
+:root {
+  --page: #111;
+  --ink: #000;
+  --error: #c00000;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--page);
+  overflow: hidden;
+  font: 14px Verdana, "DejaVu Sans", sans-serif;
+  color: var(--ink);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The original's 1024x768 window, scaled to fit (main.rs sets the transform). */
+#stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1024px;
+  height: 768px;
+  transform-origin: 0 0;
+  background: url(images/background.png);
+}
+
+#game {
+  position: absolute;
+  inset: 0;
+  width: 1024px;
+  height: 768px;
+  cursor: url(images/crosshair.png) 16 16, crosshair;
+  image-rendering: auto;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  background: url(images/background.png);
+}
+
+.hidden { display: none !important; }
+
+.screen > * { position: absolute; }
+
+.btn {
+  width: 150px;
+  height: 50px;
+  border: 0;
+  padding: 0;
+  background: var(--n) no-repeat;
+  cursor: pointer;
+}
+.btn:hover, .btn:focus-visible { background-image: var(--h); outline: none; }
+.btn:active { background-image: var(--p); }
+
+.label { white-space: nowrap; }
+.label.error { color: var(--error); }
+
+.help {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #222;
+}
+
+.radio {
+  padding-left: 32px;
+  line-height: 25px;
+  height: 25px;
+  cursor: pointer;
+  background: url(images/button_radio_unselected.png) no-repeat left center;
+  white-space: nowrap;
+}
+.radio.selected { background-image: url(images/button_radio_selected.png); }
+
+/* Slider.java: label above, the track sprite, the marker sprite. */
+.slider {
+  display: block;
+  width: 220px;
+  white-space: nowrap;
+}
+.slider b { font-weight: normal; }
+.slider input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 220px;
+  height: 20px;
+  margin: 6px 0 0;
+  background: transparent;
+  cursor: pointer;
+}
+.slider input[type=range]::-webkit-slider-runnable-track {
+  height: 10px;
+  background: url(images/slider.png) no-repeat;
+}
+.slider input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 20px;
+  margin-top: -5px;
+  border: 0;
+  background: url(images/slider_marker.png);
+}
+.slider input[type=range]::-moz-range-track {
+  height: 10px;
+  background: url(images/slider.png) no-repeat;
+}
+.slider input[type=range]::-moz-range-thumb {
+  width: 10px;
+  height: 20px;
+  border: 0;
+  border-radius: 0;
+  background: url(images/slider_marker.png);
+}
+
+.field {
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid #000;
+  background: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  color: #000;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#join-code { text-transform: uppercase; letter-spacing: 4px; }
+
+#room-list {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#room-list .room {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid #000;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+#room-list .room:hover { background: rgba(255, 255, 255, 0.9); }
+#room-list .empty { color: #333; }
+
+#chat {
+  position: absolute;
+  left: 10px;
+  top: 733px;
+  width: 450px;
+  height: 23px;
+  padding: 0 4px;
+  border: 1px solid #fff;
+  background: rgba(0, 0, 0, 0.15);
+  color: #000;
+  font: inherit;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#chat:focus { background: rgba(255, 255, 255, 0.6); }
+#chat::placeholder { color: rgba(0, 0, 0, 0.45); }

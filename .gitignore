@@ -1,13 +1,6 @@
+/target
+/dist
 *.class
-.project
-.classpath
-\bin
-\.idea
-\out
+.idea
 *.iml
 .DS_Store
-
-# Package Files #
-#*.jar
-*.war
-*.ear
