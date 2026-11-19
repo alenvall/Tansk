@@ -163,6 +163,106 @@ impl Ctx {
         self.push(UiAction::InviteCopied);
     }
 
+    /// Opens or closes the idea box (the name starts as your crew name).
+    fn show_ideas(&self, open: bool) {
+        let Some(b) = self.q("#t-ideabox") else { return };
+        if !open {
+            let _ = b.set_attribute("hidden", "");
+            return;
+        }
+        let _ = b.remove_attribute("hidden");
+        if self.value("#t-idea-name").is_empty() {
+            if let Some(n) = self.q("#t-idea-name") {
+                set_prop(&n, "value", &JsValue::from_str(&self.value("#t-set-name")));
+            }
+        }
+        if let Some(s) = self.q("#t-idea-status") {
+            s.set_text_content(Some(""));
+        }
+        if let Some(t) = self.q("#t-idea-text") {
+            call0(&t, "focus");
+        }
+    }
+
+    /// Posts the idea to `/api/ideas` and shows the answer.
+    fn send_idea(&self) {
+        let text = self.value("#t-idea-text").trim().to_string();
+        let status = self.q("#t-idea-status");
+        let say = |el: &Option<Element>, ok: bool, msg: &str| {
+            if let Some(s) = el {
+                s.set_text_content(Some(msg));
+                let _ = s.set_attribute("data-ok", if ok { "1" } else { "0" });
+            }
+        };
+        if text.chars().count() < 3 {
+            say(&status, false, "Write a few words first.");
+            return self.push(UiAction::Refused);
+        }
+        let body = js_sys::Object::new();
+        let put = |k: &str, v: &str| set_prop(&body, k, &JsValue::from_str(v));
+        put("category", &self.value("input[name=icat]:checked"));
+        put("text", &text);
+        let name = self.value("#t-idea-name").trim().to_string();
+        if !name.is_empty() {
+            put("name", &name);
+        }
+        put("version", env!("CARGO_PKG_VERSION"));
+        if let Some(b) = self.q("#t-ideabox") {
+            for k in ["map", "mode"] {
+                if let Some(v) = b.get_attribute(&format!("data-{k}")).filter(|v| !v.is_empty()) {
+                    put(k, &v);
+                }
+            }
+        }
+        let Ok(json) = js_sys::JSON::stringify(&body) else { return };
+        let init = js_sys::Object::new();
+        set_prop(&init, "method", &JsValue::from_str("POST"));
+        set_prop(&init, "body", &json);
+        let headers = js_sys::Object::new();
+        set_prop(&headers, "Content-Type", &JsValue::from_str("application/json"));
+        set_prop(&init, "headers", &headers);
+        let Some(window) = web_sys::window() else { return };
+        let Ok(fetch) = prop(&window, "fetch").dyn_into::<js_sys::Function>() else { return };
+        let Ok(promise) = fetch.call2(&window, &JsValue::from_str("/api/ideas"), &init) else { return };
+        let Ok(promise) = promise.dyn_into::<js_sys::Promise>() else { return };
+        say(&status, true, "Sending...");
+        if let Some(b) = self.q("#t-idea-send") {
+            let _ = b.set_attribute("disabled", "");
+        }
+        self.push(UiAction::Click);
+        let text_el = self.q("#t-idea-text");
+        let count = self.q("#t-idea-count");
+        let send = self.q("#t-idea-send");
+        wasm_bindgen_futures::spawn_local(async move {
+            let (ok, msg) = match wasm_bindgen_futures::JsFuture::from(promise).await {
+                Ok(resp) => {
+                    let ok = prop(&resp, "ok").is_truthy();
+                    let msg = match prop(&resp, "json").dyn_into::<js_sys::Function>().ok().and_then(|f| f.call0(&resp).ok()) {
+                        Some(p) => match p.dyn_into::<js_sys::Promise>() {
+                            Ok(p) => wasm_bindgen_futures::JsFuture::from(p).await.ok().map(|j| prop_str(&j, "message")),
+                            Err(_) => None,
+                        },
+                        None => None,
+                    };
+                    (ok, msg.filter(|m| !m.is_empty()).unwrap_or_else(|| if ok { "Thanks, the crew will look at it.".into() } else { "That didn't go through. Try again later.".into() }))
+                }
+                Err(_) => (false, "No signal. Try again later.".to_string()),
+            };
+            say(&status, ok, &msg);
+            if ok {
+                if let Some(t) = &text_el {
+                    set_prop(t, "value", &JsValue::from_str(""));
+                }
+                if let Some(c) = &count {
+                    c.set_text_content(Some("0 / 400"));
+                }
+            }
+            if let Some(b) = &send {
+                let _ = b.remove_attribute("disabled");
+            }
+        });
+    }
+
     fn join_code(&self) {
         let code = self.value("#t-join-code").trim().to_uppercase();
         if code.is_empty() {
@@ -262,6 +362,24 @@ impl Ctx {
                 }
                 UiAction::Click
             }
+            "news-toggle" => {
+                if let Some(n) = self.q("#t-news") {
+                    let open = n.get_attribute("data-open").as_deref() == Some("1");
+                    let _ = n.set_attribute("data-open", if open { "0" } else { "1" });
+                }
+                UiAction::Click
+            }
+            "news-more" => {
+                if let Some(n) = self.q("#t-news") {
+                    let _ = n.set_attribute("data-more", "1");
+                }
+                UiAction::Click
+            }
+            "ideas" | "ideas-close" => {
+                self.show_ideas(action == "ideas");
+                UiAction::Click
+            }
+            "idea-send" => return self.send_idea(),
             "manual-jump" => {
                 let to = el.get_attribute("data-to").unwrap_or_default();
                 if let Some(t) = self.doc.get_element_by_id(&to) {
@@ -302,6 +420,12 @@ impl Ctx {
                 out.set_text_content(Some(&shown));
             }
         }
+        if t.id() == "t-idea-text" {
+            let n = prop_str(&t, "value").chars().count();
+            if let Some(c) = self.q("#t-idea-count") {
+                c.set_text_content(Some(&format!("{n} / 400")));
+            }
+        }
         if t.id() == "t-paint-custom" {
             if let Some(r) = self.q("input[name=paint]:checked") {
                 set_prop(&r, "checked", &JsValue::FALSE);
@@ -328,8 +452,13 @@ impl Ctx {
 
     fn on_key(&self, ev: JsValue) {
         let key = prop_str(&ev, "key");
-        // Esc closes the manual first.
+        // Esc closes the idea box and the manual first.
         if key == "Escape" {
+            if let Some(m) = self.q("#t-ideabox").filter(|m| !m.has_attribute("hidden")) {
+                let _ = m.set_attribute("hidden", "");
+                call0(&ev, "preventDefault");
+                return;
+            }
             if let Some(m) = self.q("#t-manual").filter(|m| !m.has_attribute("hidden")) {
                 let _ = m.set_attribute("hidden", "");
                 call0(&ev, "preventDefault");
@@ -351,7 +480,7 @@ impl Ctx {
             }
             return;
         }
-        let in_input = target(&ev).is_some_and(|t| t.tag_name() == "INPUT");
+        let in_input = target(&ev).is_some_and(|t| t.tag_name() == "INPUT" || t.tag_name() == "TEXTAREA");
         if in_input {
             if key == "Enter" && target(&ev).is_some_and(|t| t.id() == "t-join-code") {
                 self.join_code();

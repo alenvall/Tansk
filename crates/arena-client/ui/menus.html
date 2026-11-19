@@ -77,6 +77,13 @@
   <button class="t-btn t-btn-small t-howto-btn" data-goto="howto"><span class="t-btn-label">How to play</span></button>
   <button class="t-btn t-btn-small t-manual-btn" data-action="manual"><span class="t-btn-label">Workshop manual</span></button>
 
+  <!-- What's new / Coming up (docs/CHANGELOG.md), and the way to the idea box -->
+  <aside id="t-news" class="t-news plate" data-open="0" data-more="0">
+    <button class="t-news-head" data-action="news-toggle"><span class="t-hazard"></span><h3>What's new</h3><span class="t-news-chev" aria-hidden="true"></span></button>
+    <div class="t-news-body" id="t-news-body"></div>
+    <div class="t-news-foot"><button class="t-btn t-btn-small t-btn-go" data-action="ideas"><span class="t-btn-label">Idea box</span><span class="t-btn-hint">Bugs, tuning, ideas</span></button></div>
+  </aside>
+
   <aside class="t-crewtag plate">
     <svg class="t-crewtag-emblem" id="t-crew-emblem"><use href="#e-wrench"/></svg>
     <div>
@@ -351,5 +358,37 @@
       <button data-action="manual-jump" data-to="t-man-chassis">Chassis</button>
     </nav>
     <div class="t-manual-body" id="t-manual-body"></div>
+  </div>
+</section>
+
+<!-- ============================== IDEA BOX ============================== -->
+<!-- Over everything (title, pause). Posts to /api/ideas. -->
+<section id="t-ideabox" class="t-ideabox" data-map="" data-mode="" hidden>
+  <div class="t-ideabox-card plate">
+    <div class="t-panel-head"><span class="t-hazard"></span><h2>Idea box</h2><button class="t-x" data-action="ideas-close" aria-label="Close">&#x2715;</button></div>
+    <div class="t-panel-body">
+      <div class="t-field">
+        <div class="t-field-label">What is it?</div>
+        <div class="t-seg" role="radiogroup">
+          <label><input type="radio" name="icat" value="bug" checked><span>Bug</span></label>
+          <label><input type="radio" name="icat" value="tuning"><span>Tuning</span></label>
+          <label><input type="radio" name="icat" value="idea"><span>Idea for an existing mechanic</span></label>
+        </div>
+      </div>
+      <div class="t-field">
+        <div class="t-field-label">Tell us <span class="t-note" id="t-idea-count">0 / 400</span></div>
+        <textarea class="t-idea-text" id="t-idea-text" maxlength="400" rows="5" placeholder="What happened, or what would make it better?"></textarea>
+      </div>
+      <div class="t-field">
+        <div class="t-field-label">Your name <span class="t-note">optional</span></div>
+        <input class="t-textin" id="t-idea-name" maxlength="24" spellcheck="false" autocomplete="off">
+      </div>
+      <div class="t-note t-idea-promise">We read everything; reasonable tuning, bug fixes and ideas for existing mechanics get built.</div>
+      <div class="t-idea-status" id="t-idea-status" data-ok="1"></div>
+    </div>
+    <div class="t-panel-foot">
+      <button class="t-btn t-btn-small" data-action="ideas-close"><span class="t-btn-label">Close</span></button>
+      <button class="t-btn t-btn-go" data-action="idea-send" id="t-idea-send"><span class="t-btn-label">Send it</span></button>
+    </div>
   </div>
 </section>

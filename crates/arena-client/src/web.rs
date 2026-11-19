@@ -418,6 +418,11 @@ fn install_input(state: &Shared) -> Result<()> {
         if !in_game || game.ui.chat_open() {
             return;
         }
+        // Typing in a box (the idea box over the pause card) isn't driving.
+        let tag = prop(&ev, "target").dyn_into::<web_sys::Element>().map(|t| t.tag_name()).unwrap_or_default();
+        if tag == "INPUT" || tag == "TEXTAREA" {
+            return;
+        }
         if matches!(code.as_str(), "Tab" | "Space" | "ArrowUp" | "ArrowDown") || prop(&ev, "ctrlKey").is_truthy() {
             ev.prevent_default();
         }
@@ -729,6 +734,7 @@ fn mount_pause(document: &web_sys::Document) -> Option<web_sys::Element> {
          <button class=\"t-btn\" data-pause=\"resume\"><span class=\"t-btn-label\">Back in</span><span class=\"t-btn-hint t-off-touch\">Grabs the mouse</span></button>\
          <button class=\"t-btn\" data-pause=\"leave\"><span class=\"t-btn-label\">Leave</span><span class=\"t-btn-hint\">Back to the title</span></button>\
          <button class=\"t-btn t-pause-manual\" data-pause=\"manual\"><span class=\"t-btn-label\">Manual</span><span class=\"t-btn-hint\">Tracks, guns, parts</span></button>\
+         <button class=\"t-btn t-pause-manual\" data-action=\"ideas\"><span class=\"t-btn-label\">Idea box</span><span class=\"t-btn-hint\">Bugs, tuning, ideas</span></button>\
          <div class=\"t-pause-where\" id=\"t-pause-where\"></div>\
          <div class=\"t-field-label\">Your build</div>\
          <div class=\"t-pause-build\" id=\"t-pause-build\"></div>\

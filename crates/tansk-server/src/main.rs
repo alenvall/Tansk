@@ -4,11 +4,16 @@
 //! ones at `/api/rooms`, 3D rooms at `/ws3d` and `/api/rooms3d`, TANSK 2026
 //! (arena) rooms at `/ws/arena` and `/api/arena/rooms`, and `/health`.
 //!
+//! The idea box: `POST /api/ideas` (see `ideas.rs`), and `GET /api/ideas`
+//! with the right bearer token.
+//!
 //! Environment: `PORT` (default 8080), `TANSK_STATIC_DIR` (default `dist`,
-//! the web client as `trunk build` leaves it).
+//! the web client as `trunk build` leaves it), `IDEAS_DIR` (default `data`)
+//! and `IDEAS_TOKEN` (unset: no listing).
 
 mod arena;
 mod games;
+mod ideas;
 mod room;
 
 use std::net::SocketAddr;
@@ -49,6 +54,7 @@ struct App {
     seed: Mutex<u64>,
     /// The map the next quick-match room gets (they alternate).
     quick_map: Mutex<MapId>,
+    ideas: ideas::Ideas,
 }
 
 impl App {
@@ -102,7 +108,9 @@ async fn main() {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await.expect("bind");
     println!("tansk-server listening on http://{addr} (files from {dir})");
-    axum::serve(listener, router)
+    // Peer addresses only key the idea box's rate limit (behind a proxy,
+    // X-Forwarded-For does).
+    axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
         })
@@ -112,7 +120,12 @@ async fn main() {
 
 impl App {
     fn new(seed: u64) -> Arc<App> {
+        App::with_ideas(seed, ideas::Ideas::from_env())
+    }
+
+    fn with_ideas(seed: u64, ideas: ideas::Ideas) -> Arc<App> {
         Arc::new(App {
+            ideas,
             rooms: Rooms::default(),
             rooms3d: Rooms::default(),
             arena: ArenaRooms::default(),
@@ -134,11 +147,59 @@ fn router(app: Arc<App>, dir: &str) -> Router {
         .route("/api/rooms3d", get(list_rooms3d))
         .route("/ws/arena", get(ws_arena))
         .route("/api/arena/rooms", get(list_arena))
+        .route("/api/ideas", get(list_ideas).post(post_idea))
         .route("/health", get(|| async { "ok" }))
         .fallback_service(files)
         .layer(middleware::from_fn(cache_headers))
         .layer(CompressionLayer::new())
         .with_state(app)
+}
+
+/// Who's posting, for the rate limit only: the proxy's X-Forwarded-For,
+/// else the peer address.
+fn client_key(req: &Request) -> String {
+    let fwd = req.headers().get("x-forwarded-for").and_then(|v| v.to_str().ok()).and_then(|v| v.split(',').next()).map(|s| s.trim().to_string());
+    fwd.filter(|s| !s.is_empty())
+        .or_else(|| req.extensions().get::<axum::extract::ConnectInfo<SocketAddr>>().map(|c| c.0.ip().to_string()))
+        .unwrap_or_else(|| "local".into())
+}
+
+async fn post_idea(State(app): State<Arc<App>>, req: Request) -> Response {
+    use axum::http::StatusCode;
+    let who = client_key(&req);
+    let reply = |code: StatusCode, msg: &str| (code, Json(serde_json::json!({ "ok": code.is_success(), "message": msg }))).into_response();
+    let Ok(body) = axum::body::to_bytes(req.into_body(), ideas::MAX_BODY).await else {
+        return reply(StatusCode::PAYLOAD_TOO_LARGE, "That's too long.");
+    };
+    let Ok(input) = serde_json::from_slice::<ideas::IdeaIn>(&body) else {
+        return reply(StatusCode::BAD_REQUEST, "That didn't come through right.");
+    };
+    match app.ideas.post(&who, input) {
+        Ok(_) => reply(StatusCode::CREATED, "Thanks, the crew will look at it."),
+        Err(e) => {
+            let code = match e {
+                ideas::Refused::Invalid(_) => StatusCode::BAD_REQUEST,
+                ideas::Refused::TooMany => StatusCode::TOO_MANY_REQUESTS,
+                ideas::Refused::Full => StatusCode::INSUFFICIENT_STORAGE,
+                ideas::Refused::Storage => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            reply(code, e.message())
+        }
+    }
+}
+
+async fn list_ideas(State(app): State<Arc<App>>, headers: axum::http::HeaderMap) -> Response {
+    use axum::http::StatusCode;
+    if !app.ideas.listing_enabled() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    let auth = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok());
+    if !app.ideas.authorized(auth) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    let mut res = Json(app.ideas.all()).into_response();
+    res.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    res
 }
 
 /// Hashed build outputs never change; everything else is revalidated.
@@ -511,6 +572,65 @@ mod tests {
         assert!(!is_hashed("/index.html"));
         assert!(!is_hashed("/tank-green.png"));
         assert!(!is_hashed("/api/arena/rooms"));
+    }
+
+    /// One HTTP request to the test server; returns the status code and body.
+    async fn http(addr: &str, req: String) -> (u16, String) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let mut s = tokio::net::TcpStream::connect(addr).await.unwrap();
+        s.write_all(req.as_bytes()).await.unwrap();
+        let mut out = String::new();
+        s.read_to_string(&mut out).await.unwrap();
+        let code = out.split(' ').nth(1).and_then(|c| c.parse().ok()).unwrap_or(0);
+        (code, out)
+    }
+
+    fn post(addr: &str, body: &str, from: &str) -> String {
+        format!(
+            "POST /api/ideas HTTP/1.1\r\nHost: {addr}\r\nContent-Type: application/json\r\nX-Forwarded-For: {from}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+    }
+
+    /// The idea box over HTTP: posts land, bad ones and floods bounce, the
+    /// listing needs the token.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn idea_box_endpoint() {
+        let dir = std::env::temp_dir().join(format!("tansk-ideas-http-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap().to_string();
+        let app = App::with_ideas(1, ideas::Ideas::new(&dir, Some("tok".into())));
+        tokio::spawn(async move { axum::serve(listener, router(app, "no-such-dir")).await });
+        let good = r#"{"category":"tuning","text":"Big Bore reloads too slow","name":"Ann","version":"0.1.0","map":"sink","mode":"ScrapBrawl"}"#;
+        let (code, body) = http(&addr, post(&addr, good, "10.0.0.1")).await;
+        assert_eq!(code, 201, "{body}");
+        assert!(body.contains("Thanks, the crew will look at it."));
+        assert_eq!(http(&addr, post(&addr, r#"{"category":"meh","text":"hello"}"#, "10.0.0.1")).await.0, 400);
+        assert_eq!(http(&addr, post(&addr, "not json", "10.0.0.1")).await.0, 400);
+        let huge = format!(r#"{{"category":"idea","text":"{}"}}"#, "x".repeat(ideas::MAX_BODY));
+        assert_eq!(http(&addr, post(&addr, &huge, "10.0.0.1")).await.0, 413);
+        for _ in 1..ideas::PER_HOUR {
+            assert_eq!(http(&addr, post(&addr, good, "10.0.0.1")).await.0, 201);
+        }
+        assert_eq!(http(&addr, post(&addr, good, "10.0.0.1")).await.0, 429, "rate limited");
+        assert_eq!(http(&addr, post(&addr, good, "10.0.0.2")).await.0, 201, "another address is fine");
+        let get = |auth: &str| format!("GET /api/ideas HTTP/1.1\r\nHost: {addr}\r\n{auth}Connection: close\r\n\r\n");
+        assert_eq!(http(&addr, get("")).await.0, 401);
+        assert_eq!(http(&addr, get("Authorization: Bearer nope\r\n")).await.0, 401);
+        let (code, body) = http(&addr, get("Authorization: Bearer tok\r\n")).await;
+        assert_eq!(code, 200);
+        assert_eq!(body.matches("Big Bore reloads too slow").count(), ideas::PER_HOUR + 1, "{body}");
+        assert!(!body.contains("10.0.0."), "no addresses");
+        let _ = std::fs::remove_dir_all(&dir);
+
+        // No token set: no listing at all.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr2 = listener.local_addr().unwrap().to_string();
+        let app = App::with_ideas(1, ideas::Ideas::new(std::env::temp_dir().join("tansk-ideas-off"), None));
+        tokio::spawn(async move { axum::serve(listener, router(app, "no-such-dir")).await });
+        let req = format!("GET /api/ideas HTTP/1.1\r\nHost: {addr2}\r\nAuthorization: Bearer \r\nConnection: close\r\n\r\n");
+        assert_eq!(http(&addr2, req).await.0, 404);
     }
 
     /// Two quick-match players land in the same public room, listed in the lobby.

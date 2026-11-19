@@ -1028,6 +1028,7 @@ impl Game {
                     };
                     self.ui.set_mode_label(&mode);
                     self.ui.set_scoreboard_title("Scoreboard", &mode);
+                    self.ui.set_idea_context(map_id.key(), party::mode_name(room_mode));
                     if let Some(code) = &code {
                         let how = if self.touch.enabled { "Tap the talk plate to talk." } else { "Enter to talk." };
                         self.ui.chat_system(&format!("On the band in room {code}. {how}"));

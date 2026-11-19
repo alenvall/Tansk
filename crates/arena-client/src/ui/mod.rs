@@ -26,6 +26,7 @@ use dom_web::Dom;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod dom_stub;
+pub mod changelog;
 pub mod manual;
 #[cfg(not(target_arch = "wasm32"))]
 use dom_stub::Dom;
@@ -640,6 +641,13 @@ impl Ui {
         self.dom.html("t-host-maps", &host);
         self.dom.html("t-lobby-maps", &lobby);
         self.dom.html("t-manual-body", &manual::manual_html());
+        self.dom.html("t-news-body", &changelog::html(&changelog::parse(changelog::CHANGELOG)));
+    }
+
+    /// The match an idea is sent from (map and mode), or none.
+    pub fn set_idea_context(&mut self, map: &str, mode: &str) {
+        self.dom.attr("t-ideabox", "data-map", map);
+        self.dom.attr("t-ideabox", "data-mode", mode);
     }
 
     /// Opens the Workshop manual over whatever is up.
