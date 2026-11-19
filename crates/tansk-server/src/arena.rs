@@ -483,6 +483,32 @@ mod tests {
         }
     }
 
+    /// A Rust Belt room builds the Rust Belt and says so in its Welcome;
+    /// the quick-match rotation reaches it.
+    #[test]
+    fn rust_belt_room_welcomes_with_its_map() {
+        assert_eq!(MapId::Refinery.next(), MapId::RustBelt);
+        assert_eq!(MapId::RustBelt.next(), MapId::Sink);
+        let info = Arc::new(Mutex::new(ArenaInfo {
+            code: "RUST".into(),
+            public: false,
+            humans: 0,
+            max_humans: ROOM_SEATS,
+            ended: false,
+            mode: ModeKind::ScrapBrawl,
+            map: MapId::RustBelt,
+        }));
+        let mut r = ArenaRoom::new("RUST".into(), false, 9, info, ModeKind::ScrapBrawl, MapId::RustBelt);
+        assert_eq!(r.sim.map.id, MapId::RustBelt);
+        let (out, mut rx) = mpsc::channel(64);
+        r.handle(ArenaCmd::Join { conn: 1, name: "Ann".into(), rejoin: None, out });
+        let first = arena_core::net::decode::<ServerMsg>(&rx.try_recv().unwrap().bytes).unwrap();
+        assert!(matches!(first, ServerMsg::Welcome { map: MapId::RustBelt, seed: 9, .. }), "{first:?}");
+        for _ in 0..10 * TICK_HZ {
+            r.tick();
+        }
+    }
+
     /// A Convoy room seats 4 v 4 crews; the truck takes no seat; a joining
     /// human takes a bot's seat on a team.
     #[test]

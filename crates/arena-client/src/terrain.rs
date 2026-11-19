@@ -17,12 +17,18 @@ const FACET: f32 = 0.55;
 /// The ground paint. `salt` (the paint's wear channel) turns the sand into
 /// a pale cracked salt flat in the shader (0 on the Sink).
 fn sand(salt: f32) -> Paint {
-    Paint { wear: salt, ..Paint::with(Material::Sand, 0xffffff, 0.95) }
+    Paint { wear: salt, color: TINT.with(|t| t.get()), ..Paint::with(Material::Sand, 0xffffff, 0.95) }
 }
 
 thread_local! {
     static SALT: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+    /// The ground's per-map tint (the shader multiplies the sand by it):
+    /// white on the Sink and the Refinery, canyon red on the Rust Belt.
+    static TINT: std::cell::Cell<Vec3> = const { std::cell::Cell::new(Vec3::ONE) };
 }
+
+/// The Rust Belt's canyon floor: the sand pushed toward rusty red.
+pub const RUST_BELT_GROUND: Vec3 = Vec3::new(1.04, 0.9, 0.82);
 
 fn smooth_normal(h: &dyn Fn(f32, f32) -> f32, x: f32, z: f32, e: f32) -> Vec3 {
     Vec3::new(h(x - e, z) - h(x + e, z), 2.0 * e, h(x, z - e) - h(x, z + e)).normalize()
@@ -46,6 +52,7 @@ fn tri(m: &mut MeshBuilder, h: &dyn Fn(f32, f32) -> f32, e: f32, p: [Vec3; 3]) {
 /// The map's terrain and its outer ring, as (mesh, transform) pieces.
 pub fn build(map: &Map) -> Vec<(MeshBuilder, Mat4)> {
     SALT.with(|s| s.set(if map.id == arena_core::MapId::Refinery { 0.85 } else { 0.0 }));
+    TINT.with(|t| t.set(if map.id == arena_core::MapId::RustBelt { RUST_BELT_GROUND } else { Vec3::ONE }));
     let res = map.resolution;
     let sp = map.spacing();
     let half = map.size / 2.0;
@@ -260,8 +267,12 @@ pub fn marks(map: &Map) -> Vec<MeshBuilder> {
     let salt = map.id == arena_core::MapId::Refinery;
     // Linear albedos.
     // (A soft fringe in between the packed ground and the sand round it.)
+    let canyon = map.id == arena_core::MapId::RustBelt;
     let (track, rut, packed, fringe) = if salt {
         (Vec3::new(0.42, 0.35, 0.28), Vec3::new(0.29, 0.23, 0.18), Vec3::new(0.45, 0.38, 0.31), Vec3::new(0.51, 0.44, 0.36))
+    } else if canyon {
+        // Rusty dirt: redder and darker than the canyon floor.
+        (Vec3::new(0.40, 0.22, 0.13), Vec3::new(0.26, 0.14, 0.085), Vec3::new(0.47, 0.28, 0.17), Vec3::new(0.54, 0.33, 0.20))
     } else {
         (Vec3::new(0.40, 0.275, 0.165), Vec3::new(0.27, 0.18, 0.11), Vec3::new(0.48, 0.34, 0.215), Vec3::new(0.53, 0.375, 0.235))
     };
@@ -306,6 +317,7 @@ pub fn marks(map: &Map) -> Vec<MeshBuilder> {
 
 /// A flat sand floor for lineups and tests.
 pub fn flat(half: f32) -> MeshBuilder {
+    TINT.with(|t| t.set(Vec3::ONE));
     let mut m = MeshBuilder::new();
     m.heightfield(half, 40, |_, _| 0.0, sand(0.0));
     m

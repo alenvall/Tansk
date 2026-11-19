@@ -25,6 +25,7 @@ struct Globals {
     cascades: array<mat4x4<f32>, 3>,
     // xyz eye, w time
     camera: vec4<f32>,
+    // w: a pixel's size (m) at 1 m from the eye
     cam_right: vec4<f32>,
     cam_up: vec4<f32>,
     sun_dir: vec4<f32>,
@@ -84,13 +85,24 @@ struct VertexOut {
 @vertex
 fn vs_main(v: VertexIn, i: InstanceIn) -> VertexOut {
     let model = mat4x4<f32>(i.m0, i.m1, i.m2, i.m3);
-    let world = model * vec4<f32>(v.position, 1.0);
+    var world = model * vec4<f32>(v.position, 1.0);
     var out: VertexOut;
+    out.normal = (model * vec4<f32>(v.normal, 0.0)).xyz;
+    out.params = v.params.xyz;
+    // Wires (bare steel with params.z = -radius): a thin tube breaks into
+    // dots once it is under a pixel or two wide, so it is pushed out along
+    // its normals to at least 1.5 px; the fragment fades it towards the air
+    // by how much it was widened (params.z then carries that coverage).
+    if (u32(v.params.y + 0.5) == 2u && v.params.z < 0.0) {
+        let r = -v.params.z;
+        let want = 0.75 * globals.cam_right.w * length(world.xyz - globals.camera.xyz);
+        let grow = max(want - r, 0.0);
+        world = vec4<f32>(world.xyz + normalize(out.normal) * grow, 1.0);
+        out.params.z = -clamp(r / max(want, 1e-5), 0.0, 1.0) - 1.0;
+    }
     out.clip = globals.view_proj * world;
     out.world = world.xyz;
-    out.normal = (model * vec4<f32>(v.normal, 0.0)).xyz;
     out.color = v.color;
-    out.params = v.params.xyz;
     // Merged chunks carry each piece's ground height in params.w, so the
     // shader's "height above the ground" (local y) still holds.
     out.local = v.position + vec3<f32>(0.0, v.params.w, 0.0);
@@ -614,6 +626,8 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
         if (wear > 0.0) {
             s = salt_flat(s, in.world, fw, wear);
         }
+        // The map's ground tint (white but on the Rust Belt's red canyon).
+        s.albedo = s.albedo * in.color;
         ao = sphere_occlusion(in.world, n);
     } else if (material == 0u) {
         s = painted_steel(in.color, wear, in.local, height, n, edge, 0.0, 0.0, detail);
@@ -695,7 +709,13 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
     let to_frag = in.world - globals.camera.xyz;
     let dist = length(to_frag);
     let dir = to_frag / max(dist, 1e-4);
-    let amount = air_amount(globals.camera.xyz, dir, dist);
+    var amount = air_amount(globals.camera.xyz, dir, dist);
+    if (material == 2u && in.params.z < 0.0) {
+        // A widened wire: as thin as it really is, it would cover only this
+        // much of its pixels; mostly sky shows round it, so fade to the air.
+        let coverage = clamp(-in.params.z - 1.0, 0.0, 1.0);
+        amount = 1.0 - (1.0 - amount) * mix(0.45, 1.0, coverage);
+    }
     color = mix(color, air_colour(dir), amount);
     return vec4<f32>(max(color, vec3<f32>(0.0)), 1.0);
 }

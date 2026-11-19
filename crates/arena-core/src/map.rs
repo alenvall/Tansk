@@ -128,6 +128,33 @@ pub enum ObstacleKind {
     /// A wind pump: `boxes[0]` the lattice tower (about 11 m) with the fan
     /// wheel on top. Tall (thin).
     Windmill,
+    // ---- The Rust Belt (appended) ---------------------------------------------
+    /// A wall of crushed car cubes: one box per column of bales (1.35 m a
+    /// bale, two to four high), side by side along local X. Tall.
+    CarCube,
+    /// The car crusher: `boxes[0]` the press bed, `boxes[1]` the raised press
+    /// head on its frame. Tall.
+    Crusher,
+    /// An electromagnet crane: `boxes[0]` the tower, `boxes[1]` the jib
+    /// (overhead). The magnet and the car it holds hang off the jib tip
+    /// (visual only). Tall.
+    MagnetCrane,
+    /// A rusted school bus (long along local X); a second box is a bus
+    /// stacked on top. Tall.
+    Bus,
+    /// A tin shack of corrugated sheets. Tall.
+    Shack,
+    /// A market stall: a low counter (the awning over it is visual only). Low.
+    Stall,
+    /// A corrugated tin fence run, about 2.9 m (along local X). Tall.
+    Fence,
+    /// The broken concrete bridge over the dry river: `boxes[0]` the deck
+    /// (overhead: tanks drive on it and under it), `boxes[1]` the pier in the
+    /// river bed. The obstacle stands on the river bed. Tall.
+    Bridge,
+    /// The tower of stacked cars, the skyline landmark: `boxes[0]` the lower
+    /// stack, `boxes[1]` the upper. Tall.
+    CarTower,
 }
 
 impl ObstacleKind {
@@ -150,16 +177,19 @@ pub enum MapId {
     Sink,
     /// The sun-baked oil refinery on a salt flat.
     Refinery,
+    /// A dead scrapyard city in a dry canyon.
+    RustBelt,
 }
 
 impl MapId {
-    pub const ALL: [MapId; 2] = [MapId::Sink, MapId::Refinery];
+    pub const ALL: [MapId; 3] = [MapId::Sink, MapId::Refinery, MapId::RustBelt];
 
     /// The display name.
     pub fn name(self) -> &'static str {
         match self {
             MapId::Sink => "The Sink",
             MapId::Refinery => "The Refinery",
+            MapId::RustBelt => "The Rust Belt",
         }
     }
 
@@ -168,6 +198,7 @@ impl MapId {
         match self {
             MapId::Sink => "sink",
             MapId::Refinery => "refinery",
+            MapId::RustBelt => "rustbelt",
         }
     }
 
@@ -177,6 +208,7 @@ impl MapId {
         match s.trim_start_matches("the_").trim_start_matches("the ") {
             "sink" => Some(MapId::Sink),
             "refinery" => Some(MapId::Refinery),
+            "rustbelt" | "rust_belt" | "rust belt" | "rust-belt" => Some(MapId::RustBelt),
             _ => None,
         }
     }
@@ -336,6 +368,7 @@ impl Map {
         match id {
             MapId::Sink => Map::the_sink(seed),
             MapId::Refinery => Map::refinery(seed),
+            MapId::RustBelt => Map::rust_belt(seed),
         }
     }
 
@@ -683,6 +716,61 @@ pub(crate) fn make_obstacle(kind: ObstacleKind, rng: &mut Rng) -> Obstacle {
             boxes.push(bx(Vec3::new(0.0, 5.6, 0.0), Vec3::new(0.9, 5.8, 0.9), 0.0));
             radius = 2.5;
         }
+        ObstacleKind::CarCube => {
+            cover = Cover::Tall;
+            let cols = 2 + rng.below(3);
+            for c in 0..cols {
+                let n = 2 + rng.below(3);
+                car_cube_column(&mut boxes, (c as f32 - (cols - 1) as f32 / 2.0) * CUBE_W, n as u32, rng);
+            }
+            radius = cols as f32 * CUBE_W * 0.5 + 1.5;
+        }
+        ObstacleKind::Crusher => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, 1.9, 0.0), Vec3::new(8.0, 2.0, 4.0), 0.0));
+            boxes.push(bx(Vec3::new(-2.0, 6.6, 0.0), Vec3::new(4.0, 2.7, 3.6), 0.0));
+            radius = 10.5;
+        }
+        ObstacleKind::MagnetCrane => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, 10.2, 0.0), Vec3::new(1.6, 10.6, 1.6), 0.0));
+            boxes.push(bx(Vec3::new(MAGNET_JIB * 0.5 - 4.0, 21.4, 0.0), Vec3::new(MAGNET_JIB * 0.5 + 4.0, 0.7, 0.7), 0.0));
+            radius = 6.0;
+        }
+        ObstacleKind::Bus => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, BUS_HALF.y, 0.0), BUS_HALF, 0.0));
+            radius = BUS_HALF.x + 1.5;
+        }
+        ObstacleKind::Shack => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, 1.7, 0.0), SHACK_HALF, 0.0));
+            radius = 5.5;
+        }
+        ObstacleKind::Stall => {
+            cover = Cover::Low;
+            boxes.push(bx(Vec3::new(0.0, 0.45, 0.0), Vec3::new(2.2, 0.5, 0.9), 0.0));
+            radius = 3.0;
+        }
+        ObstacleKind::Fence => {
+            cover = Cover::Tall;
+            let l = rng.range(5.0, 7.0);
+            boxes.push(bx(Vec3::new(0.0, 1.35, 0.0), Vec3::new(l, 1.55, 0.3), 0.0));
+            radius = l + 1.0;
+        }
+        ObstacleKind::Bridge => {
+            // Built by rust_belt (it spans the river bed); a default 7 m drop.
+            cover = Cover::Tall;
+            bridge_boxes(&mut boxes, 7.0, 25.0);
+            rot = Quat::IDENTITY;
+            radius = 26.0;
+        }
+        ObstacleKind::CarTower => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, 6.0, 0.0), Vec3::new(3.0, 6.0, 3.0), 0.0));
+            boxes.push(bx(Vec3::new(0.0, 17.5, 0.0), Vec3::new(2.6, 5.5, 2.6), 0.5));
+            radius = 6.0;
+        }
         ObstacleKind::PierRuin => {
             cover = Cover::Low;
             let n = 2 + rng.below(3);
@@ -715,6 +803,30 @@ pub(crate) fn pipe_rack_boxes(boxes: &mut Vec<ObstacleBox>, len: f32) {
             boxes.push(bx(Vec3::new(x, 2.9, z), Vec3::new(0.3, 3.0, 0.3), 0.0));
         }
     }
+}
+
+/// A crushed car bale: 2.8 m wide (along a cube wall), 1.35 m high.
+pub const CUBE_W: f32 = 2.8;
+pub const CUBE_H: f32 = 1.35;
+/// A school bus's half extents (long along X).
+pub const BUS_HALF: Vec3 = Vec3::new(6.2, 1.6, 1.35);
+/// A tin shack's half extents.
+pub const SHACK_HALF: Vec3 = Vec3::new(4.0, 1.7, 3.0);
+/// How far the magnet crane's jib reaches out from the tower.
+pub const MAGNET_JIB: f32 = 30.0;
+
+/// One column of `n` car bales at local x, standing on y = 0.
+pub(crate) fn car_cube_column(boxes: &mut Vec<ObstacleBox>, x: f32, n: u32, rng: &mut Rng) {
+    let hy = n as f32 * CUBE_H * 0.5;
+    boxes.push(bx(Vec3::new(x, hy, rng.range(-0.12, 0.12)), Vec3::new(CUBE_W * 0.5, hy, 1.0), rng.range(-0.04, 0.04)));
+}
+
+/// The bridge, in a frame standing on the river bed: the deck (along local
+/// Z, `half_len` long each way, its top `drop` m up) and the pier under it.
+pub(crate) fn bridge_boxes(boxes: &mut Vec<ObstacleBox>, drop: f32, half_len: f32) {
+    let under = drop - 1.15;
+    boxes.push(bx(Vec3::new(0.0, drop + 0.05 - 0.6, 0.0), Vec3::new(7.0, 0.6, half_len), 0.0));
+    boxes.push(bx(Vec3::new(0.0, under * 0.5, 0.0), Vec3::new(5.0, under * 0.5, 0.8), 0.0));
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

@@ -38,6 +38,7 @@ fn vs_sprite(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
         size = select(min(size, d * 0.7), 0.0, d < 2.5);
     }
     var p = centre;
+    var coverage = 1.0;
     if (kind == 2u || kind == 5u) {
         // A streak or cable: a quad stretched along its axis, facing the camera.
         let along = s.axis.xyz;
@@ -45,7 +46,14 @@ fn vs_sprite(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
         let a = select(vec3<f32>(0.0, 1.0, 0.0), along / max(len, 1e-4), len > 1e-4);
         let view = normalize(centre - globals.camera.xyz);
         let side = normalize(cross(a, view) + vec3<f32>(1e-4, 0.0, 0.0));
-        p = centre + a * (c.y * (len * 0.5 + size)) + side * c.x * size;
+        // Cables stay at least 1.5 px wide (thinner ones break into dots
+        // under FXAA); the fragment fades them by how much they grew.
+        var width = size;
+        if (kind == 5u) {
+            width = max(size, 0.75 * globals.cam_right.w * length(centre - globals.camera.xyz));
+            coverage = size / max(width, 1e-5);
+        }
+        p = centre + a * (c.y * (len * 0.5 + size)) + side * c.x * width;
     } else {
         let r = s.params.y;
         let rc = vec2<f32>(c.x * cos(r) - c.y * sin(r), c.x * sin(r) + c.y * cos(r));
@@ -56,6 +64,9 @@ fn vs_sprite(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
     out.uv = c;
     out.color = s.color;
     out.params = s.params;
+    if (kind == 5u) {
+        out.params.w = coverage;
+    }
     out.world = p;
     return out;
 }
@@ -120,7 +131,7 @@ fn fs_sprite(in: SpriteOut) -> @location(0) vec4<f32> {
     if (kind == 5u) {
         // Cable: a dark, opaque-ish line.
         let across = 1.0 - smoothstep(0.5, 1.0, abs(in.uv.x));
-        let a = across * in.color.a;
+        let a = across * in.color.a * mix(0.45, 1.0, clamp(in.params.w, 0.0, 1.0));
         let c = mix(in.color.rgb, air_colour(dir), air);
         return vec4<f32>(c * a, a);
     }

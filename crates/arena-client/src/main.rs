@@ -26,6 +26,7 @@ mod net;
 mod parts;
 mod props;
 mod props_refinery;
+mod props_rustbelt;
 mod renderer;
 mod shapes;
 mod ships;

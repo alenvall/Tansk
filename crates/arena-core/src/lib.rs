@@ -36,6 +36,7 @@ pub mod parts;
 pub mod physics;
 pub mod raid;
 pub mod refinery;
+pub mod rustbelt;
 pub mod rng;
 pub mod sim;
 pub mod sink;

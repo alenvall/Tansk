@@ -394,10 +394,14 @@ pub fn power_pole() -> MeshBuilder {
 pub const POLE_ANCHORS: [f32; 3] = [-1.0, 0.0, 1.0];
 pub const POLE_WIRE_HEIGHT: f32 = 8.7;
 
-/// Sagging wires between two pole tops (world space).
+/// Wire radius, m.
+const WIRE_RADIUS: f32 = 0.025;
+
+/// Sagging wires between two pole tops (world space). The paint's wear
+/// carries `-radius`: the shader keeps such tubes at least 1.5 px wide.
 pub fn wires(a: Vec3, b: Vec3, sag: f32) -> MeshBuilder {
     let mut m = MeshBuilder::new();
-    let cable = Paint::steel(0x1e1c1b, 0.6);
+    let cable = Paint { wear: -WIRE_RADIUS, ..Paint::steel(0x1e1c1b, 0.6) };
     let d = (b - a).normalize();
     let side = d.cross(Vec3::Y).normalize_or(Vec3::Z);
     for z in POLE_ANCHORS {
@@ -408,9 +412,35 @@ pub fn wires(a: Vec3, b: Vec3, sag: f32) -> MeshBuilder {
                 p0.lerp(p1, t) - Vec3::Y * sag * 4.0 * t * (1.0 - t)
             })
             .collect();
-        m.tube(&pts, 0.025, 4, cable);
+        wire_tube(&mut m, &pts, WIRE_RADIUS, cable);
     }
     m
+}
+
+/// One continuous, capless tube along `pts` (rings shared between
+/// segments, normals straight out from the centre line), so the shader's
+/// minimum-width push along the normals widens it evenly end to end.
+fn wire_tube(m: &mut MeshBuilder, pts: &[Vec3], radius: f32, paint: Paint) {
+    const SIDES: usize = 5;
+    let mut prev: Option<[u32; SIDES]> = None;
+    for (i, &p) in pts.iter().enumerate() {
+        let d = (pts[(i + 1).min(pts.len() - 1)] - pts[i.saturating_sub(1)]).normalize_or(Vec3::X);
+        let u = d.any_orthonormal_vector();
+        let v = d.cross(u);
+        let ring: [u32; SIDES] = std::array::from_fn(|k| {
+            let a = k as f32 / SIDES as f32 * std::f32::consts::TAU;
+            let n = u * a.cos() + v * a.sin();
+            m.push(p + n * radius, n, paint)
+        });
+        if let Some(r) = prev {
+            for k in 0..SIDES {
+                let k1 = (k + 1) % SIDES;
+                m.tri(r[k], r[k1], ring[k1]);
+                m.tri(r[k], ring[k1], ring[k]);
+            }
+        }
+        prev = Some(ring);
+    }
 }
 
 /// A tyre lying flat or a stack of `count`.

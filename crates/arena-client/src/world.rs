@@ -20,6 +20,7 @@ use crate::meshkit::{MeshBuilder, Paint};
 use crate::parts;
 use crate::props;
 use crate::props_refinery as refinery;
+use crate::props_rustbelt as rustbelt;
 use crate::renderer::{Instance, Light, MeshId, Renderer};
 use crate::shapes::hash;
 use crate::tank;
@@ -526,6 +527,23 @@ impl WorldRenderer {
                     let id = r.add_mesh(&props::windmill(h, c));
                     self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
                 }
+                // The Rust Belt's whole-obstacle pieces.
+                ObstacleKind::Crusher if boxes.len() >= 2 => {
+                    let id = r.add_mesh(&rustbelt::crusher(boxes[0], boxes[1]));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                }
+                ObstacleKind::MagnetCrane if boxes.len() >= 2 => {
+                    let id = r.add_mesh(&rustbelt::magnet_crane(boxes[0], boxes[1]));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                }
+                ObstacleKind::Bridge if boxes.len() >= 2 => {
+                    let id = r.add_mesh(&rustbelt::bridge(boxes[0], boxes[1]));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                }
+                ObstacleKind::CarTower if boxes.len() >= 2 => {
+                    let id = r.add_mesh(&rustbelt::car_tower(boxes[0], boxes[1]));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                }
                 ObstacleKind::Pumpjack => {
                     let id = lib.scene(r, "pumpjack:base", refinery::pumpjack_base);
                     self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
@@ -582,6 +600,23 @@ impl WorldRenderer {
                             }
                             ObstacleKind::Rails => lib.scene(r, &k("rails"), || lift(refinery::rails(h), h.y)),
                             ObstacleKind::ControlHouse => lib.scene(r, &k("controlhouse"), || lift(refinery::control_house(h), h.y)),
+                            ObstacleKind::CarCube => {
+                                let v = (hash(oi as u32 * 17 + bi as u32, 5) * 6.0) as u32;
+                                lib.scene(r, &format!("{}:{v}", k("bales")), || lift(rustbelt::car_bales(h, v + 1), h.y))
+                            }
+                            ObstacleKind::Bus => {
+                                let v = (hash(oi as u32 + bi as u32 * 7, 6) * 4.0) as u32;
+                                lib.scene(r, &format!("{}:{v}", k("bus")), || lift(rustbelt::bus(h, v), h.y))
+                            }
+                            ObstacleKind::Shack => {
+                                let v = (hash(oi as u32, 7) * 4.0) as u32;
+                                lib.scene(r, &format!("{}:{v}", k("shack")), || lift(rustbelt::shack(h, v), h.y))
+                            }
+                            ObstacleKind::Stall => {
+                                let v = oi as u32 % 4;
+                                lib.scene(r, &format!("{}:{v}", k("stall")), || lift(rustbelt::stall(h, v), h.y))
+                            }
+                            ObstacleKind::Fence => lib.scene(r, &k("fence"), || lift(rustbelt::fence(h, 5), h.y)),
                             ObstacleKind::LaunchPlate => lib.scene(r, &k("launch"), || lift(props::launch_plate(h), 2.0 * h.y - 0.12)),
                             ObstacleKind::Crates => lib.scene(r, &k("crates"), || {
                                 let mut m = MeshBuilder::new();
@@ -1325,6 +1360,16 @@ fn recipe(kind: ObstacleKind, ground_boxes: usize, desert: bool) -> (usize, (f32
         ObstacleKind::WaterTower => (7, (0.3, 3.0), &[(Drum, 2), (Tuft, 3), (Shrub, 2), (Jerry, 1), (Pallet, 1)]),
         ObstacleKind::Windmill => (5, (0.5, 3.0), &[(Tuft, 3), (Shrub, 2), (Tyre, 1)]),
         ObstacleKind::RadioMast => (2, (0.3, 1.5), &[(Crates, 2), (Cinder, 1)]),
+        // The Rust Belt: junk round the junk.
+        ObstacleKind::CarCube => (1 + ground_boxes.min(6) / 2, (0.2, 2.2), &[(Tyre, 3), (TyreStack, 2), (Sheet, 3), (Pebbles, 2), (Drum, 1), (Cinder, 1)]),
+        ObstacleKind::Crusher => (14, (0.4, 3.5), &[(Tyre, 3), (TyreStack, 2), (Drum, 3), (Sheet, 2), (Jerry, 2), (Pallet, 1)]),
+        ObstacleKind::MagnetCrane => (6, (0.5, 3.0), &[(Drum, 2), (Cinder, 2), (Sheet, 2), (Tyre, 1)]),
+        ObstacleKind::Bus => (2, (0.2, 2.0), &[(Tyre, 3), (Sheet, 2), (Pebbles, 2), (Tuft, 2), (Shrub, 1)]),
+        ObstacleKind::Shack => (6, (0.2, 1.6), &[(Crates, 3), (Jerry, 2), (Drum, 2), (TyreStack, 2), (Tarp, 2), (Pallet, 1), (Sheet, 1)]),
+        ObstacleKind::Stall => (2, (0.3, 1.2), &[(Crates, 3), (Jerry, 2), (TyreStack, 1), (Pallet, 1)]),
+        ObstacleKind::Fence => (3, (0.2, 1.4), &[(Tyre, 2), (Sheet, 2), (Pallet, 2), (Drum, 1), (Cinder, 1), (Tuft, 1)]),
+        ObstacleKind::CarTower => (10, (0.5, 4.0), &[(Tyre, 4), (TyreStack, 2), (Sheet, 3), (Pebbles, 2)]),
+        ObstacleKind::Bridge => (6, (0.5, 3.0), &[(Boulder, 3), (Pebbles, 3), (Sheet, 1), (Tyre, 1)]),
         _ => (0, (0.0, 0.0), &[]),
     }
 }
@@ -1381,7 +1426,9 @@ fn polyline_dist(pts: &[Vec2], p: Vec2) -> f32 {
 /// spawns, the pickup sites or the wells.
 fn dressing_plan(map: &Map) -> Vec<Dressing> {
     use Clutter::*;
-    let desert = map.id == arena_core::MapId::Sink;
+    // The Sink and the Rust Belt's canyon are desert (cactus, sand); the
+    // Refinery's salt flat is not.
+    let desert = map.id != arena_core::MapId::Refinery;
     let mut out: Vec<Dressing> = Vec::new();
     let mut keep_clear: Vec<(Vec2, f32)> = Vec::new();
     for s in &map.spawns {
@@ -1458,6 +1505,8 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
             ObstacleKind::ControlHouse | ObstacleKind::GasStation => 2,
             _ => 0,
         };
+        // (The Rust Belt's red canyon floor has no loose pale sand to drift.)
+        let drifts = if map.id == arena_core::MapId::RustBelt { 0 } else { drifts };
         for k in 0..drifts {
             let s = oi as u32 * 613 + k * 17 + 5;
             let Some((p, n_out)) = hug(o, s, 0.0) else { continue };
@@ -1551,7 +1600,8 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
 
     // 4. The compounds' floors: piles lining their edges, inside the walls
     // (crate stacks, drum clusters, pallets, sandbag nests, tarps).
-    for (pi, m) in map.marks.iter().filter(|m| m.kind == GroundMarkKind::Packed).enumerate() {
+    // (Two-point bands are compound floors; a longer one is the river's silt.)
+    for (pi, m) in map.marks.iter().filter(|m| m.kind == GroundMarkKind::Packed && m.points.len() == 2).enumerate() {
         for w in m.points.windows(2) {
             let d = (w[1] - w[0]).normalize_or(Vec2::X);
             let side = Vec2::new(-d.y, d.x);
@@ -1584,6 +1634,40 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
                     }
                 }
             }
+        }
+    }
+
+    // 4b. The Rust Belt: junk heaped over the wreck pile under the magnet,
+    // and rock fallen to the foot of the river banks.
+    if map.id == arena_core::MapId::RustBelt {
+        if let Some(pile) = map.regions.iter().find(|r| r.name == "The Magnet Crane") {
+            let c = Vec2::new(pile.center.x, pile.center.z);
+            for k in 0..70u32 {
+                let s = 80_000 + k;
+                let a = hash(s, 1) * std::f32::consts::TAU;
+                let q = c + Vec2::new(a.cos(), a.sin()) * 34.0 * hash(s, 2).sqrt();
+                if free(q, 0.3) {
+                    let kind = pick(&[(Tyre, 4), (TyreStack, 2), (Sheet, 4), (Pebbles, 2), (Drum, 1), (Cinder, 1)], hash(s, 3));
+                    push(&mut out, kind, s, q, hash(s, 4) * 6.28);
+                }
+            }
+        }
+        let rz = arena_core::rustbelt::river_z;
+        let mut x = -270.0f32;
+        while x < 270.0 {
+            for sgn in [-1.0f32, 1.0] {
+                let s = 90_000 + ((x + 300.0) as u32) * 2 + (sgn > 0.0) as u32;
+                if hash(s, 1) < 0.7 {
+                    continue;
+                }
+                let q = Vec2::new(x + (hash(s, 2) - 0.5) * 6.0, rz(x) + sgn * (arena_core::rustbelt::BED_HALF - 1.0 - 1.5 * hash(s, 3)));
+                if free(q, 0.3) {
+                    let size = (hash(s, 4) * 4.0) as u32;
+                    push(&mut out, Boulder, size, q, hash(s, 5) * 6.28);
+                    push(&mut out, Pebbles, s, q + Vec2::new(2.0, -sgn * 1.5), 0.0);
+                }
+            }
+            x += 11.0;
         }
     }
 
@@ -2024,6 +2108,74 @@ mod shots {
         });
     }
 
+    /// The Rust Belt in play: a practice match run a while, an overview and
+    /// a chase shot behind a tank heading for the bridge (`rustbelt-*.png`).
+    #[test]
+    #[ignore]
+    fn shots_rustbelt() {
+        let seed = 7;
+        let id = arena_core::MapId::RustBelt;
+        render("rustbelt-overview", |wr| {
+            let (mut sim, _) = arena_core::Sim::practice_on(id, seed, 7, 0.7);
+            wr.set_map(&arena_core::Map::by_id(id, seed));
+            let mut world = RenderWorld::default();
+            let (eye, look) = (Vec3::new(140.0, 120.0, 240.0), Vec3::new(0.0, 0.0, -20.0));
+            for tick in 0..(60 * 30) {
+                sim.step();
+                let ev = sim.drain_events();
+                if tick > 60 * 22 {
+                    world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                    world.time = tick as f32 * arena_core::DT;
+                    world.camera = Some(Camera::look(eye, look, 55.0));
+                    for e in &ev {
+                        wr.event(e, eye);
+                    }
+                    wr.fx.update(arena_core::DT, &world);
+                }
+            }
+            world.dt = 0.0;
+            world
+        });
+        render("rustbelt-play", |wr| {
+            let (mut sim, me) = arena_core::Sim::practice_on(id, seed, 7, 0.7);
+            wr.set_map(&arena_core::Map::by_id(id, seed));
+            let mut world = RenderWorld::default();
+            let bz = arena_core::rustbelt::river_z(0.0);
+            for tick in 0..(60 * 40) {
+                // Put the human tank on the road north of the bridge, then drive over it.
+                if tick == 60 * 34 {
+                    sim.teleport(me, 0.0, bz - 42.0, -std::f32::consts::FRAC_PI_2);
+                }
+                if let Some((p, _)) = sim.tank_pose(me) {
+                    let goal = Vec3::new(0.0, p.y, bz + 60.0);
+                    let to = goal - p;
+                    let yaw = sim.hull_yaw(me).unwrap_or(0.0);
+                    let want = (-to.z).atan2(to.x);
+                    let mut d = want - yaw;
+                    while d > std::f32::consts::PI { d -= std::f32::consts::TAU; }
+                    while d < -std::f32::consts::PI { d += std::f32::consts::TAU; }
+                    sim.set_input(me, arena_core::Input { throttle: 1.0, steer: (-d * 2.0).clamp(-1.0, 1.0), aim_point: p + to, ..Default::default() });
+                }
+                sim.step();
+                let ev = sim.drain_events();
+                if tick > 60 * 36 {
+                    world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                    world.time = tick as f32 * arena_core::DT;
+                    let t = world.tanks.iter().find(|t| t.player == me).map(|t| (t.pos, t.rot)).unwrap_or((Vec3::ZERO, Quat::IDENTITY));
+                    let fwd = t.1 * Vec3::X;
+                    let eye = t.0 - fwd * 11.0 + Vec3::Y * 4.5;
+                    world.camera = Some(Camera::look(eye, t.0 + fwd * 20.0 + Vec3::Y * 2.0, 58.0));
+                    for e in &ev {
+                        wr.event(e, t.0);
+                    }
+                    wr.fx.update(arena_core::DT, &world);
+                }
+            }
+            world.dt = 0.0;
+            world
+        });
+    }
+
     /// The level layout of both maps, without a match: high overviews and
     /// chase-camera views at each place (`level-<map>-<view>.png`; set
     /// `TANSK_SHOT_TAG` to prefix them, e.g. for before/after sets).
@@ -2064,7 +2216,23 @@ mod shots {
             ("road", Vec2::new(-200.0, -48.0), 4.5, Vec2::new(-100.0, -60.0)),
             ("track", Vec2::new(-60.0, 34.0), 4.5, Vec2::new(-150.0, 50.0)),
         ];
-        for (id, views) in [(arena_core::MapId::Sink, sink), (arena_core::MapId::Refinery, refinery)] {
+        let rz = arena_core::rustbelt::river_z;
+        let rustbelt: [(&str, Vec2, f32, Vec2); 13] = [
+            ("high", Vec2::new(30.0, 250.0), 170.0, Vec2::new(0.0, -20.0)),
+            ("air-market", Vec2::new(60.0, 40.0), 45.0, Vec2::new(0.0, -30.0)),
+            ("air-crusher", Vec2::new(-90.0, -70.0), 55.0, Vec2::new(-165.0, -150.0)),
+            ("air-buses", Vec2::new(100.0, -90.0), 45.0, Vec2::new(165.0, -160.0)),
+            ("air-river", Vec2::new(60.0, 140.0), 40.0, Vec2::new(0.0, 80.0)),
+            ("air-tower", Vec2::new(105.0, 125.0), 45.0, Vec2::new(165.0, 182.0)),
+            ("market", Vec2::new(-20.0, 40.0), 4.5, Vec2::new(0.0, -30.0)),
+            ("crusher", Vec2::new(-150.0, -80.0), 4.5, Vec2::new(-160.0, -150.0)),
+            ("buses", Vec2::new(140.0, -100.0), 4.5, Vec2::new(150.0, -200.0)),
+            ("bridge", Vec2::new(0.0, 20.0), 4.5, Vec2::new(0.0, 120.0)),
+            ("bed", Vec2::new(-70.0, rz(-70.0)), 4.5, Vec2::new(40.0, rz(40.0) - 5.0)),
+            ("crane", Vec2::new(-100.0, 140.0), 4.5, Vec2::new(-160.0, 180.0)),
+            ("tower", Vec2::new(120.0, 150.0), 4.5, Vec2::new(165.0, 182.0)),
+        ];
+        for (id, views) in [(arena_core::MapId::Sink, sink), (arena_core::MapId::Refinery, refinery), (arena_core::MapId::RustBelt, rustbelt)] {
             let map = Map::by_id(id, seed);
             for (name, eye, up, look) in views {
                 let shot = format!("level-{tag}{}-{name}", id.key());
@@ -2132,7 +2300,7 @@ mod shots {
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).expect("adapter");
         let (device, queue) = pollster::block_on(crate::renderer::request_device(&adapter)).expect("device");
         let mut wr = WorldRenderer::new(Renderer::new(device, queue, wgpu::TextureFormat::Rgba8Unorm, 64, 64));
-        for id in [arena_core::MapId::Sink, arena_core::MapId::Refinery] {
+        for id in arena_core::MapId::ALL {
             wr.renderer.recorded = Some(HashMap::new());
             wr.set_map(&Map::by_id(id, 7));
             let rec = wr.renderer.recorded.take().unwrap_or_default();

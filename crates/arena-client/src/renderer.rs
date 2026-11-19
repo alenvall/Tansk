@@ -210,10 +210,13 @@ impl Look {
             }
             TimeOfDay::Noon => {
                 l.sun_elevation = 62.0;
-                l.sun_color = Vec3::new(1.0, 0.94, 0.84) * 2.6;
-                l.sky_color = Vec3::new(0.40, 0.52, 0.78) * 0.5;
-                l.haze = Vec3::new(0.96, 0.9, 0.8) * 1.25;
-                l.warmth = Vec3::new(1.0, 1.0, 0.98);
+                // Still a desert noon: a warm white sun, warm haze and a grade
+                // that keeps the sand's (and the salt flat's) colour.
+                l.sun_color = Vec3::new(1.0, 0.9, 0.74) * 2.6;
+                l.sky_color = Vec3::new(0.42, 0.5, 0.7) * 0.45;
+                l.haze = Vec3::new(0.98, 0.87, 0.72) * 1.2;
+                l.warmth = Vec3::new(1.04, 1.0, 0.92);
+                l.saturation = 1.12;
                 l.exposure = 0.205;
             }
         }
@@ -1444,7 +1447,9 @@ impl Renderer {
             inv_view_proj: view_proj.inverse().to_cols_array_2d(),
             cascades: [cascades[0].0.to_cols_array_2d(), cascades[1].0.to_cols_array_2d(), cascades[2].0.to_cols_array_2d()],
             camera: camera.eye.extend(time).to_array(),
-            cam_right: right.extend(0.0).to_array(),
+            // w: a pixel's size (m) at 1 m from the eye, at the render
+            // scale (thin wires and cables keep a minimum screen width).
+            cam_right: right.extend(2.0 * (camera.fov_y * 0.5).tan() / scaled(self.width, self.height, self.scale).1 as f32).to_array(),
             cam_up: up.extend(0.0).to_array(),
             sun_dir: look.sun_dir.normalize().extend(0.0).to_array(),
             sun_color: look.sun_color.extend(0.0).to_array(),
