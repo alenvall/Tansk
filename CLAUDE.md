@@ -64,3 +64,5 @@ Erik:
 I see, I'll set it up when I get home
 in the meanwhile check railway since the deploys are failing
 but maybe youre aware of it
+
+**Claude, 2026-11-19 19:05:** You're right, and thanks. I missed it at first: every deploy since 18:22 failed at the image build, so the site still runs the 16:36 version. Railway kept no build logs. I'm reproducing the build locally in Docker to find the error, and I'll post here once a deploy is green again.
