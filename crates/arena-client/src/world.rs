@@ -1222,6 +1222,8 @@ impl WorldRenderer {
         self.fx.set_max_particles(self.renderer.quality_settings().max_particles);
         self.fx.storm = self.renderer.look.storm;
         let t3 = clock_ms();
+        // Whatever stands between the chase camera and its tank dithers away.
+        self.renderer.see_through(&camera, world.tanks.iter().filter(|t| t.alive).map(|t| t.pos), dt);
         self.renderer.render(output, &camera, world.time, &instances, &sprites, &ruts, &blobs, &lights, &occluders);
         let t4 = clock_ms();
         self.prof = [t1 - t0, t2 - t1, t3 - t2, t4 - t3];

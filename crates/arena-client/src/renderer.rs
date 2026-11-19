@@ -349,6 +349,8 @@ struct Globals {
     occluders: [[f32; 4]; MAX_OCCLUDERS],
     light_pos: [[f32; 4]; MAX_LIGHTS],
     light_col: [[f32; 4]; MAX_LIGHTS],
+    /// xyz the see-through focus (the followed tank), w its strength 0..1.
+    focus: [f32; 4],
 }
 
 struct GpuMesh {
@@ -585,6 +587,12 @@ pub struct Renderer {
     frames: u64,
     /// The cascades as last drawn (the far one is not redrawn every frame).
     cascade_state: [(Mat4, Mat4, f32); CASCADES],
+    /// See-through: what the camera follows, and how strongly whatever
+    /// stands between it and the eye is dithered away (eased 0..1).
+    focus: Vec3,
+    focus_strength: f32,
+    /// See-through on (shots turn it off for a before/after).
+    pub see_through_on: bool,
 }
 
 const INSTANCE_STRIDE: u64 = std::mem::size_of::<GpuInstance>() as u64;
@@ -1045,7 +1053,42 @@ impl Renderer {
             gpu_logged: -1e9,
             frames: 0,
             cascade_state: [(Mat4::IDENTITY, Mat4::IDENTITY, 1.0); CASCADES],
+            focus: Vec3::ZERO,
+            focus_strength: 0.0,
+            see_through_on: true,
         }
+    }
+
+    /// See-through for the chase camera: picks the tank the camera follows
+    /// (the candidate nearest the view axis, 2..22 m ahead of the eye) and
+    /// eases the dither of whatever stands between the eye and it (props,
+    /// walls, containers; not the ground) in, or back out when there is no
+    /// such tank (gunsight, spectating from afar). Call once a frame.
+    pub fn see_through(&mut self, camera: &Camera, tanks: impl Iterator<Item = Vec3>, dt: f32) {
+        let fwd = (camera.target - camera.eye).normalize_or_zero();
+        let mut best: Option<(f32, Vec3)> = None;
+        for p in tanks {
+            let c = p + Vec3::Y * 1.0;
+            let along = (c - camera.eye).dot(fwd);
+            if !(2.0..22.0).contains(&along) {
+                continue;
+            }
+            let off = (c - camera.eye - fwd * along).length();
+            if off < 4.0 && best.is_none_or(|(b, _)| off < b) {
+                best = Some((off, c));
+            }
+        }
+        let want = if !self.see_through_on {
+            0.0
+        } else if let Some((_, c)) = best {
+            self.focus = c;
+            1.0
+        } else {
+            0.0
+        };
+        // A still frame (dt 0: shots) takes the target at once.
+        let k = if dt > 0.0 { 1.0 - (-dt * 8.0).exp() } else { 1.0 };
+        self.focus_strength += (want - self.focus_strength) * k;
     }
 
     #[allow(dead_code)] // wired to the Settings menu by the game layer
@@ -1470,6 +1513,7 @@ impl Renderer {
             occluders: occ,
             light_pos,
             light_col,
+            focus: self.focus.extend(self.focus_strength).to_array(),
         };
         self.queue.write_buffer(&self.globals, 0, bytemuck::bytes_of(&globals));
         for (i, (buf, _)) in self.cascade_binds.iter().enumerate() {
@@ -1872,6 +1916,38 @@ mod look_calib {
         assert!(h.bloom_levels > m.bloom_levels && m.bloom_levels > l.bloom_levels);
         assert!(l.min_scale <= m.min_scale && m.min_scale <= h.min_scale);
         assert!(h.fxaa && h.msaa == 1 && Quality::Ultra.settings().msaa == 4);
+    }
+
+    /// See-through: a tank parked behind a container, seen from the far
+    /// side as a chase camera would after the tank slips behind it; off
+    /// then on (`docs/shots/see-through-off.png`, `-on.png`).
+    #[test]
+    #[ignore]
+    fn shots_see_through() {
+        let dir = format!("{}/../../docs/shots", env!("CARGO_MANIFEST_DIR"));
+        let (w, h) = (1600, 900);
+        let (device, queue) = device();
+        let mut wr = WorldRenderer::new(Renderer::with_quality(device, queue, wgpu::TextureFormat::Rgba8Unorm, w, h, Quality::Medium));
+        wr.begin_scene();
+        let floor = wr.renderer.add_mesh(&crate::terrain::flat(200.0));
+        let mut box_mesh = crate::props::container(Vec3::new(6.1, 1.3, 1.22), crate::props::CONTAINER_COLOURS[1]);
+        box_mesh.transform_from(0, Mat4::from_translation(Vec3::Y * 1.3));
+        let container = wr.renderer.add_mesh(&box_mesh);
+        let mut shack = crate::props::container(Vec3::new(3.0, 1.3, 1.22), crate::props::CONTAINER_COLOURS[0]);
+        shack.transform_from(0, Mat4::from_translation(Vec3::Y * 1.3));
+        let shack = wr.renderer.add_mesh(&shack);
+        wr.set_statics(vec![
+            Instance::new(floor, Mat4::IDENTITY),
+            Instance::new(container, Mat4::IDENTITY),
+            Instance::new(shack, Mat4::from_translation(Vec3::new(-9.0, 0.0, -14.0))),
+        ]);
+        let mut world = RenderWorld::default();
+        world.tanks.push(crate::world::parked_tank(1, crate::tank::RUSTBACK, Vec3::new(0.5, 0.0, -5.5), 0.3, arena_core::PartKind::HeavyCannon, vec![]));
+        world.camera = Some(Camera::look(Vec3::new(1.5, 3.3, 7.5), Vec3::new(0.5, 1.2, -18.0), 58.0));
+        for (on, name) in [(false, "off"), (true, "on")] {
+            wr.renderer.see_through_on = on;
+            save(&mut wr, &world, w, h, &format!("{dir}/see-through-{name}.png"));
+        }
     }
 
     type View = (&'static str, MapId, f32, Option<(Vec3, Vec3)>);

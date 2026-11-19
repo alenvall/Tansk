@@ -49,6 +49,8 @@ struct Globals {
     occluders: array<vec4<f32>, 32>,
     light_pos: array<vec4<f32>, 8>,
     light_col: array<vec4<f32>, 8>,
+    // xyz the see-through focus (the followed tank), w strength 0..1
+    focus: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
@@ -582,6 +584,27 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
     let face = select(n, face_raw * inverseSqrt(max(dot(face_raw, face_raw), 1e-30)), dot(face_raw, face_raw) > 1e-14);
     var edge = 1.0 - abs(dot(n, face));
     let material = u32(in.params.y + 0.5);
+    // See-through: anything (but the ground) inside a soft cylinder from
+    // the eye to the followed tank, nearer than the tank, is screen-door
+    // dithered away, so the player's tank always shows.
+    if (globals.focus.w > 0.01 && material != 1u && material != 9u && material != 11u) {
+        let eye = globals.camera.xyz;
+        let seg = globals.focus.xyz - eye;
+        let len = length(seg);
+        let axis = seg / max(len, 1e-3);
+        let along = dot(in.world - eye, axis);
+        let off = length(in.world - eye - axis * along);
+        // Wider near the tank, so its whole outline clears; stops 2.5 m
+        // short of the tank's centre so its own hull never dithers.
+        let radius = mix(1.0, 2.6, clamp(along / max(len, 1e-3), 0.0, 1.0));
+        let inside = (1.0 - smoothstep(radius * 0.6, radius, off)) * (1.0 - smoothstep(len - 3.0, len - 2.5, along)) * smoothstep(0.3, 1.0, along);
+        let fade = inside * globals.focus.w * 0.85;
+        let ip = vec2<u32>(in.clip.xy) % vec2<u32>(4u);
+        var bayer = array<f32, 16>(0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+        if (fade > (bayer[ip.y * 4u + ip.x] + 0.5) / 16.0) {
+            discard;
+        }
+    }
     // How big a pixel is here (m): fine detail fades out as it shrinks
     // below a pixel or two, so far props read as clean paint, not sparkle.
     let px = max(max(fw.x, fw.y), fw.z);
