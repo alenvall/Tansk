@@ -3,11 +3,12 @@
 //! crossfaded from what the engine is doing. Platform-free (the browser layer
 //! in `web` fetches and plays them; the tests check the tables here).
 //!
-//! Every file is a real recording (Sonniss #GameAudioGDC bundles; sources
-//! and licences in `crates/arena-client/assets/sounds/LICENSES.md`), cut,
-//! layered and normalised offline to -1 dBFS peak. A sound with no files
-//! stays synthesized, and every sound falls back to its synthesized takes
-//! until (or unless) its files have loaded.
+//! Almost every file is a real recording (Sonniss #GameAudioGDC bundles;
+//! sources and licences in `crates/arena-client/assets/sounds/LICENSES.md`),
+//! cut, layered and normalised offline to -1 dBFS peak; the few sounds with
+//! no fitting recording ship as offline renders of our own synthesizer
+//! ([`SYNTH_ONLY`]). So every sound is a file, and the synthesizer only
+//! renders a sound at run time if its files failed to load.
 
 use crate::engine::{EngineInput, EngineKind};
 use crate::sounds::SoundId;
@@ -78,14 +79,54 @@ pub fn takes(id: SoundId) -> &'static [Take] {
         Horn2 => &HORN_BIG,
         Horn4 => &HORN_TOOT,
         Horn5 => &HORN_WHISTLE,
-        // Synthesized on purpose: the coilgun's rising whine, the shell and
-        // bomb whistles, the ricochet whine, the radio beeps, the War Rig's
-        // roar and wave horn, and the two novelty horns (the "La Cucaracha"
-        // trumpet and the "aooga" klaxon) have no fitting free recording.
-        CoilgunCharge | ShellWhistle | Ricochet | CountdownBeep | CountdownGo | BombWhistle | WaveHorn | BossRoar
-        | Horn1 | Horn3 => &[],
+        // No fitting free recording: these are our own synthesized takes,
+        // rendered offline (`examples/export_synth.rs`) so nothing has to be
+        // synthesized while a match runs.
+        CoilgunCharge => &S_COIL_CHARGE,
+        ShellWhistle => &S_SHELL_WHISTLE,
+        Ricochet => &S_RICOCHET,
+        CountdownBeep => &S_COUNTDOWN_BEEP,
+        CountdownGo => &S_COUNTDOWN_GO,
+        BombWhistle => &S_BOMB_WHISTLE,
+        WaveHorn => &S_WAVE_HORN,
+        BossRoar => &S_BOSS_ROAR,
+        Horn1 => &S_HORN_1,
+        Horn3 => &S_HORN_3,
     }
 }
+
+/// The sounds with no fitting free recording (the coilgun's rising whine,
+/// the shell and bomb whistles, the ricochet whine, the radio beeps, the War
+/// Rig's roar and wave horn, the "La Cucaracha" trumpet and the "aooga"
+/// klaxon): shipped as offline renders of the synthesizer.
+pub const SYNTH_ONLY: [SoundId; 10] = [
+    SoundId::CoilgunCharge,
+    SoundId::ShellWhistle,
+    SoundId::Ricochet,
+    SoundId::CountdownBeep,
+    SoundId::CountdownGo,
+    SoundId::BombWhistle,
+    SoundId::WaveHorn,
+    SoundId::BossRoar,
+    SoundId::Horn1,
+    SoundId::Horn3,
+];
+
+// The offline renders are normalised to -1 dBFS; 1/0.89 restores the
+// synthesizer's own level.
+const S: f32 = 1.12;
+const S_COIL_CHARGE: [Take; 2] = [t("synth_coilgun_charge_1", S), t("synth_coilgun_charge_2", S)];
+const S_SHELL_WHISTLE: [Take; 3] =
+    [t("synth_shell_whistle_1", S), t("synth_shell_whistle_2", S), t("synth_shell_whistle_3", S)];
+const S_RICOCHET: [Take; 4] =
+    [t("synth_ricochet_1", S), t("synth_ricochet_2", S), t("synth_ricochet_3", S), t("synth_ricochet_4", S)];
+const S_COUNTDOWN_BEEP: [Take; 1] = [t("synth_countdown_beep_1", S)];
+const S_COUNTDOWN_GO: [Take; 1] = [t("synth_countdown_go_1", S)];
+const S_BOMB_WHISTLE: [Take; 3] = [t("synth_bomb_whistle_1", S), t("synth_bomb_whistle_2", S), t("synth_bomb_whistle_3", S)];
+const S_WAVE_HORN: [Take; 1] = [t("synth_wave_horn_1", S)];
+const S_BOSS_ROAR: [Take; 2] = [t("synth_boss_roar_1", S), t("synth_boss_roar_2", S)];
+const S_HORN_1: [Take; 2] = [t("synth_horn_1_1", S), t("synth_horn_1_2", S)];
+const S_HORN_3: [Take; 2] = [t("synth_horn_3_1", S), t("synth_horn_3_2", S)];
 
 // Trims: from the processing report (the loudest 400 ms of each file against
 // its category's target loudness), clamped to 0.3..1.25.

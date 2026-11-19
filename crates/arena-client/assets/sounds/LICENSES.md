@@ -13,9 +13,35 @@ distribute them as part of the project. Not allowed: selling or redistributing t
 their own, claiming authorship, or using them to train AI/ML models. No attribution is
 required; the authors are credited below anyway. No CC-BY, CC-BY-NC or ShareAlike material is used.
 
-Sounds not listed here (the coilgun charge, shell and bomb whistles, ricochet, countdown beeps,
-War Rig roar and wave horn, the trumpet and klaxon horns, and all music) are synthesized in
-`crates/arena-audio` and have no third-party source.
+The files named `synth_*.ogg` are not recordings: they are offline renders of this project's own
+procedural synthesizer (`crates/arena-audio`, rendered by `examples/export_synth.rs`), for the sounds
+with no fitting free recording (the coilgun charge, shell and bomb whistles, ricochet, countdown
+beeps, War Rig roar and wave horn, and the trumpet and klaxon horns). They are original work with no
+third-party source. The music is synthesized live and ships no files.
+
+## Original synthesized renders
+
+- `synth_bomb_whistle_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_bomb_whistle_2.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_bomb_whistle_3.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_boss_roar_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_boss_roar_2.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_coilgun_charge_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_coilgun_charge_2.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_countdown_beep_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_countdown_go_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_horn_1_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_horn_1_2.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_horn_3_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_horn_3_2.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_ricochet_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_ricochet_2.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_ricochet_3.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_ricochet_4.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_shell_whistle_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_shell_whistle_2.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_shell_whistle_3.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
+- `synth_wave_horn_1.ogg`: original, rendered from `crates/arena-audio/src/sounds.rs`.
 
 Columns: the shipped file; each source recording (author / library, bundle, file inside the
 bundle zip, the time range used, and the processing).
@@ -662,4 +688,4 @@ bundle zip, the time range used, and the processing).
 
 - SoundMorph, *SoundMorph - STEAMPUNK WEAPONS* (Sonniss GDC 2018): `Steampunk Weapons - Firestorm Flamer - set_1.wav`, 1.75-3.29 s. Source: https://ftpmirror.your.org/pub/misc/sonniss2018/Sonniss.com%20-%20GDC%202018%20-%20Game%20Audio%20Bundle%20Part%205of8.zip (zip entry `Sonniss.com - GDC 2018 - Game Audio Bundle Part 5of8/SoundMorph - STEAMPUNK WEAPONS/Steampunk Weapons - Firestorm Flamer - set_1.wav`). Licence: Sonniss #GameAudioGDC (royalty-free, no attribution required).
 
-Total: 97 files, 2.21 MB.
+Total: 118 files (97 from recordings, 21 original synthesized renders), 2.53 MB.

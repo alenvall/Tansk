@@ -5,11 +5,15 @@
 //! - **Recordings** ([`crate::samples`]): Ogg Vorbis files fetched in the
 //!   background from `sounds/` as soon as [`Audio`] is created (the most
 //!   frequent combat sounds first, at most four requests at a time), then
-//!   decoded with `decodeAudioData` once the context exists. A sound plays its
-//!   recording when one has loaded; until then, or if its files failed (a
-//!   404, a browser that cannot decode Ogg), it plays the synthesized take.
-//! - **Synthesis**: the original procedural bank, rendered at unlock as
-//!   before, kept as the fallback and for the sounds that stay synthesized.
+//!   decoded with `decodeAudioData` once the context exists (a few files per
+//!   frame; the decoding runs off the main thread). A sound plays its file
+//!   once one has loaded; before that it is silent (normally well under a
+//!   second after unlock).
+//! - **Synthesis**: the procedural bank, now only a fallback: a take is
+//!   synthesized (one per frame, lazily) only for a sound whose file failed
+//!   to load after a retry, or is still missing 10 s after unlock. The
+//!   sounds with no recording ship as offline renders of the synthesizer, so
+//!   normally nothing is synthesized at run time at all.
 //!
 //! Graph: one-shots are `AudioBufferSource → Gain → [BiquadFilter (low-pass)
 //! → StereoPanner] → sfx bus`, with a send from the gain into a shared
@@ -51,17 +55,20 @@ use crate::music::{Music, MusicTrack, Stinger};
 use crate::samples::{engine_mix, load_order, takes, Asset, Bed};
 use crate::sounds::{render, SoundId};
 use crate::spatial::{spatialize, Listener, Spatial, CENTRE, MAX_DISTANCE};
-use crate::{schedule, take_seed};
+use crate::take_seed;
 
 /// Most one-shots playing at once, all sounds together.
 const MAX_ONE_SHOTS: usize = 64;
 /// Frames per engine callback.
 const ENGINE_BLOCK: u32 = 2048;
-/// Most milliseconds `unlock()` spends rendering before handing the rest
-/// to `tick()`.
-const UNLOCK_BUDGET_MS: f64 = 200.0;
-/// Milliseconds of background rendering per `tick()`.
-const TICK_BUDGET_MS: f64 = 3.0;
+/// Files handed to `decodeAudioData` per frame (it copies the bytes on the
+/// main thread before decoding off it).
+const DECODES_PER_TICK: usize = 4;
+/// A file whose fetch failed is tried once more after this long, ms.
+const RETRY_MS: f64 = 4000.0;
+/// A sound still without a file this long after unlock (a slow connection)
+/// gets its synthesized fallback when it is next played, ms.
+const SLOW_LOAD_MS: f64 = 10_000.0;
 /// Files fetched at once.
 const FETCHERS: usize = 4;
 /// Level of a sampled engine at full gain (the loops are peak-normalised).
@@ -105,6 +112,11 @@ struct Store {
     plays: u32,
     flames: u32,
     reported: bool,
+    /// Fetches that failed once, and when to try them again.
+    retry: Vec<(Asset, f64)>,
+    retried: Vec<Asset>,
+    /// Sounds with a file that failed for good: they need the synthesizer.
+    failed_ids: Vec<SoundId>,
 }
 
 impl Store {
@@ -128,8 +140,21 @@ impl Store {
         self.publish();
     }
 
+    /// A fetch failed: try once more later.
+    fn fetch_failed(&mut self, asset: Asset, why: &JsValue) {
+        if self.retried.contains(&asset) {
+            self.fail(asset, why);
+        } else {
+            self.retried.push(asset);
+            self.retry.push((asset, now_ms() + RETRY_MS));
+        }
+    }
+
     fn fail(&mut self, asset: Asset, why: &JsValue) {
         self.failed += 1;
+        if let Asset::Shot(id, _) = asset {
+            self.failed_ids.push(id);
+        }
         web_sys::console::warn_3(&"arena-audio: could not load".into(), &asset.url().into(), why);
         self.publish();
     }
@@ -159,7 +184,7 @@ impl Store {
         if !self.reported && self.loaded + self.failed >= self.total {
             self.reported = true;
             log(&format!(
-                "arena-audio: {} of {} recorded sound files loaded ({} failed; those sounds stay synthesized)",
+                "arena-audio: {} of {} sound files loaded ({} failed; those sounds fall back to the synthesizer)",
                 self.loaded, self.total, self.failed
             ));
         }
@@ -201,8 +226,9 @@ struct Live {
     buffers: Vec<Vec<AudioBuffer>>,
     voices: Vec<Vec<Voice>>,
     last_take: Vec<usize>,
-    schedule: Vec<(SoundId, usize)>,
-    next_render: usize,
+    /// Sounds waiting for a synthesized fallback take, one per frame.
+    synth_queue: VecDeque<SoundId>,
+    unlocked_at: f64,
     engines: HashMap<EngineHandle, EngineVoice>,
     flames: HashMap<u64, FlameVoice>,
     weather: Weather,
@@ -260,7 +286,7 @@ async fn fetcher(store: Rc<RefCell<Store>>) {
         let Some(asset) = store.borrow_mut().queue.pop_front() else { return };
         match fetch_bytes(asset.url()).await {
             Ok(bytes) => store.borrow_mut().fetched.push((asset, bytes)),
-            Err(e) => store.borrow_mut().fail(asset, &e),
+            Err(e) => store.borrow_mut().fetch_failed(asset, &e),
         }
     }
 }
@@ -398,7 +424,7 @@ impl Audio {
             Err(e) => web_sys::console::warn_2(&"arena-audio: no ScriptProcessor; music is silent".into(), &e),
         }
 
-        let mut live = Live {
+        let live = Live {
             ctx,
             master,
             sfx,
@@ -409,36 +435,30 @@ impl Audio {
             buffers: vec![Vec::new(); SoundId::ALL.len()],
             voices: (0..SoundId::ALL.len()).map(|_| Vec::new()).collect(),
             last_take: vec![usize::MAX; SoundId::ALL.len()],
-            schedule: schedule(),
-            next_render: 0,
+            synth_queue: VecDeque::new(),
+            unlocked_at: now_ms(),
             engines: HashMap::new(),
             flames: HashMap::new(),
             weather: Weather { wind: None, storm: None },
             _streams: streams,
             _verb: verb,
         };
-        // One take of every sound now, so anything can play from the start.
-        let t0 = now_ms();
-        // Capped, so a slow machine does not stall the click that unlocked
-        // audio; the air-strike sounds come last and finish in `tick()`.
-        while live.next_render < SoundId::ALL.len() && now_ms() - t0 < UNLOCK_BUDGET_MS {
-            live.render_one()?;
-        }
-        log(&format!(
-            "arena-audio: {} of {} sounds ready in {:.0} ms ({} Hz output); {} more takes render in the background",
-            live.next_render.min(SoundId::ALL.len()),
-            SoundId::ALL.len(),
-            now_ms() - t0,
-            rate,
-            live.schedule.len() - live.next_render
-        ));
+        // Nothing is synthesized up front: every sound is a file (fetched
+        // since startup, decoded off the main thread from now on), and a
+        // take is synthesized only for a sound whose file failed.
+        log(&format!("arena-audio: started ({rate} Hz output)"));
         Ok(live)
     }
 
-    /// Hands every fetched file to the decoder (needs the context).
+    /// Hands a few fetched files to the decoder (needs the context); the
+    /// decoding itself runs off the main thread and lands asynchronously.
     fn decode_fetched(&mut self) {
         let Some(live) = &self.live else { return };
-        let fetched = std::mem::take(&mut self.store.borrow_mut().fetched);
+        let fetched: Vec<_> = {
+            let mut st = self.store.borrow_mut();
+            let n = st.fetched.len().min(DECODES_PER_TICK);
+            st.fetched.drain(..n).collect()
+        };
         for (asset, bytes) in fetched {
             let store = self.store.clone();
             match live.ctx.decode_audio_data(&bytes) {
@@ -453,23 +473,35 @@ impl Audio {
         }
     }
 
-    /// Call once per frame: decodes newly fetched recordings, starts the
-    /// weather beds once they are in, and renders more synthesized take
-    /// variations, a few ms at a time, until all are done.
+    /// Call once per frame: retries failed fetches, decodes a few newly
+    /// fetched files, starts the weather beds once they are in, and renders
+    /// at most one synthesized fallback take (only ever for a sound whose
+    /// file failed or is very late, so normally never).
     pub fn tick(&mut self) {
+        let now = now_ms();
+        let due = {
+            let mut st = self.store.borrow_mut();
+            let due: Vec<Asset> = st.retry.iter().filter(|(_, t)| *t <= now).map(|(a, _)| *a).collect();
+            st.retry.retain(|(_, t)| *t > now);
+            st.queue.extend(due.iter().copied());
+            !due.is_empty()
+        };
+        if due {
+            spawn_local(fetcher(self.store.clone()));
+        }
         if self.live.is_none() {
             return;
         }
         self.decode_fetched();
         self.update_weather();
         let Some(live) = &mut self.live else { return };
-        if live.next_render >= live.schedule.len() {
-            return;
+        let failed = std::mem::take(&mut self.store.borrow_mut().failed_ids);
+        for id in failed {
+            live.want_synth(id);
         }
-        let t0 = now_ms();
-        while live.next_render < live.schedule.len() && now_ms() - t0 < TICK_BUDGET_MS {
-            if live.render_one().is_err() {
-                live.next_render = live.schedule.len();
+        if let Some(id) = live.synth_queue.pop_front() {
+            if !self.store.borrow().shots[id.index()].iter().any(Option::is_some) {
+                let _ = live.render_synth(id);
             }
         }
     }
@@ -496,6 +528,9 @@ impl Audio {
         }
         let Some(live) = &mut self.live else { return };
         let mut store = self.store.borrow_mut();
+        if !store.shots[id.index()].iter().any(Option::is_some) && now_ms() - live.unlocked_at > SLOW_LOAD_MS {
+            live.want_synth(id);
+        }
         if live.play(id, level, &heard, pos.is_some(), rate, &store, &mut self.rng).unwrap_or(false) {
             store.plays += 1;
             if store.plays % 16 == 1 {
@@ -765,9 +800,16 @@ impl Audio {
 }
 
 impl Live {
-    fn render_one(&mut self) -> Result<(), wasm_bindgen::JsValue> {
-        let Some(&(id, k)) = self.schedule.get(self.next_render) else { return Ok(()) };
-        self.next_render += 1;
+    /// Queues a synthesized take of `id`, once.
+    fn want_synth(&mut self, id: SoundId) {
+        if self.buffers[id.index()].is_empty() && !self.synth_queue.contains(&id) {
+            self.synth_queue.push_back(id);
+        }
+    }
+
+    /// Synthesizes one take of `id`: the fallback for a failed file.
+    fn render_synth(&mut self, id: SoundId) -> Result<(), wasm_bindgen::JsValue> {
+        let k = self.buffers[id.index()].len();
         let take = render(id, take_seed(k));
         let frames = take.frames().max(1) as u32;
         let buf = self.ctx.create_buffer(take.channels.len() as u32, frames, SR)?;
