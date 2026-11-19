@@ -240,7 +240,12 @@ impl Sim {
 
     /// Practice on The Sink with `bots` bots (difficulty 0..1) and one human; returns (sim, human id).
     pub fn practice(seed: u64, bots: usize, difficulty: f32) -> (Sim, PlayerId) {
-        let mut sim = Sim::new(seed, Map::the_sink(seed), Tuning::default());
+        Sim::practice_on(crate::map::MapId::Sink, seed, bots, difficulty)
+    }
+
+    /// Practice on map `id`; see [`Sim::practice`].
+    pub fn practice_on(id: crate::map::MapId, seed: u64, bots: usize, difficulty: f32) -> (Sim, PlayerId) {
+        let mut sim = Sim::new(seed, Map::by_id(id, seed), Tuning::default());
         let me = sim.add_player("You");
         for i in 0..bots {
             sim.add_bot(bots::BOT_NAMES[i % bots::BOT_NAMES.len()], difficulty);

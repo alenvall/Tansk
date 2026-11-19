@@ -24,6 +24,7 @@ mod meshkit;
 mod net;
 mod parts;
 mod props;
+mod props_refinery;
 mod renderer;
 mod shapes;
 mod tank;

@@ -433,6 +433,7 @@ impl Map {
         }
 
         let mut map = Map {
+            id: MapId::Sink,
             name: "The Sink".to_string(),
             seed,
             size,

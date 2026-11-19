@@ -9,7 +9,7 @@
 use std::collections::VecDeque;
 
 use arena_core::snapshot::{q_rot, Snapshot, TankSnap};
-use arena_core::{Input, Map, PlayerId, Quat, Sim, Tuning, Vec3};
+use arena_core::{Input, Map, MapId, PlayerId, Quat, Sim, Tuning, Vec3};
 
 /// Unacknowledged inputs kept at most (2 s): more means the link is gone.
 const MAX_PENDING: usize = 120;
@@ -31,12 +31,12 @@ pub struct Predictor {
 }
 
 /// The room's world, holding only player `me` (ids must match the server's).
-pub fn local_sim(seed: u64, me: PlayerId) -> Sim {
+pub fn local_sim(seed: u64, me: PlayerId, map: MapId) -> Sim {
     let mut tuning = Tuning::default();
     // The server decides when a match ends; the local copy never does.
     tuning.mode.time_limit = 1.0e9;
     tuning.mode.kill_limit = 0;
-    let mut sim = Sim::new(seed, Map::the_sink(seed), tuning);
+    let mut sim = Sim::new(seed, Map::by_id(map, seed), tuning);
     let mut filler = Vec::new();
     loop {
         let id = sim.add_player("You");
@@ -53,8 +53,8 @@ pub fn local_sim(seed: u64, me: PlayerId) -> Sim {
 }
 
 impl Predictor {
-    pub fn new(seed: u64, me: PlayerId) -> Self {
-        let sim = local_sim(seed, me);
+    pub fn new(seed: u64, me: PlayerId, map: MapId) -> Self {
+        let sim = local_sim(seed, me, map);
         let pose = sim.tank_pose(me).unwrap_or((Vec3::ZERO, Quat::IDENTITY));
         Predictor {
             sim,

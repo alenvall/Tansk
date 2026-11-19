@@ -858,6 +858,15 @@ pub struct WorldTuning {
     pub pipe_health: f32,
     pub fuel_silo_health: f32,
     pub fuel_tank_health: f32,
+    /// The Refinery: big storage tanks and rail tank cars.
+    pub storage_tank_health: f32,
+    pub tank_car_health: f32,
+    pub storage_blast_damage: f32,
+    pub storage_blast_radius: f32,
+    /// Chain reactions: a blown storage tank or tank car lights fuel hazards
+    /// whose skin is within this of its own, after about this fuse (s).
+    pub chain_reach: f32,
+    pub chain_fuse: f32,
     pub oil_drum_health: f32,
     /// Fuel explosions (silos, tanks, drums): damage, radius, knockback.
     pub fuel_blast_damage: f32,
@@ -895,6 +904,12 @@ impl Default for WorldTuning {
             pipe_health: 420.0,
             fuel_silo_health: 260.0,
             fuel_tank_health: 160.0,
+            storage_tank_health: 520.0,
+            tank_car_health: 220.0,
+            storage_blast_damage: 180.0,
+            storage_blast_radius: 22.0,
+            chain_reach: 16.0,
+            chain_fuse: 0.55,
             oil_drum_health: 30.0,
             fuel_blast_damage: 150.0,
             fuel_blast_radius: 16.0,

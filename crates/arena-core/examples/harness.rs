@@ -1,6 +1,7 @@
 //! Headless balance / fun harness: N seeded 8-bot Scrap Brawl matches.
 //!
-//!     cargo run --release -p arena-core --example harness -- [matches] [threads]
+//!     cargo run --release -p arena-core --example harness -- [matches] [threads] [--map sink|refinery]
+//!     cargo run --release -p arena-core --example harness -- raid [matches] [--map refinery]
 //!
 //! Prints fun metrics and flags "not fun" signals. Native only (uses threads).
 
@@ -43,7 +44,7 @@ fn loadout(t: &arena_core::tank::Tank) -> String {
 }
 
 fn run_match(seed: u64) -> MatchStats {
-    let mut sim = Sim::new(seed, Map::the_sink(seed), Tuning::default());
+    let mut sim = Sim::new(seed, Map::by_id(map_id(), seed), Tuning::default());
     for k in 0..8 {
         sim.add_bot(arena_core::bots::BOT_NAMES[k], 0.3 + 0.1 * (k % 6) as f32);
     }
@@ -121,8 +122,20 @@ fn run_match(seed: u64) -> MatchStats {
     st
 }
 
+static MAP: std::sync::OnceLock<MapId> = std::sync::OnceLock::new();
+
+fn map_id() -> MapId {
+    *MAP.get().unwrap_or(&MapId::Sink)
+}
+
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    let mut args: Vec<String> = std::env::args().collect();
+    if let Some(i) = args.iter().position(|a| a == "--map") {
+        let id = args.get(i + 1).and_then(|s| MapId::from_key(s)).expect("--map sink|refinery");
+        let _ = MAP.set(id);
+        args.drain(i..i + 2);
+    }
+    println!("map: {}", map_id().name());
     if args.get(1).map(|s| s.as_str()) == Some("raid") {
         let n: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(40);
         raid_main(n);
@@ -255,7 +268,7 @@ struct RaidRun {
 const RAID_WAVE_CAP: u32 = 15;
 
 fn run_raid(seed: u64) -> RaidRun {
-    let mut sim = Sim::new_raid(seed, Map::the_sink(seed), Tuning::default());
+    let mut sim = Sim::new_raid(seed, Map::by_id(map_id(), seed), Tuning::default());
     for k in 0..4 {
         sim.add_bot(arena_core::bots::BOT_NAMES[k], 0.6);
     }

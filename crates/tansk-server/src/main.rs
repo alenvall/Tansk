@@ -24,6 +24,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use arena::{ArenaCmd, ArenaInfo, ArenaRoom, ArenaRooms, Frame};
 use arena_core::raid::ModeKind;
+use arena_core::MapId;
 use axum::{Json, Router};
 use futures_util::{SinkExt, StreamExt};
 use games::{Incoming, Outgoing, RoomGame};
@@ -45,9 +46,19 @@ struct App {
     arena: ArenaRooms,
     next_conn: AtomicU64,
     seed: Mutex<u64>,
+    /// The map the next quick-match room gets (they alternate).
+    quick_map: Mutex<MapId>,
 }
 
 impl App {
+    /// The map for a new quick-match room: the Sink, the Refinery, the Sink...
+    fn next_quick_map(&self) -> MapId {
+        let mut m = self.quick_map.lock().unwrap();
+        let this = *m;
+        *m = this.next();
+        this
+    }
+
     fn random(&self) -> u64 {
         let mut s = self.seed.lock().unwrap();
         *s ^= *s << 13;
@@ -106,6 +117,7 @@ impl App {
             arena: ArenaRooms::default(),
             next_conn: AtomicU64::new(1),
             seed: Mutex::new(seed | 1),
+            quick_map: Mutex::new(MapId::Sink),
         })
     }
 }
@@ -260,7 +272,7 @@ async fn ws_arena(ws: WebSocketUpgrade, State(app): State<Arc<App>>) -> impl Int
 
 /// A new arena room, registered and running; returns its command channel.
 /// `reserve` counts the joining player in its info right away (quick match).
-fn create_arena(app: &Arc<App>, public: bool, reserve: bool, mode: ModeKind) -> mpsc::UnboundedSender<ArenaCmd> {
+fn create_arena(app: &Arc<App>, public: bool, reserve: bool, mode: ModeKind, map: MapId) -> mpsc::UnboundedSender<ArenaCmd> {
     let mut rooms = app.arena.rooms.lock().unwrap();
     let code = app.new_code(|c| rooms.contains_key(c));
     let (tx, rx) = mpsc::unbounded_channel();
@@ -271,10 +283,11 @@ fn create_arena(app: &Arc<App>, public: bool, reserve: bool, mode: ModeKind) -> 
         max_humans: if mode == ModeKind::RaiderWaves { crate::arena::RAID_SEATS } else { arena_core::net::ROOM_SEATS },
         ended: false,
         mode,
+        map,
     }));
     rooms.insert(code.clone(), (tx.clone(), info.clone()));
     drop(rooms);
-    let room = ArenaRoom::new(code.clone(), public, app.random(), info, mode);
+    let room = ArenaRoom::new(code.clone(), public, app.random(), info, mode, map);
     let app2 = app.clone();
     tokio::spawn(async move {
         room.run(rx).await;
@@ -284,7 +297,7 @@ fn create_arena(app: &Arc<App>, public: bool, reserve: bool, mode: ModeKind) -> 
 }
 
 async fn arena_connection(socket: WebSocket, app: Arc<App>) {
-    use arena_core::net::{decode, encode, ClientMsg, Join, ServerMsg};
+    use arena_core::net::{decode_client, encode, ClientMsg, Join, ServerMsg};
     let conn = app.next_conn.fetch_add(1, Ordering::Relaxed);
     let (mut sink, mut stream) = socket.split();
     let (out, mut out_rx) = mpsc::channel::<Frame>(256);
@@ -309,7 +322,7 @@ async fn arena_connection(socket: WebSocket, app: Arc<App>) {
             Message::Close(_) => break,
             _ => continue,
         };
-        let Some(msg) = decode::<ClientMsg>(&bytes) else { continue };
+        let Some(msg) = decode_client(&bytes) else { continue };
         let cmd = match msg {
             ClientMsg::Input { seq, input } => ArenaCmd::Input { conn, seq, input },
             ClientMsg::Chat(text) => ArenaCmd::Chat { conn, text },
@@ -326,13 +339,13 @@ async fn arena_connection(socket: WebSocket, app: Arc<App>) {
                             reject(BUSY.into());
                             break;
                         }
-                        None => (create_arena(&app, true, true, ModeKind::ScrapBrawl), None),
+                        None => (create_arena(&app, true, true, ModeKind::ScrapBrawl, app.next_quick_map()), None),
                     },
                     Join::Host { .. } if busy => {
                             reject(BUSY.into());
                             break;
                         }
-                    Join::Host { public, mode } => (create_arena(&app, public, false, mode), None),
+                    Join::Host { public, mode, map } => (create_arena(&app, public, false, mode, map), None),
                     Join::Code(code) => {
                         let code = code.trim().to_uppercase();
                         match lookup(&code) {
@@ -420,7 +433,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn arena_loopback() {
         let url = start_server().await;
-        let (a, code, id_a) = join(&url, "Ann", Join::Host { public: false, mode: ModeKind::ScrapBrawl }).await;
+        let (a, code, id_a) = join(&url, "Ann", Join::Host { public: false, mode: ModeKind::ScrapBrawl, map: MapId::Refinery }).await;
         let (b, code_b, id_b) = join(&url, "Bob", Join::Code(code.to_lowercase())).await;
         assert_eq!(code, code_b);
         assert_ne!(id_a, id_b);

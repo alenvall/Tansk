@@ -80,7 +80,7 @@ struct State {
     wr: WorldRenderer,
     game: Game,
     pause: Option<web_sys::Element>,
-    rooms: Rc<RefCell<Option<Vec<(String, u32, u32)>>>>,
+    rooms: Rc<RefCell<Option<Vec<RoomRow>>>>,
     start: f64,
     last: f64,
     frames: u32,
@@ -163,12 +163,19 @@ async fn run() -> Result<()> {
     game.debug.wave = query_flag("wave").and_then(|v| v.parse().ok());
     game.debug.fragile = query_flag("fragile").is_some();
     game.debug.boss = query_flag("boss").map(|v| v == "weak");
+    if let Some(m) = query_flag("map").and_then(|m| arena_core::MapId::from_key(&m)) {
+        game.practice_map = m;
+        // Show it on the title's map switch too.
+        if let Some(el) = document.query_selector(&format!("input[name=pmap][value={}]", m.key())).ok().flatten() {
+            let _ = js_sys::Reflect::set(&el, &JsValue::from_str("checked"), &JsValue::TRUE);
+        }
+    }
     match query_flag("autoplay").as_deref() {
         Some("practice") => game.start_practice(),
         Some("play") => game.start_online(Join::Play),
         Some("raid") => game.start_practice_raid(),
         Some("team") => game.start_practice_team(),
-        Some("host-raid") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::RaiderWaves }),
+        Some("host-raid") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::RaiderWaves, map: game.practice_map }),
         _ => {}
     }
     let pause = mount_pause(&document);
@@ -394,6 +401,7 @@ fn load_settings() -> Option<Settings> {
         vol_music: num(3, d.vol_music),
         vol_radio: num(4, d.vol_radio),
         mouse_sens: num(5, d.mouse_sens),
+        vol_ambience: f.get(7).and_then(|v| v.parse().ok()).unwrap_or(d.vol_ambience),
         quality: match f[6] {
             "low" => Quality::Low,
             "medium" => Quality::Medium,
@@ -411,14 +419,15 @@ fn save_settings(s: &Settings) {
         Quality::Ultra => "ultra",
     };
     let raw = format!(
-        "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
         s.name.replace('\t', " "),
         s.vol_master,
         s.vol_sfx,
         s.vol_music,
         s.vol_radio,
         s.mouse_sens,
-        q
+        q,
+        s.vol_ambience
     );
     if let Some(st) = storage() {
         let _ = st.set_item(SETTINGS_KEY, &raw);
@@ -428,7 +437,10 @@ fn save_settings(s: &Settings) {
 // ------------------------------------------------------------------ rooms
 
 /// Fetches `/api/arena/rooms` into `out` (picked up by the next frame).
-fn fetch_rooms(out: Rc<RefCell<Option<Vec<(String, u32, u32)>>>>) {
+/// (code, humans, max humans, mode, map) from `/api/arena/rooms`.
+type RoomRow = (String, u32, u32, String, String);
+
+fn fetch_rooms(out: Rc<RefCell<Option<Vec<RoomRow>>>>) {
     wasm_bindgen_futures::spawn_local(async move {
         let Some(window) = web_sys::window() else { return };
         let Ok(resp) = wasm_bindgen_futures::JsFuture::from(window.fetch_with_str("/api/arena/rooms")).await else {
@@ -446,7 +458,9 @@ fn fetch_rooms(out: Rc<RefCell<Option<Vec<(String, u32, u32)>>>>) {
             let code = prop(&r, "code").as_string().unwrap_or_default();
             let n = prop(&r, "humans").as_f64().unwrap_or(0.0) as u32;
             let max = prop(&r, "max_humans").as_f64().unwrap_or(8.0) as u32;
-            rooms.push((code, n, max));
+            let mode = prop(&r, "mode").as_string().unwrap_or_default();
+            let map = prop(&r, "map").as_string().unwrap_or_default();
+            rooms.push((code, n, max, mode, map));
         }
         *out.borrow_mut() = Some(rooms);
     });

@@ -9,6 +9,7 @@
 //! not a laser.
 
 use crate::dsp::{finish, finish_channels, Rng, SR};
+use crate::horns::{aooga, foghorn, melody, squeeze, train, truck};
 use crate::raid::{air_raid_siren, bomb_whistle, bomber_flyover, boss_roar, flare_pop, module_blowout, wave_horn};
 use crate::layers::{
     buzz, clatter, crackle, echo, m, modes, noise, ratchet, strike, thump, tone, Crackle, Noise,
@@ -89,6 +90,13 @@ sound_ids! {
     WaveHorn => "wave_horn",
     BossRoar => "boss_roar",
     ModuleBlowout => "module_blowout",
+    // The Garage horns; `SoundId::horn(i)` picks one.
+    Horn0 => "horn_0",
+    Horn1 => "horn_1",
+    Horn2 => "horn_2",
+    Horn3 => "horn_3",
+    Horn4 => "horn_4",
+    Horn5 => "horn_5",
 }
 
 /// How a sound is rendered and played.
@@ -114,6 +122,17 @@ const fn info(seconds: f32, stereo: bool, peak: f32, voices: u8, variants: u8, p
 }
 
 impl SoundId {
+    /// The Garage horns, in order: truck air horn, "La Cucaracha" trumpet,
+    /// foghorn, klaxon "aooga", squeeze horn, train whistle.
+    pub const HORNS: [SoundId; 6] =
+        [SoundId::Horn0, SoundId::Horn1, SoundId::Horn2, SoundId::Horn3, SoundId::Horn4, SoundId::Horn5];
+
+    /// Garage horn `index` (wraps, so any stored choice plays something).
+    #[must_use]
+    pub const fn horn(index: usize) -> SoundId {
+        Self::HORNS[index % Self::HORNS.len()]
+    }
+
     #[must_use]
     pub const fn index(self) -> usize {
         self as usize
@@ -165,6 +184,12 @@ impl SoundId {
             WaveHorn => info(3.0, false, 0.8, 1, 1, 0.0, false),
             BossRoar => info(3.8, false, 0.95, 1, 2, 0.02, true),
             ModuleBlowout => info(2.8, true, 0.97, 3, 2, 0.03, true),
+            Horn0 => info(1.6, false, 0.75, 2, 2, 0.01, true),
+            Horn1 => info(1.6, false, 0.75, 2, 2, 0.0, true),
+            Horn2 => info(2.0, false, 0.8, 2, 2, 0.01, true),
+            Horn3 => info(1.3, false, 0.75, 2, 2, 0.01, true),
+            Horn4 => info(1.0, false, 0.7, 2, 2, 0.02, true),
+            Horn5 => info(2.0, false, 0.7, 2, 2, 0.01, true),
         }
     }
 }
@@ -271,6 +296,12 @@ fn recipe(id: SoundId) -> Recipe {
         WaveHorn => wave_horn,
         BossRoar => boss_roar,
         ModuleBlowout => module_blowout,
+        Horn0 => truck,
+        Horn1 => melody,
+        Horn2 => foghorn,
+        Horn3 => aooga,
+        Horn4 => squeeze,
+        Horn5 => train,
     }
 }
 

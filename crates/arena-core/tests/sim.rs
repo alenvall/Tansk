@@ -481,3 +481,117 @@ fn the_sink_has_its_places_and_they_connect() {
         assert!(nav.reachable(glam::Vec2::new(s.pos.x, s.pos.z), o), "scrap site at {} unreachable", s.pos);
     }
 }
+
+#[test]
+fn the_refinery_follows_the_level_rules() {
+    let map = Map::refinery(1);
+    assert_eq!(map.id, arena_core::MapId::Refinery);
+    assert_eq!(map, Map::by_id(arena_core::MapId::Refinery, 1));
+    assert_eq!(map.spawns.len(), 8);
+    assert!(map.scrap_sites.len() >= 30);
+    for o in &map.obstacles {
+        let top = map.obstacle_top_above_ground(o);
+        match o.cover {
+            Cover::Low => assert!(top < 1.2, "{:?} low cover is {top} m tall", o.kind),
+            Cover::Tall => {
+                for (c, r, h) in o.world_boxes() {
+                    let top_c = c.y + (r * Vec3::Y).y.abs() * h.y - map.height_at(c.x, c.z);
+                    assert!(top_c > 2.5, "{:?} tall cover box is only {top_c} m", o.kind);
+                }
+            }
+            Cover::Flat => assert!(top < 0.6, "{:?} deck sticks up {top} m", o.kind),
+        }
+        // Overhead pipe bundles leave room for a tank (and its mast) underneath.
+        if o.kind == ObstacleKind::PipeRack {
+            let (c, _, h) = o.world_boxes().next().unwrap();
+            let clear = c.y - h.y - map.height_at(c.x, c.z);
+            assert!(clear > 5.0, "pipe rack only {clear} m clear");
+        }
+    }
+}
+
+#[test]
+fn the_refinery_has_its_places_and_they_connect() {
+    let map = Map::refinery(21);
+    let names: Vec<&str> = map.regions.iter().map(|r| r.name.as_str()).collect();
+    for n in ["The Control House", "The Tank Farm", "The Cracking Towers", "The Derrick Field", "The Loading Yard", "The Flare Stack"] {
+        assert!(names.contains(&n), "missing region {n}");
+    }
+    for k in [
+        ObstacleKind::StorageTank,
+        ObstacleKind::Column,
+        ObstacleKind::PipeRack,
+        ObstacleKind::Pumpjack,
+        ObstacleKind::Derrick,
+        ObstacleKind::TankCar,
+        ObstacleKind::Rails,
+        ObstacleKind::FlareStack,
+        ObstacleKind::ControlHouse,
+        ObstacleKind::Crane,
+        ObstacleKind::LaunchPlate,
+    ] {
+        assert!(map.obstacles.iter().any(|o| o.kind == k), "no {k:?}");
+    }
+    println!("The Refinery: {} obstacles, {} boxes", map.obstacles.len(), map.obstacles.iter().map(|o| o.boxes.len()).sum::<usize>());
+    for r in &map.regions {
+        let n = map.scrap_sites.iter().filter(|s| s.pos.distance(r.center) < r.radius).count();
+        assert!(n >= 3, "{} has only {n} scrap sites", r.name);
+    }
+    let nav = arena_core::bots::NavGrid::build(&map, 4.0);
+    let o = glam::Vec2::new(map.outpost.x, map.outpost.z);
+    assert!(!map.blocked_xz(o, 16.0), "the outpost courtyard must be open");
+    for (i, s) in map.spawns.iter().enumerate() {
+        let p = glam::Vec2::new(s.pos.x, s.pos.z);
+        assert!(!map.blocked_xz(p, 5.0), "spawn {i} is blocked");
+        assert!(nav.reachable(p, o), "spawn {i} can't drive to the outpost");
+        for t in map.spawns.iter().skip(i + 1) {
+            assert!(t.pos.distance(s.pos) > 90.0, "spawns too close");
+        }
+        assert!(map.obstacles.iter().any(|ob| ob.cover != Cover::Flat && glam::Vec2::new(ob.pos.x, ob.pos.z).distance(p) < 30.0));
+    }
+    for k in 0..16 {
+        let a = k as f32 * std::f32::consts::TAU / 16.0;
+        let p = glam::Vec2::new(a.cos(), a.sin()) * 255.0;
+        if !map.blocked_xz(p, 4.0) {
+            assert!(nav.reachable(p, o), "raid edge at {p} is cut off");
+        }
+    }
+    for s in &map.scrap_sites {
+        let p = glam::Vec2::new(s.pos.x, s.pos.z);
+        assert!(!map.blocked_xz(p, 1.0), "scrap site at {} is inside cover", s.pos);
+        assert!(nav.reachable(p, o), "scrap site at {} unreachable", s.pos);
+    }
+    // Lanes: no two tall obstacles' footprints leave a gap a tank can't use
+    // (either they touch, or the gap is at least 8 m).
+    let tall: Vec<&arena_core::Obstacle> = map.obstacles.iter().filter(|o| o.cover == Cover::Tall && matches!(o.kind, ObstacleKind::StorageTank | ObstacleKind::Column | ObstacleKind::TankCar)).collect();
+    for (i, a) in tall.iter().enumerate() {
+        for b in tall.iter().skip(i + 1) {
+            let ra = a.boxes[0].half.x.min(a.boxes[0].half.z);
+            let rb = b.boxes[0].half.x.min(b.boxes[0].half.z);
+            let gap = glam::Vec2::new(a.pos.x - b.pos.x, a.pos.z - b.pos.z).length() - ra - rb;
+            if a.kind == ObstacleKind::TankCar && b.kind == ObstacleKind::TankCar {
+                continue; // coupled cars stand nose to tail
+            }
+            assert!(gap > 7.5 || gap < 0.0, "{:?} and {:?} leave a {gap} m slot", a.kind, b.kind);
+        }
+    }
+}
+
+/// A storage tank blown up sets off the next one in its row (on a fuse).
+#[test]
+fn storage_tanks_chain() {
+    let map = Map::refinery(5);
+    let mut sim = Sim::new(5, map, Tuning::default());
+    let tanks: Vec<usize> = sim.map.obstacles.iter().enumerate().filter(|(_, o)| o.kind == ObstacleKind::StorageTank).map(|(i, _)| i).collect();
+    assert!(tanks.len() >= 8);
+    let first = tanks[0];
+    let c = sim.map.obstacles[first].pos + Vec3::Y * 4.0;
+    sim.blast(c, 5000.0, 6.0, 0.0);
+    let mut blown = 0;
+    for _ in 0..(60 * 6) {
+        sim.step();
+        blown += sim.drain_events().iter().filter(|e| matches!(e, arena_core::Event::HazardExploded { .. })).count();
+    }
+    println!("{blown} explosions from one storage tank");
+    assert!(blown >= 3, "only {blown} explosions: no chain");
+}

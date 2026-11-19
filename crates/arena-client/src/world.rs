@@ -19,6 +19,7 @@ use crate::effects::Fx;
 use crate::meshkit::{MeshBuilder, Paint};
 use crate::parts;
 use crate::props;
+use crate::props_refinery as refinery;
 use crate::renderer::{Instance, Light, MeshId, Renderer};
 use crate::shapes::hash;
 use crate::tank;
@@ -156,10 +157,13 @@ impl RenderWorld {
     pub fn from_snapshot(snap: &Snapshot, colour_of: &dyn Fn(PlayerId) -> u32) -> RenderWorld {
         let ray = 0.85;
         let tuning = arena_core::Tuning::default();
-        // Team play: defenders (team 0) in their colour, raiders (team 1)
-        // in the raider scheme; free-for-all (255) by player.
+        // Team play: team 0 Rustback orange; team 1 the Dust Saints' teal in
+        // Team Brawl, or the raider scheme in Raider Waves (a raid snapshot
+        // says which); free-for-all (255) by player.
+        let raid = snap.raid.is_some();
         let team_colour = |t: &arena_core::snapshot::TankSnap| match t.team {
-            1 => tank::RAIDER,
+            1 if raid => tank::RAIDER,
+            1 => tank::DUST_SAINT,
             0 => tank::RUSTBACK,
             _ => colour_of(t.player),
         };
@@ -243,14 +247,39 @@ pub fn paint_for(player: PlayerId) -> u32 {
     PAINT_SET[player as usize % PAINT_SET.len()]
 }
 
-/// Meshes built on first use and uploaded once.
+/// Meshes built on first use and uploaded once. Pinned meshes (tanks,
+/// parts, effects props) live for the whole session; scene meshes (map
+/// pieces, keyed by sizes that change with every map and seed) belong to
+/// the open scene and are freed with it.
 pub struct Library {
     ids: HashMap<String, MeshId>,
+    scene_ids: HashMap<String, MeshId>,
 }
 
 impl Library {
     pub fn new() -> Self {
-        Self { ids: HashMap::new() }
+        Self { ids: HashMap::new(), scene_ids: HashMap::new() }
+    }
+
+    /// A mesh shared within the current scene only (recorded in its scope).
+    pub fn scene(&mut self, r: &mut Renderer, key: &str, build: impl FnOnce() -> MeshBuilder) -> MeshId {
+        if let Some(id) = self.scene_ids.get(key) {
+            return *id;
+        }
+        let id = r.add_mesh(&build());
+        self.scene_ids.insert(key.to_string(), id);
+        id
+    }
+
+    /// Forgets the scene meshes (the scene that owned them is being freed).
+    fn clear_scene(&mut self) {
+        self.scene_ids.clear();
+    }
+
+    /// Pinned meshes held (for leak checks).
+    #[allow(dead_code)]
+    pub fn pinned(&self) -> usize {
+        self.ids.len()
     }
 
     pub fn get(&mut self, r: &mut Renderer, key: &str, build: impl FnOnce() -> MeshBuilder) -> MeshId {
@@ -288,6 +317,8 @@ pub struct WorldRenderer {
     blobs: Vec<Vec4>,
     /// Crane jib tips the wrecking-ball ropes hang from.
     crane_anchors: Vec<Vec3>,
+    /// Pumpjacks to animate: (obstacle, frame, phase).
+    pumpjacks: Vec<(u16, Mat4, f32)>,
     /// When each air strike's run began (renderer clock).
     strike_runs: HashMap<u16, f32>,
     /// Chassis sizes, suspension and turret pivots for every vehicle.
@@ -313,6 +344,7 @@ impl WorldRenderer {
             map_occluders: Vec::new(),
             blobs: Vec::new(),
             crane_anchors: Vec::new(),
+            pumpjacks: Vec::new(),
             strike_runs: HashMap::new(),
             tuning: arena_core::Tuning::default(),
             scene_meshes: Vec::new(),
@@ -325,10 +357,12 @@ impl WorldRenderer {
     /// Frees the previous static scene's meshes and starts recording the
     /// next one's. `set_map`, the line-ups and the podium call this.
     pub fn begin_scene(&mut self) {
-        for id in std::mem::take(&mut self.scene_meshes) {
+        // Anything a scene left open (never ended) goes too.
+        let open = self.renderer.end_scope();
+        for id in std::mem::take(&mut self.scene_meshes).into_iter().chain(open) {
             self.renderer.free_mesh(id);
         }
-        self.renderer.end_scope();
+        self.lib.clear_scene();
         self.renderer.begin_scope();
     }
 
@@ -342,6 +376,8 @@ impl WorldRenderer {
         self.statics.clear();
         self.blobs.clear();
         self.crane_anchors = map.cranes.iter().map(|c| c.anchor).collect();
+        self.pumpjacks.clear();
+        self.fx.flares.clear();
         let r = &mut self.renderer;
         let lib = &mut self.lib;
         for (mesh, transform) in crate::terrain::build(map) {
@@ -363,12 +399,29 @@ impl WorldRenderer {
                     self.statics.push(StaticPiece { instance: Instance::new(id, frame * Mat4::from_translation(c - Vec3::Y * h.y)), owner: Some((oi as u16, 255)) });
                 }
                 ObstacleKind::PowerPole => {
-                    let id = lib.get(r, "pole", props::power_pole);
+                    let id = lib.scene(r, "pole", props::power_pole);
                     self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
                 }
                 ObstacleKind::Crane if boxes.len() >= 2 => {
                     let id = r.add_mesh(&props::crane(boxes[0], boxes[1]));
                     self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                }
+                ObstacleKind::Derrick if boxes.len() >= 5 => {
+                    let base = boxes[0].0.x.abs().max(boxes[0].0.z.abs());
+                    let top = boxes[4].0.y + boxes[4].1.y;
+                    let id = lib.scene(r, &format!("derrick:{base:.2}:{top:.2}"), || refinery::derrick(base, top));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                }
+                ObstacleKind::FlareStack if boxes.len() >= 2 => {
+                    let id = r.add_mesh(&refinery::flare_stack(boxes[0], boxes[1]));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                    let tip = boxes[1].0.y + boxes[1].1.y + 1.4;
+                    self.fx.flares.push(frame.transform_point3(Vec3::Y * tip));
+                }
+                ObstacleKind::Pumpjack => {
+                    let id = lib.scene(r, "pumpjack:base", refinery::pumpjack_base);
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                    self.pumpjacks.push((oi as u16, frame, hash(oi as u32, 41) * std::f32::consts::TAU));
                 }
                 _ => {
                     for (bi, b) in o.boxes.iter().enumerate() {
@@ -380,48 +433,61 @@ impl WorldRenderer {
                         let id = match o.kind {
                             ObstacleKind::ContainerStack => {
                                 let c = props::CONTAINER_COLOURS[(hash(bi as u32, seed) * 4.0) as usize % 4];
-                                lib.get(r, &format!("{}:{c:x}", k("container")), || lift(props::container(h, c), h.y))
+                                lib.scene(r, &format!("{}:{c:x}", k("container")), || lift(props::container(h, c), h.y))
                             }
                             ObstacleKind::Barrier => {
                                 let hz = (oi + bi) % 3 == 0;
-                                lib.get(r, &format!("{}:{hz}", k("barrier")), || lift(props::barrier(h, hz), h.y))
+                                lib.scene(r, &format!("{}:{hz}", k("barrier")), || lift(props::barrier(h, hz), h.y))
                             }
-                            ObstacleKind::Sandbags => lib.get(r, &k("sandbags"), || lift(props::sandbags(h, 5), h.y)),
-                            ObstacleKind::Silo => lib.get(r, &k("silo"), || lift(props::silo(h.x, h.y), h.y)),
+                            ObstacleKind::Sandbags => lib.scene(r, &k("sandbags"), || lift(props::sandbags(h, 5), h.y)),
+                            ObstacleKind::Silo => lib.scene(r, &k("silo"), || lift(props::silo(h.x, h.y), h.y)),
                             ObstacleKind::RockFormation => r.add_mesh(&lift(props::rock_block(h, seed + bi as u32), h.y)),
                             ObstacleKind::Mesa => r.add_mesh(&lift(props::mesa_block(h, seed + bi as u32), h.y)),
-                            ObstacleKind::Highway => lib.get(r, &k("highway"), || lift(props::highway(h), h.y)),
-                            ObstacleKind::Pipe => lib.get(r, &k("pipe"), || lift(props::pipe(h), h.y)),
+                            ObstacleKind::Highway => lib.scene(r, &k("highway"), || lift(props::highway(h), h.y)),
+                            ObstacleKind::Pipe => lib.scene(r, &k("pipe"), || lift(props::pipe(h), h.y)),
                             ObstacleKind::CarWreck => {
                                 let v = (hash(oi as u32, 3) * 4.0) as u32;
-                                lib.get(r, &format!("{}:{v}", k("car")), || lift(props::car_wreck(h, v), h.y))
+                                lib.scene(r, &format!("{}:{v}", k("car")), || lift(props::car_wreck(h, v), h.y))
                             }
-                            ObstacleKind::PierRuin => lib.get(r, &k("pier"), || lift(props::pier_ruin(h, 3), h.y)),
-                            ObstacleKind::Wall => lib.get(r, &k("wall"), || lift(props::wall_segment(h, 3), h.y)),
-                            ObstacleKind::Tent => lib.get(r, &k("tent"), || lift(props::quonset(h), h.y)),
-                            ObstacleKind::Hedgehog => lib.get(r, "hedgehog", props::hedgehog),
+                            ObstacleKind::PierRuin => lib.scene(r, &k("pier"), || lift(props::pier_ruin(h, 3), h.y)),
+                            ObstacleKind::Wall => lib.scene(r, &k("wall"), || lift(props::wall_segment(h, 3), h.y)),
+                            ObstacleKind::Tent => lib.scene(r, &k("tent"), || lift(props::quonset(h), h.y)),
+                            ObstacleKind::Hedgehog => lib.scene(r, "hedgehog", props::hedgehog),
                             ObstacleKind::GasStation => match bi {
-                                0 => lib.get(r, &k("gasshop"), || lift(props::gas_shop(h), h.y)),
-                                1 => lib.get(r, &k("canopy"), || lift(props::canopy(h), h.y)),
+                                0 => lib.scene(r, &k("gasshop"), || lift(props::gas_shop(h), h.y)),
+                                1 => lib.scene(r, &k("canopy"), || lift(props::canopy(h), h.y)),
                                 _ => {
                                     let pump = bi % 2 == 0;
-                                    lib.get(r, &format!("{}:{pump}", k("pillar")), || lift(props::pillar(h, pump), h.y))
+                                    lib.scene(r, &format!("{}:{pump}", k("pillar")), || lift(props::pillar(h, pump), h.y))
                                 }
                             },
-                            ObstacleKind::LaunchPlate => lib.get(r, &k("launch"), || lift(props::launch_plate(h), 2.0 * h.y - 0.12)),
-                            ObstacleKind::Crates => lib.get(r, &k("crates"), || {
+                            ObstacleKind::StorageTank => {
+                                let v = oi as u32 % 3;
+                                lib.scene(r, &format!("{}:{v}", k("storage")), || lift(refinery::storage_tank(h.x, h.y, v), h.y))
+                            }
+                            ObstacleKind::Column => lib.scene(r, &k("column"), || lift(refinery::column(h.x, h.y), h.y)),
+                            ObstacleKind::PipeRack if bi == 0 => lib.scene(r, &k("rack"), || lift(refinery::rack_bundle(h), h.y)),
+                            ObstacleKind::PipeRack => lib.scene(r, &k("rackleg"), || lift(refinery::rack_leg(h), h.y)),
+                            ObstacleKind::TankCar => {
+                                let v = (hash(oi as u32, 9) * 3.0) as u32;
+                                lib.scene(r, &format!("{}:{v}", k("tankcar")), || lift(refinery::tank_car(h, v), h.y))
+                            }
+                            ObstacleKind::Rails => lib.scene(r, &k("rails"), || lift(refinery::rails(h), h.y)),
+                            ObstacleKind::ControlHouse => lib.scene(r, &k("controlhouse"), || lift(refinery::control_house(h), h.y)),
+                            ObstacleKind::LaunchPlate => lib.scene(r, &k("launch"), || lift(props::launch_plate(h), 2.0 * h.y - 0.12)),
+                            ObstacleKind::Crates => lib.scene(r, &k("crates"), || {
                                 let mut m = MeshBuilder::new();
                                 crate::tank::crate_box(&mut m, Vec3::ZERO, h);
                                 lift(m, h.y)
                             }),
-                            ObstacleKind::FuelTank => lib.get(r, &k("fueltank"), || {
+                            ObstacleKind::FuelTank => lib.scene(r, &k("fueltank"), || {
                                 let mut m = MeshBuilder::new();
                                 let rr = h.y.min(h.z);
                                 m.cylinder(rr, h.x, rr * 0.3, 2, 18, Paint::painted(0xdcaa22, 0.6), Mat4::from_rotation_z(-std::f32::consts::FRAC_PI_2));
                                 m.bevel_box(Vec3::new(0.5, 0.3, h.z * 0.6), 0.04, 1, Paint::with(crate::meshkit::Material::Hazard, 0xffffff, 0.6), Mat4::from_translation(Vec3::new(0.0, 0.0, rr)));
                                 lift(m, h.y)
                             }),
-                            _ => lib.get(r, &k("generic"), || lift(generic_box(h), h.y)),
+                            _ => lib.scene(r, &k("generic"), || lift(generic_box(h), h.y)),
                         };
                         self.statics.push(StaticPiece { instance: Instance::new(id, xf), owner: Some((oi as u16, bi as u8)) });
                     }
@@ -451,6 +517,8 @@ impl WorldRenderer {
         self.statics = statics.into_iter().map(|instance| StaticPiece { instance, owner: None }).collect();
         self.blobs.clear();
         self.crane_anchors.clear();
+        self.pumpjacks.clear();
+        self.fx.flares.clear();
         if self.renderer.in_scope() {
             self.end_scene();
         }
@@ -466,6 +534,7 @@ impl WorldRenderer {
         };
         let mut placed = 0;
         let mut blobs: Vec<Vec4> = Vec::new();
+        let salt = map.id == arena_core::MapId::Refinery;
         // Clusters hugging each obstacle: the outpost clutter. Tall bits sit
         // tight against the cover (inside its footprint margin), flat bits
         // spill a little further out where tanks can drive over them.
@@ -494,32 +563,32 @@ impl WorldRenderer {
                 let rocky = matches!(o.kind, ObstacleKind::Mesa | ObstacleKind::RockFormation);
                 let (id, blob) = if rocky {
                     if tall {
-                        (lib.get(r, &format!("boulder:{}", seed % 6), || props::boulder(seed % 6 + 17, 0.4 + 0.25 * (seed % 6) as f32)), 0.9)
+                        (lib.scene(r, &format!("boulder:{}", seed % 6), || props::boulder(seed % 6 + 17, 0.4 + 0.25 * (seed % 6) as f32)), 0.9)
                     } else if kind_roll < 0.75 {
-                        (lib.get(r, &format!("shrub:{v}"), || props::shrub(v)), 0.6)
+                        (lib.scene(r, &format!("shrub:{v}"), || props::shrub(v)), 0.6)
                     } else {
-                        (lib.get(r, &format!("pebbles:{v}"), || props::pebbles(v)), 0.0)
+                        (lib.scene(r, &format!("pebbles:{v}"), || props::pebbles(v)), 0.0)
                     }
                 } else if tall {
                     match seed % 5 {
-                        0 => (lib.get(r, "crates", || props::crates(1)), 1.4),
-                        1 => (lib.get(r, &format!("jerry:{v}"), || props::jerrycans(v)), 0.5),
-                        2 => (lib.get(r, &format!("tarp:{v}"), || props::tarp(v)), 1.4),
-                        3 => (lib.get(r, "sandbags:short", || {
+                        0 => (lib.scene(r, "crates", || props::crates(1)), 1.4),
+                        1 => (lib.scene(r, &format!("jerry:{v}"), || props::jerrycans(v)), 0.5),
+                        2 => (lib.scene(r, &format!("tarp:{v}"), || props::tarp(v)), 1.4),
+                        3 => (lib.scene(r, "sandbags:short", || {
                             let mut m = props::sandbags(Vec3::new(1.4, 0.4, 0.3), 9);
                             m.transform_from(0, Mat4::from_translation(Vec3::Y * 0.4));
                             m
                         }), 1.4),
-                        _ => (lib.get(r, "tyres:3", || props::tyres(3, 2)), 0.6),
+                        _ => (lib.scene(r, "tyres:3", || props::tyres(3, 2)), 0.6),
                     }
                 } else {
                     match seed % 6 {
-                        0 => (lib.get(r, &format!("pallet:{v}"), || props::pallet(v)), 0.7),
-                        1 => (lib.get(r, &format!("cinder:{v}"), || props::cinder_blocks(v)), 0.4),
-                        2 => (lib.get(r, &format!("sheet:{v}"), || props::sheet_on_ground(v)), 0.0),
-                        3 => (lib.get(r, "tyres:1", || props::tyres(1, 1)), 0.5),
-                        4 => (lib.get(r, &format!("pebbles:{v}"), || props::pebbles(v)), 0.0),
-                        _ => (lib.get(r, &format!("tuft:{v}"), || props::grass_tuft(v)), 0.0),
+                        0 => (lib.scene(r, &format!("pallet:{v}"), || props::pallet(v)), 0.7),
+                        1 => (lib.scene(r, &format!("cinder:{v}"), || props::cinder_blocks(v)), 0.4),
+                        2 => (lib.scene(r, &format!("sheet:{v}"), || props::sheet_on_ground(v)), 0.0),
+                        3 => (lib.scene(r, "tyres:1", || props::tyres(1, 1)), 0.5),
+                        4 => (lib.scene(r, &format!("pebbles:{v}"), || props::pebbles(v)), 0.0),
+                        _ => (lib.scene(r, &format!("tuft:{v}"), || props::grass_tuft(v)), 0.0),
                     }
                 };
                 put(&mut self.statics, id, p, a * 2.0);
@@ -544,11 +613,11 @@ impl WorldRenderer {
             let v = i % 4;
             let roll = hash(i, 504);
             let id = if roll < 0.6 {
-                lib.get(r, &format!("tuft:{v}"), || props::grass_tuft(v))
+                lib.scene(r, &format!("tuft:{v}"), || props::grass_tuft(v))
             } else if roll < 0.85 {
-                lib.get(r, &format!("pebbles:{}", v % 3), || props::pebbles(v % 3))
+                lib.scene(r, &format!("pebbles:{}", v % 3), || props::pebbles(v % 3))
             } else {
-                lib.get(r, &format!("shrub:{}", v % 3), || props::shrub(v % 3))
+                lib.scene(r, &format!("shrub:{}", v % 3), || props::shrub(v % 3))
             };
             put(&mut self.statics, id, p, hash(i, 505) * 6.28);
             placed += 1;
@@ -562,22 +631,30 @@ impl WorldRenderer {
             let p = Vec3::new(x, map.height_at(x, z), z);
             let roll = hash(i, 303);
             let yaw = hash(i, 404) * 6.28;
-            let id = if roll < 0.28 {
+            let id = if roll < 0.28 && salt {
+                // No cacti on the salt: pipe runs on sleepers instead.
+                let v = i % 3;
+                if roll < 0.1 {
+                    lib.scene(r, &format!("gpipe:{v}"), || refinery::ground_pipe(5.0 + 2.0 * v as f32, [0x8a8a82, 0x7a3a26, 0xd6a21e][v as usize]))
+                } else {
+                    lib.scene(r, &format!("pebbles:{v}"), || props::pebbles(v))
+                }
+            } else if roll < 0.28 {
                 let v = i % 4;
-                lib.get(r, &format!("cactus:{v}"), || props::cactus(v))
+                lib.scene(r, &format!("cactus:{v}"), || props::cactus(v))
             } else if roll < 0.62 {
                 let v = i % 6;
-                lib.get(r, &format!("boulder:{v}"), || props::boulder(v + 17, 0.4 + 0.25 * v as f32))
+                lib.scene(r, &format!("boulder:{v}"), || props::boulder(v + 17, 0.4 + 0.25 * v as f32))
             } else if roll < 0.72 {
-                lib.get(r, "tyres:1", || props::tyres(1, 1))
+                lib.scene(r, "tyres:1", || props::tyres(1, 1))
             } else if roll < 0.78 {
-                lib.get(r, "tyres:3", || props::tyres(3, 2))
+                lib.scene(r, "tyres:3", || props::tyres(3, 2))
             } else if roll < 0.86 {
-                lib.get(r, "crates", || props::crates(1))
+                lib.scene(r, "crates", || props::crates(1))
             } else if roll < 0.93 {
-                lib.get(r, "hedgehog", props::hedgehog)
+                lib.scene(r, "hedgehog", props::hedgehog)
             } else {
-                lib.get(r, "razor", || props::razor_wire(4.0))
+                lib.scene(r, "razor", || props::razor_wire(4.0))
             };
             put(&mut self.statics, id, p, yaw);
             if roll >= 0.28 {
@@ -601,7 +678,7 @@ impl WorldRenderer {
             return;
         }
         let hw: Vec<_> = map.obstacles.iter().filter(|o| o.kind == ObstacleKind::Highway).collect();
-        let pole = lib.get(r, "pole", props::power_pole);
+        let pole = lib.scene(r, "pole", props::power_pole);
         let mut prev: Option<Vec3> = None;
         for (k, o) in hw.iter().enumerate() {
             if k % 3 != 0 {
@@ -843,6 +920,19 @@ impl WorldRenderer {
             let rot = Quat::from_rotation_arc(Vec3::X, s.vel.normalize_or(Vec3::X));
             instances.push(Instance::new(id, Mat4::from_rotation_translation(rot, s.pos)));
         }
+        for (oi, frame, phase) in &self.pumpjacks {
+            if world.removed.iter().any(|&(ro, _)| ro == *oi) {
+                continue;
+            }
+            // About seven strokes a minute; the head bobs, the crank turns.
+            let a = world.time * 0.75 + phase;
+            let beam = lib.get(r, "pumpjack:beam", refinery::pumpjack_beam);
+            let xf = *frame * Mat4::from_rotation_translation(Quat::from_rotation_z(a.sin() * 0.26), refinery::PUMPJACK_PIVOT);
+            instances.push(Instance::new(beam, xf));
+            let crank = lib.get(r, "pumpjack:crank", refinery::pumpjack_crank);
+            let xf = *frame * Mat4::from_rotation_translation(Quat::from_rotation_z(-a), refinery::PUMPJACK_CRANK);
+            instances.push(Instance::new(crank, xf));
+        }
         for (_, p, _) in &world.mines {
             let id = lib.get(r, "mine", props::mine);
             instances.push(Instance::new(id, Mat4::from_translation(*p)));
@@ -875,7 +965,9 @@ impl WorldRenderer {
             let rot = Quat::from_rotation_arc(Vec3::X, dir);
             instances.push(Instance::new(id, Mat4::from_rotation_translation(rot, pos)));
         }
-        let mut lights: Vec<Light> = self.fx.lights();
+        let mut lights: Vec<Light> = self.fx.lights_with(
+            &self.fx.flares.iter().map(|f| Light { pos: *f + Vec3::Y * 2.0, radius: 30.0, color: Vec3::new(1.0, 0.55, 0.18) * (5.0 + (world.time * 9.0).sin()) }).collect::<Vec<_>>(),
+        );
         for p in &world.pickups {
             if lights.len() < 6 {
                 lights.push(Light { pos: p.pos + Vec3::Y, radius: 4.0, color: Vec3::new(1.0, 0.8, 0.4) * 0.6 });
@@ -1216,6 +1308,134 @@ mod shots {
             log::info!("raid shot: boss {:?} at {focus:?}, {} tanks, raid {:?}", rig.is_some(), world.tanks.len(), world.raid);
             world
         });
+    }
+
+    /// The Refinery in play: a practice match run a while, then views of
+    /// each place (`refinery-*.png`) and a chase shot behind a tank.
+    #[test]
+    #[ignore]
+    fn shots_refinery() {
+        let seed = 7;
+        let views: [(&str, Vec3, Vec3); 6] = [
+            ("refinery-farm", Vec3::new(95.0, 30.0, -40.0), Vec3::new(180.0, 4.0, 40.0)),
+            ("refinery-towers", Vec3::new(60.0, 5.0, -105.0), Vec3::new(150.0, 9.0, -190.0)),
+            ("refinery-derricks", Vec3::new(-90.0, 9.0, 130.0), Vec3::new(-180.0, 3.0, 40.0)),
+            ("refinery-yard", Vec3::new(-40.0, 12.0, 160.0), Vec3::new(40.0, 2.0, 225.0)),
+            ("refinery-flare", Vec3::new(-110.0, 10.0, -110.0), Vec3::new(-185.0, 18.0, -185.0)),
+            ("refinery-overview", Vec3::new(120.0, 110.0, 220.0), Vec3::new(0.0, 0.0, -20.0)),
+        ];
+        for (name, eye, look) in views {
+            render(name, |wr| {
+                let (mut sim, _) = arena_core::Sim::practice_on(arena_core::MapId::Refinery, seed, 7, 0.7);
+                wr.set_map(&arena_core::Map::by_id(arena_core::MapId::Refinery, seed));
+                let mut world = RenderWorld::default();
+                for tick in 0..(60 * 30) {
+                    sim.step();
+                    let ev = sim.drain_events();
+                    if tick > 60 * 22 {
+                        world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                        world.time = tick as f32 * arena_core::DT;
+                        world.camera = Some(Camera::look(eye, look, 55.0));
+                        for e in &ev {
+                            wr.event(e, eye);
+                        }
+                        wr.fx.update(arena_core::DT, &world);
+                    }
+                }
+                world.dt = 0.0;
+                world
+            });
+        }
+        render("refinery-play", |wr| {
+            let (mut sim, me) = arena_core::Sim::practice_on(arena_core::MapId::Refinery, seed, 7, 0.7);
+            wr.set_map(&arena_core::Map::by_id(arena_core::MapId::Refinery, seed));
+            let mut world = RenderWorld::default();
+            for tick in 0..(60 * 45) {
+                // Drive the human tank toward the tank farm.
+                if let Some((p, _)) = sim.tank_pose(me) {
+                    let to = Vec3::new(150.0, p.y, 30.0) - p;
+                    let yaw = sim.hull_yaw(me).unwrap_or(0.0);
+                    let want = (-to.z).atan2(to.x);
+                    let mut d = want - yaw;
+                    while d > std::f32::consts::PI { d -= std::f32::consts::TAU; }
+                    while d < -std::f32::consts::PI { d += std::f32::consts::TAU; }
+                    sim.set_input(me, arena_core::Input { throttle: 1.0, steer: (-d * 2.0).clamp(-1.0, 1.0), aim_point: p + to, ..Default::default() });
+                }
+                sim.step();
+                let ev = sim.drain_events();
+                if tick > 60 * 37 {
+                    world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                    world.time = tick as f32 * arena_core::DT;
+                    let t = world.tanks.iter().find(|t| t.player == me).map(|t| (t.pos, t.rot)).unwrap_or((Vec3::ZERO, Quat::IDENTITY));
+                    let fwd = t.1 * Vec3::X;
+                    let eye = t.0 - fwd * 11.0 + Vec3::Y * 4.5;
+                    world.camera = Some(Camera::look(eye, t.0 + fwd * 20.0 + Vec3::Y * 2.0, 58.0));
+                    for e in &ev {
+                        wr.event(e, t.0);
+                    }
+                    wr.fx.update(arena_core::DT, &world);
+                }
+            }
+            world.dt = 0.0;
+            world
+        });
+    }
+
+    /// Rebuilding maps and podiums over and over frees what each scene made:
+    /// the GPU mesh count comes back to where it was.
+    #[test]
+    #[ignore]
+    fn scenes_free_their_meshes() {
+        let (w, h) = (64u32, 64u32);
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor { backends: wgpu::Backends::PRIMARY, ..wgpu::InstanceDescriptor::new_without_display_handle() });
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).expect("adapter");
+        let (device, queue) = pollster::block_on(crate::renderer::request_device(&adapter)).expect("device");
+        let mut wr = WorldRenderer::new(Renderer::new(device, queue, wgpu::TextureFormat::Rgba8Unorm, w, h));
+        let top = vec![parked_tank(1, tank::RUSTBACK, Vec3::ZERO, 0.0, PartKind::BigBore, vec![PartKind::FlankPlates])];
+        let home = Map::by_id(arena_core::MapId::Sink, 7);
+        wr.set_map(&home);
+        let first = wr.renderer.mesh_count();
+        // Practice rolls a fresh seed every time: keys that depend on the
+        // seed (sizes) must not pile up.
+        for k in 0..6u64 {
+            let id = if k % 2 == 0 { arena_core::MapId::Refinery } else { arena_core::MapId::Sink };
+            wr.set_map(&Map::by_id(id, 100 + k));
+            let _ = podium(&mut wr, &top);
+        }
+        wr.set_map(&home);
+        let again = wr.renderer.mesh_count();
+        println!("meshes: {first} first, {again} after 6 maps and podiums, {} pinned", wr.lib.pinned());
+        assert_eq!(first, again, "GPU meshes leaked across map rebuilds");
+        assert_eq!(wr.lib.pinned(), 0, "map pieces were pinned");
+    }
+
+    /// Team Brawl's team 1 is Dust Saint teal; only raiders wear the raider scheme.
+    #[test]
+    fn team_colours_follow_the_mode() {
+        let mut sim = arena_core::Sim::new_team_brawl(3, Map::the_sink(3), arena_core::Tuning::default());
+        for k in 0..4 {
+            sim.add_bot(arena_core::bots::BOT_NAMES[k], 0.5);
+        }
+        sim.step();
+        let snap = sim.snapshot();
+        let world = RenderWorld::from_snapshot(&snap, &paint_for);
+        for t in &snap.tanks {
+            let v = world.tanks.iter().find(|v| v.player == t.player).unwrap();
+            match t.team {
+                0 => assert_eq!(v.colour, tank::RUSTBACK),
+                1 => assert_eq!(v.colour, tank::DUST_SAINT),
+                _ => panic!("no team in Team Brawl"),
+            }
+        }
+        let (mut raid, _) = arena_core::Sim::practice_raid(3, 1, 0.5);
+        for _ in 0..(60 * 20) {
+            raid.step();
+        }
+        let snap = raid.snapshot();
+        let world = RenderWorld::from_snapshot(&snap, &paint_for);
+        for t in snap.tanks.iter().filter(|t| t.team == 1) {
+            assert_eq!(world.tanks.iter().find(|v| v.player == t.player).unwrap().colour, tank::RAIDER);
+        }
     }
 
     /// A practice match under a sandstorm.

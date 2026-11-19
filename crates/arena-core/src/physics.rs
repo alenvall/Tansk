@@ -6,7 +6,7 @@
 use glam::{Quat, Vec3};
 use rapier3d::prelude::*;
 
-use crate::map::{Map, ObstacleKind};
+use crate::map::Map;
 use crate::DT;
 
 /// Terrain and obstacles.
@@ -105,7 +105,7 @@ impl Physics {
         for (oi, o) in map.obstacles.iter().enumerate() {
             let mut handles = Vec::new();
             for (bi, (c, r, h)) in o.world_boxes().enumerate() {
-                let builder = if o.kind == ObstacleKind::Silo {
+                let builder = if o.kind.is_cylinder() {
                     ColliderBuilder::cylinder(h.y, h.x)
                 } else {
                     ColliderBuilder::cuboid(h.x, h.y, h.z)

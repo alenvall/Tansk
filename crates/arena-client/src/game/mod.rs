@@ -19,7 +19,7 @@ pub mod sound;
 use std::collections::HashMap;
 
 use arena_core::events::{HitLocation, RepairKind};
-use arena_core::map::Map;
+use arena_core::map::{Map, MapId};
 use arena_core::net::Join;
 use arena_core::snapshot::{Snapshot, TankSnap};
 use arena_core::raid::{ModeKind, RaidPhase, TEAM_RAIDERS};
@@ -132,6 +132,9 @@ pub struct Game {
     /// The pause menu is open (pointer released mid-match).
     pub paused: bool,
     pub debug: DebugFlags,
+    /// The map Practice (and its Team / Raid variants) plays: the title's
+    /// map switch, or `?map=`.
+    pub practice_map: MapId,
     /// The Garage's pick (offline Practice uses it; online still default).
     garage: Option<crate::ui::Garage>,
     /// The newest gamepad state (web: Gamepad API), `None` without one.
@@ -204,6 +207,7 @@ impl Game {
             camera_title: None,
             title_follow: (None, 0.0),
             debug: DebugFlags::default(),
+            practice_map: MapId::Sink,
             garage: None,
             pad: None,
             prev_pad: Pad::default(),
@@ -260,20 +264,26 @@ impl Game {
     }
 
     pub fn apply_settings(&mut self, s: Settings) {
-        self.sound.set_volumes(s.vol_master, s.vol_sfx);
+        self.sound.set_volumes(s.vol_master, s.vol_sfx, s.vol_ambience);
         self.want_quality = Some(render_quality(s.quality));
         self.ui.apply_settings(&s);
         self.settings = s;
     }
 
-    /// `(code, humans, max_humans)` of the open public rooms.
-    pub fn set_rooms(&mut self, rooms: &[(String, u32, u32)]) {
+    /// `(code, humans, max_humans, mode, map)` of the open public rooms
+    /// (mode and map as the server's JSON names them).
+    pub fn set_rooms(&mut self, rooms: &[(String, u32, u32, String, String)]) {
         let games: Vec<OpenGame> = rooms
             .iter()
-            .map(|(code, n, max)| OpenGame {
+            .map(|(code, n, max, mode, map)| OpenGame {
                 host: format!("Room {code}"),
-                mode: "Scrap Brawl".into(),
-                map: "The Sink".into(),
+                mode: match mode.as_str() {
+                    "TeamBrawl" => "Team Brawl",
+                    "RaiderWaves" => "Raid",
+                    _ => "Scrap Brawl",
+                }
+                .into(),
+                map: MapId::from_key(map).unwrap_or_default().name().into(),
                 players: *n,
                 max_players: *max,
                 ping_ms: 0,
@@ -322,15 +332,15 @@ impl Game {
         let net = match &session {
             Session::Practice { mode: ModeKind::TeamBrawl } => {
                 self.ui.show_loading("Picking sides", "You and three Rustbacks against four Dust Saints.", Some(0.6));
-                NetClient::practice_team(rand_seed(self.time), 4, PRACTICE_DIFFICULTY)
+                NetClient::practice_team(rand_seed(self.time), 4, PRACTICE_DIFFICULTY, self.practice_map)
             }
             Session::Practice { mode: ModeKind::ScrapBrawl } => {
                 self.ui.show_loading("Rolling out", "Seven bots, no mercy. Warming the engines.", Some(0.6));
-                NetClient::practice(rand_seed(self.time), PRACTICE_BOTS, PRACTICE_DIFFICULTY)
+                NetClient::practice(rand_seed(self.time), PRACTICE_BOTS, PRACTICE_DIFFICULTY, self.practice_map)
             }
             Session::Practice { mode: ModeKind::RaiderWaves } => {
                 self.ui.show_loading("Manning the outpost", "Three allies, a lot of raiders. Dig in.", Some(0.6));
-                NetClient::practice_raid(rand_seed(self.time), RAID_ALLIES, PRACTICE_DIFFICULTY)
+                NetClient::practice_raid(rand_seed(self.time), RAID_ALLIES, PRACTICE_DIFFICULTY, self.practice_map)
             }
             Session::Online(join) => {
                 let sub = match join {
@@ -486,13 +496,15 @@ impl Game {
             match a {
                 UiAction::Play => self.start_online(Join::Play),
                 UiAction::Practice => self.start_practice(),
+                UiAction::PracticeMap(key) => self.practice_map = MapId::from_key(&key).unwrap_or_default(),
                 UiAction::Host(cfg) => {
                     let mode = match cfg.mode.as_str() {
                         "raider_waves" => ModeKind::RaiderWaves,
                         "team_brawl" => ModeKind::TeamBrawl,
                         _ => ModeKind::ScrapBrawl,
                     };
-                    self.start_online(Join::Host { public: !cfg.private, mode });
+                    let map = MapId::from_key(&cfg.map).unwrap_or_default();
+                    self.start_online(Join::Host { public: !cfg.private, mode, map });
                 }
                 UiAction::Join { code } => self.start_online(Join::Code(code)),
                 UiAction::RefreshGames => self.want_rooms = true,
@@ -626,17 +638,22 @@ impl Game {
         self.pad.is_some() && self.pad_idle < 5.0
     }
 
-    fn use_map(&mut self, seed: u64, wr: &mut WorldRenderer) {
-        if seed != self.map_seed {
-            self.map = Map::the_sink(seed);
+    fn use_map(&mut self, seed: u64, id: MapId, wr: &mut WorldRenderer) {
+        if seed != self.map_seed || id != self.map.id {
+            self.map = Map::by_id(id, seed);
             self.map_seed = seed;
             wr.set_map(&self.map);
         }
     }
 
+    /// "the Sink", "the Refinery": the place for the end-screen titles.
+    fn place(&self) -> String {
+        self.map.name.replacen("The ", "the ", 1)
+    }
+
     /// The live backdrop: a demo match under a slow orbit.
     fn title_frame(&mut self, dt: f32, wr: &mut WorldRenderer) -> RenderWorld {
-        self.use_map(HOME_SEED, wr);
+        self.use_map(HOME_SEED, MapId::Sink, wr);
         wr.renderer.set_storm(0.0);
         let mut world = self.backdrop.advance(dt, wr).clone();
         // The fight: stick with the bot that has company (its nearest
@@ -673,6 +690,7 @@ impl Game {
             self.camera_title = Some(eye);
         }
         self.sound.frame(world.camera.map_or(Vec3::ZERO, |c| c.eye), Vec3::X, &[], None, 0.0);
+        self.sound.ambience(0.2, 0.0);
         world
     }
 
@@ -683,7 +701,7 @@ impl Game {
         };
         net.update(now);
         let st = net.state();
-        let (status, seed, has_world, code) = (st.status.clone(), st.seed, st.world.is_some(), st.code.clone());
+        let (status, seed, has_world, code, map_id) = (st.status.clone(), st.seed, st.world.is_some(), st.code.clone(), st.map);
         match &status {
             Status::Closed(why) => {
                 let why = why.clone();
@@ -696,14 +714,17 @@ impl Game {
             Status::Practice | Status::Playing => {
                 if let (Some(seed), true) = (seed, has_world) {
                     self.status_note.clear();
-                    self.use_map(seed, wr);
+                    self.use_map(seed, map_id, wr);
                     self.screen = Screen::InGame;
                     self.ui.show_hud();
                     self.ui.set_ffa(true);
+                    let map_name = map_id.name();
                     let mode = match (&self.session, &code) {
-                        (Some(Session::Practice { mode: ModeKind::TeamBrawl }), _) => "Team Practice \u{b7} The Sink".to_string(),
-                        (Some(Session::Practice { .. }), _) | (_, None) => "Practice \u{b7} The Sink".to_string(),
-                        (_, Some(code)) => format!("Scrap Brawl \u{b7} The Sink \u{b7} {code}"),
+                        (Some(Session::Practice { mode: ModeKind::TeamBrawl }), _) => format!("Team Practice \u{b7} {map_name}"),
+                        (Some(Session::Practice { .. }), _) | (_, None) => format!("Practice \u{b7} {map_name}"),
+                        (Some(Session::Online(Join::Host { mode: ModeKind::TeamBrawl, .. })), Some(code)) => format!("Team Brawl \u{b7} {map_name} \u{b7} {code}"),
+                        (Some(Session::Online(Join::Host { mode: ModeKind::RaiderWaves, .. })), Some(code)) => format!("Raider Waves \u{b7} {map_name} \u{b7} {code}"),
+                        (_, Some(code)) => format!("Scrap Brawl \u{b7} {map_name} \u{b7} {code}"),
                     };
                     self.ui.set_mode_label(&mode);
                     self.ui.set_scoreboard_title("Scoreboard", &mode);
@@ -929,6 +950,10 @@ impl Game {
             self.on_event(e, you, &world, cam);
         }
         self.sound.frame(listener, dir, &world.tanks, you, input.throttle);
+        // The wind: a steady desert breeze, stronger up high and at speed.
+        let (speed, high) = my_view.as_ref().map_or((0.0, 0.0), |v| (v.speed, v.pos.y - self.map.height_at(0.0, 0.0)));
+        let wind = 0.35 + (speed / 14.0).min(1.0) * 0.25 + (high / 6.0).clamp(0.0, 1.0) * 0.15;
+        self.sound.ambience(wind, snap.storm);
 
         // ---- HUD.
         if let Some(t) = &me {
@@ -1387,10 +1412,11 @@ impl Game {
         let you = self.you();
         let you_won = winner.is_some() && winner == you;
         let wname = winner.map(|w| self.name_of(w));
+        let place = self.place();
         let title = match (&wname, you_won) {
-            (_, true) => "You take the Sink".to_string(),
-            (Some(n), _) => format!("{n} takes the Sink"),
-            (None, _) => "The Sink takes everyone".to_string(),
+            (_, true) => format!("You take {place}"),
+            (Some(n), _) => format!("{n} takes {place}"),
+            (None, _) => format!("{} takes everyone", self.map.name),
         };
         let note = match self.session {
             Some(Session::Online(_)) => "Next round rolls out in a few seconds",
@@ -1405,16 +1431,17 @@ impl Game {
             return;
         }
         let mine = self.you().map(|y| self.team_of(y));
+        let place = self.place();
         let (title, winner) = match team {
-            Some(0) => ("Rustbacks take the Sink", Some(Team::Rustbacks)),
-            Some(1) => ("Dust Saints take the Sink", Some(Team::DustSaints)),
-            _ => ("Dead even", None),
+            Some(0) => (format!("Rustbacks take {place}"), Some(Team::Rustbacks)),
+            Some(1) => (format!("Dust Saints take {place}"), Some(Team::DustSaints)),
+            _ => ("Dead even".to_string(), None),
         };
         let note = match self.session {
             Some(Session::Online(_)) => "Next round rolls out in a few seconds",
             _ => "Again for another round",
         };
-        self.show_end_team(title, note, winner);
+        self.show_end_team(&title, note, winner);
         let won = winner.map(|w| Some(w) == mine);
         let name = match winner {
             Some(Team::Rustbacks) => "Rustbacks",

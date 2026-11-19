@@ -111,6 +111,8 @@ pub struct Fx {
     last_pos: HashMap<PlayerId, Vec3>,
     /// Sandstorm intensity 0..1 (set by the world renderer from the look).
     pub storm: f32,
+    /// Burning flare tips (the Refinery's flare stack): fire and smoke.
+    pub flares: Vec<Vec3>,
 }
 
 const MAX_PARTICLES: usize = 5000;
@@ -136,6 +138,7 @@ impl Fx {
             max_particles: MAX_PARTICLES,
             last_pos: HashMap::new(),
             storm: 0.0,
+            flares: Vec::new(),
         }
     }
 
@@ -616,6 +619,24 @@ impl Fx {
                 }
             }
         }
+        // Flare stacks: a roaring flame leaning with the wind, black smoke above.
+        for k in 0..self.flares.len() {
+            let tip = self.flares[k];
+            let wind = Vec3::new(1.6, 0.0, 0.6);
+            let n = self.every(9500 + k as u32, 0.018, dt);
+            for _ in 0..n {
+                let j = self.rand_dir() * 0.7;
+                let s = 2.2 + 2.0 * self.rand();
+                let up = 5.0 + 3.0 * self.rand();
+                self.fire(tip + j, Vec3::Y * up + wind + j * 2.0, s, 0.75);
+            }
+            let m = self.every(9600 + k as u32, 0.11, dt);
+            for _ in 0..m {
+                let j = self.rand_dir() * 0.6;
+                let dark = 0.75 + 0.2 * self.rand();
+                self.smoke(tip + Vec3::Y * 5.0 + j, Vec3::Y * 4.0 + wind * 1.6, 2.6, dark, 7.0);
+            }
+        }
         // Smoke screens: keep each cloud filled while it lives.
         for (id, c, r, life) in &world.smokes {
             let n = self.every(9000 + *id as u32, 0.06, dt);
@@ -626,11 +647,6 @@ impl Fx {
                 self.spawn(Kind::Puff, c2, Vec3::Y * 0.3, 2.5, (s, s * 1.3), (Vec3::new(0.82, 0.8, 0.76), Vec3::new(0.9, 0.88, 0.85)), 0.8 * life, 0.5, 0.05, 0.0);
             }
         }
-    }
-
-    /// Lights from flashes and fires (the strongest few).
-    pub fn lights(&self) -> Vec<Light> {
-        self.lights_with(&[])
     }
 
     /// Lights from flashes and fires plus `extra` (flares), strongest first.

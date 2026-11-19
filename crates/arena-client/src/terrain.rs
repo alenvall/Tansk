@@ -12,8 +12,14 @@ const CHUNK_CELLS: usize = 15;
 /// How much of the flat face normal goes into the shading normal.
 const FACET: f32 = 0.55;
 
-fn sand() -> Paint {
-    Paint::with(Material::Sand, 0xffffff, 0.95)
+/// The ground paint. `salt` (the paint's wear channel) turns the sand into
+/// a pale cracked salt flat in the shader (0 on the Sink).
+fn sand(salt: f32) -> Paint {
+    Paint { wear: salt, ..Paint::with(Material::Sand, 0xffffff, 0.95) }
+}
+
+thread_local! {
+    static SALT: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
 }
 
 fn smooth_normal(h: &dyn Fn(f32, f32) -> f32, x: f32, z: f32, e: f32) -> Vec3 {
@@ -24,7 +30,7 @@ fn smooth_normal(h: &dyn Fn(f32, f32) -> f32, x: f32, z: f32, e: f32) -> Vec3 {
 fn tri(m: &mut MeshBuilder, h: &dyn Fn(f32, f32) -> f32, e: f32, p: [Vec3; 3]) {
     let face = (p[1] - p[0]).cross(p[2] - p[0]).normalize_or(Vec3::Y);
     let face = if face.y < 0.0 { -face } else { face };
-    let paint = sand();
+    let paint = sand(SALT.with(|s| s.get()));
     let idx: Vec<u32> = p
         .iter()
         .map(|q| {
@@ -37,6 +43,7 @@ fn tri(m: &mut MeshBuilder, h: &dyn Fn(f32, f32) -> f32, e: f32, p: [Vec3; 3]) {
 
 /// The map's terrain and its outer ring, as (mesh, transform) pieces.
 pub fn build(map: &Map) -> Vec<(MeshBuilder, Mat4)> {
+    SALT.with(|s| s.set(if map.id == arena_core::MapId::Refinery { 0.85 } else { 0.0 }));
     let res = map.resolution;
     let sp = map.spacing();
     let half = map.size / 2.0;
@@ -96,6 +103,6 @@ pub fn build(map: &Map) -> Vec<(MeshBuilder, Mat4)> {
 /// A flat sand floor for lineups and tests.
 pub fn flat(half: f32) -> MeshBuilder {
     let mut m = MeshBuilder::new();
-    m.heightfield(half, 40, |_, _| 0.0, sand());
+    m.heightfield(half, 40, |_, _| 0.0, sand(0.0));
     m
 }

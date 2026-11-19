@@ -68,6 +68,9 @@ pub struct Hazard {
     pub ball: Option<RigidBodyHandle>,
     pub ball_vel: Vec3,
     pub hit_cd: f32,
+    /// Fuel hazards lit by a neighbour's blast: `timer` counts the fuse
+    /// down; who set off the first one gets the credit.
+    pub fuse_owner: Option<PlayerId>,
 }
 
 fn blast(splash: f32, radius: f32, knockback: f32) -> GunStats {
@@ -83,6 +86,11 @@ fn seg_dist(a: Vec3, b: Vec3, p: Vec3) -> f32 {
     let ab = b - a;
     let t = ((p - a).dot(ab) / ab.length_squared().max(1e-6)).clamp(0.0, 1.0);
     (a + ab * t).distance(p)
+}
+
+/// How far a tank's blast centre sits from its own skin (its widest box).
+fn boxes_reach(o: &crate::map::Obstacle) -> f32 {
+    o.boxes.iter().map(|b| b.half.x.max(b.half.z)).fold(0.0, f32::max)
 }
 
 /// Distance from `p` to an oriented box.
@@ -108,6 +116,8 @@ impl Sim {
                 ObstacleKind::Pipe => Some(w.pipe_health),
                 ObstacleKind::Silo => Some(w.fuel_silo_health),
                 ObstacleKind::FuelTank => Some(w.fuel_tank_health),
+                ObstacleKind::StorageTank => Some(w.storage_tank_health),
+                ObstacleKind::TankCar => Some(w.tank_car_health),
                 _ => None,
             })
             .collect();
@@ -116,6 +126,8 @@ impl Sim {
             let (kind, max) = match o.kind {
                 ObstacleKind::Silo => (HazardKind::FuelSilo, w.fuel_silo_health),
                 ObstacleKind::FuelTank => (HazardKind::FuelTank, w.fuel_tank_health),
+                ObstacleKind::StorageTank => (HazardKind::FuelTank, w.storage_tank_health),
+                ObstacleKind::TankCar => (HazardKind::FuelTank, w.tank_car_health),
                 ObstacleKind::LaunchPlate => (HazardKind::LaunchPlate, 1.0),
                 ObstacleKind::Crane => (HazardKind::Crane, 1.0),
                 _ => continue,
@@ -129,6 +141,7 @@ impl Sim {
                 ball: None,
                 ball_vel: Vec3::ZERO,
                 hit_cd: 0.0,
+                fuse_owner: None,
             });
         }
         self.spawn_balls();
@@ -176,7 +189,7 @@ impl Sim {
                 if r.box_index != 255 && r.box_index as usize != bi {
                     continue;
                 }
-                let builder = if o.kind == ObstacleKind::Silo {
+                let builder = if o.kind.is_cylinder() {
                     ColliderBuilder::cylinder(h.y, h.x)
                 } else {
                     ColliderBuilder::cuboid(h.x, h.y, h.z)
@@ -831,13 +844,35 @@ impl Sim {
         }
         let center = boxes.iter().map(|b| b.0).sum::<Vec3>() / boxes.len().max(1) as f32;
         self.events.push(Event::ObstacleDestroyed { obstacle: oi as u16, kind: o.kind, pos: center });
-        if matches!(o.kind, ObstacleKind::Silo | ObstacleKind::FuelTank) {
+        if o.kind.is_fuel() {
             if let Some(hz) = self.hazards.iter_mut().find(|h| h.obstacle == oi) {
                 hz.ready = false;
+                hz.timer = 0.0;
             }
-            self.events.push(Event::HazardExploded { pos: center, radius: w.fuel_blast_radius });
-            let b = blast(w.fuel_blast_damage, w.fuel_blast_radius, w.fuel_blast_knockback);
+            let big = o.kind == ObstacleKind::StorageTank;
+            let (dmg, radius) = if big { (w.storage_blast_damage, w.storage_blast_radius) } else { (w.fuel_blast_damage, w.fuel_blast_radius) };
+            self.events.push(Event::HazardExploded { pos: center, radius });
+            let b = blast(dmg, radius, w.fuel_blast_knockback * if big { 1.4 } else { 1.0 });
             self.explode(center, owner, &b, 1.0, None, Weapon::Hazard);
+            // Chain reactions: a storage tank or tank car lights the fuel
+            // hazards next to it, each on a short fuse.
+            if matches!(o.kind, ObstacleKind::StorageTank | ObstacleKind::TankCar) {
+                for hz in 0..self.hazards.len() {
+                    let h = &self.hazards[hz];
+                    if h.kind != HazardKind::FuelTank && h.kind != HazardKind::FuelSilo || !h.ready || h.timer > 0.0 || h.obstacle == oi {
+                        continue;
+                    }
+                    let other = &map.obstacles[h.obstacle];
+                    let near = other.world_boxes().map(|(c, r, hh)| box_dist(c, r, hh, center)).fold(f32::MAX, f32::min);
+                    // Reach from the blast centre to the neighbour's skin.
+                    let reach = if big { boxes_reach(o) + w.chain_reach } else { w.chain_reach + 6.0 };
+                    if near < reach {
+                        let d = flat(other.pos).distance(flat(o.pos));
+                        self.hazards[hz].timer = w.chain_fuse * (0.7 + d / 40.0);
+                        self.hazards[hz].fuse_owner = owner;
+                    }
+                }
+            }
         }
     }
 
@@ -1154,7 +1189,16 @@ impl Sim {
                     }
                     self.hazards[hz].ball_vel = self.phys.body(ball).linvel();
                 }
-                HazardKind::FuelSilo | HazardKind::FuelTank => {}
+                HazardKind::FuelSilo | HazardKind::FuelTank => {
+                    if self.hazards[hz].ready && self.hazards[hz].timer > 0.0 {
+                        self.hazards[hz].timer -= dt;
+                        if self.hazards[hz].timer <= 0.0 {
+                            let oi = self.hazards[hz].obstacle;
+                            let owner = self.hazards[hz].fuse_owner;
+                            self.damage_obstacle(oi, f32::MAX, owner);
+                        }
+                    }
+                }
             }
         }
     }

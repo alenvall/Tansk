@@ -127,7 +127,12 @@ impl Sim {
 
     /// Offline Raider Waves practice: you plus `allies` bot allies.
     pub fn practice_raid(seed: u64, allies: usize, difficulty: f32) -> (Sim, PlayerId) {
-        let mut sim = Sim::new_raid(seed, crate::map::Map::the_sink(seed), crate::tuning::Tuning::default());
+        Sim::practice_raid_on(crate::map::MapId::Sink, seed, allies, difficulty)
+    }
+
+    /// Raider Waves practice on map `id`.
+    pub fn practice_raid_on(id: crate::map::MapId, seed: u64, allies: usize, difficulty: f32) -> (Sim, PlayerId) {
+        let mut sim = Sim::new_raid(seed, crate::map::Map::by_id(id, seed), crate::tuning::Tuning::default());
         let me = sim.add_player("You");
         for i in 0..allies {
             sim.add_bot(crate::bots::BOT_NAMES[i % crate::bots::BOT_NAMES.len()], difficulty);

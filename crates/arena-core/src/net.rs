@@ -8,7 +8,10 @@
 //! simulation tick (60 Hz) with a rising `seq`; the server applies one per
 //! tick and acks the last one applied in each `Tick`.
 //!
-//! The map is never sent: it is `Map::the_sink(seed)` from the `Welcome`.
+//! The map is never sent: it is `Map::by_id(map, seed)` from the `Welcome`.
+//!
+//! The server reads `Hello` with [`decode_client`], which also accepts the
+//! messages of clients from before maps were selectable.
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -35,6 +38,9 @@ pub enum Join {
         public: bool,
         #[serde(default)]
         mode: crate::raid::ModeKind,
+        /// Which map (added with The Refinery; older clients host the Sink).
+        #[serde(default)]
+        map: crate::map::MapId,
     },
     /// A room by its 4-letter code.
     Code(String),
@@ -56,10 +62,13 @@ pub enum ServerMsg {
         code: String,
         public: bool,
         you: PlayerId,
-        /// Map and simulation seed: `Sim::new(seed, Map::the_sink(seed), Tuning::default())`.
+        /// Map and simulation seed: `Sim::new(seed, Map::by_id(map, seed), Tuning::default())`.
         seed: u64,
         /// For [`Join::Rejoin`] after a dropped connection.
         token: u64,
+        /// The room's map (added with The Refinery, at the end of the message).
+        #[serde(default)]
+        map: crate::map::MapId,
     },
     Rejected(String),
     /// Everyone in the room (humans and bots), on every change.
@@ -87,6 +96,50 @@ pub fn decode<T: DeserializeOwned>(bytes: &[u8]) -> Option<T> {
     opts().deserialize(bytes).ok()
 }
 
+/// Reads a client message, also in the shape clients sent before maps were
+/// selectable (`Join::Host` without `map`): those host the Sink.
+pub fn decode_client(bytes: &[u8]) -> Option<ClientMsg> {
+    decode::<ClientMsg>(bytes).or_else(|| decode::<legacy::ClientMsg>(bytes).map(Into::into))
+}
+
+/// The protocol as it was before `Join::Host { map }`.
+mod legacy {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    pub enum Join {
+        Play,
+        Host { public: bool, mode: crate::raid::ModeKind },
+        Code(String),
+        Rejoin { code: String, token: u64 },
+    }
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    pub enum ClientMsg {
+        Hello { name: String, join: Join },
+        Input { seq: u32, input: crate::Input },
+        Chat(String),
+    }
+
+    impl From<ClientMsg> for super::ClientMsg {
+        fn from(m: ClientMsg) -> Self {
+            match m {
+                ClientMsg::Hello { name, join } => super::ClientMsg::Hello {
+                    name,
+                    join: match join {
+                        Join::Play => super::Join::Play,
+                        Join::Host { public, mode } => super::Join::Host { public, mode, map: crate::map::MapId::Sink },
+                        Join::Code(c) => super::Join::Code(c),
+                        Join::Rejoin { code, token } => super::Join::Rejoin { code, token },
+                    },
+                },
+                ClientMsg::Input { seq, input } => super::ClientMsg::Input { seq, input },
+                ClientMsg::Chat(t) => super::ClientMsg::Chat(t),
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -103,5 +156,21 @@ mod tests {
         let c = ClientMsg::Hello { name: "x".into(), join: Join::Rejoin { code: "ABCD".into(), token: 9 } };
         assert_eq!(decode::<ClientMsg>(&encode(&c)), Some(c));
         assert_eq!(decode::<ClientMsg>(&[200, 1, 2]), None);
+        assert_eq!(decode_client(&[200, 1, 2]), None);
+        let h = ClientMsg::Hello { name: "x".into(), join: Join::Host { public: true, mode: crate::raid::ModeKind::TeamBrawl, map: crate::MapId::Refinery } };
+        assert_eq!(decode_client(&encode(&h)), Some(h));
+    }
+
+    /// A Hello from a client that predates map choice still hosts (the Sink).
+    #[test]
+    fn old_host_hello_decodes() {
+        let old = legacy::ClientMsg::Hello { name: "Ann".into(), join: legacy::Join::Host { public: false, mode: crate::raid::ModeKind::RaiderWaves } };
+        let got = decode_client(&encode(&old)).expect("old hello decodes");
+        assert_eq!(
+            got,
+            ClientMsg::Hello { name: "Ann".into(), join: Join::Host { public: false, mode: crate::raid::ModeKind::RaiderWaves, map: crate::MapId::Sink } }
+        );
+        let input = legacy::ClientMsg::Input { seq: 3, input: crate::Input::default() };
+        assert!(matches!(decode_client(&encode(&input)), Some(ClientMsg::Input { seq: 3, .. })));
     }
 }

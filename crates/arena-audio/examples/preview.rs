@@ -6,6 +6,7 @@
 //! Each one-shot's file holds all of its pre-rendered takes back to back,
 //! 0.4 s apart, so the variation can be heard. The engine files run a
 //! programme: idle, rev up and drive off, flat out, boost, lift, coast, idle.
+//! `ambience.wav` runs calm wind, a blustery spell, a storm and back.
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -14,7 +15,7 @@ use arena_audio::analysis::{analyse, db, Report};
 use arena_audio::dsp::SR;
 use arena_audio::spatial::{spatialize, Listener};
 use arena_audio::wav;
-use arena_audio::{render, schedule, take_seed, EngineInput, EngineKind, EngineMixer, SoundId, TankEngine, SAMPLE_RATE};
+use arena_audio::{render, Ambience, schedule, take_seed, EngineInput, EngineKind, EngineMixer, SoundId, TankEngine, SAMPLE_RATE};
 
 fn out_dir() -> PathBuf {
     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/audio-preview");
@@ -171,5 +172,28 @@ fn main() {
     println!();
     row("engines_passing L", &analyse(&l));
     row("engines_passing R", &analyse(&r));
-    println!("\nwrote {} files to {}", SoundId::ALL.len() + EngineKind::ALL.len() + 1, dir.display());
+
+    // ── Ambience: calm, a blustery spell, a storm rolling in and out ────
+    let mut amb = Ambience::new(3, SR);
+    let weather: &[(f32, f32, f32)] = &[(0.0, 0.3, 0.0), (6.0, 1.0, 0.0), (12.0, 1.0, 1.0), (18.0, 1.0, 1.0), (24.0, 0.4, 0.0)];
+    let total = (24.0 * SR) as usize;
+    let (mut l, mut r) = (vec![0.0f32; total], vec![0.0f32; total]);
+    let mut i = 0;
+    while i < total {
+        let t = i as f32 / SR;
+        let k = weather.iter().rposition(|w| w.0 <= t).unwrap_or(0);
+        let (a, b) = (weather[k], weather[(k + 1).min(weather.len() - 1)]);
+        let x = if b.0 > a.0 { ((t - a.0) / (b.0 - a.0)).clamp(0.0, 1.0) } else { 0.0 };
+        amb.set(a.1 + (b.1 - a.1) * x, a.2 + (b.2 - a.2) * x);
+        let end = (i + 512).min(total);
+        amb.render(&mut l[i..end], &mut r[i..end]);
+        i = end;
+    }
+    wav::write(&dir.join("ambience.wav"), &[l.clone(), r.clone()], SAMPLE_RATE).expect("write");
+    println!();
+    let seg = |a: f32, b: f32| analyse(&l[(a * SR) as usize..(b * SR) as usize]);
+    row("ambience calm", &seg(1.0, 3.0));
+    row("ambience windy", &seg(6.0, 9.0));
+    row("ambience storm", &seg(13.0, 18.0));
+    println!("\nwrote {} files to {}", SoundId::ALL.len() + EngineKind::ALL.len() + 2, dir.display());
 }

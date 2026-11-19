@@ -242,6 +242,29 @@ fn sand_ground(p: vec3<f32>, fw: vec3<f32>) -> Surface {
     return s;
 }
 
+// The Refinery's salt flat: the sand washed pale and crusted, with a big
+// polygon crack net and soft grey-rust stains, `salt` 0..1.
+fn salt_flat(base: Surface, p: vec3<f32>, fw: vec3<f32>, salt: f32) -> Surface {
+    var s = base;
+    let xz = p.xz;
+    let w = max(fw.x, fw.z) + 1e-4;
+    // Pale, slightly warm crust in broad patches; the sand shows between.
+    let crusty = smoothstep(0.3, 0.7, fbm2(xz * 0.011 + 2.0));
+    let crust = vec3<f32>(0.76, 0.70, 0.61) * (0.92 + 0.12 * fbm2(xz * 0.03));
+    var c = mix(base.albedo, crust, salt * (0.3 + 0.45 * crusty));
+    // Irregular crust plates with darker rims, only where the crust is.
+    let warp = vec2<f32>(noise2(xz * 0.11), noise2(xz * 0.11 + 5.0)) * 1.4;
+    let edge = voronoi_edge(xz * 0.16 + warp);
+    let rim = (1.0 - smoothstep(0.025, 0.025 + w * 0.4, edge)) * (1.0 - smoothstep(0.1, 0.3, w)) * crusty;
+    c = mix(c, c * 0.82, rim * salt);
+    // Oily grey-rust stains round the plant.
+    let stain = paint_edge(fbm2(xz * 0.018 + vec2<f32>(9.0, 3.0)), 0.62, 0.08);
+    c = mix(c, vec3<f32>(0.40, 0.33, 0.27), stain * salt * 0.5);
+    s.albedo = c;
+    s.bump = s.bump * (1.0 - salt * 0.6 * crusty);
+    return s;
+}
+
 fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec3<f32>, edge: f32, camo: f32, damage: f32) -> Surface {
     // Painted, not plastic: broad brush drift and a faint stipple.
     let drift = blotch3(lp * 0.45);
@@ -515,6 +538,9 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
     var ao = 1.0;
     if (material == 1u) {
         s = sand_ground(in.world, fw);
+        if (wear > 0.0) {
+            s = salt_flat(s, in.world, fw, wear);
+        }
         ao = sphere_occlusion(in.world, n);
     } else if (material == 0u) {
         s = painted_steel(in.color, wear, in.local, height, n, edge, 0.0, 0.0);

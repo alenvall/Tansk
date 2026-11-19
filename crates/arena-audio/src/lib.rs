@@ -13,11 +13,13 @@
 //! a pulse-and-pipe model; effects built like recordings of real objects
 //! (struck modes, filtered noise, debris) rather than from oscillators.
 
+pub mod ambience;
 pub mod analysis;
 pub mod dsp;
 pub mod engine;
 pub mod layers;
 pub mod mixer;
+mod horns;
 mod raid;
 pub mod sounds;
 pub mod spatial;
@@ -26,6 +28,7 @@ pub mod wav;
 #[cfg(target_arch = "wasm32")]
 pub mod web;
 
+pub use ambience::Ambience;
 pub use dsp::SAMPLE_RATE;
 pub use engine::{EngineInput, EngineKind, TankEngine};
 pub use mixer::{EngineHandle, EngineMixer, MAX_ENGINES};

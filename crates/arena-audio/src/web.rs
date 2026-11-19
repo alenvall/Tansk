@@ -2,8 +2,9 @@
 //!
 //! Graph: one-shots are `AudioBufferSource → Gain → [BiquadFilter (low-pass)
 //! → StereoPanner] → sfx bus`; engines are one `ScriptProcessorNode` running
-//! the [`EngineMixer`] on the audio callback → engine bus; both buses go
-//! through the master gain to the destination.
+//! the [`EngineMixer`] on the audio callback → engine bus; the desert wind is
+//! another running [`Ambience`] → ambience bus; all buses go through the
+//! master gain to the destination.
 //!
 //! Why a ScriptProcessor and not an AudioWorklet: a worklet runs in its own
 //! global scope, so the Rust engine would have to be compiled and
@@ -29,6 +30,7 @@ use web_sys::{
     BiquadFilterType, GainNode, ScriptProcessorNode,
 };
 
+use crate::ambience::Ambience;
 use crate::dsp::{Rng, SR};
 use crate::engine::{EngineInput, EngineKind};
 use crate::mixer::{EngineHandle, EngineMixer};
@@ -51,7 +53,11 @@ struct Volumes {
     master: f32,
     sfx: f32,
     engine: f32,
+    ambience: f32,
 }
+
+/// A ScriptProcessor and the closure it calls, kept alive together.
+type Stream = (ScriptProcessorNode, Closure<dyn FnMut(AudioProcessingEvent)>);
 
 struct Voice {
     src: AudioBufferSourceNode,
@@ -64,13 +70,13 @@ struct Live {
     master: GainNode,
     sfx: GainNode,
     engine_bus: GainNode,
+    ambience_bus: GainNode,
     buffers: Vec<Vec<AudioBuffer>>,
     voices: Vec<Vec<Voice>>,
     last_take: Vec<usize>,
     schedule: Vec<(SoundId, usize)>,
     next_render: usize,
-    _processor: Option<ScriptProcessorNode>,
-    _callback: Option<Closure<dyn FnMut(AudioProcessingEvent)>>,
+    _streams: Vec<Stream>,
 }
 
 /// The game's audio. Create it at startup; call [`Audio::unlock`] from the
@@ -82,6 +88,7 @@ pub struct Audio {
     volumes: Volumes,
     listener: Listener,
     engines: Rc<RefCell<EngineMixer>>,
+    ambience: Rc<RefCell<Ambience>>,
     rng: Rng,
 }
 
@@ -104,9 +111,10 @@ impl Audio {
     pub fn new() -> Self {
         Self {
             live: None,
-            volumes: Volumes { master: 0.8, sfx: 1.0, engine: 0.7 },
+            volumes: Volumes { master: 0.8, sfx: 1.0, engine: 0.7, ambience: 0.6 },
             listener: Listener::default(),
             engines: Rc::new(RefCell::new(EngineMixer::new(SR))),
+            ambience: Rc::new(RefCell::new(Ambience::new(1, SR))),
             rng: Rng::new(now_ms().to_bits()),
         }
     }
@@ -137,65 +145,62 @@ impl Audio {
         let master = ctx.create_gain()?;
         let sfx = ctx.create_gain()?;
         let engine_bus = ctx.create_gain()?;
+        let ambience_bus = ctx.create_gain()?;
         master.gain().set_value(self.volumes.master);
         sfx.gain().set_value(self.volumes.sfx);
         engine_bus.gain().set_value(self.volumes.engine);
+        ambience_bus.gain().set_value(self.volumes.ambience);
         sfx.connect_with_audio_node(&master)?;
         engine_bus.connect_with_audio_node(&master)?;
+        ambience_bus.connect_with_audio_node(&master)?;
         master.connect_with_audio_node(&ctx.destination())?;
         let _ = ctx.resume();
 
-        // Engines on a ScriptProcessor.
+        // Engines and the ambience, each on its own ScriptProcessor and bus.
         let rate = ctx.sample_rate();
         self.engines.borrow_mut().set_sample_rate(rate);
-        let (processor, callback) = match ctx
-            .create_script_processor_with_buffer_size_and_number_of_input_channels_and_number_of_output_channels(
-                ENGINE_BLOCK,
-                1,
-                2,
-            ) {
-            Ok(node) => {
-                let mixer = self.engines.clone();
-                let mut left = vec![0.0f32; ENGINE_BLOCK as usize];
-                let mut right = vec![0.0f32; ENGINE_BLOCK as usize];
-                let cb = Closure::<dyn FnMut(AudioProcessingEvent)>::new(move |e: AudioProcessingEvent| {
-                    let Ok(out) = e.output_buffer() else { return };
-                    let n = out.length() as usize;
-                    left.resize(n, 0.0);
-                    right.resize(n, 0.0);
-                    if let Ok(mut m) = mixer.try_borrow_mut() {
-                        m.render(&mut left, &mut right);
-                    } else {
-                        left.fill(0.0);
-                        right.fill(0.0);
-                    }
-                    let _ = out.copy_to_channel(&left, 0);
-                    if out.number_of_channels() > 1 {
-                        let _ = out.copy_to_channel(&right, 1);
-                    }
-                });
-                node.set_onaudioprocess(Some(cb.as_ref().unchecked_ref()));
-                node.connect_with_audio_node(&engine_bus)?;
-                (Some(node), Some(cb))
+        {
+            let mut amb = self.ambience.borrow_mut();
+            let (wind, storm) = amb.settings();
+            *amb = Ambience::new(self.rng.next_u64(), rate);
+            amb.set(wind, storm);
+        }
+        let mut streams = Vec::new();
+        let engines = self.engines.clone();
+        match stream(&ctx, &engine_bus, move |l, r| match engines.try_borrow_mut() {
+            Ok(mut m) => m.render(l, r),
+            Err(_) => {
+                l.fill(0.0);
+                r.fill(0.0);
             }
-            Err(e) => {
-                web_sys::console::warn_2(&"arena-audio: no ScriptProcessor; engines are silent".into(), &e);
-                (None, None)
+        }) {
+            Ok(s) => streams.push(s),
+            Err(e) => web_sys::console::warn_2(&"arena-audio: no ScriptProcessor; engines are silent".into(), &e),
+        }
+        let ambience = self.ambience.clone();
+        match stream(&ctx, &ambience_bus, move |l, r| match ambience.try_borrow_mut() {
+            Ok(mut a) => a.render(l, r),
+            Err(_) => {
+                l.fill(0.0);
+                r.fill(0.0);
             }
-        };
+        }) {
+            Ok(s) => streams.push(s),
+            Err(e) => web_sys::console::warn_2(&"arena-audio: no ScriptProcessor; ambience is silent".into(), &e),
+        }
 
         let mut live = Live {
             ctx,
             master,
             sfx,
             engine_bus,
+            ambience_bus,
             buffers: vec![Vec::new(); SoundId::ALL.len()],
             voices: (0..SoundId::ALL.len()).map(|_| Vec::new()).collect(),
             last_take: vec![usize::MAX; SoundId::ALL.len()],
             schedule: schedule(),
             next_render: 0,
-            _processor: processor,
-            _callback: callback,
+            _streams: streams,
         };
         // One take of every sound now, so anything can play from the start.
         let t0 = now_ms();
@@ -285,10 +290,32 @@ impl Audio {
         }
     }
 
-    /// `(master, sfx, engine)`.
+    pub fn set_ambience_volume(&mut self, v: f32) {
+        self.volumes.ambience = clean(v);
+        if let Some(l) = &self.live {
+            ramp(&l.ctx, &l.ambience_bus, self.volumes.ambience);
+        }
+    }
+
+    /// `(master, sfx, engine, ambience)`.
     #[must_use]
-    pub fn volumes(&self) -> (f32, f32, f32) {
-        (self.volumes.master, self.volumes.sfx, self.volumes.engine)
+    pub fn volumes(&self) -> (f32, f32, f32, f32) {
+        (self.volumes.master, self.volumes.sfx, self.volumes.engine, self.volumes.ambience)
+    }
+
+    /// The weather: `wind` is the everyday desert wind (`0` still .. `1`
+    /// blustery), `storm` the sandstorm layer (`0..1`). Glides over about
+    /// half a second, so it can be set every frame. Both `0` is silence.
+    pub fn ambience_set(&mut self, wind: f32, storm: f32) {
+        if let Ok(mut a) = self.ambience.try_borrow_mut() {
+            a.set(wind, storm);
+        }
+    }
+
+    /// Plays Garage horn `index` (`0..6`, wrapping) from a tank at `pos`
+    /// (`None` for your own).
+    pub fn horn(&mut self, index: usize, pos: Option<[f32; 3]>, gain: f32) {
+        self.play(SoundId::horn(index), pos, gain);
     }
 
     /// Starts an engine voice for one visible tank. `seed` (e.g. the tank's
@@ -408,6 +435,37 @@ impl Live {
         self.voices[id.index()].push(Voice { src, gain, ends });
         Ok(())
     }
+}
+
+/// Starts a stereo ScriptProcessor feeding `dest`, filled by `fill(left,
+/// right)` on every callback.
+fn stream(
+    ctx: &AudioContext,
+    dest: &GainNode,
+    mut fill: impl FnMut(&mut [f32], &mut [f32]) + 'static,
+) -> Result<Stream, wasm_bindgen::JsValue> {
+    let node = ctx
+        .create_script_processor_with_buffer_size_and_number_of_input_channels_and_number_of_output_channels(
+            ENGINE_BLOCK,
+            1,
+            2,
+        )?;
+    let mut left = vec![0.0f32; ENGINE_BLOCK as usize];
+    let mut right = vec![0.0f32; ENGINE_BLOCK as usize];
+    let cb = Closure::<dyn FnMut(AudioProcessingEvent)>::new(move |e: AudioProcessingEvent| {
+        let Ok(out) = e.output_buffer() else { return };
+        let n = out.length() as usize;
+        left.resize(n, 0.0);
+        right.resize(n, 0.0);
+        fill(&mut left, &mut right);
+        let _ = out.copy_to_channel(&left, 0);
+        if out.number_of_channels() > 1 {
+            let _ = out.copy_to_channel(&right, 1);
+        }
+    });
+    node.set_onaudioprocess(Some(cb.as_ref().unchecked_ref()));
+    node.connect_with_audio_node(dest)?;
+    Ok((node, cb))
 }
 
 fn fade_out(v: &Voice, now: f64) {

@@ -29,7 +29,7 @@ use std::collections::VecDeque;
 pub use arena_core::net::Join;
 use arena_core::net::{decode, encode, ClientMsg, ServerMsg};
 use arena_core::snapshot::{Snapshot, TankSnap};
-use arena_core::{Event, Input, PlayerId, PlayerInfo, Sim, DT};
+use arena_core::{Event, Input, MapId, PlayerId, PlayerInfo, Sim, DT};
 
 use interp::{lerp_snapshot, Interp};
 use predict::Predictor;
@@ -68,8 +68,10 @@ pub struct NetState {
     pub code: Option<String>,
     pub public: bool,
     pub you: Option<PlayerId>,
-    /// Map seed: build the scenery with `Map::the_sink(seed)`.
+    /// Map seed: build the scenery with `Map::by_id(map, seed)`.
     pub seed: Option<u64>,
+    /// Which map the room plays (with the seed).
+    pub map: MapId,
     /// The world to draw this frame (see the module docs).
     pub world: Option<Snapshot>,
     /// Everyone in the match: names and who is a bot.
@@ -89,6 +91,7 @@ impl NetState {
             public: false,
             you: None,
             seed: None,
+            map: MapId::Sink,
             world: None,
             players: Vec::new(),
             chat: Vec::new(),
@@ -188,22 +191,22 @@ impl NetClient {
         }
     }
 
-    /// Offline: you and `bots` bots (difficulty 0..1) on The Sink.
-    pub fn practice(seed: u64, bots: usize, difficulty: f32) -> NetClient {
-        let (sim, me) = Sim::practice(seed, bots, difficulty);
+    /// Offline: you and `bots` bots (difficulty 0..1) on map `map`.
+    pub fn practice(seed: u64, bots: usize, difficulty: f32, map: MapId) -> NetClient {
+        let (sim, me) = Sim::practice_on(map, seed, bots, difficulty);
         Self::offline(sim, me, seed)
     }
 
     /// Offline Raider Waves: you and `allies` bot allies hold the outpost.
-    pub fn practice_raid(seed: u64, allies: usize, difficulty: f32) -> NetClient {
-        let (sim, me) = Sim::practice_raid(seed, allies, difficulty);
+    pub fn practice_raid(seed: u64, allies: usize, difficulty: f32, map: MapId) -> NetClient {
+        let (sim, me) = Sim::practice_raid_on(map, seed, allies, difficulty);
         Self::offline(sim, me, seed)
     }
 
     /// Offline Team Brawl: you and `per_team - 1` bot allies against
     /// `per_team` bots (the sim puts each newcomer on the smaller team).
-    pub fn practice_team(seed: u64, per_team: usize, difficulty: f32) -> NetClient {
-        let mut sim = Sim::new_team_brawl(seed, arena_core::Map::the_sink(seed), arena_core::Tuning::default());
+    pub fn practice_team(seed: u64, per_team: usize, difficulty: f32, map: MapId) -> NetClient {
+        let mut sim = Sim::new_team_brawl(seed, arena_core::Map::by_id(map, seed), arena_core::Tuning::default());
         let me = sim.add_player("You");
         for i in 0..per_team * 2 - 1 {
             let names = arena_core::bots::BOT_NAMES;
@@ -218,6 +221,7 @@ impl NetClient {
         let mut state = NetState::new(Status::Practice);
         state.you = Some(me);
         state.seed = Some(seed);
+        state.map = sim.map.id;
         state.players = sim.players();
         state.world = Some(snap.clone());
         NetClient {
@@ -408,10 +412,11 @@ impl Online {
             Incoming::Message(bytes) => {
                 let Some(msg) = decode::<ServerMsg>(&bytes) else { return };
                 match msg {
-                    ServerMsg::Welcome { code, public, you, seed, token } => {
+                    ServerMsg::Welcome { code, public, you, seed, token, map } => {
                         self.resume = Some((code.clone(), token));
                         self.retries = 0;
-                        self.predictor = Some(Predictor::new(seed, you));
+                        self.predictor = Some(Predictor::new(seed, you, map));
+                        state.map = map;
                         self.interp.clear();
                         self.sent.clear();
                         self.delayed.clear();

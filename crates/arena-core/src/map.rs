@@ -94,6 +94,88 @@ pub enum ObstacleKind {
     Hedgehog,
     /// A wooden power pole with a crossarm (`boxes[1]`, overhead). Tall (thin).
     PowerPole,
+    // ---- The Refinery -------------------------------------------------------
+    /// A big vertical storage tank (draw as a cylinder of radius `boxes[0].half.x`).
+    /// Tall; explodes, and sets off its neighbours (chain reactions).
+    StorageTank,
+    /// A distillation column (draw as a cylinder of radius `boxes[0].half.x`). Tall.
+    Column,
+    /// A pipe rack: `boxes[0]` the overhead pipe bundle (from 5.8 m up: tanks
+    /// drive under it), `boxes[1..]` its legs. Tall (overhead).
+    PipeRack,
+    /// An oil pumpjack: `boxes[0]` the gearbox and frame; the walking beam
+    /// above it bobs (drawn from time). Tall.
+    Pumpjack,
+    /// A drilling derrick: `boxes[0..4]` the four legs (drive between them),
+    /// `boxes[4]` the upper tower (overhead). Tall.
+    Derrick,
+    /// A rail tank car (long along local X). Tall; explodes like a fuel tank.
+    TankCar,
+    /// One straight piece of railway: ties and rails flush with the ground
+    /// (drivable, not cover).
+    Rails,
+    /// The flare stack: `boxes[0]` the plinth, `boxes[1]` the chimney (a
+    /// burning flare on top: the landmark). Tall.
+    FlareStack,
+    /// The blast-proof control house of the refinery. Tall.
+    ControlHouse,
+}
+
+impl ObstacleKind {
+    /// Fuel hazards: explode when shot enough.
+    pub fn is_fuel(self) -> bool {
+        matches!(self, ObstacleKind::Silo | ObstacleKind::FuelTank | ObstacleKind::StorageTank | ObstacleKind::TankCar)
+    }
+
+    /// Colliders that are upright cylinders (box half x = radius, half y = half height).
+    pub fn is_cylinder(self) -> bool {
+        matches!(self, ObstacleKind::Silo | ObstacleKind::StorageTank | ObstacleKind::Column)
+    }
+}
+
+/// Which map to build. The seed only jitters details; the id picks the place.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MapId {
+    /// The dry lake bed (the first map).
+    #[default]
+    Sink,
+    /// The sun-baked oil refinery on a salt flat.
+    Refinery,
+}
+
+impl MapId {
+    pub const ALL: [MapId; 2] = [MapId::Sink, MapId::Refinery];
+
+    /// The display name.
+    pub fn name(self) -> &'static str {
+        match self {
+            MapId::Sink => "The Sink",
+            MapId::Refinery => "The Refinery",
+        }
+    }
+
+    /// A short key for URLs and menus (`sink`, `refinery`).
+    pub fn key(self) -> &'static str {
+        match self {
+            MapId::Sink => "sink",
+            MapId::Refinery => "refinery",
+        }
+    }
+
+    /// Parses a key (`sink`, `the_sink`, `refinery`, `the_refinery`).
+    pub fn from_key(s: &str) -> Option<MapId> {
+        let s = s.trim().to_ascii_lowercase();
+        match s.trim_start_matches("the_").trim_start_matches("the ") {
+            "sink" => Some(MapId::Sink),
+            "refinery" => Some(MapId::Refinery),
+            _ => None,
+        }
+    }
+
+    /// The next map in the rotation (quick-match rooms alternate).
+    pub fn next(self) -> MapId {
+        MapId::ALL[(self as usize + 1) % MapId::ALL.len()]
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -162,6 +244,8 @@ pub struct PropSpawn {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
+    /// Which map this is (the client rebuilds it from the id and the seed).
+    pub id: MapId,
     pub name: String,
     pub seed: u64,
     /// Side length of the heightfield, m.
@@ -197,6 +281,14 @@ pub(crate) struct Pad {
 }
 
 impl Map {
+    /// Builds map `id` from `seed`.
+    pub fn by_id(id: MapId, seed: u64) -> Map {
+        match id {
+            MapId::Sink => Map::the_sink(seed),
+            MapId::Refinery => Map::refinery(seed),
+        }
+    }
+
     pub fn spacing(&self) -> f32 {
         self.size / (self.resolution - 1) as f32
     }
@@ -467,6 +559,61 @@ pub(crate) fn make_obstacle(kind: ObstacleKind, rng: &mut Rng) -> Obstacle {
             boxes.push(bx(Vec3::new(0.0, 0.45, 0.0), Vec3::new(2.2, 0.5, 0.95), 0.0));
             radius = 3.2;
         }
+        ObstacleKind::StorageTank => {
+            cover = Cover::Tall;
+            let r = rng.range(7.0, 8.5);
+            let h = rng.range(4.6, 5.6);
+            boxes.push(bx(Vec3::Y * (h - 0.4), Vec3::new(r, h, r), 0.0));
+            rot = Quat::IDENTITY;
+            radius = r + 3.0;
+        }
+        ObstacleKind::Column => {
+            cover = Cover::Tall;
+            let r = rng.range(1.8, 2.6);
+            let h = rng.range(10.0, 14.0);
+            boxes.push(bx(Vec3::Y * (h - 0.4), Vec3::new(r, h, r), 0.0));
+            rot = Quat::IDENTITY;
+            radius = r + 2.5;
+        }
+        ObstacleKind::PipeRack => {
+            cover = Cover::Tall;
+            pipe_rack_boxes(&mut boxes, 28.0);
+            radius = 16.0;
+        }
+        ObstacleKind::Pumpjack => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(-0.6, 1.35, 0.0), Vec3::new(3.0, 1.55, 1.1), 0.0));
+            radius = 5.5;
+        }
+        ObstacleKind::Derrick => {
+            cover = Cover::Tall;
+            for (sx, sz) in [(-1.0f32, -1.0f32), (-1.0, 1.0), (1.0, -1.0), (1.0, 1.0)] {
+                boxes.push(bx(Vec3::new(sx * 3.7, 4.3, sz * 3.7), Vec3::new(0.35, 4.6, 0.35), 0.0));
+            }
+            boxes.push(bx(Vec3::new(0.0, 15.6, 0.0), Vec3::new(2.1, 6.6, 2.1), 0.0));
+            radius = 6.5;
+        }
+        ObstacleKind::TankCar => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, 2.05, 0.0), Vec3::new(6.6, 2.05, 1.5), 0.0));
+            radius = 7.5;
+        }
+        ObstacleKind::Rails => {
+            cover = Cover::Flat;
+            boxes.push(bx(Vec3::new(0.0, -0.2, 0.0), Vec3::new(8.0, 0.3, 1.6), 0.0));
+            radius = 8.5;
+        }
+        ObstacleKind::FlareStack => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, 1.3, 0.0), Vec3::new(3.4, 1.6, 3.4), 0.0));
+            boxes.push(bx(Vec3::new(0.0, 22.0, 0.0), Vec3::new(1.2, 19.5, 1.2), 0.0));
+            radius = 6.0;
+        }
+        ObstacleKind::ControlHouse => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, 2.2, 0.0), Vec3::new(8.0, 2.6, 4.6), 0.0));
+            radius = 10.5;
+        }
         ObstacleKind::PierRuin => {
             cover = Cover::Low;
             let n = 2 + rng.below(3);
@@ -486,6 +633,19 @@ pub(crate) fn make_obstacle(kind: ObstacleKind, rng: &mut Rng) -> Obstacle {
         }
     }
     Obstacle { kind, cover, pos: Vec3::ZERO, rot, boxes, radius }
+}
+
+/// A pipe rack `len` long (along local X): the overhead bundle, then a
+/// pair of legs every 14 m or so. 10 m wide, clear 5.8 m underneath.
+pub(crate) fn pipe_rack_boxes(boxes: &mut Vec<ObstacleBox>, len: f32) {
+    boxes.push(bx(Vec3::new(0.0, 6.6, 0.0), Vec3::new(len / 2.0, 0.8, 5.4), 0.0));
+    let bents = (len / 14.0).round().max(1.0) as i32;
+    for k in 0..=bents {
+        let x = -len / 2.0 + 0.4 + k as f32 * (len - 0.8) / bents as f32;
+        for z in [-5.0f32, 5.0] {
+            boxes.push(bx(Vec3::new(x, 2.9, z), Vec3::new(0.3, 3.0, 0.3), 0.0));
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

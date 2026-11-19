@@ -32,6 +32,7 @@ pub mod net;
 pub mod parts;
 pub mod physics;
 pub mod raid;
+pub mod refinery;
 pub mod rng;
 pub mod sim;
 pub mod sink;
@@ -43,7 +44,7 @@ pub mod tuning;
 
 pub use events::{Event, HitLocation, PickupKind, RepairKind, Weapon};
 pub use glam::{Quat, Vec3};
-pub use map::{Cover, Map, Obstacle, ObstacleBox, ObstacleKind, ScrapKind};
+pub use map::{Cover, Map, MapId, Obstacle, ObstacleBox, ObstacleKind, ScrapKind};
 pub use parts::{part_def, VehicleKind, AltKind, Frame, GunKind, HitBox, Part, PartKind, Slot};
 pub use sim::{Phase, PlayerInfo, PropKind, Sim};
 pub use raid::{BossKind, ModeKind, RaidPhase};

@@ -243,3 +243,53 @@ fn wav_encoding_has_the_right_header_and_size() {
     assert_eq!(u16::from_le_bytes([bytes[22], bytes[23]]), 2);
     assert_eq!(u32::from_le_bytes([bytes[24], bytes[25], bytes[26], bytes[27]]), 48_000);
 }
+
+#[test]
+fn horns_are_six_distinct_sounds_and_any_index_plays_one() {
+    let horns: Vec<_> = (0..6).map(SoundId::horn).collect();
+    for (i, h) in horns.iter().enumerate() {
+        assert_eq!(h.name(), format!("horn_{i}"));
+        let s = h.info().seconds;
+        assert!((0.6..=2.0).contains(&s), "{h:?} max length {s}");
+        let take = render(*h, 0);
+        assert!((0.5..=2.0).contains(&take.seconds()), "{h:?} is {} s", take.seconds());
+    }
+    assert_eq!(SoundId::horn(6), SoundId::horn(0));
+    assert_eq!(SoundId::horn(usize::MAX), SoundId::HORNS[usize::MAX % 6]);
+}
+
+fn ambience(a: &mut arena_audio::Ambience, wind: f32, storm: f32, seconds: f32) -> (Vec<f32>, Vec<f32>) {
+    a.set(wind, storm);
+    let n = (seconds * SR) as usize;
+    let (mut l, mut r) = (vec![0.0; n], vec![0.0; n]);
+    for (cl, cr) in l.chunks_mut(256).zip(r.chunks_mut(256)) {
+        a.render(cl, cr);
+    }
+    (l, r)
+}
+
+#[test]
+fn ambience_is_bounded_centred_and_follows_the_weather() {
+    let mut a = arena_audio::Ambience::new(7, SR);
+    let (l, r) = ambience(&mut a, 0.0, 0.0, 0.5);
+    assert!(l.iter().chain(&r).all(|s| *s == 0.0), "still air is not silent");
+    let mut level = Vec::new();
+    for (wind, storm) in [(0.3, 0.0), (1.0, 0.0), (1.0, 1.0)] {
+        let _ = ambience(&mut a, wind, storm, 2.0);
+        let (l, r) = ambience(&mut a, wind, storm, 4.0);
+        for ch in [&l, &r] {
+            let rep = analyse(ch);
+            assert!(ch.iter().all(|s| s.is_finite() && s.abs() < 0.99), "{wind} {storm}");
+            assert!(rep.dc.abs() < 2e-3, "{wind} {storm}: dc {}", rep.dc);
+            assert!(rep.rms > 0.003, "{wind} {storm}: inaudible");
+        }
+        assert_ne!(l, r, "ambience is not wide");
+        level.push(analyse(&l).rms);
+    }
+    assert!(level[1] > level[0] * 1.3, "more wind is not louder: {level:?}");
+    assert!(level[2] > level[1] * 1.3, "the storm is not louder: {level:?}");
+    for bad in [f32::NAN, f32::INFINITY, -5.0, 9.0] {
+        let (l, _) = ambience(&mut a, bad, bad, 0.2);
+        assert!(l.iter().all(|s| s.is_finite() && s.abs() < 0.99));
+    }
+}

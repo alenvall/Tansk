@@ -64,7 +64,7 @@ impl FakeServer {
                     let (x, z, yaw) = clear_lane(&self.sim, 120.0);
                     self.sim.teleport(you, x, z, yaw);
                     self.me = Some(you);
-                    Self::send(link, &ServerMsg::Welcome { code: "TEST".into(), public: false, you, seed: 5, token: 1 });
+                    Self::send(link, &ServerMsg::Welcome { code: "TEST".into(), public: false, you, seed: 5, token: 1, map: arena_core::MapId::Sink });
                 }
                 ClientMsg::Input { seq, input } => self.queue.push_back((seq, input)),
                 ClientMsg::Chat(_) => {}
@@ -198,7 +198,7 @@ fn prediction_converges() {
 /// Practice produces the same kind of state, with no network.
 #[test]
 fn practice_runs() {
-    let mut c = NetClient::practice(3, 3, 0.5);
+    let mut c = NetClient::practice(3, 3, 0.5, arena_core::MapId::Sink);
     let mut t = 0.0;
     for _ in 0..120 {
         t += 1.0 / 60.0;

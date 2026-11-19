@@ -30,6 +30,9 @@ impl Audio {
     fn set_master_volume(&mut self, _v: f32) {}
     fn set_sfx_volume(&mut self, _v: f32) {}
     fn set_engine_volume(&mut self, _v: f32) {}
+    fn set_ambience_volume(&mut self, _v: f32) {}
+    fn ambience_set(&mut self, _wind: f32, _storm: f32) {}
+    fn horn(&mut self, _index: usize, _pos: Option<[f32; 3]>, _gain: f32) {}
     fn engine_add(&mut self, _kind: EngineKind, _seed: u64) -> Option<EngineHandle> {
         None
     }
@@ -45,6 +48,8 @@ const MAX_VOICED: usize = 6;
 pub struct Sound {
     audio: Audio,
     engines: HashMap<PlayerId, EngineHandle>,
+    /// Where each tank was last drawn (for events without a position: horns).
+    seen: HashMap<PlayerId, Vec3>,
 }
 
 fn p(v: Vec3) -> Option<[f32; 3]> {
@@ -71,7 +76,7 @@ fn part_hit_sound(part: PartKind) -> SoundId {
 
 impl Sound {
     pub fn new() -> Self {
-        Sound { audio: Audio::new(), engines: HashMap::new() }
+        Sound { audio: Audio::new(), engines: HashMap::new(), seen: HashMap::new() }
     }
 
     /// From a user gesture: browsers keep audio off until one.
@@ -79,10 +84,16 @@ impl Sound {
         self.audio.unlock();
     }
 
-    pub fn set_volumes(&mut self, master: f32, sfx: f32) {
+    pub fn set_volumes(&mut self, master: f32, sfx: f32, ambience: f32) {
         self.audio.set_master_volume(master);
         self.audio.set_sfx_volume(sfx);
         self.audio.set_engine_volume(sfx * 0.8);
+        self.audio.set_ambience_volume(ambience);
+    }
+
+    /// The weather bed, every frame: desert `wind` 0..1 and `storm` 0..1.
+    pub fn ambience(&mut self, wind: f32, storm: f32) {
+        self.audio.ambience_set(wind.clamp(0.0, 1.0), storm.clamp(0.0, 1.0));
     }
 
     /// Your shot landed: a bright tick on a part, a dull one on armour.
@@ -204,9 +215,8 @@ impl Sound {
             Event::CraneHit { pos, .. } => a.play_pitched(SoundId::HitHull, p(*pos), 1.0, 0.7),
             Event::ObstacleDestroyed { pos, .. } => a.play_pitched(SoundId::PartBreak, p(*pos), 0.8, 0.6),
             Event::Horn { player, horn } => {
-                // No horn in the bank yet: a tone, pitched per horn.
-                let rate = [0.55, 0.7, 0.85, 0.45][(*horn as usize) % 4];
-                a.play_pitched(SoundId::CountdownBeep, None, if mine(*player) { 0.8 } else { 0.5 }, rate);
+                let at = if mine(*player) { None } else { self.seen.get(player).map(|v| v.to_array()) };
+                a.horn(*horn as usize, at, 1.0);
             }
             Event::MatchEnded { .. } => a.play_pitched(SoundId::CountdownGo, None, 0.8, 1.0),
             _ => {}
@@ -217,6 +227,8 @@ impl Sound {
     pub fn frame(&mut self, listener: Vec3, forward: Vec3, tanks: &[TankView], you: Option<PlayerId>, own_throttle: f32) {
         self.audio.tick();
         self.audio.set_listener(listener.to_array(), forward.to_array());
+        self.seen.clear();
+        self.seen.extend(tanks.iter().map(|t| (t.player, t.pos)));
         // The nearest live tanks get a voice.
         let mut near: Vec<(&TankView, f32)> = tanks
             .iter()

@@ -12,7 +12,7 @@ use std::time::Duration;
 use arena_core::bots::{Brain, BOT_NAMES};
 use arena_core::net::{encode, ServerMsg, ROOM_SEATS};
 use arena_core::raid::{ModeKind, TEAM_RAIDERS};
-use arena_core::{Event, Input, Map, Phase, PlayerId, Sim, Tuning, Vec3, TICK_HZ};
+use arena_core::{Event, Input, Map, MapId, Phase, PlayerId, Sim, Tuning, Vec3, TICK_HZ};
 use tokio::sync::mpsc;
 use tokio::time::MissedTickBehavior;
 
@@ -59,6 +59,7 @@ pub struct ArenaInfo {
     pub max_humans: usize,
     pub ended: bool,
     pub mode: ModeKind,
+    pub map: MapId,
 }
 
 struct Human {
@@ -77,6 +78,7 @@ pub struct ArenaRoom {
     code: String,
     public: bool,
     seed: u64,
+    map: MapId,
     rng: u64,
     pub sim: Sim,
     humans: Vec<Human>,
@@ -86,12 +88,13 @@ pub struct ArenaRoom {
 }
 
 impl ArenaRoom {
-    pub fn new(code: String, public: bool, seed: u64, info: Arc<Mutex<ArenaInfo>>, mode: ModeKind) -> Self {
-        let sim = Sim::with_mode(seed, Map::the_sink(seed), Tuning::default(), mode);
+    pub fn new(code: String, public: bool, seed: u64, info: Arc<Mutex<ArenaInfo>>, mode: ModeKind, map: MapId) -> Self {
+        let sim = Sim::with_mode(seed, Map::by_id(map, seed), Tuning::default(), mode);
         let mut room = ArenaRoom {
             code,
             public,
             seed,
+            map,
             rng: seed ^ 0x5DEE_CE66_D1CE_5EED,
             sim,
             humans: Vec::new(),
@@ -198,6 +201,7 @@ impl ArenaRoom {
                     you: h.player,
                     seed: self.seed,
                     token: h.token,
+                    map: self.map,
                 },
             );
         }
@@ -429,8 +433,32 @@ mod tests {
             max_humans: ROOM_SEATS,
             ended: false,
             mode: ModeKind::ScrapBrawl,
+            map: MapId::Sink,
         }));
-        ArenaRoom::new("TEST".into(), public, 11, info, ModeKind::ScrapBrawl)
+        ArenaRoom::new("TEST".into(), public, 11, info, ModeKind::ScrapBrawl, MapId::Sink)
+    }
+
+    /// A Refinery room builds the Refinery and says so in its Welcome.
+    #[test]
+    fn refinery_room_welcomes_with_its_map() {
+        let info = Arc::new(Mutex::new(ArenaInfo {
+            code: "REFI".into(),
+            public: false,
+            humans: 0,
+            max_humans: ROOM_SEATS,
+            ended: false,
+            mode: ModeKind::TeamBrawl,
+            map: MapId::Refinery,
+        }));
+        let mut r = ArenaRoom::new("REFI".into(), false, 5, info, ModeKind::TeamBrawl, MapId::Refinery);
+        assert_eq!(r.sim.map.id, MapId::Refinery);
+        let (out, mut rx) = mpsc::channel(64);
+        r.handle(ArenaCmd::Join { conn: 1, name: "Ann".into(), rejoin: None, out });
+        let first = arena_core::net::decode::<ServerMsg>(&rx.try_recv().unwrap().bytes).unwrap();
+        assert!(matches!(first, ServerMsg::Welcome { map: MapId::Refinery, seed: 5, .. }), "{first:?}");
+        for _ in 0..10 * TICK_HZ {
+            r.tick();
+        }
     }
 
     /// A room of 8 bots runs a minute of play.

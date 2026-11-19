@@ -88,6 +88,7 @@ impl Ctx {
             vol_sfx: pct("vol_sfx"),
             vol_music: pct("vol_music"),
             vol_radio: pct("vol_radio"),
+            vol_ambience: pct("vol_ambience"),
             mouse_sens: pct("mouse_sens"),
             quality: Quality::parse(&self.value("input[name=quality]:checked")),
         }
@@ -211,6 +212,9 @@ impl Ctx {
         let Some(t) = target(&ev) else { return };
         if t.has_attribute("data-setting") {
             self.push(UiAction::SettingsChanged(self.read_settings()));
+        }
+        if t.get_attribute("name").as_deref() == Some("pmap") {
+            self.push(UiAction::PracticeMap(prop_str(&t, "value")));
         }
     }
 

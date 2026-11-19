@@ -37,6 +37,11 @@
     <button class="t-btn" data-action="practice"><span class="t-btn-label">Practice</span><span class="t-btn-hint">You and the bots</span></button>
     <button class="t-btn" data-game="team"><span class="t-btn-label">Team</span><span class="t-btn-hint">Rustbacks vs Dust Saints</span></button>
     <button class="t-btn" data-game="raid"><span class="t-btn-label">Raid</span><span class="t-btn-hint">Co-op: hold the outpost</span></button>
+    <div class="t-seg t-pmap" role="radiogroup" aria-label="Practice map">
+      <span class="t-pmap-label">Practice on</span>
+      <label><input type="radio" name="pmap" value="sink" checked><span>The Sink</span></label>
+      <label><input type="radio" name="pmap" value="refinery"><span>The Refinery</span></label>
+    </div>
     <button class="t-btn" data-goto="garage"><span class="t-btn-label">Garage</span><span class="t-btn-hint">Chassis &amp; paint</span></button>
     <button class="t-btn" data-goto="settings"><span class="t-btn-label">Settings</span><span class="t-btn-hint">Ears, eyes, hands</span></button>
   </nav>
@@ -67,8 +72,8 @@
         <div class="t-field-label">Map</div>
         <div class="t-maps" role="radiogroup">
           <label class="t-map"><input type="radio" name="map" value="the_sink" checked><span class="t-map-card"><b>The Sink</b><i>Dry lake bed, beached ships</i></span></label>
+          <label class="t-map"><input type="radio" name="map" value="refinery"><span class="t-map-card"><b>The Refinery</b><i>Tanks that go boom</i></span></label>
           <label class="t-map t-locked"><input type="radio" name="map" value="rust_belt" disabled><span class="t-map-card"><b>Rust Belt</b><i>Scrapyard maze</i></span></label>
-          <label class="t-map t-locked"><input type="radio" name="map" value="refinery" disabled><span class="t-map-card"><b>Refinery</b><i>Things that go boom</i></span></label>
         </div>
       </div>
       <div class="t-row2">
@@ -129,6 +134,7 @@
         <label class="t-slider"><span>Effects</span><input type="range" min="0" max="100" value="90" data-setting="vol_sfx"><output>90</output></label>
         <label class="t-slider"><span>Music</span><input type="range" min="0" max="100" value="50" data-setting="vol_music"><output>50</output></label>
         <label class="t-slider"><span>Radio</span><input type="range" min="0" max="100" value="100" data-setting="vol_radio"><output>100</output></label>
+        <label class="t-slider"><span>Wind</span><input type="range" min="0" max="100" value="70" data-setting="vol_ambience"><output>70</output></label>
         <label class="t-slider"><span>Mouse</span><input type="range" min="10" max="300" value="100" data-setting="mouse_sens"><output>1.00</output></label>
       </div>
       <div class="t-field">

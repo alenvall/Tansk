@@ -199,6 +199,8 @@ pub struct Settings {
     pub vol_sfx: f32,
     pub vol_music: f32,
     pub vol_radio: f32,
+    /// Wind and storm.
+    pub vol_ambience: f32,
     /// Multiplier, 0.1..=3.0.
     pub mouse_sens: f32,
     pub quality: Quality,
@@ -212,6 +214,7 @@ impl Default for Settings {
             vol_sfx: 0.9,
             vol_music: 0.5,
             vol_radio: 1.0,
+            vol_ambience: 0.7,
             mouse_sens: 1.0,
             quality: Quality::High,
         }
@@ -238,7 +241,7 @@ pub struct Garage {
 pub struct HostConfig {
     /// scrap_brawl | team_brawl (others are locked in the markup for now).
     pub mode: String,
-    /// the_sink (others locked).
+    /// the_sink | refinery (`MapId::from_key`).
     pub map: String,
     pub bots: bool,
     pub private: bool,
@@ -251,6 +254,8 @@ pub struct HostConfig {
 pub enum UiAction {
     Play,
     Practice,
+    /// The title's map switch for Practice / Team / Raid (`sink`, `refinery`).
+    PracticeMap(String),
     Host(HostConfig),
     Join { code: String },
     RefreshGames,
@@ -477,6 +482,7 @@ impl Ui {
             ("vol_sfx", pct(s.vol_sfx)),
             ("vol_music", pct(s.vol_music)),
             ("vol_radio", pct(s.vol_radio)),
+            ("vol_ambience", pct(s.vol_ambience)),
         ] {
             self.dom.set_range(key, &v, &v);
         }
