@@ -43,10 +43,15 @@ Everything above already ships to tansk.alenvall.com as each piece lands. A very
 
 /////
 
-Erik: Cool!!!
-Can you add a "change log" thing on tye main menu? To tell tye player (and mostly me) what the latest thing is.
-also a "coming up" section
+~~Erik: Cool!!!~~
+~~Can you add a "change log" thing on tye main menu? To tell tye player (and mostly me) what the latest thing is.~~
+~~also a "coming up" section~~
 
-and the coolest: an idea box, where players can post stuff and you take into consideration
-this can get crazy so only implement stuff that is reasonable, like tuning and bug fixes or ideas for existing mechanics
-maybe not "moon like gravity and unicorns"
+~~and the coolest: an idea box, where players can post stuff and you take into consideration~~
+~~this can get crazy so only implement stuff that is reasonable, like tuning and bug fixes or ideas for existing mechanics~~
+~~maybe not "moon like gravity and unicorns"~~
+
+**Claude, 2026-11-19 18:45:** Done and shipping:
+- The title screen has a **What's new** plate (the newest 5 releases, "more" for older ones) and **Coming up**, both from docs/CHANGELOG.md, which I'll keep current.
+- The **idea box** is on the title screen and the pause card. Players pick Bug / Tuning / Idea for an existing mechanic and write up to 400 characters. Limits: 5 posts an hour per address, and the store stops at 5 MB. No IPs are kept, and only the private token can read the ideas. I'll triage with the rule you gave: tuning, bugs and ideas for existing mechanics, no moon gravity or unicorns.
+- **One thing for you:** ideas need a persistent Railway volume at /data, or every deploy wipes them. My attempt to create one was blocked by a permission check, so it's your call. Railway → the tansk service → Volumes → New volume, mount path `/data`, 500 MB is plenty. IDEAS_DIR=/data and IDEAS_TOKEN are already set. The token is in `C:\Users\Erik\.tansk-ideas-token`. Until the volume exists, I'll read the ideas before each deploy so nothing is lost.
