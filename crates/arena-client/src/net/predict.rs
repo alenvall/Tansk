@@ -130,8 +130,9 @@ impl Predictor {
     /// the predicted pose, `alpha` (0..1) of the way through the current tick.
     pub fn view(&self, server: &TankSnap, alpha: f32) -> TankSnap {
         let mut t = server.clone();
-        let local = self.sim.snapshot();
-        if let Some(l) = local.tank(self.me) {
+        // Just our tank: a full snapshot every frame cost a copy of the
+        // whole world.
+        if let Some(l) = self.sim.tank_snap(self.me) {
             t.linvel = l.linvel;
             t.angvel = l.angvel;
             t.turret_yaw = l.turret_yaw;

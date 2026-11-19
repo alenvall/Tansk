@@ -103,6 +103,10 @@ sound_ids! {
     RocketLaunch => "rocket_launch",
     Flamethrower => "flamethrower",
     FuelBlast => "fuel_blast",
+    // The held flamethrower: its ignition and its cut-off (the roar between
+    // is a loop, see `samples::Bed::FlameLoop`).
+    FlameStart => "flame_start",
+    FlameTail => "flame_tail",
 }
 
 /// How a sound is rendered and played.
@@ -201,6 +205,8 @@ impl SoundId {
             RocketLaunch => info(1.5, false, 0.85, 8, 3, 0.05, true),
             Flamethrower => info(2.2, false, 0.8, 4, 2, 0.03, true),
             FuelBlast => info(3.6, true, 0.97, 3, 2, 0.04, true),
+            FlameStart => info(0.9, false, 0.8, 4, 2, 0.04, true),
+            FlameTail => info(1.5, false, 0.7, 4, 2, 0.04, true),
         }
     }
 }
@@ -318,6 +324,8 @@ fn recipe(id: SoundId) -> Recipe {
         RocketLaunch => rocket_launch,
         Flamethrower => flamethrower,
         FuelBlast => fuel_blast,
+        FlameStart => flame_start,
+        FlameTail => flame_tail,
     }
 }
 
@@ -463,6 +471,18 @@ fn flamethrower(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
     noise(b, 0.0, Noise::lp(1800.0, 900.0, 0.08, 0.5).hold(dur).attack(0.06).drive(1.4), 0.9, n);
     noise(b, 0.0, Noise::bp(380.0, 0.7, 0.4).hold(dur).attack(0.08), 0.5, n);
     crackle(b, 0.05, Crackle { dur, rate0: 120.0, rate1: 60.0, centre: 2500.0, q: 0.8, spike: 2.0 }, 0.35, n);
+}
+
+fn flame_start(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
+    // The igniter's pop and the jet catching.
+    noise(b, 0.0, Noise::lp(6000.0, 900.0, 0.01, 0.04).attack(0.0005).drive(1.2), 0.6, n);
+    noise(b, 0.02, Noise::lp(1800.0 * p.vary(0.08), 700.0, 0.2, 0.5).attack(0.15).drive(1.3), 0.9, n);
+}
+
+fn flame_tail(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
+    // The valve shuts: the roar dies into a flutter and a few crackles.
+    noise(b, 0.0, Noise::lp(1500.0 * p.vary(0.08), 300.0, 0.01, 0.6), 0.8, n);
+    crackle(b, 0.05, Crackle { dur: 0.9, rate0: 60.0, rate1: 5.0, centre: 2200.0, q: 0.8, spike: 2.0 }, 0.3, n);
 }
 
 fn fuel_blast(b: &mut [f32], p: &mut Rng, n: &mut Rng) {

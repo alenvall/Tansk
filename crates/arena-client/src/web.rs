@@ -9,6 +9,7 @@
 //! `autoplay=host-brawl` hosts a private Scrap Brawl,
 //! `autoplay=wellhead|host-wellhead` and `autoplay=lastcrew|host-lastcrew` for Wellhead / Last Crew Rolling
 //! (`&wallfast=1` makes Last Crew practice's wall close at once and fast).
+//! `&tod=golden|dusk|noon` fixes the time of day.
 //! `&quality=low|medium|high|ultra` forces a preset (profiling); `&hints=reset`
 //! shows the onboarding tips again. The canvas
 //! carries `data-cpu`: mean/max CPU ms per frame (game, draw) over 60 frames.
@@ -188,6 +189,12 @@ async fn run() -> Result<()> {
     game.debug.boss = query_flag("boss").map(|v| v == "weak");
     game.debug.landship = query_flag("landship").is_some();
     game.debug.wall_fast = query_flag("wallfast").is_some();
+    game.debug.tod = match query_flag("tod").as_deref() {
+        Some("golden") => Some(crate::renderer::TimeOfDay::GoldenHour),
+        Some("dusk") => Some(crate::renderer::TimeOfDay::Dusk),
+        Some("noon") => Some(crate::renderer::TimeOfDay::Noon),
+        _ => None,
+    };
     if let Some(m) = query_flag("map").and_then(|m| arena_core::MapId::from_key(&m)) {
         game.practice_map = m;
         // Show it on the title's map switch too.

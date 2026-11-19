@@ -141,7 +141,7 @@ fn sink_marks(map: &Map, hw: &dyn Fn(f32, f32) -> Vec2) -> Vec<GroundMark> {
         marks.push(GroundMark { kind: GroundMarkKind::Packed, points: vec![a, b], width: 12.0 });
     }
     // Oil: the fuel tank, the silos, the pumps, the yard's drums.
-    let mut oil = vec![Vec2::new(8.0, -22.0), Vec2::new(30.0, -26.0), GAS + Vec2::new(0.0, 7.0), GAS + Vec2::new(-4.0, 16.0), YARD + Vec2::new(-10.0, -26.0)];
+    let mut oil = vec![Vec2::new(8.0, -22.0), Vec2::new(30.0, -26.0), GAS + Vec2::new(0.0, 7.0), GAS + Vec2::new(-12.0, -18.0), YARD + Vec2::new(-10.0, -26.0)];
     for o in &map.obstacles {
         if o.kind == ObstacleKind::CarWreck {
             oil.push(Vec2::new(o.pos.x, o.pos.z));
@@ -194,8 +194,8 @@ impl Map {
             let u = p.dot(dune_dir) + warp;
             // Bigger, longer dunes on the beach for hull-down fighting; gentle elsewhere.
             let beach = smoothstep(140.0, 200.0, x);
-            let ridge = 0.5 + 0.5 * (u / (9.5 + 5.5 * beach)).sin();
-            let dunes = ridge.powf(1.6) * (1.4 + 1.6 * beach);
+            let ridge = 0.5 + 0.5 * (u / (9.5 + 9.0 * beach)).sin();
+            let dunes = ridge.powf(1.6) * (1.4 + 0.9 * beach);
             let broad = (value_noise(s2, x / 150.0, z / 150.0) - 0.5) * 5.0;
             let small = (value_noise(s3, x / 30.0, z / 30.0) - 0.5) * 0.6;
             let r = p.length() / 300.0;
@@ -273,13 +273,12 @@ impl Map {
         b.place(ObstacleKind::Tent, 24.0, 2.0, std::f32::consts::FRAC_PI_2);
         b.place(ObstacleKind::Tent, 24.0, 20.0, std::f32::consts::FRAC_PI_2);
         // South: a container and sandbag lines, crates and pallets.
-        b.containers(0.0, 26.0, 0.0, &[1]);
+        // (Clear of the south wall: a 14 m lane behind it.)
+        b.containers(0.0, 20.0, 0.0, &[1]);
         b.place(ObstacleKind::Crates, -29.0, 30.0, 0.0);
         b.place(ObstacleKind::Crates, 30.0, 30.0, 0.0);
         b.place(ObstacleKind::Crates, -6.0, -27.0, 0.0);
         b.place(ObstacleKind::Crates, -14.0, -28.0, 0.0);
-        // A sandbag nest covering the west gate from inside.
-        b.place(ObstacleKind::Sandbags, -20.0, 22.0, 0.8);
         // Outside the gates: hedgehogs, barriers, car wrecks.
         for (x, z, yaw) in [(-18.0, -50.0, 0.0), (18.0, 52.0, 0.0), (-52.0, 18.0, 1.57), (52.0, -18.0, 1.57)] {
             let j = b.jit(3.0);
@@ -359,14 +358,34 @@ impl Map {
             t += 44.0;
         }
         // Barrier lines on the north shoulder, with gaps.
-        for t in [60.0, 150.0, 330.0, 480.0] {
+        for t in [60.0, 150.0, 300.0, 480.0] {
             let j = b.jit(6.0);
             let p = at(t + j, -9.0);
             b.place(ObstacleKind::Barrier, p.x, p.y, hw_yaw);
         }
         // The gas station ruin, north of the road.
-        b.place(ObstacleKind::GasStation, GAS.x, GAS.y, hw_yaw);
-        b.place(ObstacleKind::CarWreck, GAS.x - 16.0, GAS.y + 6.0, 0.7);
+        let gi = b.place(ObstacleKind::GasStation, GAS.x, GAS.y, hw_yaw);
+        // The canopy's back pillars stand against the shop front (no narrow
+        // slot between them and the shop), the roof runs back to meet it.
+        {
+            let g = &mut b.obstacles[gi];
+            // The roof also goes up to 6.1 m: tall masts used to catch its edge.
+            if let Some(roof) = g.boxes.get_mut(1) {
+                roof.center.z = 4.5;
+                roof.half.z = 8.0;
+                roof.center.y = 6.4;
+                roof.half.x = 5.6;
+            }
+            for pillar in g.boxes.iter_mut().skip(2) {
+                if pillar.center.z < 5.0 {
+                    pillar.center.z = -2.7;
+                }
+                pillar.center.x = pillar.center.x.signum() * 5.2;
+                pillar.center.y = 3.0;
+                pillar.half.y = 3.1;
+            }
+        }
+        b.place(ObstacleKind::CarWreck, GAS.x - 24.0, GAS.y - 2.0, 0.7);
         b.place(ObstacleKind::Crates, GAS.x - 20.0, GAS.y - 14.0, 0.0);
         // The landmark: a water tower over the shop's back lot.
         b.place(ObstacleKind::WaterTower, GAS.x + 19.0, GAS.y - 13.0, 0.0);
@@ -379,15 +398,18 @@ impl Map {
         let tip = YARD + Vec2::new(15.0, 0.0);
         for ix in 0..6 {
             for iz in 0..8 {
-                let x = -205.0 + ix as f32 * 22.0;
-                let z = 70.0 + iz as f32 * 15.0;
+                // Lanes at least 12 m wide both ways.
+                let x = -215.0 + ix as f32 * 25.0;
+                let z = 66.0 + iz as f32 * 17.0;
                 let p = Vec2::new(x, z);
-                // Keep the crane's swing and its tower clear, and some cells open for the maze.
-                if p.distance(tip) < 30.0 || p.distance(YARD) < 14.0 || b.rng.chance(0.3) {
+                // Keep the crane's swing and its tower clear, two cells always open
+                // (small squares in the maze), and some more at random.
+                let open = (ix == 1 && iz == 5) || (ix == 4 && iz == 2);
+                if open || p.distance(tip) < 30.0 || p.distance(YARD) < 14.0 || b.rng.chance(0.3) {
                     continue;
                 }
                 let a = 1 + b.rng.below(3) as u8;
-                if b.rng.chance(0.5) {
+                if b.rng.chance(0.4) {
                     let c = 1 + b.rng.below(2) as u8;
                     b.containers(x, z, 0.0, &[a, c]);
                 } else {
@@ -395,8 +417,8 @@ impl Map {
                 }
             }
         }
-        b.place(ObstacleKind::Crates, YARD.x - 4.0, YARD.y + 30.0, 0.0);
-        b.place(ObstacleKind::Pipe, YARD.x + 40.0, YARD.y - 52.0, 0.3);
+        b.place(ObstacleKind::Crates, YARD.x + 18.0, YARD.y - 62.0, 0.0);
+        b.place(ObstacleKind::Pipe, YARD.x + 30.0, YARD.y - 75.0, 0.3);
 
         // ---- THE BEACH: beached hulls, the pier, big dunes ------------------
         let j = b.jit(0.1);
@@ -429,11 +451,11 @@ impl Map {
         b.place(ObstacleKind::LaunchPlate, PLAT_C.x - PLAT_H.x - 14.0, PLAT_C.y - 5.0, 0.0);
         b.place(ObstacleKind::Sandbags, PLAT_C.x - 10.0, PLAT_C.y + PLAT_H.y - 4.0, 0.0);
         b.place(ObstacleKind::Sandbags, PLAT_C.x + PLAT_H.x - 5.0, PLAT_C.y - 8.0, 1.57);
-        b.place(ObstacleKind::Crates, PLAT_C.x - 20.0, PLAT_C.y - 10.0, 0.0);
+        b.place(ObstacleKind::Crates, PLAT_C.x - 5.0, PLAT_C.y - 20.0, 0.0);
         // The landmark: a guyed radio mast on the top, a lookout tower on
         // its south-west corner over the yard.
         b.place(ObstacleKind::RadioMast, PLAT_C.x - 28.0, PLAT_C.y - 18.0, 0.4);
-        b.place(ObstacleKind::Tower, PLAT_C.x - 34.0, PLAT_C.y + 19.0, 0.5);
+        b.place(ObstacleKind::Tower, PLAT_C.x - 30.0, PLAT_C.y + 4.0, 0.5);
         // Out on the open ground: not sprinkled, but a few deliberate spots
         // on the tracks between the places (and long empty sightlines between).
         for (x, z, k, yaw) in [
@@ -447,7 +469,7 @@ impl Map {
             (38.0, 124.0, ObstacleKind::CarWreck, 1.3),
             (46.0, 132.0, ObstacleKind::Crates, 0.0),
             // A pipe dump at the yard's gate.
-            (-84.0, 62.0, ObstacleKind::Pipe, 0.2),
+            (-76.0, 50.0, ObstacleKind::Pipe, 0.2),
             // A supply cache below the north spawn.
             (-14.0, -160.0, ObstacleKind::Crates, 0.0),
         ] {
@@ -476,7 +498,9 @@ impl Map {
         for o in b.obstacles.iter().filter(|o| o.kind != ObstacleKind::Highway) {
             let c = Vec2::new(o.pos.x, o.pos.z);
             let r = if o.kind == ObstacleKind::Mesa { o.radius * 0.5 } else { o.radius * 0.8 };
-            pads.push(Pad { center: c, inner: r, outer: o.radius + 10.0, target: ground0(c.x, c.y) });
+            // Hulls get a wide flat apron: room to drive round them clear of the dunes.
+            let apron = if o.kind == ObstacleKind::ShipHull { 20.0 } else { 10.0 };
+            pads.push(Pad { center: c, inner: r, outer: o.radius + apron, target: ground0(c.x, c.y) });
         }
         for s in &spawns {
             let c = Vec2::new(s.pos.x, s.pos.z);
@@ -626,7 +650,7 @@ impl Map {
         }
         // Oil drums: gas station, outpost, yard, roadblock.
         let rb_p = HW_A + hw_dir * (rb + 10.0) + hw_normal * 19.0;
-        for (c, n) in [(GAS + Vec2::new(-4.0, 16.0), 4), (Vec2::new(-14.0, -20.0), 3), (YARD + Vec2::new(-10.0, -26.0), 3), (rb_p, 3)] {
+        for (c, n) in [(GAS + Vec2::new(-12.0, -18.0), 4), (Vec2::new(-14.0, -20.0), 3), (YARD + Vec2::new(-10.0, -26.0), 3), (rb_p, 3)] {
             for k in 0..n {
                 let p = free(&map, c + Vec2::new(k as f32 * 1.3, (k % 2) as f32 * 1.2), 0.8);
                 map.props.push(PropSpawn { kind: PropKindSpawn::OilDrum, pos: at3(&map, p) + Vec3::Y * 0.5 });

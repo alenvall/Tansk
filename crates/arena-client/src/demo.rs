@@ -259,6 +259,7 @@ pub fn lineup(wr: &mut WorldRenderer) -> RenderWorld {
         alive: true,
         boosting: false,
         burning: false,
+        flaming: false,
         throttle: 0.0,
         speed: 0.0,
     };

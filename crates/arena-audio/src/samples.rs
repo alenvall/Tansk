@@ -45,6 +45,8 @@ pub fn takes(id: SoundId) -> &'static [Take] {
         RocketLaunch => &ROCKET,
         MortarShot => &MORTAR,
         Flamethrower => &FLAME,
+        FlameStart => &FLAME_START,
+        FlameTail => &FLAME_TAIL,
         HitHull => &HIT_HULL,
         HitTurret => &HIT_TURRET,
         HitBarrel => &HIT_BARREL,
@@ -99,6 +101,8 @@ const TESLA: [Take; 3] = [t("tesla_crackle_1", 1.25), t("tesla_crackle_2", 1.25)
 const ROCKET: [Take; 2] = [t("rocket_1", 0.72), t("rocket_2", 0.78)];
 const MORTAR: [Take; 2] = [t("mortar_1", 0.90), t("mortar_2", 0.93)];
 const FLAME: [Take; 2] = [t("flamethrower_1", 0.93), t("flamethrower_2", 0.69)];
+const FLAME_START: [Take; 1] = [t("flame_start", 1.1)];
+const FLAME_TAIL: [Take; 1] = [t("flame_tail", 1.0)];
 const HIT_HULL: [Take; 3] = [t("hit_hull_1", 0.78), t("hit_hull_2", 0.76), t("hit_hull_3", 0.86)];
 const HIT_TURRET: [Take; 3] = [t("hit_turret_1", 0.65), t("hit_turret_2", 1.25), t("hit_turret_3", 1.23)];
 const HIT_BARREL: [Take; 2] = [t("hit_barrel_1", 1.19), t("hit_barrel_2", 1.25)];
@@ -147,10 +151,13 @@ pub enum Bed {
     Wind,
     /// The sandstorm (stereo).
     Storm,
+    /// A held flamethrower's roar.
+    FlameLoop,
 }
 
 impl Bed {
-    pub const ALL: [Bed; 6] = [Bed::EngineIdle, Bed::EngineLoad, Bed::EngineHigh, Bed::Tracks, Bed::Wind, Bed::Storm];
+    pub const ALL: [Bed; 7] =
+        [Bed::EngineIdle, Bed::EngineLoad, Bed::EngineHigh, Bed::Tracks, Bed::Wind, Bed::Storm, Bed::FlameLoop];
     /// The four layers of a sampled engine, in [`EngineMix`] order.
     pub const ENGINE: [Bed; 4] = [Bed::EngineIdle, Bed::EngineLoad, Bed::EngineHigh, Bed::Tracks];
 
@@ -163,6 +170,7 @@ impl Bed {
             Bed::Tracks => "tracks",
             Bed::Wind => "wind",
             Bed::Storm => "storm",
+            Bed::FlameLoop => "flame_loop",
         }
     }
 
@@ -219,7 +227,7 @@ pub fn load_order() -> Vec<Asset> {
     out.extend(Bed::ENGINE.iter().map(|b| Asset::Bed(*b)));
     out.extend(firsts(1));
     out.extend(firsts(2));
-    out.extend([Asset::Bed(Bed::Wind), Asset::Bed(Bed::Storm)]);
+    out.extend([Asset::Bed(Bed::FlameLoop), Asset::Bed(Bed::Wind), Asset::Bed(Bed::Storm)]);
     for u in 0..=2 {
         for id in SoundId::ALL.iter().filter(|id| urgency(**id) == u) {
             out.extend((1..takes(*id).len()).map(|k| Asset::Shot(*id, k)));

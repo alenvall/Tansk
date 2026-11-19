@@ -76,6 +76,8 @@ pub struct DebugFlags {
     pub boss: Option<bool>,
     /// `?wallfast=1`: Last Crew practice's wall starts closing at once, quickly.
     pub wall_fast: bool,
+    /// `?tod=golden|dusk|noon`: every match at that time of day (else rolled).
+    pub tod: Option<TimeOfDay>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -424,7 +426,9 @@ impl Game {
         };
         self.ui.set_loading_tip(tip(self.time));
         let roll = (self.time * 977.0).fract();
-        self.want_look = Some(if roll < 0.6 {
+        self.want_look = Some(if let Some(t) = self.debug.tod {
+            t
+        } else if roll < 0.6 {
             TimeOfDay::GoldenHour
         } else if roll < 0.85 {
             TimeOfDay::Dusk
@@ -2290,7 +2294,8 @@ fn render_quality(q: crate::ui::Quality) -> Quality {
     match q {
         crate::ui::Quality::Low => Quality::Low,
         crate::ui::Quality::Medium => Quality::Medium,
-        crate::ui::Quality::High | crate::ui::Quality::Ultra => Quality::High,
+        crate::ui::Quality::High => Quality::High,
+        crate::ui::Quality::Ultra => Quality::Ultra,
     }
 }
 

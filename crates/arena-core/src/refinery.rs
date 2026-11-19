@@ -152,6 +152,10 @@ fn refinery_marks(map: &Map) -> Vec<GroundMark> {
         packed((-31.0, 0.0), (31.0, 0.0), 64.0),
         // The tank farm between its bunds.
         packed((120.0, 39.0), (232.0, 39.0), 100.0),
+        // The towers' plant floor.
+        packed((100.0, -192.0), (232.0, -192.0), 104.0),
+        // The loading yard's sidings.
+        packed((-230.0, 206.0), (230.0, 206.0), 60.0),
         // The flare's plinth yard.
         packed((FLARE.x - 18.0, FLARE.y), (FLARE.x + 18.0, FLARE.y), 30.0),
     ]);
@@ -381,9 +385,10 @@ impl Map {
         b.place(ObstacleKind::Sandbags, -240.0, 45.0, 1.4);
         b.place(ObstacleKind::LaunchPlate, -145.0, 20.0, 2.6);
         // The field crew's camp: a water tower (the landmark) and a wind pump.
-        b.place(ObstacleKind::WaterTower, -196.0, 120.0, 0.0);
-        b.place(ObstacleKind::Windmill, -214.0, 106.0, 0.5);
-        b.place(ObstacleKind::Crates, -186.0, 108.0, 0.0);
+        // (On open flat at the field's east edge, clear of the pumps and berms.)
+        b.place(ObstacleKind::WaterTower, -75.0, 105.0, 0.0);
+        b.place(ObstacleKind::Windmill, -90.0, 92.0, 0.5);
+        b.place(ObstacleKind::Crates, -64.0, 95.0, 0.0);
 
         // ---- THE LOADING YARD: rails, tank cars, containers, a crane -----------
         for z in RAIL_Z {

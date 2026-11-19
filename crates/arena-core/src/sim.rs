@@ -1653,70 +1653,76 @@ impl Sim {
 
     // ------------------------------------------------------------- snapshot
 
+    /// One tank's snapshot, without building the whole [`Snapshot`] (the
+    /// client's prediction reads its own tank every frame).
+    #[must_use]
+    pub fn tank_snap(&self, id: PlayerId) -> Option<TankSnap> {
+        self.players.iter().find(|p| p.id == id).map(|p| self.tank_snap_of(p))
+    }
+
+    fn tank_snap_of(&self, p: &Player) -> TankSnap {
+        let t = &self.tuning;
+        let tank = &p.tank;
+        let b = self.phys.body(tank.body);
+        let g = gun_stats(t, &tank.stats);
+        let ch = tank.chassis(t);
+        let wheel_ray = ch.suspension_travel + ch.wheel_radius;
+        TankSnap {
+            player: p.id,
+            alive: tank.alive,
+            pos: b.translation().to_array(),
+            rot: q_rot(*b.rotation()),
+            linvel: b.linvel().to_array(),
+            angvel: b.angvel().to_array(),
+            turret_yaw: tank.turret_yaw,
+            gun_pitch: tank.gun_pitch,
+            wheels: tank.wheels.iter().map(|w| q01(w.compression / wheel_ray)).collect(),
+            track_speed: tank.track_speed.map(|s| (s * 100.0).clamp(-32000.0, 32000.0) as i16),
+            health: tank.health.max(0.0).round() as u16,
+            max_health: tank.stats.max_health.round() as u16,
+            tracks: tank.tracks.map(|s| TrackSnap { health: q01(s.health / t.damage.track_health), blown: s.blown > 0.0 }),
+            parts: tank
+                .parts
+                .iter()
+                .map(|q| PartSnap { kind: q.kind, mk: q.mk, health: q01(q.health / q.max_health) })
+                .collect(),
+            tiers: tank.tiers,
+            scrap: tank.scrap,
+            gun: tank.stats.gun,
+            alt: tank.stats.alt,
+            fuel: q01(tank.fuel / tank.stats.fuel_max),
+            boosting: tank.boosting,
+            bloom: q01(tank.bloom),
+            charge: q01(tank.charge),
+            reload: q01(tank.reload / g.reload),
+            repair: tank.repair.map(|r| RepairSnap { kind: r.kind, progress: q01(r.elapsed / r.duration) }),
+            choice: tank.choice.as_ref().map(|c| ChoiceSnap {
+                track: c.track,
+                options: c.options.clone(),
+                current: tank.branch[c.track.index()].unwrap_or(c.options[0]),
+                ticks_left: (c.time_left * 60.0).max(0.0) as u16,
+            }),
+            respawn_in: (tank.respawn_in.max(0.0) * 60.0) as u16,
+            protected: tank.protect > 0.0,
+            mass: tank.stats.mass,
+            shield: if tank.stats.shield_max > 0.0 { q01(tank.shield / tank.stats.shield_max) } else { 0 },
+            burning: tank.burning > 0.0,
+            flaming: tank.flaming,
+            lock: tank.lock,
+            lock_progress: q01(tank.lock_progress),
+            rare_ammo: tank.rare_ammo,
+            air_strike: tank.air_strike,
+            team: p.team.unwrap_or(255),
+            chassis: tank.class,
+            paint: p.loadout.paint,
+            emblem: p.loadout.emblem,
+            vehicle: tank.vehicle,
+        }
+    }
+
     pub fn snapshot(&self) -> Snapshot {
         let t = &self.tuning;
-        let tanks = self
-            .players
-            .iter()
-            .map(|p| {
-                let tank = &p.tank;
-                let b = self.phys.body(tank.body);
-                let g = gun_stats(t, &tank.stats);
-                let ch = tank.chassis(t);
-                let wheel_ray = ch.suspension_travel + ch.wheel_radius;
-                TankSnap {
-                    player: p.id,
-                    alive: tank.alive,
-                    pos: b.translation().to_array(),
-                    rot: q_rot(*b.rotation()),
-                    linvel: b.linvel().to_array(),
-                    angvel: b.angvel().to_array(),
-                    turret_yaw: tank.turret_yaw,
-                    gun_pitch: tank.gun_pitch,
-                    wheels: tank.wheels.iter().map(|w| q01(w.compression / wheel_ray)).collect(),
-                    track_speed: tank.track_speed.map(|s| (s * 100.0).clamp(-32000.0, 32000.0) as i16),
-                    health: tank.health.max(0.0).round() as u16,
-                    max_health: tank.stats.max_health.round() as u16,
-                    tracks: tank.tracks.map(|s| TrackSnap { health: q01(s.health / t.damage.track_health), blown: s.blown > 0.0 }),
-                    parts: tank
-                        .parts
-                        .iter()
-                        .map(|q| PartSnap { kind: q.kind, mk: q.mk, health: q01(q.health / q.max_health) })
-                        .collect(),
-                    tiers: tank.tiers,
-                    scrap: tank.scrap,
-                    gun: tank.stats.gun,
-                    alt: tank.stats.alt,
-                    fuel: q01(tank.fuel / tank.stats.fuel_max),
-                    boosting: tank.boosting,
-                    bloom: q01(tank.bloom),
-                    charge: q01(tank.charge),
-                    reload: q01(tank.reload / g.reload),
-                    repair: tank.repair.map(|r| RepairSnap { kind: r.kind, progress: q01(r.elapsed / r.duration) }),
-                    choice: tank.choice.as_ref().map(|c| ChoiceSnap {
-                        track: c.track,
-                        options: c.options.clone(),
-                        current: tank.branch[c.track.index()].unwrap_or(c.options[0]),
-                        ticks_left: (c.time_left * 60.0).max(0.0) as u16,
-                    }),
-                    respawn_in: (tank.respawn_in.max(0.0) * 60.0) as u16,
-                    protected: tank.protect > 0.0,
-                    mass: tank.stats.mass,
-                    shield: if tank.stats.shield_max > 0.0 { q01(tank.shield / tank.stats.shield_max) } else { 0 },
-                    burning: tank.burning > 0.0,
-                    flaming: tank.flaming,
-                    lock: tank.lock,
-                    lock_progress: q01(tank.lock_progress),
-                    rare_ammo: tank.rare_ammo,
-                    air_strike: tank.air_strike,
-                    team: p.team.unwrap_or(255),
-                    chassis: tank.class,
-                    paint: p.loadout.paint,
-                    emblem: p.loadout.emblem,
-                    vehicle: tank.vehicle,
-                }
-            })
-            .collect();
+        let tanks = self.players.iter().map(|p| self.tank_snap_of(p)).collect();
         Snapshot {
             tick: self.tick,
             tanks,

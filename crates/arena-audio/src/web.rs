@@ -19,14 +19,17 @@
 //! through their own filter and panner into the engine bus; the synthesized
 //! engines run on a ScriptProcessor as before and are faded out for any tank
 //! that has a sampled voice. The weather is two looping beds (wind, storm)
-//! on the ambience bus, with the synthesized wind as the fallback. Music is
+//! on the ambience bus, with the synthesized wind as the fallback. A held
+//! flamethrower is an ignition burst, a seamless roar loop per tank, and a
+//! cut-off tail. Music is
 //! synthesized live, unchanged.
 //!
 //! Variation on every play: a different take than last time, playback rate
 //! jitter, and ±1.5 dB of level.
 //!
 //! For tests and diagnostics, `window.__tanskAudio` holds `{total, loaded,
-//! failed, plays}` (files to load, decoded, failed; one-shots started).
+//! failed, plays, flames}` (files to load, decoded, failed; one-shots
+//! started; flamethrowers lit).
 
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -66,6 +69,8 @@ const ENGINE_SAMPLE_LEVEL: f32 = 0.55;
 /// Level of the weather beds at full wind / storm.
 const WIND_LEVEL: f32 = 0.5;
 const STORM_LEVEL: f32 = 0.75;
+/// Level of a held flamethrower's roar at full gain.
+const FLAME_LEVEL: f32 = 0.6;
 
 /// The mixer's bus levels (linear, `0..2`): the Settings sliders.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -98,6 +103,7 @@ struct Store {
     loaded: usize,
     failed: usize,
     plays: u32,
+    flames: u32,
     reported: bool,
 }
 
@@ -147,6 +153,7 @@ impl Store {
             set("loaded", self.loaded as f64);
             set("failed", self.failed as f64);
             set("plays", f64::from(self.plays));
+            set("flames", f64::from(self.flames));
             let _ = js_sys::Reflect::set(&w, &"__tanskAudio".into(), &o);
         }
         if !self.reported && self.loaded + self.failed >= self.total {
@@ -170,6 +177,13 @@ struct EngineVoice {
     variant: f32,
 }
 
+/// One held flamethrower: the roar loop through its own filter and panner,
+/// or `None` when it is covered by the one-shot fallback (loop not loaded).
+struct FlameVoice {
+    roar: Option<(AudioBufferSourceNode, GainNode, BiquadFilterNode, StereoPannerNode)>,
+    pos: Option<[f32; 3]>,
+}
+
 /// The two weather beds.
 struct Weather {
     wind: Option<(AudioBufferSourceNode, GainNode)>,
@@ -190,6 +204,7 @@ struct Live {
     schedule: Vec<(SoundId, usize)>,
     next_render: usize,
     engines: HashMap<EngineHandle, EngineVoice>,
+    flames: HashMap<u64, FlameVoice>,
     weather: Weather,
     _streams: Vec<Stream>,
     // Kept alive with the graph.
@@ -397,6 +412,7 @@ impl Audio {
             schedule: schedule(),
             next_render: 0,
             engines: HashMap::new(),
+            flames: HashMap::new(),
             weather: Weather { wind: None, storm: None },
             _streams: streams,
             _verb: verb,
@@ -615,6 +631,63 @@ impl Audio {
         }
         if let Ok(mut a) = self.ambience.try_borrow_mut() {
             a.set(synth.0, synth.1);
+        }
+    }
+
+    /// Every frame: the flamethrowers that are lit, by a stable key (e.g. the
+    /// player id) and where they are (`None` for your own). A new one plays
+    /// its ignition and starts a seamless roar loop; one that is gone stops
+    /// its loop and plays the cut-off tail. Until the loop has loaded, a lit
+    /// flamethrower plays the one-shot burst instead.
+    pub fn flames(&mut self, lit: &[(u64, Option<[f32; 3]>)]) {
+        let Some(live) = &self.live else { return };
+        let gone: Vec<u64> = live.flames.keys().copied().filter(|k| !lit.iter().any(|(l, _)| l == k)).collect();
+        for k in gone {
+            let Some(v) = self.live.as_mut().and_then(|l| l.flames.remove(&k)) else { continue };
+            if let (Some(live), Some((src, g, _, _))) = (&self.live, &v.roar) {
+                let now = live.ctx.current_time();
+                let _ = g.gain().set_target_at_time(0.0, now, 0.06);
+                let _ = web_sys::AudioScheduledSourceNode::stop_with_when(src, now + 0.4);
+            }
+            if v.roar.is_some() {
+                self.play(SoundId::FlameTail, v.pos, 1.0);
+            }
+        }
+        for &(k, pos) in lit {
+            let heard = pos.map_or(CENTRE, |p| spatialize(&self.listener, p));
+            let fresh = !self.live.as_ref().is_some_and(|l| l.flames.contains_key(&k));
+            if fresh {
+                let roar = {
+                    let store = self.store.borrow();
+                    match (store.bed(Bed::FlameLoop), &self.live) {
+                        (Some(buf), Some(live)) => flame_roar(live, buf, &mut self.rng).ok(),
+                        _ => None,
+                    }
+                };
+                if roar.is_some() {
+                    self.play(SoundId::FlameStart, pos, 1.0);
+                } else {
+                    self.play(SoundId::Flamethrower, pos, 0.9);
+                }
+                if let Some(live) = &mut self.live {
+                    live.flames.insert(k, FlameVoice { roar, pos });
+                }
+                let mut store = self.store.borrow_mut();
+                store.flames += 1;
+                store.publish();
+            }
+            let Some(live) = &mut self.live else { return };
+            let Some(v) = live.flames.get_mut(&k) else { continue };
+            v.pos = pos;
+            if let Some((_, g, filter, panner)) = &v.roar {
+                let now = live.ctx.current_time();
+                let level = (heard.gain * FLAME_LEVEL).clamp(0.0, 2.0);
+                let level = if level.is_finite() { level } else { 0.0 };
+                // Fades in under the ignition burst.
+                let _ = g.gain().set_target_at_time(level, now, if fresh { 0.15 } else { 0.05 });
+                let _ = filter.frequency().set_target_at_time(heard.cutoff_hz.clamp(200.0, 20_000.0), now, 0.05);
+                let _ = panner.pan().set_target_at_time(heard.pan.clamp(-1.0, 1.0), now, 0.05);
+            }
         }
     }
 
@@ -864,6 +937,32 @@ impl EngineVoice {
             let _ = web_sys::AudioScheduledSourceNode::stop_with_when(s, now + 0.5);
         }
     }
+}
+
+/// A flamethrower's roar: the loop from a random point, silent, through a
+/// low-pass and a panner into the sfx bus.
+fn flame_roar(
+    live: &Live,
+    buf: &AudioBuffer,
+    rng: &mut Rng,
+) -> Result<(AudioBufferSourceNode, GainNode, BiquadFilterNode, StereoPannerNode), JsValue> {
+    let ctx = &live.ctx;
+    let src = ctx.create_buffer_source()?;
+    src.set_buffer(Some(buf));
+    src.set_loop(true);
+    src.playback_rate().set_value(rng.vary(0.04));
+    let g = ctx.create_gain()?;
+    g.gain().set_value(0.0);
+    let filter = ctx.create_biquad_filter()?;
+    filter.set_type(BiquadFilterType::Lowpass);
+    filter.q().set_value(0.5);
+    let panner = ctx.create_stereo_panner()?;
+    src.connect_with_audio_node(&g)?;
+    g.connect_with_audio_node(&filter)?;
+    filter.connect_with_audio_node(&panner)?;
+    panner.connect_with_audio_node(&live.sfx)?;
+    src.start_with_when_and_grain_offset(0.0, f64::from(rng.unit()) * buf.duration())?;
+    Ok((src, g, filter, panner))
 }
 
 /// A looping bed from a random point, through its own gain (starting

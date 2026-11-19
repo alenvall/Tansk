@@ -47,6 +47,7 @@ impl Audio {
     fn music_stinger(&mut self, _s: Stinger) {}
     fn ambience_set(&mut self, _wind: f32, _storm: f32) {}
     fn horn(&mut self, _index: usize, _pos: Option<[f32; 3]>, _gain: f32) {}
+    fn flames(&mut self, _lit: &[(u64, Option<[f32; 3]>)]) {}
     fn engine_add(&mut self, _kind: EngineKind, _seed: u64) -> Option<EngineHandle> {
         None
     }
@@ -181,8 +182,8 @@ impl Sound {
                     Weapon::Alt(AltKind::Coilgun) => (SoundId::CoilgunZap, 1.0, 1.0),
                     Weapon::Alt(AltKind::Tesla) => (SoundId::TeslaCrackle, 0.9, 1.0),
                     Weapon::Alt(AltKind::Rockets) => (SoundId::RocketLaunch, 0.8, 1.0),
-                    // Sent once when the trigger goes down: one long burst.
-                    Weapon::Alt(AltKind::Flamethrower) => (SoundId::Flamethrower, 0.9, 1.0),
+                    // Held: started, looped and stopped from `TankView::flaming` in `frame`.
+                    Weapon::Alt(AltKind::Flamethrower) => return,
                     Weapon::Special(PartKind::Mortar | PartKind::ShipMortar) => (SoundId::MortarShot, 1.0, 1.0),
                     Weapon::Special(PartKind::Harpoon) => (SoundId::RocketLaunch, 0.6, 0.7),
                     Weapon::Special(_) => (SoundId::Cannon, 0.9, 0.7),
@@ -295,6 +296,14 @@ impl Sound {
         self.audio.set_listener(listener.to_array(), forward.to_array());
         self.seen.clear();
         self.seen.extend(tanks.iter().map(|t| (t.player, t.pos)));
+        // Lit flamethrowers within earshot: ignition, roar loop, cut-off tail.
+        let lit: Vec<(u64, Option<[f32; 3]>)> = tanks
+            .iter()
+            .filter(|t| t.alive && t.flaming)
+            .filter(|t| Some(t.player) == you || t.pos.distance(listener) < ENGINE_RANGE * 1.5)
+            .map(|t| (u64::from(t.player), if Some(t.player) == you { None } else { Some(t.pos.to_array()) }))
+            .collect();
+        self.audio.flames(&lit);
         // The nearest live tanks get a voice.
         let mut near: Vec<(&TankView, f32)> = tanks
             .iter()

@@ -45,6 +45,8 @@ pub struct TankView {
     pub alive: bool,
     pub boosting: bool,
     pub burning: bool,
+    /// Its flamethrower is lit (the held roar in the sound layer).
+    pub flaming: bool,
     /// Engine load 0..1 (exhaust and dust).
     pub throttle: f32,
     pub speed: f32,
@@ -203,6 +205,7 @@ impl RenderWorld {
                     alive: t.alive,
                     boosting: t.boosting,
                     burning: t.burning,
+                    flaming: t.alive && t.flaming,
                     throttle: ((t.track_speed[0].abs() + t.track_speed[1].abs()) as f32 / 1400.0).min(1.0),
                     speed: Vec2::new(v.x, v.z).length(),
                 }
@@ -1667,6 +1670,7 @@ pub fn parked_tank(player: PlayerId, colour: u32, pos: Vec3, yaw: f32, gun: Part
         alive: true,
         boosting: false,
         burning: false,
+        flaming: false,
         throttle: 0.0,
         speed: 0.0,
     }

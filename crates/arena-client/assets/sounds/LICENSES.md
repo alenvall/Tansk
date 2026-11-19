@@ -643,4 +643,23 @@ bundle zip, the time range used, and the processing).
 
 - Ivo Vicic, *Ivo Vicic - Bora wind - European local wind* (Sonniss GDC 2018): `03 Wind_grass_ strong_hurricane blast 3.wav`, 24.00-50.00 s; high-pass 50 Hz. Source: https://ftpmirror.your.org/pub/misc/sonniss2018/Sonniss.com%20-%20GDC%202018%20-%20Game%20Audio%20Bundle%20Part%204of8.zip (zip entry `Sonniss.com - GDC 2018 - Game Audio Bundle Part 4of8/Ivo Vicic - Bora wind - European local wind/03 Wind_grass_ strong_hurricane blast 3.wav`). Licence: Sonniss #GameAudioGDC (royalty-free, no attribution required).
 
-Total: 94 files, 2.13 MB.
+## `flame_start.ogg`
+
+0.90 s, mono, 10 KB
+
+- SoundMorph, *SoundMorph - STEAMPUNK WEAPONS* (Sonniss GDC 2018): `Steampunk Weapons - Firestorm Flamer - set_1.wav`, 0.00-0.90 s. Source: https://ftpmirror.your.org/pub/misc/sonniss2018/Sonniss.com%20-%20GDC%202018%20-%20Game%20Audio%20Bundle%20Part%205of8.zip (zip entry `Sonniss.com - GDC 2018 - Game Audio Bundle Part 5of8/SoundMorph - STEAMPUNK WEAPONS/Steampunk Weapons - Firestorm Flamer - set_1.wav`). Licence: Sonniss #GameAudioGDC (royalty-free, no attribution required).
+
+## `flame_loop.ogg`
+
+6.00 s, mono, 52 KB, seamless loop
+
+- Gregor Quendel, *Gregor Quendel – Designed Fire* (Sonniss GDC 2018): `Designed Fire - Impacts - Large, ignition 03.wav`, 2.00-8.50 s; low-pass 7000 Hz. Source: https://ftpmirror.your.org/pub/misc/sonniss2018/Sonniss.com%20-%20GDC%202018%20-%20Game%20Audio%20Bundle%20Part%203of8.zip (zip entry `Sonniss.com - GDC 2018 - Game Audio Bundle Part 3of8/Gregor Quendel – Designed Fire/Designed Fire - Impacts - Large, ignition 03.wav`). Licence: Sonniss #GameAudioGDC (royalty-free, no attribution required).
+- Gregor Quendel, *Gregor Quendel – Designed Fire* (Sonniss GDC 2018): `Designed Fire - Impacts - Large, ignition 03.wav`, 4.00-8.88 s; rate x0.75, low-pass 900 Hz, -5 dB. Source: https://ftpmirror.your.org/pub/misc/sonniss2018/Sonniss.com%20-%20GDC%202018%20-%20Game%20Audio%20Bundle%20Part%203of8.zip (zip entry `Sonniss.com - GDC 2018 - Game Audio Bundle Part 3of8/Gregor Quendel – Designed Fire/Designed Fire - Impacts - Large, ignition 03.wav`). Licence: Sonniss #GameAudioGDC (royalty-free, no attribution required).
+
+## `flame_tail.ogg`
+
+1.54 s, mono, 14 KB
+
+- SoundMorph, *SoundMorph - STEAMPUNK WEAPONS* (Sonniss GDC 2018): `Steampunk Weapons - Firestorm Flamer - set_1.wav`, 1.75-3.29 s. Source: https://ftpmirror.your.org/pub/misc/sonniss2018/Sonniss.com%20-%20GDC%202018%20-%20Game%20Audio%20Bundle%20Part%205of8.zip (zip entry `Sonniss.com - GDC 2018 - Game Audio Bundle Part 5of8/SoundMorph - STEAMPUNK WEAPONS/Steampunk Weapons - Firestorm Flamer - set_1.wav`). Licence: Sonniss #GameAudioGDC (royalty-free, no attribution required).
+
+Total: 97 files, 2.21 MB.
