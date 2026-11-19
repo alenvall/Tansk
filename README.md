@@ -13,7 +13,7 @@ reimagining is in `docs/DESIGN.md`, the plan in `docs/PLAN.md`.
   stop the fuel tanker), Wellhead (hold the derricks), Last Crew Rolling
   (no respawns, the storm wall closes in), Raid (co-op waves against
   raiders, the War Rig and the Land-Ship). Practice any of them offline.
-- **Maps:** The Sink, The Refinery.
+- **Maps:** The Sink, The Refinery, The Rust Belt.
 - **With friends:** Host opens a crew yard: share the invite link, warm up
   together, tick Ready, the host sets the rules and starts; after each match
   everyone is back in the yard to vote on the next map. Play is a quick
@@ -23,7 +23,9 @@ reimagining is in `docs/DESIGN.md`, the plan in `docs/PLAN.md`.
   be shot off.
 - **Controls:** WASD drive, mouse aim, click fire, right-click alt fire,
   Shift boost, F special, Z gunsight, H horn, Tab scores, Enter chat.
-  Gamepad supported. How to play is on the title screen.
+  Gamepad and touch (phones and tablets) supported. How to play is on the
+  title screen. The Garage (chassis, paint, emblem, horn) is saved and used
+  in every room.
 
 ## Layout
 
