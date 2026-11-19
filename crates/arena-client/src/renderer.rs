@@ -62,12 +62,17 @@ pub struct QualitySettings {
     pub bloom_levels: usize,
     /// Lighter fragment work: 4-tap shadows, no sphere occlusion, no fine wear.
     pub lite: bool,
+    /// Effect sprites (smoke, dust, fire) drawn at half resolution and
+    /// composited (needs no MSAA): explosions are overdraw-bound.
+    pub half_fx: bool,
     /// On-screen size (pixels of radius) below which the camera skips a mesh.
     pub min_screen_radius: f32,
     /// Shadow casters smaller than `distance / shadow_lod` (m) are skipped.
     pub shadow_lod: f32,
     /// Effect particle cap (see `Fx::set_max_particles`).
     pub max_particles: usize,
+    /// Point lights (muzzle flashes, explosions, fires) shaded per pixel.
+    pub max_lights: usize,
     /// How far blob contact shadows are drawn from the eye.
     pub blob_range: f32,
 }
@@ -85,9 +90,11 @@ impl Quality {
                 min_scale: 0.5,
                 bloom_levels: 3,
                 lite: true,
+                half_fx: true,
                 min_screen_radius: 3.0,
                 shadow_lod: 40.0,
                 max_particles: 1200,
+                max_lights: 3,
                 blob_range: 50.0,
             },
             Quality::Medium => QualitySettings {
@@ -100,9 +107,11 @@ impl Quality {
                 min_scale: 0.6,
                 bloom_levels: 4,
                 lite: false,
+                half_fx: true,
                 min_screen_radius: 2.0,
                 shadow_lod: 55.0,
                 max_particles: 2500,
+                max_lights: 5,
                 blob_range: 90.0,
             },
             Quality::High => QualitySettings {
@@ -117,12 +126,14 @@ impl Quality {
                 min_scale: 0.7,
                 bloom_levels: 5,
                 lite: false,
+                half_fx: true,
                 min_screen_radius: 1.5,
                 shadow_lod: 80.0,
                 max_particles: 5000,
+                max_lights: 8,
                 blob_range: 140.0,
             },
-            Quality::Ultra => QualitySettings { msaa: 4, fxaa: false, ..Quality::High.settings() },
+            Quality::Ultra => QualitySettings { msaa: 4, fxaa: false, half_fx: false, ..Quality::High.settings() },
         }
     }
 }
@@ -381,6 +392,23 @@ struct Targets {
     #[allow(dead_code)]
     ldr: Option<wgpu::TextureView>,
     fxaa_bind: Option<wgpu::BindGroup>,
+    fx: Option<FxTargets>,
+}
+
+/// The half-resolution effects pass: the sprite pipeline drawing into it
+/// (testing the scene depth itself) and the composite onto the frame.
+struct HalfFx {
+    pipeline: wgpu::RenderPipeline,
+    depth_layout: wgpu::BindGroupLayout,
+    mix_pipeline: wgpu::RenderPipeline,
+    mix_layout: wgpu::BindGroupLayout,
+}
+
+/// The half-resolution effects target and its bind groups.
+struct FxTargets {
+    color: wgpu::TextureView,
+    depth_bind: wgpu::BindGroup,
+    mix_bind: wgpu::BindGroup,
 }
 
 /// The FXAA pass's pipeline, layout and uniform.
@@ -541,6 +569,8 @@ pub struct Renderer {
     scene_pipeline: wgpu::RenderPipeline,
     background_pipeline: wgpu::RenderPipeline,
     sprite_pipeline: wgpu::RenderPipeline,
+    /// Translucent shells: shield bubbles, pickup auras, glows (see `shield`).
+    pub glass: crate::shield::Glass,
     rut_pipeline: wgpu::RenderPipeline,
     post_pipeline: wgpu::RenderPipeline,
     post_layout: wgpu::BindGroupLayout,
@@ -585,6 +615,7 @@ pub struct Renderer {
     /// Frame time to hold, seconds (default 1/60).
     pub frame_budget: f32,
     fxaa: Option<FxaaPass>,
+    half_fx: Option<HalfFx>,
     timer: Option<GpuTimer>,
     /// The last GPU time averages, ms: total, shadows, scene, bloom, post
     /// (zero without timestamp queries).
@@ -630,7 +661,13 @@ impl Renderer {
     }
 
     /// Like `with_quality` with the preset's settings overridden (benchmarks).
-    pub fn with_settings(device: wgpu::Device, queue: wgpu::Queue, output_format: wgpu::TextureFormat, width: u32, height: u32, quality: Quality, settings: QualitySettings) -> Self {
+    pub fn with_settings(device: wgpu::Device, queue: wgpu::Queue, output_format: wgpu::TextureFormat, width: u32, height: u32, quality: Quality, mut settings: QualitySettings) -> Self {
+        // `?scale=full` (web, benchmarks): render at full size, no dynamic
+        // resolution, so a big viewport stands in for a weaker GPU.
+        if url_has("scale=full") {
+            settings.render_scale = 1.0;
+            settings.min_scale = 1.0;
+        }
         let shadow_size = settings.shadow_size;
         let msaa_count = settings.msaa;
         let scene_src = include_str!("shaders/scene.wgsl");
@@ -695,9 +732,10 @@ impl Renderer {
             label: Some("scene layout"),
             entries: &[
                 uniform_entry(0, wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT),
+                // Vertex too: effect sprites take their shadow per vertex.
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Depth,
                         view_dimension: wgpu::TextureViewDimension::D2Array,
@@ -707,7 +745,7 @@ impl Renderer {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                     count: None,
                 },
@@ -843,6 +881,83 @@ impl Renderer {
             fragment: Some(wgpu::FragmentState { module: &fx_shader, entry_point: Some("fs_sprite"), compilation_options: Default::default(), targets: &blended_targets }),
             multiview_mask: None,
             cache: None,
+        });
+        let glass = crate::shield::Glass::new(&device, &scene_layout, msaa_count, HDR_FORMAT, DEPTH_FORMAT);
+        let half_fx = (settings.half_fx && msaa_count == 1).then(|| {
+            let depth_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("fx depth layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Depth, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                    count: None,
+                }],
+            });
+            let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("half fx pipeline layout"),
+                bind_group_layouts: &[Some(&scene_layout), Some(&depth_layout)],
+                immediate_size: 0,
+            });
+            // Colour accumulates premultiplied; alpha keeps what still
+            // shows through (starts at 1; glows, alpha 0, leave it).
+            let accumulate = wgpu::BlendState {
+                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha, operation: wgpu::BlendOperation::Add },
+                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::Zero, dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha, operation: wgpu::BlendOperation::Add },
+            };
+            let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("half fx pipeline"),
+                layout: Some(&pl),
+                vertex: wgpu::VertexState {
+                    module: &fx_shader,
+                    entry_point: Some("vs_sprite"),
+                    compilation_options: Default::default(),
+                    buffers: &[Some(wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<Sprite>() as u64,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &sprite_attributes,
+                    })],
+                },
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                fragment: Some(wgpu::FragmentState { module: &fx_shader, entry_point: Some("fs_sprite_half"), compilation_options: Default::default(), targets: &hdr_target(Some(accumulate)) }),
+                multiview_mask: None,
+                cache: None,
+            });
+            let mix_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("fxmix.wgsl"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/fxmix.wgsl").into()),
+            });
+            let mix_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("fx mix layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry { binding: 1, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+                ],
+            });
+            let mix_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("fx mix pipeline layout"), bind_group_layouts: &[Some(&mix_layout)], immediate_size: 0 });
+            // frame = frame * fx.alpha + fx.rgb
+            let over = wgpu::BlendState {
+                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::SrcAlpha, operation: wgpu::BlendOperation::Add },
+                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::Zero, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
+            };
+            let mix_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("fx mix pipeline"),
+                layout: Some(&mix_pl),
+                vertex: wgpu::VertexState { module: &mix_shader, entry_point: Some("vs_main"), compilation_options: Default::default(), buffers: &[] },
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                fragment: Some(wgpu::FragmentState { module: &mix_shader, entry_point: Some("fs_main"), compilation_options: Default::default(), targets: &hdr_target(Some(over)) }),
+                multiview_mask: None,
+                cache: None,
+            });
+            HalfFx { pipeline, depth_layout, mix_pipeline, mix_layout }
         });
         let rut_attributes = wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4];
         let rut_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1011,7 +1126,7 @@ impl Renderer {
         let mut bloom = Bloom::new(&device, settings.bloom_levels);
         let scale = settings.render_scale;
         let (iw, ih) = scaled(width, height, scale);
-        let targets = make_targets(&device, &post_layout, &post_uniform, &mut bloom, iw, ih, msaa_count, fxaa.as_ref());
+        let targets = make_targets(&device, &post_layout, &post_uniform, &mut bloom, iw, ih, msaa_count, fxaa.as_ref(), half_fx.as_ref());
         let timer = GpuTimer::new(&device, &queue);
         Self {
             device,
@@ -1028,6 +1143,7 @@ impl Renderer {
             scene_pipeline,
             background_pipeline,
             sprite_pipeline,
+            glass,
             rut_pipeline,
             post_pipeline,
             post_layout,
@@ -1058,6 +1174,7 @@ impl Renderer {
             scale_cooldown: 2.0,
             frame_budget: 1.0 / 60.0,
             fxaa,
+            half_fx,
             timer,
             gpu_ms: [0.0; 5],
             gpu_fresh: false,
@@ -1184,7 +1301,7 @@ impl Renderer {
         if (next - self.scale).abs() > 1e-3 {
             self.scale = next;
             let (iw, ih) = scaled(self.width, self.height, self.scale);
-            self.targets = make_targets(&self.device, &self.post_layout, &self.post_uniform, &mut self.bloom, iw, ih, self.settings.msaa, self.fxaa.as_ref());
+            self.targets = make_targets(&self.device, &self.post_layout, &self.post_uniform, &mut self.bloom, iw, ih, self.settings.msaa, self.fxaa.as_ref(), self.half_fx.as_ref());
             log::info!("render scale {:.2} (frame {:.1} ms, gpu {:.1} ms)", self.scale, self.frame_avg * 1000.0, self.gpu_ms[0]);
             if let Some(t) = &mut self.timer {
                 t.sums = [0.0; 4];
@@ -1363,7 +1480,7 @@ impl Renderer {
         self.width = width;
         self.height = height;
         let (iw, ih) = scaled(width, height, self.scale);
-        self.targets = make_targets(&self.device, &self.post_layout, &self.post_uniform, &mut self.bloom, iw, ih, self.settings.msaa, self.fxaa.as_ref());
+        self.targets = make_targets(&self.device, &self.post_layout, &self.post_uniform, &mut self.bloom, iw, ih, self.settings.msaa, self.fxaa.as_ref(), self.half_fx.as_ref());
     }
 
     /// Cascade far distances: the look's, or with two cascades (Low) a
@@ -1485,7 +1602,8 @@ impl Renderer {
         }
         let mut light_pos = [[0.0f32; 4]; MAX_LIGHTS];
         let mut light_col = [[0.0f32; 4]; MAX_LIGHTS];
-        for (i, l) in lights.iter().take(MAX_LIGHTS).enumerate() {
+        let max_lights = self.settings.max_lights.min(MAX_LIGHTS);
+        for (i, l) in lights.iter().take(max_lights).enumerate() {
             light_pos[i] = l.pos.extend(l.radius).to_array();
             light_col[i] = l.color.extend(0.0).to_array();
         }
@@ -1536,7 +1654,7 @@ impl Renderer {
             texels: [texel(cascades[0].2), texel(cascades[1].2), texel(cascades[2].2), if self.settings.lite { 1.0 } else { 0.0 }],
             // w: the blue sky's gain, so it reads the same at any exposure.
             ranges: [2.0 * cascades[0].2 + SHADOW_BACK, 2.0 * cascades[1].2 + SHADOW_BACK, 2.0 * cascades[2].2 + SHADOW_BACK, look.sky_gain / look.exposure.max(0.05)],
-            misc: [occluders.len().min(MAX_OCCLUDERS) as f32, lights.len().min(MAX_LIGHTS) as f32, look.rim, look.spec],
+            misc: [occluders.len().min(MAX_OCCLUDERS) as f32, lights.len().min(max_lights) as f32, look.rim, look.spec],
             occluders: occ,
             light_pos,
             light_col,
@@ -1647,6 +1765,7 @@ impl Renderer {
         let t_upload = crate::world::clock_ms();
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
         let timer = self.timer.as_ref();
+        let half_fx = self.half_fx.as_ref().zip(self.targets.fx.as_ref());
         for (i, layer) in self.shadow_layers.iter().enumerate() {
             if !redraw[i] {
                 continue;
@@ -1677,10 +1796,11 @@ impl Renderer {
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &self.targets.depth,
-                    depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Discard }),
+                    // Kept when the half-resolution effects pass reads it.
+                    depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: if half_fx.is_some() { wgpu::StoreOp::Store } else { wgpu::StoreOp::Discard } }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: timer.and_then(|t| t.writes(Some(1), Some(2))),
+                timestamp_writes: timer.and_then(|t| t.writes(Some(1), if half_fx.is_some() { None } else { Some(2) })),
                 ..Default::default()
             });
             pass.set_bind_group(0, &self.scene_bind, &[]);
@@ -1698,11 +1818,49 @@ impl Renderer {
                 pass.set_vertex_buffer(0, self.ruts.buffer.slice(..));
                 pass.draw(0..6, 0..ruts.len() as u32);
             }
-            if !sprites.is_empty() {
+            self.glass.draw(&mut pass);
+            if !sprites.is_empty() && half_fx.is_none() {
                 pass.set_pipeline(&self.sprite_pipeline);
                 pass.set_vertex_buffer(0, self.sprites.buffer.slice(..));
                 pass.draw(0..6, 0..sprites.len() as u32);
             }
+        }
+        // Half resolution effects: smoke, dust and fire into their own
+        // target, then laid over the frame (before bloom, so fire glows).
+        if let Some((h, fx)) = half_fx {
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("half fx pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &fx.color,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }), store: wgpu::StoreOp::Store },
+                    })],
+                    ..Default::default()
+                });
+                if !sprites.is_empty() {
+                    pass.set_pipeline(&h.pipeline);
+                    pass.set_bind_group(0, &self.scene_bind, &[]);
+                    pass.set_bind_group(1, &fx.depth_bind, &[]);
+                    pass.set_vertex_buffer(0, self.sprites.buffer.slice(..));
+                    pass.draw(0..6, 0..sprites.len() as u32);
+                }
+            }
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("fx mix pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.targets.hdr,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store },
+                })],
+                timestamp_writes: timer.and_then(|t| t.writes(None, Some(2))),
+                ..Default::default()
+            });
+            pass.set_pipeline(&h.mix_pipeline);
+            pass.set_bind_group(0, &fx.mix_bind, &[]);
+            pass.draw(0..3, 0..1);
         }
         self.bloom.record(&self.queue, &mut encoder, self.look.bloom_threshold, 0.5, self.look.exposure, self.look.bloom_scatter);
         let fxaa = self.fxaa.as_ref().zip(self.targets.fxaa_bind.as_ref()).zip(self.targets.ldr.as_ref());
@@ -1776,7 +1934,7 @@ fn scaled(w: u32, h: u32, scale: f32) -> (u32, u32) {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn make_targets(device: &wgpu::Device, post_layout: &wgpu::BindGroupLayout, post_uniform: &wgpu::Buffer, bloom: &mut Bloom, width: u32, height: u32, msaa: u32, fxaa: Option<&FxaaPass>) -> Targets {
+fn make_targets(device: &wgpu::Device, post_layout: &wgpu::BindGroupLayout, post_uniform: &wgpu::Buffer, bloom: &mut Bloom, width: u32, height: u32, msaa: u32, fxaa: Option<&FxaaPass>, half: Option<&HalfFx>) -> Targets {
     let make = |label, format, samples, usage| {
         device
             .create_texture(&wgpu::TextureDescriptor {
@@ -1792,7 +1950,9 @@ fn make_targets(device: &wgpu::Device, post_layout: &wgpu::BindGroupLayout, post
             .create_view(&wgpu::TextureViewDescriptor::default())
     };
     let msaa_color = (msaa > 1).then(|| make("msaa color", HDR_FORMAT, msaa, wgpu::TextureUsages::RENDER_ATTACHMENT));
-    let depth = make("depth", DEPTH_FORMAT, msaa, wgpu::TextureUsages::RENDER_ATTACHMENT);
+    // The half-resolution effects pass reads the scene depth.
+    let depth_usage = if half.is_some() { wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING } else { wgpu::TextureUsages::RENDER_ATTACHMENT };
+    let depth = make("depth", DEPTH_FORMAT, msaa, depth_usage);
     let hdr = make("hdr", HDR_FORMAT, 1, wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING);
     bloom.resize(device, &hdr, width, height);
     let post_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -1817,7 +1977,50 @@ fn make_targets(device: &wgpu::Device, post_layout: &wgpu::BindGroupLayout, post
             ],
         })
     });
-    Targets { msaa_color, depth, hdr, post_bind, ldr, fxaa_bind }
+    let fx = half.map(|h| {
+        let color = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("half fx"),
+                size: wgpu::Extent3d { width: width.div_ceil(2), height: height.div_ceil(2), depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: HDR_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let depth_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fx depth bind"),
+            layout: &h.depth_layout,
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&depth) }],
+        });
+        let mix_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fx mix bind"),
+            layout: &h.mix_layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&color) },
+                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(bloom.sampler()) },
+            ],
+        });
+        FxTargets { color, depth_bind, mix_bind }
+    });
+    Targets { msaa_color, depth, hdr, post_bind, ldr, fxaa_bind, fx }
+}
+
+/// Whether the page URL's query has `kv` (web only; always false natively).
+fn url_has(kv: &str) -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        web_sys::window()
+            .and_then(|w| w.location().search().ok())
+            .is_some_and(|s| s.trim_start_matches('?').split('&').any(|x| x == kv))
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = kv;
+        false
+    }
 }
 
 /// Requests a device with WebGPU-portable limits.
@@ -2016,6 +2219,88 @@ mod look_calib {
             for (on, name) in [(false, "off"), (true, "on")] {
                 wr.renderer.see_through_on = on;
                 save(&mut wr, &world, w, h, &format!("{dir}/st-raid-{k}-{name}.png"));
+            }
+        }
+    }
+
+    /// Explosion stress at the Refinery, 1080p, Medium and Low: the
+    /// effects' stress spawner keeps ~20 blasts, fuel-trailer explosions and
+    /// burning wrecks in view. Prints the CPU split (effects update, sprite
+    /// build, culling and upload, encode) and the GPU time (timestamp
+    /// queries, frames drawn one at a time), and writes a frame per preset
+    /// to `TANSK_LOOK_DIR`. `cargo test -p arena-client --release --
+    /// --ignored gpu_bench_boom --nocapture`.
+    #[test]
+    #[ignore]
+    fn gpu_bench_boom() {
+        let (w, h) = (1920, 1080);
+        let (device, queue) = device();
+        let format = wgpu::TextureFormat::Rgba8Unorm;
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&Default::default());
+        let dir = std::env::var("TANSK_LOOK_DIR").ok();
+        for (q, stress) in [(Quality::Medium, false), (Quality::Medium, true), (Quality::Low, false), (Quality::Low, true)] {
+            let mut wr = WorldRenderer::new(Renderer::with_quality(device.clone(), queue.clone(), format, w, h, q));
+            let mut world = scene(&mut wr, MapId::Refinery, 8.0, Some((Vec3::new(40.0, 9.0, 40.0), Vec3::new(110.0, 2.0, -20.0))));
+            wr.fx.stress = stress;
+            world.dt = 1.0 / 60.0;
+            let (mut cpu, mut fx, mut n) = (0.0f64, [0.0f64; 4], 0);
+            let mut gpu = [0.0f32; 5];
+            let mut gn = 0;
+            let mut parts = 0;
+            for frame in 0..600 {
+                world.time += world.dt;
+                let t0 = std::time::Instant::now();
+                wr.draw(&view, &world);
+                let t1 = t0.elapsed().as_secs_f64() * 1000.0;
+                // One at a time: clean GPU timings (and no runaway queue).
+                wr.renderer.device.poll(wgpu::PollType::wait_indefinitely()).expect("poll");
+                if frame >= 240 {
+                    cpu += t1;
+                    for (s, v) in fx.iter_mut().zip(wr.prof) {
+                        *s += v;
+                    }
+                    n += 1;
+                    parts += wr.fx.particle_count();
+                    if frame % 60 == 0 && wr.renderer.gpu_ms[0] > 0.0 {
+                        for (s, v) in gpu.iter_mut().zip(wr.renderer.gpu_ms) {
+                            *s += v;
+                        }
+                        gn += 1;
+                    }
+                }
+            }
+            let nf = n as f64;
+            let g = gpu.map(|s| s / gn.max(1) as f32);
+            println!(
+                "BOOM {q:?} stress {stress}: {} particles, cpu draw {:.2} ms (fx {:.2}, inst {:.2}, sprites {:.2}, render {:.2}), cull {:.2}, upload {:.2}, encode {:.2} | gpu {:.2} ms (shadows {:.2}, scene+fx {:.2}, bloom {:.2}, post {:.2})",
+                parts / n.max(1),
+                cpu / nf,
+                fx[0] / nf,
+                fx[1] / nf,
+                fx[2] / nf,
+                fx[3] / nf,
+                wr.renderer.cull_ms,
+                wr.renderer.phase_ms[0],
+                wr.renderer.phase_ms[1],
+                g[0],
+                g[1],
+                g[2],
+                g[3],
+                g[4]
+            );
+            if let Some(d) = &dir {
+                world.dt = 0.0;
+                save(&mut wr, &world, w, h, &format!("{d}/boom-{q:?}-{stress}.png"));
             }
         }
     }

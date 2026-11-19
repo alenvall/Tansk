@@ -653,19 +653,6 @@ pub fn mine() -> MeshBuilder {
     m
 }
 
-/// A rocket along +X, centred.
-pub fn rocket() -> MeshBuilder {
-    let mut m = MeshBuilder::new();
-    m.cylinder(0.09, 0.45, 0.03, 1, 8, Paint::painted(0xd8d2c4, 0.3), along_x(Vec3::ZERO));
-    let tip = [(0.09f32, 0.0f32, Vec2::new(0.8, 0.3)), (0.0, 0.22, Vec2::Y)];
-    m.lathe(&tip, 8, true, Paint::painted(0xb02a20, 0.3), along_x(Vec3::X * 0.45));
-    for k in 0..4 {
-        let rot = Quat::from_rotation_x(k as f32 * std::f32::consts::FRAC_PI_2);
-        m.bevel_box(Vec3::new(0.1, 0.12, 0.01), 0.005, 1, Paint::steel(0x3a3632, 0.4), Mat4::from_rotation_translation(rot, Vec3::new(-0.38, 0.0, 0.0)) * at(Vec3::Y * 0.1));
-    }
-    m
-}
-
 /// A harpoon along +X, centred: a shaft and a barbed head.
 pub fn harpoon() -> MeshBuilder {
     let mut m = MeshBuilder::new();
@@ -674,28 +661,6 @@ pub fn harpoon() -> MeshBuilder {
     m.lathe(&tip, 6, true, Paint::steel(0xb8b4aa, 0.25), along_x(Vec3::X * 0.6));
     for side in [-1.0f32, 1.0] {
         m.bevel_box(Vec3::new(0.14, 0.02, 0.02), 0.01, 1, Paint::steel(0xb8b4aa, 0.25), Mat4::from_rotation_translation(Quat::from_rotation_z(side * 0.6), Vec3::new(0.5, side * 0.08, 0.0)));
-    }
-    m
-}
-
-/// A mortar shell, centred, nose along +X.
-pub fn mortar_shell() -> MeshBuilder {
-    let mut m = MeshBuilder::new();
-    let body = [(0.0f32, -0.3f32, Vec2::NEG_Y), (0.14, -0.25, Vec2::new(0.6, -0.8)), (0.16, 0.0, Vec2::X), (0.1, 0.25, Vec2::new(0.8, 0.6)), (0.0, 0.35, Vec2::Y)];
-    m.lathe(&body, 10, false, Paint::painted(0x4a5038, 0.4), Mat4::from_rotation_z(-std::f32::consts::FRAC_PI_2));
-    m
-}
-
-/// A bomber silhouette for air strikes, nose along +X, centred.
-pub fn plane() -> MeshBuilder {
-    let mut m = MeshBuilder::new();
-    let body = Paint::painted(0x5a5e52, 0.6);
-    m.cylinder(0.9, 5.5, 0.6, 2, 10, body, along_x(Vec3::ZERO));
-    m.wedge(Vec3::new(1.6, 0.15, 9.0), 0.08, 1, 0.5, body, at(Vec3::new(0.5, 0.2, 0.0)));
-    m.wedge(Vec3::new(0.8, 0.1, 3.0), 0.05, 1, 0.5, body, at(Vec3::new(-5.0, 0.4, 0.0)));
-    m.wedge(Vec3::new(0.9, 1.2, 0.1), 0.05, 1, 0.4, body, at(Vec3::new(-5.0, 1.3, 0.0)));
-    for z in [-3.5f32, 3.5] {
-        m.cylinder(0.45, 0.9, 0.15, 1, 8, Paint::steel(0x3a3632, 0.5), along_x(Vec3::new(1.4, -0.2, z)));
     }
     m
 }

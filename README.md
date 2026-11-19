@@ -13,7 +13,7 @@ reimagining is in `docs/DESIGN.md`, the plan in `docs/PLAN.md`.
   stop the fuel tanker), Wellhead (hold the derricks), Last Crew Rolling
   (no respawns, the storm wall closes in), Raid (co-op waves against
   raiders, the War Rig and the Land-Ship). Practice any of them offline.
-- **Maps:** The Sink, The Refinery, The Rust Belt.
+- **Maps:** The Sink, The Refinery, The Rust Belt, The Gorge.
 - **With friends:** Host opens a crew yard: share the invite link, warm up
   together, tick Ready, the host sets the rules and starts; after each match
   everyone is back in the yard to vote on the next map. Play is a quick
@@ -50,7 +50,7 @@ cargo test -p arena-client --release -- --ignored shots   # native screenshots i
 Debug URL flags: `?autoplay=practice|raid|team|convoy|wellhead|lastcrew` (offline),
 `?autoplay=host-brawl|host-team|host-raid|host-convoy|host-wellhead|host-lastcrew` (a private online room),
 `?autoplay=party|party-team` (a private party room with the lobby), `?room=CODE` (an invite link: join that room),
-`&map=refinery`, `&mouse=free`, `&quality=low`, `&matchtime=45`, `&hints=reset`.
+`&map=refinery`, `&mouse=free`, `&quality=low`, `&matchtime=45`, `&hints=reset`, `&tod=golden|dusk|noon`, `&flare=1` (air strike on F), `&shieldfx=1` (shield look test), `&stress=boom` (explosion stress), `&scale=full` (no dynamic resolution). Maps: `sink`, `refinery`, `rustbelt`, `gorge`.
 
 ## Deploy
 

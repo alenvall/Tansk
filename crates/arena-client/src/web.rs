@@ -266,7 +266,8 @@ async fn run() -> Result<()> {
     surface.configure(&device, &config);
     log::info!("web: canvas {}x{} {:?}", width, height, config.format);
 
-    let wr = WorldRenderer::new(Renderer::new(device, queue, config.format, width, height));
+    let mut wr = WorldRenderer::new(Renderer::new(device, queue, config.format, width, height));
+    wr.shield_test(query_flag("shieldfx").is_some());
     let mut game = Game::new();
     game.touch.enabled = coarse;
     game.touch.viewport = (vw, vh);
@@ -556,6 +557,10 @@ fn install_input(state: &Shared) -> Result<()> {
                     st.game.ui_click();
                     st.game.leave();
                 }
+                Some("manual") => {
+                    st.game.ui_click();
+                    st.game.ui.show_manual(true);
+                }
                 _ => {}
             }
         })?;
@@ -723,7 +728,10 @@ fn mount_pause(document: &web_sys::Document) -> Option<web_sys::Element> {
          <h2 style=\"margin:0 0 .3rem;font-family:'Black Ops One',sans-serif;letter-spacing:.08em;color:var(--cream)\">Engine idling</h2>\
          <button class=\"t-btn\" data-pause=\"resume\"><span class=\"t-btn-label\">Back in</span><span class=\"t-btn-hint t-off-touch\">Grabs the mouse</span></button>\
          <button class=\"t-btn\" data-pause=\"leave\"><span class=\"t-btn-label\">Leave</span><span class=\"t-btn-hint\">Back to the title</span></button>\
+         <button class=\"t-btn t-pause-manual\" data-pause=\"manual\"><span class=\"t-btn-label\">Manual</span><span class=\"t-btn-hint\">Tracks, guns, parts</span></button>\
          <div class=\"t-pause-where\" id=\"t-pause-where\"></div>\
+         <div class=\"t-field-label\">Your build</div>\
+         <div class=\"t-pause-build\" id=\"t-pause-build\"></div>\
          <div class=\"t-pause-tip\" id=\"t-pause-tip\"></div>\
          </div><div class=\"plate t-pause-ctl\">{}</div></div>",
         crate::ui::CONTROLS_HTML
@@ -973,6 +981,9 @@ fn frame(s: &mut State) {
                 let where_ = d.get_element_by_id("t-mode").and_then(|e| e.text_content()).unwrap_or_default();
                 if let Some(w) = d.get_element_by_id("t-pause-where") {
                     w.set_text_content(Some(&where_));
+                }
+                if let (true, Some(b)) = (show, d.get_element_by_id("t-pause-build")) {
+                    b.set_inner_html(&s.game.build_html());
                 }
                 if let Some(t) = d.get_element_by_id("t-pause-tip") {
                     t.set_text_content(Some(if s.game.offline() {

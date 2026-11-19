@@ -25,7 +25,9 @@
 //! ```
 
 pub mod bots;
+pub mod canyon;
 pub mod convoy;
+pub mod destruct;
 pub mod events;
 pub mod garage;
 pub mod hazards;
@@ -35,6 +37,7 @@ pub mod map;
 pub mod net;
 pub mod parts;
 pub mod physics;
+pub mod powerups;
 pub mod raid;
 pub mod refinery;
 pub mod rustbelt;
@@ -60,6 +63,7 @@ pub use wellhead::{WellSnap, WellheadSnap};
 pub use garage::{ChassisClass, Loadout};
 pub use snapshot::Snapshot;
 pub use tuning::Tuning;
+pub use powerups::{PowerUpKind, PowerUpSnap};
 
 use serde::{Deserialize, Serialize};
 

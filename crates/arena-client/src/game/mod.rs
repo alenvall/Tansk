@@ -377,6 +377,13 @@ impl Game {
         self.garage.as_ref()
     }
 
+    /// "Your build" for the pause card: tiers, parts and what they do.
+    pub fn build_html(&self) -> String {
+        let Some(t) = self.net.as_ref().and_then(|n| n.state().my_tank()) else { return String::new() };
+        let parts: Vec<(arena_core::PartKind, u8)> = t.parts.iter().map(|p| (p.kind, p.mk)).collect();
+        crate::ui::manual::build_html(t.tiers, &parts)
+    }
+
     /// The Garage pick changed: the platform may persist it.
     pub fn garage_dirty(&mut self) -> bool {
         std::mem::take(&mut self.garage_dirty)

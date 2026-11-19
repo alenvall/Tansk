@@ -1096,7 +1096,9 @@ struct BotMetrics {
     /// Per personality (Brawler, Sniper, Scavenger, Hunter): bots, kills,
     /// deaths, upgrades, then its signature moves (rams, repositions, flees,
     /// regroups) and seconds behind cover.
-    styles: [[u64; 9]; 4],
+    styles: [[u64; 10]; 4],
+    /// Power-ups taken so far per player id.
+    powerups: BTreeMap<u8, u64>,
     /// Upgrades so far per player id (folded into `styles` at the end).
     upgrades: BTreeMap<u8, u64>,
 }
@@ -1130,6 +1132,7 @@ impl BotMetrics {
                     }
                 }
                 Event::UpgradeApplied { player, .. } => *self.upgrades.entry(*player).or_default() += 1,
+                Event::PowerUpStarted { player, .. } => *self.powerups.entry(*player).or_default() += 1,
                 Event::Hit { attacker: Some(a), weapon: Weapon::Gun(_), target, .. } if a != target => {
                     if let Some(b) = sim.players.iter().find(|p| p.id == *a && crew_bot(sim, p)).and_then(|p| p.brain.as_ref()) {
                         self.tiers[tier_of(b.difficulty)][4] += 1;
@@ -1190,7 +1193,7 @@ impl BotMetrics {
             row[2] += p.deaths as u64;
             let up = self.upgrades.get(&p.id).copied().unwrap_or(0);
             let sr = &mut self.styles[style_ix(b)];
-            for (k, v) in [1, p.kills as u64, p.deaths as u64, up, bs.rams as u64, bs.repositions as u64, bs.flees as u64, bs.regroups as u64, bs.cover_s as u64]
+            for (k, v) in [1, p.kills as u64, p.deaths as u64, up, bs.rams as u64, bs.repositions as u64, bs.flees as u64, bs.regroups as u64, bs.cover_s as u64, self.powerups.get(&p.id).copied().unwrap_or(0)]
                 .into_iter()
                 .enumerate()
             {
@@ -1224,7 +1227,7 @@ impl BotMetrics {
                 }
             }
             for k in 0..4 {
-                for j in 0..9 {
+                for j in 0..10 {
                     s.styles[k][j] += m.styles[k][j];
                 }
             }
@@ -1269,7 +1272,7 @@ impl BotMetrics {
                 100.0 * self.tier_beh[k][4] / self.tier_beh[k][3].max(1e-6)
             );
         }
-        println!("  personality: bots, kills, deaths, upgrades per bot-match; rams, repositions, flees, regroups per bot-match; cover s");
+        println!("  personality: bots, kills, deaths, upgrades per bot-match; rams, repositions, flees, regroups per bot-match; cover s; power-ups");
         for (k, st) in arena_core::bots::Style::ALL.iter().enumerate() {
             let r = self.styles[k];
             if r[0] == 0 {
@@ -1277,7 +1280,7 @@ impl BotMetrics {
             }
             let n = r[0] as f64;
             println!(
-                "    {:9} {:4}  K {:5.2}  D {:5.2}  U {:5.2}  | ram {:4.1} repos {:4.1} flee {:4.1} regroup {:4.1} | cover {:3.0} s",
+                "    {:9} {:4}  K {:5.2}  D {:5.2}  U {:5.2}  | ram {:4.1} repos {:4.1} flee {:4.1} regroup {:4.1} | cover {:3.0} s | pu {:4.2}",
                 st.name(),
                 r[0],
                 r[1] as f64 / n,
@@ -1287,7 +1290,8 @@ impl BotMetrics {
                 r[5] as f64 / n,
                 r[6] as f64 / n,
                 r[7] as f64 / n,
-                r[8] as f64 / n
+                r[8] as f64 / n,
+                r[9] as f64 / n
             );
         }
     }

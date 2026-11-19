@@ -48,6 +48,8 @@ pub struct Tuning {
     pub wellhead: WellheadTuning,
     /// Last Crew Rolling: no respawns, the sandstorm wall closes in.
     pub last_crew: LastCrewTuning,
+    /// Timed power-ups (Overcharge, Nitro, Bubble, Gatling, Magnet).
+    pub powerups: crate::powerups::PowerUpTuning,
 }
 
 impl Tuning {
@@ -1012,6 +1014,7 @@ impl Default for Tuning {
             convoy: ConvoyTuning::default(),
             wellhead: WellheadTuning::default(),
             last_crew: LastCrewTuning::default(),
+            powerups: crate::powerups::PowerUpTuning::default(),
         }
     }
 }

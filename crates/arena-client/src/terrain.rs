@@ -30,11 +30,15 @@ thread_local! {
 /// The Rust Belt's canyon floor: the sand pushed toward rusty red.
 pub const RUST_BELT_GROUND: Vec3 = Vec3::new(1.04, 0.9, 0.82);
 /// The dry river's mud: darker and browner, crazed with cracks.
+/// The Gorge's floor: pale, warm canyon sand.
+pub const GORGE_GROUND: Vec3 = Vec3::new(1.05, 0.92, 0.82);
 const RUST_BELT_MUD: Vec3 = Vec3::new(0.86, 0.68, 0.55);
 
 thread_local! {
-    /// Building the Rust Belt (steep ground is rock, the river bed is mud).
+    /// Building a canyon map (steep ground is rock; on the Rust Belt the
+    /// river bed is mud too).
     static CANYON: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static MUD: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// The Rust Belt's ground by triangle: steep banks and canyon walls are
@@ -46,7 +50,7 @@ fn canyon_paint(p: [Vec3; 3], face: Vec3) -> Paint {
     }
     let c = (p[0] + p[1] + p[2]) / 3.0;
     let off = (c.z - arena_core::rustbelt::river_z(c.x)).abs();
-    if off < arena_core::rustbelt::BED_HALF - 0.5 && c.x.abs() < 300.0 {
+    if MUD.with(|m| m.get()) && off < arena_core::rustbelt::BED_HALF - 0.5 && c.x.abs() < 300.0 {
         return Paint { wear: 1.0, color: RUST_BELT_MUD, ..Paint::with(Material::Sand, 0xffffff, 0.95) };
     }
     sand(0.0)
@@ -74,8 +78,15 @@ fn tri(m: &mut MeshBuilder, h: &dyn Fn(f32, f32) -> f32, e: f32, p: [Vec3; 3]) {
 /// The map's terrain and its outer ring, as (mesh, transform) pieces.
 pub fn build(map: &Map) -> Vec<(MeshBuilder, Mat4)> {
     SALT.with(|s| s.set(if map.id == arena_core::MapId::Refinery { 0.85 } else { 0.0 }));
-    TINT.with(|t| t.set(if map.id == arena_core::MapId::RustBelt { RUST_BELT_GROUND } else { Vec3::ONE }));
-    CANYON.with(|c| c.set(map.id == arena_core::MapId::RustBelt));
+    TINT.with(|t| {
+        t.set(match map.id {
+            arena_core::MapId::RustBelt => RUST_BELT_GROUND,
+            arena_core::MapId::Canyon => GORGE_GROUND,
+            _ => Vec3::ONE,
+        })
+    });
+    CANYON.with(|c| c.set(matches!(map.id, arena_core::MapId::RustBelt | arena_core::MapId::Canyon)));
+    MUD.with(|c| c.set(map.id == arena_core::MapId::RustBelt));
     let res = map.resolution;
     let sp = map.spacing();
     let half = map.size / 2.0;
@@ -290,7 +301,7 @@ pub fn marks(map: &Map) -> Vec<MeshBuilder> {
     let salt = map.id == arena_core::MapId::Refinery;
     // Linear albedos.
     // (A soft fringe in between the packed ground and the sand round it.)
-    let canyon = map.id == arena_core::MapId::RustBelt;
+    let canyon = matches!(map.id, arena_core::MapId::RustBelt | arena_core::MapId::Canyon);
     let (track, rut, packed, fringe) = if salt {
         (Vec3::new(0.42, 0.35, 0.28), Vec3::new(0.29, 0.23, 0.18), Vec3::new(0.45, 0.38, 0.31), Vec3::new(0.51, 0.44, 0.36))
     } else if canyon {
@@ -342,6 +353,7 @@ pub fn marks(map: &Map) -> Vec<MeshBuilder> {
 pub fn flat(half: f32) -> MeshBuilder {
     TINT.with(|t| t.set(Vec3::ONE));
     CANYON.with(|c| c.set(false));
+    MUD.with(|c| c.set(false));
     let mut m = MeshBuilder::new();
     m.heightfield(half, 40, |_, _| 0.0, sand(0.0));
     m

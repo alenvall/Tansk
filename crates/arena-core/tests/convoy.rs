@@ -45,7 +45,9 @@ fn routes_follow_the_roads_on_both_maps() {
         assert!(map.convoy_route.len() >= 2, "{id:?} has a route");
         let a = map.convoy_route[0];
         let b = *map.convoy_route.last().unwrap();
-        assert!(a.distance(b) > 400.0, "{id:?} route runs across the map");
+        // (The Gorge's route winds down its canyon: shorter as the crow flies.)
+        let across = if id == MapId::Canyon { 280.0 } else { 400.0 };
+        assert!(a.distance(b) > across, "{id:?} route runs across the map");
         let s = Sim::new_convoy(3, map, Tuning::default());
         let c = s.convoy.as_ref().unwrap();
         assert!(c.length > 450.0 && c.length < 900.0, "{id:?} route length {}", c.length);

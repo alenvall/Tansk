@@ -256,6 +256,19 @@ impl Ctx {
             "leave" => UiAction::Leave,
             "lobby-ready" => UiAction::LobbyReady,
             "skip-replay" => UiAction::SkipReplay,
+            "manual" | "manual-close" => {
+                if let Some(m) = self.q("#t-manual") {
+                    let _ = if action == "manual" { m.remove_attribute("hidden") } else { m.set_attribute("hidden", "") };
+                }
+                UiAction::Click
+            }
+            "manual-jump" => {
+                let to = el.get_attribute("data-to").unwrap_or_default();
+                if let Some(t) = self.doc.get_element_by_id(&to) {
+                    t.scroll_into_view();
+                }
+                return;
+            }
             "lobby-start" => UiAction::LobbyStart,
             "copy-invite" => return self.copy_invite(),
             "chat-send" => return self.send_chat(),
@@ -315,6 +328,14 @@ impl Ctx {
 
     fn on_key(&self, ev: JsValue) {
         let key = prop_str(&ev, "key");
+        // Esc closes the manual first.
+        if key == "Escape" {
+            if let Some(m) = self.q("#t-manual").filter(|m| !m.has_attribute("hidden")) {
+                let _ = m.set_attribute("hidden", "");
+                call0(&ev, "preventDefault");
+                return;
+            }
+        }
         let (chat_open, hud, branch) = {
             let s = self.shared.borrow();
             (s.chat_open, s.hud_visible, s.branch_count)

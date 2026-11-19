@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use arena_core::map::{Cover, GroundMarkKind, Map, ObstacleKind};
 use arena_core::snapshot::{ShotKind, Snapshot};
 use arena_core::parts::VehicleKind;
-use arena_core::{Event, GunKind, PartKind, PickupKind, PlayerId, PropKind, ScrapKind};
+use arena_core::{Event, GunKind, PartKind, PickupKind, PlayerId, PropKind};
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 
 use crate::camera::Camera;
@@ -22,6 +22,7 @@ use crate::props;
 use crate::props_refinery as refinery;
 use crate::props_rustbelt as rustbelt;
 use crate::props_hazards as spectacle;
+use crate::props_canyon as gorge;
 use crate::renderer::{Instance, Light, MeshId, Renderer};
 use crate::shapes::hash;
 use crate::tank;
@@ -130,6 +131,8 @@ pub struct RenderWorld {
     pub tethers: Vec<(Vec3, Vec3)>,
     /// Shield bubbles: (player, strength 0..1).
     pub shields: Vec<(PlayerId, f32)>,
+    /// Timed power-ups running on tanks: (player, kind) (a glow in its colour).
+    pub buffs: Vec<(PlayerId, arena_core::PowerUpKind)>,
     /// Tanks whose flamethrower is jetting.
     pub flaming: Vec<PlayerId>,
     /// Non-tank chassis: (player, vehicle, wheel compressions in metres).
@@ -254,8 +257,19 @@ impl RenderWorld {
             exposed_cores: snap.bosses.iter().filter(|b| b.core_exposed).map(|b| b.player).collect(),
             health: snap.tanks.iter().map(|t| (t.player, t.health as f32 / t.max_health.max(1) as f32)).collect(),
             part_health: snap.tanks.iter().flat_map(|t| t.parts.iter().map(move |p| (t.player, p.kind, p.health as f32 / 255.0))).collect(),
-            shields: snap.tanks.iter().filter(|t| t.alive && t.shield > 0).map(|t| (t.player, t.shield as f32 / 255.0)).collect(),
+            // The shield generator's field, or a Bubble power-up's (whichever is stronger).
+            shields: snap
+                .tanks
+                .iter()
+                .filter(|t| t.alive)
+                .filter_map(|t| {
+                    let bubble = t.powerups.iter().filter(|p| p.kind == arena_core::PowerUpKind::Bubble).map(|p| p.strength).max().unwrap_or(0);
+                    let s = t.shield.max(bubble);
+                    (s > 0).then(|| (t.player, s as f32 / 255.0))
+                })
+                .collect(),
             flaming: snap.tanks.iter().filter(|t| t.alive && t.flaming).map(|t| t.player).collect(),
+            buffs: snap.tanks.iter().filter(|t| t.alive).flat_map(|t| t.powerups.iter().map(move |p| (t.player, p.kind))).collect(),
             route: Vec::new(),
             turrets: snap.bosses.iter().flat_map(|b| b.turrets.iter().map(move |t| (b.player, t.part, t.yaw, t.pitch))).collect(),
             wells: snap
@@ -380,8 +394,12 @@ pub struct WorldRenderer {
     clock: f32,
     /// Pumpjacks to animate: (obstacle, frame, phase).
     pumpjacks: Vec<(u16, Mat4, f32)>,
-    /// When each air strike's run began (renderer clock).
-    strike_runs: HashMap<u16, f32>,
+    /// Shield bubbles' hit ripples and the slugs stopped in them.
+    shields: crate::shield::Shields,
+    /// Projectile models and the coil bolts.
+    shots: crate::projectiles::Projectiles,
+    /// The bombers: flight, bombs, lights, smoke.
+    air: crate::airstrike::AirStrikes,
     /// Chassis sizes, suspension and turret pivots for every vehicle.
     tuning: arena_core::Tuning,
     /// Meshes owned by the current static scene (map, line-up, podium),
@@ -432,7 +450,9 @@ impl WorldRenderer {
             pumpjacks: Vec::new(),
             ramps: HashMap::new(),
             clock: 0.0,
-            strike_runs: HashMap::new(),
+            shields: crate::shield::Shields::new(),
+            shots: crate::projectiles::Projectiles::default(),
+            air: crate::airstrike::AirStrikes::default(),
             tuning: arena_core::Tuning::default(),
             scene_meshes: Vec::new(),
             map: None,
@@ -541,6 +561,10 @@ impl WorldRenderer {
                     let id = r.add_mesh(&rustbelt::magnet_crane(boxes[0], boxes[1]));
                     self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
                 }
+                ObstacleKind::GirderBridge if !boxes.is_empty() => {
+                    let id = r.add_mesh(&gorge::girder_bridge(boxes[0]));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                }
                 ObstacleKind::Bridge if boxes.len() >= 2 => {
                     let id = r.add_mesh(&rustbelt::bridge(boxes[0], boxes[1]));
                     self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
@@ -572,7 +596,7 @@ impl WorldRenderer {
                             }
                             ObstacleKind::Sandbags => lib.scene(r, &k("sandbags"), || lift(props::sandbags(h, 5), h.y)),
                             ObstacleKind::Silo => lib.scene(r, &k("silo"), || lift(props::silo(h.x, h.y), h.y)),
-                            ObstacleKind::RockFormation => r.add_mesh(&lift(props::rock_block(h, seed + bi as u32), h.y)),
+                            ObstacleKind::RockFormation | ObstacleKind::RockArch => r.add_mesh(&lift(props::rock_block(h, seed + bi as u32), h.y)),
                             ObstacleKind::Mesa => r.add_mesh(&lift(props::mesa_block(h, seed + bi as u32), h.y)),
                             ObstacleKind::Highway => lib.scene(r, &k("highway"), || lift(props::highway(h), h.y)),
                             ObstacleKind::Pipe => lib.scene(r, &k("pipe"), || lift(props::pipe(h), h.y)),
@@ -647,7 +671,7 @@ impl WorldRenderer {
                 }
             }
             // Rubble round tall rock; occluders for the ground AO.
-            if matches!(o.kind, ObstacleKind::Mesa | ObstacleKind::RockFormation) {
+            if matches!(o.kind, ObstacleKind::Mesa | ObstacleKind::RockFormation | ObstacleKind::RockArch) {
                 let id = r.add_mesh(&props::rubble(o.radius * 0.85, 9, 1.1, seed));
                 self.statics.push(StaticPiece { instance: Instance::new(id, Mat4::from_translation(o.pos)), owner: None });
             }
@@ -817,6 +841,12 @@ impl WorldRenderer {
         log::info!("map dressing: {placed} props, {} map poles", map_poles.len());
     }
 
+    /// `?shieldfx=1`: a visual test, every tank shielded and peppered with hits.
+    #[allow(dead_code)] // set by the web entry
+    pub fn shield_test(&mut self, on: bool) {
+        self.shields.test = on;
+    }
+
     /// Feeds one simulation event to the effects (and the camera shake the
     /// caller may apply: returns trauma to add for an event near `listener`).
     pub fn event(&mut self, e: &Event, listener: Vec3) -> f32 {
@@ -826,6 +856,8 @@ impl WorldRenderer {
         if let Some(a) = crate::anim::subject(e).and_then(|p| self.anims.get_mut(&p)) {
             a.juice.event(e);
         }
+        self.shields.event(e);
+        self.shots.event(e);
         self.fx.event(e, listener)
     }
 
@@ -1087,35 +1119,20 @@ impl WorldRenderer {
             };
             instances.push(Instance::new(id, xf));
         }
+        // Pickups, each in its kind's aura (see `pickupfx`); every round in
+        // flight as a model, glows into the glass pass (see `projectiles`).
+        r.glass.begin();
         for p in &world.pickups {
-            let k = match p.kind {
-                PickupKind::Scrap(ScrapKind::Steel) => 0,
-                PickupKind::Scrap(ScrapKind::Powder) => 1,
-                PickupKind::Scrap(ScrapKind::Volts) => 2,
-                PickupKind::Scrap(ScrapKind::Fuel) => 3,
-                _ => 4,
-            };
-            let id = lib.get(r, &format!("pickup:{k}"), || props::pickup(k));
-            let bob = (world.time * 2.0 + p.id as f32).sin() * 0.12 + 0.3;
-            let xf = Mat4::from_rotation_translation(Quat::from_rotation_y(world.time * 1.2 + p.id as f32), p.pos + Vec3::Y * bob);
-            instances.push(Instance::new(id, xf));
+            let (key, build) = crate::pickupfx::mesh_for(p.kind);
+            let id = lib.get(r, key, build);
+            instances.push(Instance::new(id, crate::pickupfx::pose(p.id, p.pos, p.kind, world.time)));
         }
-        // Special projectiles as meshes along their flight.
-        for s in &world.shells {
-            let key = match s.kind {
-                ShotKind::Rocket => "shot:rocket",
-                ShotKind::MortarShell => "shot:mortar",
-                ShotKind::Harpoon => "shot:harpoon",
-                _ => continue,
-            };
-            let id = lib.get(r, key, || match s.kind {
-                ShotKind::Rocket => props::rocket(),
-                ShotKind::MortarShell => props::mortar_shell(),
-                _ => props::harpoon(),
-            });
-            let rot = Quat::from_rotation_arc(Vec3::X, s.vel.normalize_or(Vec3::X));
-            instances.push(Instance::new(id, Mat4::from_rotation_translation(rot, s.pos)));
+        {
+            let map = self.map.as_ref();
+            let ground = |x: f32, z: f32| map.map_or(f32::MAX, |m| m.height_at(x, z));
+            crate::pickupfx::auras(&mut r.glass, world, camera.eye, &ground);
         }
+        self.shots.draw(r, lib, &mut instances, world);
         for (oi, frame, phase) in &self.pumpjacks {
             if world.removed.iter().any(|&(ro, _)| ro == *oi) {
                 continue;
@@ -1214,23 +1231,27 @@ impl WorldRenderer {
                 ropes.push((*a, p.pos + Vec3::Y * 1.6));
             }
         }
-        // Air strikes: the bomber crosses the run line once the delay is up.
-        self.strike_runs.retain(|id, _| world.strikes.iter().any(|s| s.id == *id));
-        for s in &world.strikes {
-            if s.delay > 0.0 {
-                continue;
+        // Shield bubbles (the followed tank's own is fainter).
+        let tuning = &self.tuning;
+        let scale_of = |p: PlayerId| match world.vehicles.iter().find(|v| v.0 == p) {
+            Some(v) => {
+                let c = arena_core::tank::chassis_of(tuning, v.1);
+                (Vec3::from(c.hull_half) / Vec3::from(tuning.tank.hull_half)).max_element().clamp(0.6, 3.0)
             }
-            let start = *self.strike_runs.entry(s.id).or_insert(world.time);
-            let dir = (s.to - s.from).normalize_or(Vec3::X);
-            let speed = 70.0;
-            let pos = s.from - dir * 140.0 + dir * speed * (world.time - start) + Vec3::Y * 75.0;
-            let id = lib.get(r, "plane", props::plane);
-            let rot = Quat::from_rotation_arc(Vec3::X, dir);
-            instances.push(Instance::new(id, Mat4::from_rotation_translation(rot, pos)));
+            None => 1.0,
+        };
+        self.shields.draw(&mut r.glass, world, focus, &scale_of);
+        crate::pickupfx::buff_glows(&mut r.glass, world);
+        let mut extra: Vec<Light> = self.fx.flares.iter().map(|f| Light { pos: *f + Vec3::Y * 2.0, radius: 30.0, color: Vec3::new(1.0, 0.55, 0.18) * (5.0 + (world.time * 9.0).sin()) }).collect();
+        self.shields.lights(&mut extra);
+        // Air strikes: the bomber comes in low along the run line, bombs falling.
+        {
+            let map = self.map.as_ref();
+            let ground = |x: f32, z: f32| map.map_or(0.0, |m| m.height_at(x, z));
+            self.air.draw(r, lib, &mut instances, &mut blobs, &mut extra, &mut self.fx, world, &ground);
         }
-        let mut lights: Vec<Light> = self.fx.lights_with(
-            &self.fx.flares.iter().map(|f| Light { pos: *f + Vec3::Y * 2.0, radius: 30.0, color: Vec3::new(1.0, 0.55, 0.18) * (5.0 + (world.time * 9.0).sin()) }).collect::<Vec<_>>(),
-        );
+        r.glass.upload(&r.device, &r.queue, self.shields.hits());
+        let mut lights: Vec<Light> = self.fx.lights_with(&extra);
         for p in &world.pickups {
             if lights.len() < 6 {
                 lights.push(Light { pos: p.pos + Vec3::Y, radius: 4.0, color: Vec3::new(1.0, 0.8, 0.4) * 0.6 });
@@ -1394,6 +1415,7 @@ fn recipe(kind: ObstacleKind, ground_boxes: usize, desert: bool) -> (usize, (f32
         ObstacleKind::RockFormation if desert => (9, (0.0, 6.0), &[(Boulder, 6), (Shrub, 2), (Pebbles, 2), (Tuft, 2), (Cactus, 1)]),
         ObstacleKind::Mesa => (10, (0.0, 8.0), &[(Boulder, 6), (Shrub, 1), (Pebbles, 2), (Tuft, 1)]),
         ObstacleKind::RockFormation => (8, (0.0, 6.0), &[(Boulder, 6), (Shrub, 1), (Pebbles, 2), (Tuft, 1)]),
+        ObstacleKind::RockArch => (8, (0.0, 4.0), &[(Boulder, 6), (Shrub, 2), (Pebbles, 2), (Cactus, 1)]),
         ObstacleKind::Crane => (9, (0.5, 4.0), &[(Pallet, 3), (Crates, 2), (Cinder, 2), (Drum, 2), (Sheet, 1)]),
         ObstacleKind::PierRuin => (4, (0.0, 3.0), &[(Sheet, 2), (Pebbles, 2), (Tyre, 1)]),
         ObstacleKind::Pipe => (1, (0.2, 1.0), &[(Pebbles, 1), (Tuft, 1)]),
@@ -1517,7 +1539,7 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
         }
         let ground = o.world_boxes().filter(|(c, _, h)| c.y - h.y < o.pos.y + 3.0).count();
         let (n, (d0, d1), table) = recipe(o.kind, ground, desert);
-        let rocky = matches!(o.kind, ObstacleKind::Mesa | ObstacleKind::RockFormation);
+        let rocky = matches!(o.kind, ObstacleKind::Mesa | ObstacleKind::RockFormation | ObstacleKind::RockArch);
         for k in 0..n as u32 {
             let s = oi as u32 * 7919 + k * 31 + 1;
             // Light obstacles get their few props only some of the time.
@@ -1753,6 +1775,9 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
     let groups: [(Clutter, usize, u32); 3] = if map.id == arena_core::MapId::RustBelt {
         // The canyon floor keeps its open ground clean: the river carries the rock.
         [(Boulder, 7, 1), (Cactus, 4, 2), (Shrub, 8, 3)]
+    } else if map.id == arena_core::MapId::Canyon {
+        // The Gorge: its cliffs and arches carry the rock; the flats stay clean.
+        [(Boulder, 5, 1), (Cactus, 4, 2), (Shrub, 10, 3)]
     } else if desert {
         [(Boulder, 12, 1), (Cactus, 8, 2), (Shrub, 28, 3)]
     } else {
@@ -2049,6 +2074,8 @@ mod shots {
             ("scene", scene.to_string()),
             ("scene+fx", format!("{scene}
 {}", include_str!("shaders/fx.wgsl"))),
+            ("scene+shield", format!("{scene}
+{}", include_str!("shaders/shield.wgsl"))),
             ("post", include_str!("shaders/post.wgsl").to_string()),
             ("bloom", include_str!("shaders/bloom.wgsl").to_string()),
         ];
@@ -2387,7 +2414,22 @@ mod shots {
             ("crane", Vec2::new(-100.0, 140.0), 4.5, Vec2::new(-160.0, 180.0)),
             ("tower", Vec2::new(120.0, 150.0), 4.5, Vec2::new(165.0, 182.0)),
         ];
-        for (id, views) in [(arena_core::MapId::Sink, sink), (arena_core::MapId::Refinery, refinery), (arena_core::MapId::RustBelt, rustbelt)] {
+        let gorge: [(&str, Vec2, f32, Vec2); 13] = [
+            ("high", Vec2::new(30.0, 250.0), 170.0, Vec2::new(0.0, -20.0)),
+            ("air-butte", Vec2::new(75.0, 65.0), 45.0, Vec2::new(0.0, 0.0)),
+            ("air-gorge", Vec2::new(-110.0, 70.0), 50.0, Vec2::new(-200.0, -30.0)),
+            ("air-mesa", Vec2::new(-60.0, -110.0), 55.0, Vec2::new(-150.0, -205.0)),
+            ("air-anvil", Vec2::new(95.0, 120.0), 55.0, Vec2::new(155.0, 205.0)),
+            ("butte-ramp", Vec2::new(112.0, 8.0), 4.5, Vec2::new(0.0, 0.0)),
+            ("gorge", Vec2::new(-262.0, -12.0), 4.5, Vec2::new(-150.0, -40.0)),
+            ("bridge", Vec2::new(0.0, -125.0), 4.5, Vec2::new(0.0, 0.0)),
+            ("arch", Vec2::new(-252.0, 12.0), 4.5, Vec2::new(-185.0, -6.0)),
+            ("rim", Vec2::new(-60.0, -235.0), 4.5, Vec2::new(10.0, -110.0)),
+            ("mesa-ramp", Vec2::new(-20.0, -178.0), 4.5, Vec2::new(-100.0, -196.0)),
+            ("spring", Vec2::new(-175.0, -30.0), 4.5, Vec2::new(-175.0, -110.0)),
+            ("under", Vec2::new(-62.0, 50.0), 4.5, Vec2::new(60.0, 52.0)),
+        ];
+        for (id, views) in [(arena_core::MapId::Sink, sink), (arena_core::MapId::Refinery, refinery), (arena_core::MapId::RustBelt, rustbelt), (arena_core::MapId::Canyon, gorge)] {
             let map = Map::by_id(id, seed);
             for (name, eye, up, look) in views {
                 let shot = format!("level-{tag}{}-{name}", id.key());

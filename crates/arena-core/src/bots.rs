@@ -192,6 +192,12 @@ impl NavGrid {
         c
     }
 
+    /// The centre of the free cell nearest `p` (`p`'s own when it's free).
+    pub fn nearest_free_point(&self, p: Vec2) -> Vec2 {
+        let c = self.nearest_free(self.cell_of(p));
+        self.center(c.0, c.1)
+    }
+
     /// Is the straight line a→b free of blocked cells?
     pub fn line_clear(&self, a: Vec2, b: Vec2) -> bool {
         let d = b - a;
@@ -544,6 +550,8 @@ pub struct Brain {
     flee: Option<Vec2>,
     /// Falling back on the team (outnumbered).
     regroup: bool,
+    /// Stopped on its goal.
+    parked: bool,
     stats: BotStats,
 }
 
@@ -629,6 +637,7 @@ impl Brain {
             last_reload: 0.0,
             flee: None,
             regroup: false,
+            parked: false,
             stats: BotStats::default(),
         }
     }
@@ -666,6 +675,27 @@ impl Brain {
     /// What this bot has been up to.
     pub fn stats(&self) -> BotStats {
         self.stats
+    }
+
+    /// A short label of what the bot is doing (debugging stuck bots).
+    pub fn debug_state(&self) -> String {
+        let tactic = match self.tactic {
+            Tactic::Orbit => "orbit",
+            Tactic::Flank { .. } => "flank",
+            Tactic::Cover { .. } => "cover",
+        };
+        format!(
+            "{tactic} tgt={} path={} rev={} det={} evade={} duck={} flee={} ram={} peek={}",
+            self.target.is_some(),
+            self.path.len().min(3),
+            self.reverse > 0.0,
+            self.detour.is_some(),
+            self.evade > 0.0,
+            self.duck.is_some(),
+            self.flee.is_some(),
+            self.ram > 0.0,
+            self.peeking
+        )
     }
 
     /// Whether the bot is set up behind cover right now (statistics, debug).
@@ -772,6 +802,23 @@ impl Style {
             Style::Sniper => bt.retreat_sniper,
             Style::Scavenger => bt.retreat_scavenger,
             Style::Hunter => bt.retreat_hunter,
+        }
+    }
+
+    /// How much a power-up is worth going for (metres of detour).
+    fn powerup_value(self, kind: crate::powerups::PowerUpKind) -> f32 {
+        use crate::powerups::PowerUpKind::*;
+        match (self, kind) {
+            (Style::Brawler, Overcharge | Bubble | Gatling) => 130.0,
+            (Style::Brawler, Nitro) => 110.0,
+            (Style::Sniper, Overcharge) => 140.0,
+            (Style::Sniper, Bubble | Gatling) => 90.0,
+            (Style::Scavenger, Magnet) => 170.0,
+            (Style::Scavenger, Bubble | Nitro) => 110.0,
+            (Style::Hunter, Nitro | Overcharge) => 140.0,
+            (Style::Hunter, Gatling) => 110.0,
+            (_, Magnet) => 40.0,
+            _ => 70.0,
         }
     }
 
@@ -1394,6 +1441,13 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
                         }
                         if scav { 170.0 } else { 120.0 }
                     }
+                    // Power-ups: everyone wants one; which ones, by personality.
+                    PickupKind::PowerUp(kind) => {
+                        if tank.vehicle != VehicleKind::Tank {
+                            continue;
+                        }
+                        b.style.powerup_value(kind)
+                    }
                 };
             // Someone nearer is already on it: look elsewhere.
             let taken = if claimed(k.id, kp, d) { 60.0 } else { 0.0 };
@@ -1693,7 +1747,12 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         let err = steer_to(to);
         input.steer = (-err * 2.2).clamp(-1.0, 1.0);
         input.throttle = if err.abs() > 1.1 { 0.0 } else { err.cos().max(0.25) };
-        if b.ram <= 0.0 && b.path.len() == 1 && dist < if matches!(b.tactic, Tactic::Cover { .. }) { 3.5 } else { 8.0 } {
+        // Parked on the goal; once parked, it takes a real move of the goal
+        // to set off again (no stop-start shuffle as an orbit point drifts).
+        let (park, resume) = if matches!(b.tactic, Tactic::Cover { .. }) { (3.5, 5.0) } else { (8.0, 16.0) };
+        // (Not on the way to a pickup: that has to be driven over.)
+        b.parked = b.ram <= 0.0 && b.claim.is_none() && b.path.len() == 1 && (dist < park || (b.parked && dist < resume));
+        if b.parked {
             input.throttle = 0.0;
             input.steer = 0.0;
             // Parked behind cover (or on a post): turn the front armour to the threat.

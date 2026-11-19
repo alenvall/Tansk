@@ -14,8 +14,11 @@ struct SpriteOut {
     @location(1) color: vec4<f32>,
     @location(2) params: vec4<f32>,
     @location(3) world: vec3<f32>,
-    // The sprite's centre: puffs take one shadow sample there.
-    @location(4) centre: vec3<f32>,
+    // Lighting worked out per vertex (cheap for big, overlapping sprites):
+    // rgb point lights at the sprite's centre, a its sun shadow.
+    @location(4) lit: vec4<f32>,
+    // rgb the air's colour along this vertex's ray, a how much air.
+    @location(5) air: vec4<f32>,
 };
 
 fn corner(vi: u32) -> vec2<f32> {
@@ -96,19 +99,64 @@ fn vs_sprite(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
         out.params.w = coverage;
     }
     out.world = p;
-    out.centre = centre;
+    // The air (haze integral, Mie lobe) and, for lit puffs, the shadow and
+    // point lights: per vertex rather than per pixel. Big puffs overlap many
+    // layers deep in an explosion, so per-pixel work is what costs there.
+    let to = p - globals.camera.xyz;
+    let dist = length(to);
+    let dir = to / max(dist, 1e-4);
+    out.air = vec4<f32>(air_colour(dir), air_amount(globals.camera.xyz, dir, dist));
+    out.lit = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    if (kind == 0u || kind == 3u) {
+        // One shadow sample at the centre (per-pixel shadows on a big faint
+        // cloud showed structures' shadows as ghost shapes in the air).
+        let n = -dir;
+        out.lit = vec4<f32>(point_lights(centre, n), sun_visibility(centre, globals.sun_dir.xyz, 1.0));
+    }
     return out;
 }
 
 @fragment
 fn fs_sprite(in: SpriteOut) -> @location(0) vec4<f32> {
+    return sprite_shade(in);
+}
+
+// The half-resolution effects pass (Low, Medium, High): sprites draw into
+// a half-size target with no depth attachment, testing against the full
+// scene depth themselves; puffs also fade softly where they meet the
+// scene behind them (no hard lines where a dust quad cuts the ground).
+@group(1) @binding(0) var scene_depth: texture_depth_2d;
+
+// View distance (m) of a depth value (the camera's 0.1..3000 m projection).
+fn view_depth(z: f32) -> f32 {
+    let n = 0.1;
+    let f = 3000.0;
+    return n * f / (f - z * (f - n));
+}
+
+@fragment
+fn fs_sprite_half(in: SpriteOut) -> @location(0) vec4<f32> {
+    let dims = vec2<f32>(textureDimensions(scene_depth));
+    let p = vec2<i32>(clamp(in.clip.xy * 2.0, vec2<f32>(0.0), dims - 1.0));
+    let zs = textureLoad(scene_depth, p, 0);
+    if (in.clip.z >= zs) {
+        discard;
+    }
+    var c = sprite_shade(in);
+    if (u32(in.params.x + 0.5) == 0u) {
+        c = c * clamp((view_depth(zs) - view_depth(in.clip.z)) / 1.2, 0.0, 1.0);
+    }
+    return c;
+}
+
+fn sprite_shade(in: SpriteOut) -> vec4<f32> {
     let kind = u32(in.params.x + 0.5);
     let r = length(in.uv);
     let seed = in.params.z;
     let to = in.world - globals.camera.xyz;
     let dist = length(to);
     let dir = to / max(dist, 1e-4);
-    let air = air_amount(globals.camera.xyz, dir, dist);
+    let air = in.air.a;
     if (kind == 0u || kind == 3u) {
         // Puffy, lit: a lumpy outline and a fake sphere normal.
         let ang = atan2(in.uv.y, in.uv.x);
@@ -130,15 +178,12 @@ fn fs_sprite(in: SpriteOut) -> @location(0) vec4<f32> {
         let n = normalize(globals.cam_right.xyz * in.uv.x + globals.cam_up.xyz * in.uv.y + back * (z + 0.35));
         let n_dot_l = dot(n, globals.sun_dir.xyz);
         let hl = 0.5 * n_dot_l + 0.5;
-        // One shadow sample at the puff's centre, not per pixel: a big,
-        // faint dust cloud shadowed per pixel shows the shadows of gantries
-        // and derricks cutting through it as ghost silhouettes in the air.
-        let shadow = sun_visibility(in.centre, globals.sun_dir.xyz, 1.0);
-        let lit = globals.sun_color.rgb * warp(hl * hl * mix(0.25, 1.0, shadow)) + ambient(n) + point_lights(in.world, n);
+        let shadow = in.lit.a;
+        let lit = globals.sun_color.rgb * warp(hl * hl * mix(0.25, 1.0, shadow)) + ambient(n) + in.lit.rgb;
         // Back-lit smoke glows round the edge towards the sun.
         let through = pow(max(dot(dir, globals.sun_dir.xyz), 0.0), 6.0) * (1.0 - z) * 0.8;
         var c = in.color.rgb * lit + globals.sun_color.rgb * in.color.rgb * through;
-        c = mix(c, air_colour(dir), air);
+        c = mix(c, in.air.rgb, air);
         // Soft near fade: smoke, dust and debris right at the lens melt
         // away (3..8 m) instead of filling the screen.
         // Far puffs thin out with the air as well as taking its colour: a
@@ -169,7 +214,7 @@ fn fs_sprite(in: SpriteOut) -> @location(0) vec4<f32> {
         // Cable: a dark, opaque-ish line.
         let across = 1.0 - smoothstep(0.5, 1.0, abs(in.uv.x));
         let a = across * in.color.a * mix(0.45, 1.0, clamp(in.params.w, 0.0, 1.0));
-        let c = mix(in.color.rgb, air_colour(dir), air);
+        let c = mix(in.color.rgb, in.air.rgb, air);
         return vec4<f32>(c * a, a);
     }
     // Streak.

@@ -159,6 +159,8 @@ pub struct Sim {
     pub removed: Vec<RemovedSnap>,
     /// Spring pads and fuel trailers (`hazards.rs`).
     pub spectacle: crate::hazards::Spectacle,
+    /// Dents, rubble and craters (`destruct.rs`).
+    pub destruct: crate::destruct::Destruct,
     // --- Wave 3.
     pub mode: crate::raid::ModeKind,
     pub raid: Option<crate::raid::RaidState>,
@@ -173,6 +175,8 @@ pub struct Sim {
     pub wellhead: Option<crate::wellhead::WellheadState>,
     /// Last Crew Rolling: the sandstorm wall and who's out (None in other modes).
     pub last_crew: Option<crate::lastcrew::LastCrewState>,
+    /// Timed power-ups on tanks (`powerups.rs`).
+    pub powerups: crate::powerups::PowerUps,
 }
 
 /// The phases of [`Sim::step_timed`], in order.
@@ -229,6 +233,7 @@ impl Sim {
             obstacle_hp: Vec::new(),
             removed: Vec::new(),
             spectacle: Default::default(),
+            destruct: Default::default(),
             mode,
             raid: None,
             pending_team: None,
@@ -236,6 +241,7 @@ impl Sim {
             convoy: None,
             wellhead: None,
             last_crew: None,
+            powerups: Default::default(),
         };
         for s in sim.map.scrap_sites.clone() {
             sim.sites.push(Site { pos: s.pos, kind: PickupKind::Scrap(s.kind), timer: 0.0, live: None });
@@ -243,6 +249,7 @@ impl Sim {
         for p in sim.map.repair_sites.clone() {
             sim.sites.push(Site { pos: p, kind: PickupKind::Repair, timer: 0.0, live: None });
         }
+        sim.init_powerups();
         for ps in sim.map.props.clone() {
             match ps.kind {
                 PropKindSpawn::OilDrum => {
@@ -259,6 +266,7 @@ impl Sim {
         }
         sim.init_world();
         sim.init_spectacle();
+        sim.init_destruct();
         if mode == crate::raid::ModeKind::RaiderWaves {
             sim.init_raid();
         } else {
@@ -469,8 +477,10 @@ impl Sim {
             s.timer = 0.0;
         }
         self.projectiles.clear();
+        self.powerups.buffs.clear();
         self.reset_world();
         self.reset_spectacle();
+        self.reset_destruct();
         if self.raid.is_none() {
             self.schedule_storm();
         }
@@ -505,7 +515,9 @@ impl Sim {
 
         let mut pre_vel = Vec::with_capacity(self.players.len());
         for i in 0..self.players.len() {
+            let pre = self.powerup_pre(i);
             self.tick_player(i, &t, dt);
+            self.powerup_post(i, pre);
             let b = self.phys.body(self.players[i].tank.body);
             pre_vel.push(b.linvel());
         }
@@ -519,10 +531,12 @@ impl Sim {
         self.check_rams(&t, &pre_vel, dt);
         self.step_pickups(&t, dt);
         self.update_sites(dt);
+        self.step_powerups(dt);
         self.step_props(dt);
         self.boss_weapons(dt);
         self.step_world(dt);
         self.step_spectacle(dt);
+        self.step_destruct(dt);
         self.safety_net();
         self.step_raid(dt);
         self.step_convoy(dt);
@@ -1014,6 +1028,7 @@ impl Sim {
             }
         }
         self.explode_world(pos, r, g.splash_damage * mk, g.knockback, owner);
+        self.crater_from_blast(pos, r, w);
         self.raid_explosion(pos, owner, g.splash_damage * mk, r);
     }
 
@@ -1042,7 +1057,7 @@ impl Sim {
             return;
         }
         let HitLocation::Part(kind) = loc else { return };
-        if self.players[j].tank.shield > 0.0 {
+        if self.players[j].tank.shield > 0.0 || self.in_bubble(j) {
             return;
         }
         let Some(p) = self.players[j].tank.parts.iter_mut().find(|p| p.kind == kind) else { return };
@@ -1064,7 +1079,9 @@ impl Sim {
         let loc = self.ship_location(j, loc);
         let amount = amount * self.truck_armour(j, w);
         let amount = if self.last_crew.is_some() { amount * self.tuning.last_crew.damage_taken } else { amount };
+        let amount = amount * self.powerup_damage_mult(attacker);
 
+        let Some(amount) = self.powerup_absorb(j, amount, pos, w) else { return };
         let Some(amount) = self.absorb(j, amount, pos, w) else { return };
         let t = self.tuning.clone();
         let target = self.players[j].id;
@@ -1415,6 +1432,9 @@ impl Sim {
             self.sites[si].timer -= dt * storm;
             if self.sites[si].timer <= 0.0 {
                 let id = self.alloc_id();
+                if matches!(self.sites[si].kind, PickupKind::PowerUp(_)) && !self.powerup_site_spawn(si) {
+                    continue;
+                }
                 if matches!(self.sites[si].kind, PickupKind::Rare(_)) {
                     let r = crate::parts::RARE_PARTS[self.rng.below(crate::parts::RARE_PARTS.len())];
                     self.sites[si].kind = PickupKind::Rare(r);
@@ -1486,6 +1506,7 @@ impl Sim {
                             PickupKind::Scrap(_) => true,
                             PickupKind::Rare(kind) => !tank.parts.iter().any(|q| q.kind == kind),
                             PickupKind::AirStrike => !tank.air_strike,
+                            PickupKind::PowerUp(_) => tank.vehicle == crate::parts::VehicleKind::Tank,
                             PickupKind::Repair => {
                                 tank.repair.is_none()
                                     && (tank.health < tank.stats.max_health * 0.98
@@ -1508,6 +1529,7 @@ impl Sim {
                         PickupKind::Repair => t.pickups.repair_respawn,
                         PickupKind::Rare(_) => self.rng.range(t.special.rare_respawn_min, t.special.rare_respawn_max),
                         PickupKind::AirStrike => t.special.strike_respawn,
+                        PickupKind::PowerUp(_) => self.powerup_respawn_time(),
                         _ => t.pickups.site_respawn,
                     };
                 }
@@ -1518,6 +1540,7 @@ impl Sim {
                     PickupKind::Repair => self.start_kit_repair(j),
                     PickupKind::Rare(kind) => self.attach_special(j, kind),
                     PickupKind::AirStrike => self.players[j].tank.air_strike = true,
+                    PickupKind::PowerUp(kind) => self.start_powerup(j, kind),
                 }
                 continue;
             }
@@ -1734,6 +1757,7 @@ impl Sim {
             paint: p.loadout.paint,
             emblem: p.loadout.emblem,
             vehicle: tank.vehicle,
+            powerups: self.powerups.snap(p.id, &t.powerups),
         }
     }
 
@@ -1776,6 +1800,9 @@ impl Sim {
             strikes: self.strike_snaps(),
             hazards: self.hazard_snaps(),
             removed: self.removed.clone(),
+            dented: self.destruct.dented(),
+            rubble: self.destruct.rubble.clone(),
+            craters: self.destruct.craters.clone(),
             tethers: self.tether_snaps(),
             raid: self.raid_snap(),
             bosses: self.boss_snaps(),

@@ -26,6 +26,7 @@ use dom_web::Dom;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod dom_stub;
+pub mod manual;
 #[cfg(not(target_arch = "wasm32"))]
 use dom_stub::Dom;
 
@@ -617,7 +618,33 @@ impl Ui {
             potm: false,
         };
         ui.show_title();
+        ui.fill_static();
         ui
+    }
+
+    /// The parts of the menus built from the game's own tables: the map
+    /// pickers (one per `MapId`) and the Workshop manual.
+    fn fill_static(&mut self) {
+        let (mut pmap, mut host, mut lobby) = (String::new(), String::new(), String::new());
+        for (i, m) in arena_core::MapId::ALL.iter().enumerate() {
+            let (k, name, checked) = (m.key(), m.name(), if i == 0 { " checked" } else { "" });
+            let _ = write!(pmap, "<label title=\"{name}\"><input type=\"radio\" name=\"pmap\" value=\"{k}\"{checked}><span>{}</span></label>", manual::short_map(*m));
+            let _ = write!(
+                host,
+                "<label class=\"t-map\" data-map=\"{k}\"><input type=\"radio\" name=\"map\" value=\"{k}\"{checked}><span class=\"t-map-card\"><b>{name}</b><i>{}</i></span></label>",
+                manual::map_blurb(*m)
+            );
+            let _ = write!(lobby, "<label><input type=\"radio\" name=\"lmap\" value=\"{k}\"{checked}><span>{name}</span></label>");
+        }
+        self.dom.html("t-pmap-opts", &pmap);
+        self.dom.html("t-host-maps", &host);
+        self.dom.html("t-lobby-maps", &lobby);
+        self.dom.html("t-manual-body", &manual::manual_html());
+    }
+
+    /// Opens the Workshop manual over whatever is up.
+    pub fn show_manual(&mut self, open: bool) {
+        self.dom.hidden("t-manual", !open);
     }
 
     /// Everything the player did since the last call.

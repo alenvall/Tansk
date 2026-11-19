@@ -163,6 +163,14 @@ pub enum ObstacleKind {
     /// A parked fuel trailer (long along X). Shot up it leaks and burns, then
     /// blows up big; it is back after a while (see `hazards.rs`). Tall.
     FuelTrailer,
+    // ---- The Gorge (appended) ---------------------------------------------------
+    /// A natural rock arch: `boxes[0..2]` the two legs (a lane between them),
+    /// `boxes[2]` the span across the top (overhead). Tall.
+    RockArch,
+    /// A steel girder bridge between two heights: `boxes[0]` the deck
+    /// (overhead: drive on it and under it). The obstacle stands on the low
+    /// ground under its middle; the deck runs along local Z. Tall.
+    GirderBridge,
 }
 
 impl ObstacleKind {
@@ -187,10 +195,12 @@ pub enum MapId {
     Refinery,
     /// A dead scrapyard city in a dry canyon.
     RustBelt,
+    /// A deep, winding desert gorge: mesas and plateaus at three heights.
+    Canyon,
 }
 
 impl MapId {
-    pub const ALL: [MapId; 3] = [MapId::Sink, MapId::Refinery, MapId::RustBelt];
+    pub const ALL: [MapId; 4] = [MapId::Sink, MapId::Refinery, MapId::RustBelt, MapId::Canyon];
 
     /// The display name.
     pub fn name(self) -> &'static str {
@@ -198,6 +208,7 @@ impl MapId {
             MapId::Sink => "The Sink",
             MapId::Refinery => "The Refinery",
             MapId::RustBelt => "The Rust Belt",
+            MapId::Canyon => "The Gorge",
         }
     }
 
@@ -207,6 +218,7 @@ impl MapId {
             MapId::Sink => "sink",
             MapId::Refinery => "refinery",
             MapId::RustBelt => "rustbelt",
+            MapId::Canyon => "gorge",
         }
     }
 
@@ -217,6 +229,7 @@ impl MapId {
             "sink" => Some(MapId::Sink),
             "refinery" => Some(MapId::Refinery),
             "rustbelt" | "rust_belt" | "rust belt" | "rust-belt" => Some(MapId::RustBelt),
+            "gorge" | "canyon" => Some(MapId::Canyon),
             _ => None,
         }
     }
@@ -387,6 +400,7 @@ impl Map {
             MapId::Sink => Map::the_sink(seed),
             MapId::Refinery => Map::refinery(seed),
             MapId::RustBelt => Map::rust_belt(seed),
+            MapId::Canyon => Map::gorge(seed),
         }
     }
 
@@ -466,6 +480,45 @@ impl Map {
             }
         }
         top
+    }
+}
+
+/// The deepest a run of craters can dig below the original ground, m
+/// (tanks always drive out).
+pub const CRATER_FLOOR: f32 = 1.8;
+
+impl Map {
+    /// Digs a crater: a smooth bowl `depth` deep and `radius` wide round `c`,
+    /// never below `base - CRATER_FLOOR` (`base` the untouched heights).
+    /// Deterministic: the server's sim and every client dig the same.
+    pub fn apply_crater(&mut self, c: Vec2, radius: f32, depth: f32, base: &[f32]) {
+        let n = self.resolution;
+        let sp = self.spacing();
+        let half = self.size / 2.0;
+        let lo = |v: f32| (((v - radius + half) / sp).floor().max(0.0) as usize).min(n - 1);
+        let hi = |v: f32| (((v + radius + half) / sp).ceil().max(0.0) as usize).min(n - 1);
+        for iz in lo(c.y)..=hi(c.y) {
+            for ix in lo(c.x)..=hi(c.x) {
+                let p = Vec2::new(-half + ix as f32 * sp, -half + iz as f32 * sp);
+                let d = p.distance(c) / radius;
+                if d >= 1.0 {
+                    continue;
+                }
+                let k = 1.0 - d * d;
+                let i = iz * n + ix;
+                self.heights[i] = (self.heights[i] - depth * k * k).max(base[i] - CRATER_FLOOR);
+            }
+        }
+    }
+
+    /// The grid cells (ix0, iz0, ix1, iz1, inclusive) a crater touches.
+    pub fn crater_cells(&self, c: Vec2, radius: f32) -> (usize, usize, usize, usize) {
+        let n = self.resolution;
+        let sp = self.spacing();
+        let half = self.size / 2.0;
+        let lo = |v: f32| (((v - radius + half) / sp).floor().max(0.0) as usize).min(n - 1);
+        let hi = |v: f32| (((v + radius + half) / sp).ceil().max(0.0) as usize).min(n - 1);
+        (lo(c.x), lo(c.y), hi(c.x), hi(c.y))
     }
 }
 
@@ -847,6 +900,21 @@ pub(crate) fn make_obstacle(kind: ObstacleKind, rng: &mut Rng) -> Obstacle {
             boxes.push(bx(Vec3::new(0.0, TRAILER_HALF.y, 0.0), TRAILER_HALF, 0.0));
             radius = TRAILER_HALF.x + 1.5;
         }
+        ObstacleKind::RockArch => {
+            cover = Cover::Tall;
+            for s in [-1.0f32, 1.0] {
+                boxes.push(bx(Vec3::new(s * 9.5, 6.0, 0.0), Vec3::new(3.0, 6.5, 3.2), rng.range(-0.1, 0.1)));
+            }
+            boxes.push(bx(Vec3::new(0.0, 11.5, 0.0), Vec3::new(12.5, 2.2, 3.6), 0.0));
+            radius = 14.0;
+        }
+        ObstacleKind::GirderBridge => {
+            // Built by the map (it spans a drop); a default 12 m one.
+            cover = Cover::Tall;
+            girder_bridge_boxes(&mut boxes, 12.0, 26.0);
+            rot = Quat::IDENTITY;
+            radius = 27.0;
+        }
         ObstacleKind::CarTower => {
             cover = Cover::Tall;
             boxes.push(bx(Vec3::new(0.0, 6.0, 0.0), Vec3::new(3.0, 6.0, 3.0), 0.0));
@@ -885,6 +953,13 @@ pub(crate) fn pipe_rack_boxes(boxes: &mut Vec<ObstacleBox>, len: f32) {
             boxes.push(bx(Vec3::new(x, 2.9, z), Vec3::new(0.3, 3.0, 0.3), 0.0));
         }
     }
+}
+
+/// A girder bridge in a frame standing on the low ground: one deck along
+/// local Z, `half_len` each way, its top `drop` m up (no pier: the truss
+/// spans it).
+pub(crate) fn girder_bridge_boxes(boxes: &mut Vec<ObstacleBox>, drop: f32, half_len: f32) {
+    boxes.push(bx(Vec3::new(0.0, drop + 0.05 - 0.5, 0.0), Vec3::new(6.0, 0.5, half_len), 0.0));
 }
 
 /// A fuel trailer's half extents (long along X): top 3.3 m up.

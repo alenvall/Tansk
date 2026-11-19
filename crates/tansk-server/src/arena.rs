@@ -944,7 +944,8 @@ mod tests {
     #[test]
     fn rust_belt_room_welcomes_with_its_map() {
         assert_eq!(MapId::Refinery.next(), MapId::RustBelt);
-        assert_eq!(MapId::RustBelt.next(), MapId::Sink);
+        assert_eq!(MapId::RustBelt.next(), MapId::Canyon);
+        assert_eq!(MapId::Canyon.next(), MapId::Sink);
         let info = Arc::new(Mutex::new(ArenaInfo {
             code: "RUST".into(),
             public: false,
@@ -1327,9 +1328,9 @@ mod tests {
         assert_eq!(vote.cards[0].map, MapId::Refinery, "card 0 is the rematch");
         assert!(!l.can_start(), "no start while the vote is open");
 
-        // Two vote for the Rust Belt, the host for the Sink: the majority wins.
+        // Two vote for the Rust Belt, the host for the Gorge: the majority wins.
         let pick = |m: MapId| vote.cards.iter().position(|c| c.map == m).unwrap() as u8;
-        ann.send(&mut r, LobbyCmd::Vote(pick(MapId::Sink)));
+        ann.send(&mut r, LobbyCmd::Vote(pick(MapId::Canyon)));
         bo.send(&mut r, LobbyCmd::Vote(pick(MapId::RustBelt)));
         assert!(cy.lobby().vote.is_some(), "still open");
         assert_eq!(cy.lobby().crew[1].vote, Some(pick(MapId::RustBelt)), "votes are shown");

@@ -277,7 +277,7 @@
   <!-- party lobby: the crews warm up in the yard; the host's rules, ready ticks, the map vote -->
   <div id="t-lobby" class="t-lobby" data-host="0" data-team="0" data-ready="0" data-drive="0" hidden>
     <div class="t-lobby-card plate">
-      <div class="t-panel-head"><span class="t-hazard"></span><h2>Crew yard</h2><span class="t-lobby-phase" id="t-lobby-phase">Warming up</span><button class="t-x t-lobby-fold t-on-touch" data-action="lobby-fold" aria-label="Fold the plate">&#9662;</button></div>
+      <div class="t-panel-head"><span class="t-hazard"></span><h2>Crew yard</h2><button class="t-lobby-manual" data-action="manual" title="Workshop manual: tracks, guns, parts">Manual</button><span class="t-lobby-phase" id="t-lobby-phase">Warming up</span><button class="t-x t-lobby-fold t-on-touch" data-action="lobby-fold" aria-label="Fold the plate">&#9662;</button></div>
       <div class="t-lobby-body">
         <div class="t-lobby-invite">
           <div class="t-lobby-code-wrap">
@@ -318,9 +318,7 @@
           <div class="t-field">
             <div class="t-lobby-sublabel">Map</div>
             <div class="t-seg t-seg-sm" role="radiogroup">
-              <label><input type="radio" name="lmap" value="sink" checked><span>The Sink</span></label>
-              <label><input type="radio" name="lmap" value="refinery"><span>The Refinery</span></label>
-              <label><input type="radio" name="lmap" value="rustbelt"><span>The Rust Belt</span></label>
+              <span class="t-map-opts" id="t-lobby-maps"><!-- one per MapId --></span>
             </div>
           </div>
           <div class="t-lobby-row">

@@ -66,9 +66,7 @@
     </div>
     <div class="t-seg t-pmap" role="radiogroup" aria-label="Practice map">
       <span class="t-pmap-label">Practice on</span>
-      <label title="The Sink"><input type="radio" name="pmap" value="sink" checked><span>Sink</span></label>
-      <label title="The Refinery"><input type="radio" name="pmap" value="refinery"><span>Refinery</span></label>
-      <label title="The Rust Belt"><input type="radio" name="pmap" value="rustbelt"><span>Rust Belt</span></label>
+      <span class="t-map-opts" id="t-pmap-opts"><!-- one per MapId (src/ui/mod.rs) --></span>
     </div>
     <div class="t-menu-row">
       <button class="t-btn" data-goto="garage"><span class="t-btn-label">Garage</span><span class="t-btn-hint">Chassis &amp; paint</span></button>
@@ -77,6 +75,7 @@
   </nav>
 
   <button class="t-btn t-btn-small t-howto-btn" data-goto="howto"><span class="t-btn-label">How to play</span></button>
+  <button class="t-btn t-btn-small t-manual-btn" data-action="manual"><span class="t-btn-label">Workshop manual</span></button>
 
   <aside class="t-crewtag plate">
     <svg class="t-crewtag-emblem" id="t-crew-emblem"><use href="#e-wrench"/></svg>
@@ -105,9 +104,7 @@
       <div class="t-field">
         <div class="t-field-label">Map</div>
         <div class="t-maps" role="radiogroup">
-          <label class="t-map"><input type="radio" name="map" value="the_sink" checked><span class="t-map-card"><b>The Sink</b><i>Dry lake bed, beached ships</i></span></label>
-          <label class="t-map"><input type="radio" name="map" value="refinery"><span class="t-map-card"><b>The Refinery</b><i>Tanks that go boom</i></span></label>
-          <label class="t-map"><input type="radio" name="map" value="rustbelt"><span class="t-map-card"><b>The Rust Belt</b><i>Scrapyard canyon, a dry river</i></span></label>
+          <span class="t-map-opts" id="t-host-maps"><!-- one per MapId --></span>
         </div>
       </div>
       <div class="t-row2">
@@ -249,6 +246,7 @@
     <div class="t-panel-foot">
       <span class="t-howto-keys"><span class="t-off-touch"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive &middot; <kbd>Mouse</kbd> aim &middot; <kbd>Click</kbd> fire</span><span class="t-on-touch">Left thumb drives &middot; drag right to aim &middot; <kbd>Fire</kbd> fires</span></span>
       <button class="t-btn t-btn-small" data-goto="controls"><span class="t-btn-label">All controls</span></button>
+      <button class="t-btn t-btn-small" data-action="manual"><span class="t-btn-label">Manual</span></button>
       <button class="t-btn t-btn-go" data-action="practice"><span class="t-btn-label">Try it: practice</span></button>
     </div>
   </div>
@@ -334,4 +332,24 @@
     <button class="t-btn t-btn-small" data-action="cancel"><span class="t-btn-label">Cancel</span></button>
   </div>
   <div class="t-loading-tip" id="t-loading-tip">Tip: side and rear plates are thinner. Flanking pays.</div>
+</section>
+
+<!-- ========================== WORKSHOP MANUAL ========================== -->
+<!-- Over everything (title, lobby, pause). The body is built from the
+     game's own tables (src/ui/manual.rs). -->
+<section id="t-manual" class="t-manual" hidden>
+  <div class="t-manual-card plate">
+    <div class="t-panel-head"><span class="t-hazard"></span><h2>Workshop manual</h2><button class="t-x" data-action="manual-close" aria-label="Close">&#x2715;</button></div>
+    <nav class="t-manual-nav">
+      <button data-action="manual-jump" data-to="t-man-grow">Growing</button>
+      <button data-action="manual-jump" data-to="t-man-tracks">Tracks</button>
+      <button data-action="manual-jump" data-to="t-man-guns">Guns</button>
+      <button data-action="manual-jump" data-to="t-man-alt">Second guns</button>
+      <button data-action="manual-jump" data-to="t-man-combos">Combos</button>
+      <button data-action="manual-jump" data-to="t-man-rare">Golden crates</button>
+      <button data-action="manual-jump" data-to="t-man-pickups">Pickups</button>
+      <button data-action="manual-jump" data-to="t-man-chassis">Chassis</button>
+    </nav>
+    <div class="t-manual-body" id="t-manual-body"></div>
+  </div>
 </section>

@@ -29,6 +29,7 @@ mod props;
 mod props_refinery;
 mod props_rustbelt;
 mod props_hazards;
+mod props_canyon;
 mod renderer;
 mod shapes;
 mod ships;
@@ -36,6 +37,12 @@ mod tank;
 mod terrain;
 mod ui;
 mod world;
+mod airstrike;
+mod pickupfx;
+mod projectiles;
+mod shield;
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod vfxbench;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native;

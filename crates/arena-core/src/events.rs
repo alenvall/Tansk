@@ -52,6 +52,8 @@ pub enum PickupKind {
     Rare(PartKind),
     /// A golden flare crate: one air strike.
     AirStrike,
+    /// A timed power-up (see `powerups`). Appended (bincode order).
+    PowerUp(crate::powerups::PowerUpKind),
 }
 
 /// What a harpoon caught.
@@ -181,5 +183,12 @@ pub enum Event {
     Eliminated { player: PlayerId, place: u8 },
     /// The last tank rolling.
     LastCrew { player: PlayerId },
+    // --- Power-ups. Appended (bincode order).
+    /// A power-up appeared at `pos` (call it on the radio).
+    PowerUpSpawned { kind: crate::powerups::PowerUpKind, pos: Vec3 },
+    /// `player` has `kind` for `seconds` (picked up; taking it again restarts it).
+    PowerUpStarted { player: PlayerId, kind: crate::powerups::PowerUpKind, seconds: f32 },
+    /// `player`'s `kind` is over (ran out, the bubble popped, or wrecked).
+    PowerUpEnded { player: PlayerId, kind: crate::powerups::PowerUpKind },
 }
 

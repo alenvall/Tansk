@@ -48,6 +48,13 @@ pub struct Snapshot {
     pub wellhead: Option<crate::wellhead::WellheadSnap>,
     /// Last Crew Rolling: the sandstorm wall (None in other modes).
     pub storm_circle: Option<crate::lastcrew::StormCircleSnap>,
+    // --- Destruction (`destruct.rs`).
+    /// Obstacles dented (stage 1).
+    pub dented: Vec<u16>,
+    /// What destroyed staged cover left behind.
+    pub rubble: Vec<crate::destruct::RubbleSnap>,
+    /// Craters dug this match, in order (dig them in this order).
+    pub craters: Vec<crate::destruct::CraterSnap>,
 }
 
 
@@ -111,6 +118,9 @@ pub struct TankSnap {
     pub chassis: crate::garage::ChassisClass,
     pub paint: u8,
     pub emblem: u8,
+    // --- Power-ups.
+    /// The timed buffs this tank has now (empty almost always).
+    pub powerups: Vec<crate::powerups::PowerUpSnap>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

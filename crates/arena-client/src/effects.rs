@@ -24,6 +24,7 @@ pub enum Kind {
     /// Dark lit chunk with a hard edge: debris.
     Chunk = 3,
     /// Self-lit fresnel shell: shield bubbles.
+    #[allow(dead_code)] // shield bubbles are drawn by the glass pass now
     Bubble = 4,
     /// Dark line between two points: cables, ropes.
     Cable = 5,
@@ -120,6 +121,28 @@ pub struct Fx {
     /// Each machine's animated frames (set by the world renderer as it
     /// builds the instances): flashes and puffs spawn from these.
     pub poses: HashMap<PlayerId, crate::anim::Pose>,
+    /// Stress test (`?stress=boom`, or set by the bench): keeps about 20
+    /// explosions, fuel blasts and burning wrecks going in front of the
+    /// camera.
+    pub stress: bool,
+    stress_t: f32,
+    /// The camera's eye last update: explosions far from it spawn fewer,
+    /// bigger particles.
+    eye: Vec3,
+}
+
+/// `?stress=boom` in the page URL (web only).
+fn stress_flag() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        web_sys::window()
+            .and_then(|w| w.location().search().ok())
+            .is_some_and(|s| s.trim_start_matches('?').split('&').any(|kv| kv == "stress=boom"))
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        false
+    }
 }
 
 const MAX_PARTICLES: usize = 5000;
@@ -152,6 +175,32 @@ impl Fx {
             flares: Vec::new(),
             curtain: Vec::new(),
             poses: HashMap::new(),
+            stress: stress_flag(),
+            stress_t: 0.0,
+            eye: Vec3::ZERO,
+        }
+    }
+
+    /// The stress test's spawner: a blast every 0.15 s somewhere 20..90 m
+    /// ahead of the camera; a third are fuel-trailer blasts (two big
+    /// explosions), the rest tank kills (an explosion and a burning wreck).
+    fn stress_tick(&mut self, dt: f32, world: &RenderWorld) {
+        let Some(cam) = world.camera else { return };
+        self.stress_t -= dt;
+        while self.stress_t <= 0.0 {
+            self.stress_t += 0.15;
+            let fwd = (cam.target - cam.eye).with_y(0.0).normalize_or(Vec3::X);
+            let side = Vec3::new(-fwd.z, 0.0, fwd.x);
+            let d = 20.0 + 70.0 * self.rand();
+            let x = (self.rand() - 0.5) * d * 1.1;
+            let ground = world.tanks.first().map_or(0.0, |t| t.pos.y - 0.9);
+            let p = cam.eye.with_y(ground) + fwd * d + side * x;
+            if self.rand() < 0.33 {
+                self.event(&Event::HazardExploded { pos: p, radius: 7.0 }, cam.eye);
+            } else {
+                self.explosion(p + Vec3::Y * 0.8, 4.0);
+                self.fires.push((p, 6.0));
+            }
         }
     }
 
@@ -174,7 +223,10 @@ impl Fx {
 
     #[allow(clippy::too_many_arguments)]
     fn spawn(&mut self, kind: Kind, pos: Vec3, vel: Vec3, life: f32, size: (f32, f32), col: (Vec3, Vec3), alpha: f32, drag: f32, lift: f32, heat: f32) {
-        if self.parts.len() >= self.max_particles {
+        // Past the budget new particles still spawn (a fresh blast must
+        // show); `update` then culls the most burnt-out ones. A hard
+        // ceiling a quarter over the budget bounds a single frame's burst.
+        if self.parts.len() >= self.max_particles + self.max_particles / 4 {
             return;
         }
         let rot = self.rand() * 6.28;
@@ -189,7 +241,7 @@ impl Fx {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn smoke_a(&mut self, pos: Vec3, vel: Vec3, size: f32, dark: f32, life: f32, alpha: f32) {
+    pub(crate) fn smoke_a(&mut self, pos: Vec3, vel: Vec3, size: f32, dark: f32, life: f32, alpha: f32) {
         let c = Vec3::new(0.62, 0.58, 0.54).lerp(Vec3::new(0.12, 0.1, 0.09), dark);
         // Dark smoke stays tighter, with a crisper outline, and clears
         // sooner (`heat` carries the darkness to the fade and the shader),
@@ -237,25 +289,33 @@ impl Fx {
 
     fn explosion(&mut self, pos: Vec3, radius: f32) {
         let r = radius.max(1.0);
-        for _ in 0..(10.0 + r * 4.0) as u32 {
+        // Budget: a cap per explosion (big blasts used to spawn 50+ huge
+        // glows and puffs each, many layers of overdraw), and level of
+        // detail: far from the camera, about half as many, a bit bigger.
+        let far = ((pos.distance(self.eye) - 25.0) / 90.0).clamp(0.0, 1.0);
+        let count = |base: f32, cap: f32| (base.min(cap) * (1.0 - 0.55 * far)).max(2.0) as u32;
+        // (Dust hugs the ground, so it keeps its size: bigger quads only
+        // cut harder lines where they meet the ground.)
+        let grow = 1.0 + 0.3 * far;
+        for _ in 0..count(10.0 + r * 4.0, 20.0) {
             let d = self.rand_dir();
             let v = (d + Vec3::Y * 0.6) * r * (1.5 + 2.0 * self.rand());
-            let size = r * (0.5 + 0.4 * self.rand());
+            let size = r * (0.5 + 0.4 * self.rand()) * grow;
             self.fire(pos + d * r * 0.3, v, size, 0.55);
         }
-        for _ in 0..(8.0 + r * 3.0) as u32 {
+        for _ in 0..count(8.0 + r * 3.0, 14.0) {
             let d = self.rand_dir();
             let v = (d * 1.6 + Vec3::Y * 1.8) * r * 0.5;
             let dark = 0.55 + 0.35 * self.rand();
-            self.smoke(pos + d * r * 0.4, v, r * 0.9, dark, 3.5);
+            self.smoke(pos + d * r * 0.4, v, r * 0.9 * grow, dark, 3.5);
         }
-        for _ in 0..(6.0 + r * 2.0) as u32 {
+        for _ in 0..count(6.0 + r * 2.0, 9.0) {
             let mut d = self.rand_dir();
             d.y = d.y.abs() * 0.3;
             self.dust(pos - Vec3::Y * 0.3 + d * r * 0.5, d * r * 2.5, r * 0.9, 2.5);
         }
-        self.debris(pos, (6.0 + r * 2.0) as u32, 9.0 + r * 1.5, true);
-        self.sparks(pos, Vec3::Y, 14, 16.0);
+        self.debris(pos, count(6.0 + r * 2.0, 14.0), 9.0 + r * 1.5, true);
+        self.sparks(pos, Vec3::Y, count(14.0, 14.0), 16.0);
         self.flash(pos + Vec3::Y, Vec3::new(1.0, 0.55, 0.2) * 40.0, r * 6.0 + 6.0, 0.35);
     }
 
@@ -353,9 +413,9 @@ impl Fx {
             Event::ShieldHit { pos, .. } => {
                 for _ in 0..10 {
                     let d = self.rand_dir();
-                    self.spawn(Kind::Streak, *pos, d * 7.0, 0.3, (0.05, 0.02), (Vec3::new(2.0, 5.0, 9.0), Vec3::new(0.5, 1.5, 4.0)), 1.0, 1.0, 0.0, 1.0);
+                    self.spawn(Kind::Streak, *pos, d * 7.0, 0.3, (0.05, 0.02), (Vec3::new(9.0, 5.0, 1.6), Vec3::new(4.0, 1.4, 0.3)), 1.0, 1.0, 0.0, 1.0);
                 }
-                self.flash(*pos, Vec3::new(0.4, 0.8, 1.0) * 14.0, 6.0, 0.15);
+                self.flash(*pos, Vec3::new(1.0, 0.55, 0.2) * 14.0, 6.0, 0.15);
                 0.05
             }
             Event::ShieldBroken { .. } => 0.1,
@@ -432,6 +492,12 @@ impl Fx {
         if dt <= 0.0 {
             return;
         }
+        if let Some(c) = world.camera {
+            self.eye = c.eye;
+        }
+        if self.stress {
+            self.stress_tick(dt, world);
+        }
         for p in &mut self.parts {
             p.age += dt;
             p.vel *= (-p.drag * dt).exp();
@@ -441,6 +507,13 @@ impl Fx {
         }
         // Chunks bounce once and settle on the ground plane they fell to.
         self.parts.retain(|p| p.age < p.life);
+        // Over budget: the most burnt-out particles go first (they are the
+        // faintest), so a new blast always shows in full.
+        if self.parts.len() > self.max_particles && self.max_particles > 0 {
+            let k = self.parts.len() - self.max_particles;
+            self.parts.select_nth_unstable_by(k, |a, b| (b.age / b.life).total_cmp(&(a.age / a.life)));
+            self.parts.drain(..k);
+        }
         for f in &mut self.flashes {
             f.age += dt;
         }
@@ -824,20 +897,7 @@ impl Fx {
                 },
             ));
         }
-        for t in world.tanks.iter().filter(|t| t.alive) {
-            let Some(&(_, shield)) = world.shields.iter().find(|s| s.0 == t.player) else { continue };
-            let c = t.pos + Vec3::Y * 0.6;
-            let flicker = 0.85 + 0.15 * (world.time * 9.0 + t.player as f32).sin();
-            out.push((
-                c.distance_squared(eye),
-                Sprite {
-                    pos_size: c.extend(4.3).to_array(),
-                    color: [0.6, 1.4, 2.6, (0.35 + 0.65 * shield) * flicker],
-                    params: [Kind::Bubble as u32 as f32, 0.0, t.player as f32 * 0.37, 0.0],
-                    axis: [0.0; 4],
-                },
-            ));
-        }
+        // Shield bubbles are 3D shells now, drawn by the glass pass (`shield`).
         // The sandstorm wall: a towering curtain of dust, churning in place.
         for &(p, size, alpha, seed) in &self.curtain {
             let c = Vec3::new(0.60, 0.41, 0.26) * (0.85 + 0.25 * seed);

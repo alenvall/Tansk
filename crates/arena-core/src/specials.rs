@@ -805,6 +805,10 @@ impl Sim {
     }
 
     fn destroy_obstacle(&mut self, oi: usize, owner: Option<PlayerId>) {
+        // Staged cover (shacks, fences, towers...) becomes rubble instead.
+        if self.rubble_instead(oi, owner) {
+            return;
+        }
         let map = self.map.clone();
         let w = self.tuning.world.clone();
         let o = &map.obstacles[oi];
