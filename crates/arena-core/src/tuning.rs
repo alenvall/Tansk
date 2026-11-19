@@ -1179,7 +1179,7 @@ impl Default for ConvoyTuning {
             escort_spawn_side: 14.0,
             attacker_spawn_side: 40.0,
             arrive_distance: 8.0,
-            truck_armour: 0.175,
+            truck_armour: 0.165,
             truck_mg_mult: 0.35,
 
         }

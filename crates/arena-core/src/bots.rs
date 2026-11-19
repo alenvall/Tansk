@@ -46,6 +46,9 @@ pub struct NavGrid {
     pub n: usize,
     pub origin: f32,
     pub blocked: Vec<bool>,
+    /// Free cells the bots' paths keep out of when they can: close to the
+    /// foot of a steep slope, or in a lane one cell wide.
+    pub avoid: Vec<bool>,
     /// The map's cover (obstacles that block shots), for the bots' cover search.
     pub covers: Vec<CoverSite>,
 }
@@ -92,24 +95,62 @@ impl NavGrid {
         let n = (map.size / cell).ceil() as usize;
         let origin = -map.size / 2.0;
         let mut blocked = vec![false; n * n];
+        let mut steep = vec![false; n * n];
         for z in 0..n {
             for x in 0..n {
                 let c = Vec2::new(origin + (x as f32 + 0.5) * cell, origin + (z as f32 + 0.5) * cell);
-                // Steep anywhere in the cell (corners and centre) counts.
+                // Steep anywhere in the cell (corners, edge midpoints and centre) counts.
                 let q = cell * 0.5;
-                let steep = [(0.0, 0.0), (-q, -q), (q, -q), (-q, q), (q, q)]
+                steep[z * n + x] = [(0.0, 0.0), (-q, -q), (q, -q), (-q, q), (q, q), (0.0, -q), (0.0, q), (-q, 0.0), (q, 0.0)]
                     .iter()
                     .any(|(dx, dz)| map.normal_at(c.x + dx, c.y + dz).y < 0.85);
-                blocked[z * n + x] = steep || map.blocked_xz(c, 2.8);
+                blocked[z * n + x] = steep[z * n + x] || map.blocked_xz(c, 2.8);
             }
         }
+        // Keep off the foot of steep slopes: tanks that clip a cliff toe stall
+        // against it. The cells round a steep one are blocked, and the ring
+        // round those costs extra for the bots (`avoid`).
+        let ring = |src: &[bool]| -> Vec<bool> {
+            let mut out = vec![false; n * n];
+            for z in 0..n {
+                for x in 0..n {
+                    if !src[z * n + x] {
+                        continue;
+                    }
+                    for dz in -1i32..=1 {
+                        for dx in -1i32..=1 {
+                            let (nx, nz) = (x as i32 + dx, z as i32 + dz);
+                            if nx >= 0 && nz >= 0 && (nx as usize) < n && (nz as usize) < n {
+                                out[nz as usize * n + nx as usize] = true;
+                            }
+                        }
+                    }
+                }
+            }
+            out
+        };
+        let toe = ring(&steep);
+        let near = ring(&toe);
+        for i in 0..n * n {
+            blocked[i] |= toe[i];
+        }
+        // Tight lanes (blocked on both sides, like the gaps in a container
+        // yard) cost extra too: corners there snag tanks.
+        let tight = |x: usize, z: usize| -> bool {
+            let b = |dx: i32, dz: i32| {
+                let (nx, nz) = (x as i32 + dx, z as i32 + dz);
+                nx < 0 || nz < 0 || nx as usize >= n || nz as usize >= n || blocked[nz as usize * n + nx as usize]
+            };
+            (b(-1, 0) && b(1, 0)) || (b(0, -1) && b(0, 1))
+        };
+        let avoid: Vec<bool> = (0..n * n).map(|i| !blocked[i] && (near[i] || tight(i % n, i / n))).collect();
         let covers = map
             .obstacles
             .iter()
             .filter(|o| o.cover != Cover::Flat && o.radius > 0.8 && o.radius < 30.0)
             .map(|o| CoverSite { pos: Vec2::new(o.pos.x, o.pos.z), radius: o.radius, tall: o.cover == Cover::Tall })
             .collect();
-        NavGrid { cell, n, origin, blocked, covers }
+        NavGrid { cell, n, origin, blocked, avoid, covers }
     }
 
     fn cell_of(&self, p: Vec2) -> (usize, usize) {
@@ -153,6 +194,19 @@ impl NavGrid {
         (0..=steps).all(|k| !self.is_blocked(a + d * (k as f32 / steps as f32)))
     }
 
+    /// The bots' straight-line check: also keeps off the foot of steep slopes
+    /// (`avoid`), except right at the ends.
+    fn line_clear_wide(&self, a: Vec2, b: Vec2) -> bool {
+        let d = b - a;
+        let steps = (d.length() / (self.cell * 0.4)).ceil().max(1.0) as usize;
+        (0..=steps).all(|k| {
+            let p = a + d * (k as f32 / steps as f32);
+            let (x, z) = self.cell_of(p);
+            let i = z * self.n + x;
+            !self.blocked[i] && (!self.avoid[i] || k <= 2 || k + 2 >= steps)
+        })
+    }
+
     /// Is there a drivable route (on the nav grid) from `from` to `to`?
     pub fn reachable(&self, from: Vec2, to: Vec2) -> bool {
         let n = self.n;
@@ -187,7 +241,7 @@ impl NavGrid {
     /// it must stay exactly as it is.
     pub fn path(&self, from: Vec2, to: Vec2) -> Vec<Vec2> {
         let mut out = Vec::new();
-        self.search(from, to, &mut out, usize::MAX);
+        self.search(from, to, &mut out, usize::MAX, false);
         out
     }
 
@@ -196,14 +250,14 @@ impl NavGrid {
     /// the string pulling only looks a bounded way ahead.
     pub fn path_into(&self, from: Vec2, to: Vec2, out: &mut Vec<Vec2>) {
         out.clear();
-        if !self.is_blocked(from) && !self.is_blocked(to) && self.line_clear(from, to) {
+        if !self.is_blocked(from) && !self.is_blocked(to) && self.line_clear_wide(from, to) {
             out.push(to);
             return;
         }
-        self.search(from, to, out, PULL_LOOKAHEAD);
+        self.search(from, to, out, PULL_LOOKAHEAD, true);
     }
 
-    fn search(&self, from: Vec2, to: Vec2, out: &mut Vec<Vec2>, lookahead: usize) {
+    fn search(&self, from: Vec2, to: Vec2, out: &mut Vec<Vec2>, lookahead: usize, cliff_cost: bool) {
         out.clear();
         let n = self.n;
         let s = self.nearest_free(self.cell_of(from));
@@ -271,7 +325,7 @@ impl NavGrid {
                         continue;
                     }
                     let step = if dx != 0 && dz != 0 { 1.414 } else { 1.0 };
-                    let c = cost[i] + step;
+                    let c = cost[i] + step + if cliff_cost && self.avoid[j] { 3.0 } else { 0.0 };
                     if stamp[j] != gen || c < cost[j] {
                         stamp[j] = gen;
                         cost[j] = c;
@@ -300,7 +354,8 @@ impl NavGrid {
                 let mut far = k;
                 let last = k.saturating_add(lookahead).min(cells.len() - 1);
                 for m in (k..=last).rev() {
-                    if self.line_clear(anchor, pt(m)) {
+                    let clear = if cliff_cost { self.line_clear_wide(anchor, pt(m)) } else { self.line_clear(anchor, pt(m)) };
+                    if clear {
                         far = m;
                         break;
                     }
@@ -436,6 +491,11 @@ pub struct Brain {
     stuck: f32,
     reverse: f32,
     reverse_steer: f32,
+    /// Where and how long ago it last got stuck; stuck twice in one place,
+    /// it drives off to `detour` for a few seconds before trying again.
+    stuck_at: Vec2,
+    since_stuck: f32,
+    detour: Option<(Vec2, f32)>,
     strafe: f32,
     strafe_t: f32,
     noise: Vec3,
@@ -515,6 +575,9 @@ impl Brain {
             stuck: 0.0,
             reverse: 0.0,
             reverse_steer: 1.0,
+            stuck_at: Vec2::ZERO,
+            since_stuck: 100.0,
+            detour: None,
             strafe: 1.0,
             strafe_t: 0.0,
             noise: Vec3::ZERO,
@@ -1459,19 +1522,61 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
     }
 
     // Stuck: pushing but not moving -> back off and swing.
+    // A detour after getting stuck twice in one place: drive to it first.
+    b.since_stuck += dt;
+    if let Some((d, t)) = b.detour {
+        let left = t - dt;
+        if left <= 0.0 || d.distance(here) < 5.0 {
+            b.detour = None;
+            b.repath = 0.0;
+        } else {
+            b.detour = Some((d, left));
+            let e = steer_to(d - here);
+            input.steer = (-e * 2.2).clamp(-1.0, 1.0);
+            input.throttle = if e.abs() > 1.1 { 0.3 } else { 1.0 };
+            input.boost = false;
+        }
+    }
     if b.reverse > 0.0 {
         b.reverse -= dt;
         input.throttle = -1.0;
         input.steer = b.reverse_steer;
         input.boost = false;
+        // Backed into something too: give up reversing.
+        if speed < 0.5 && b.reverse < 0.6 {
+            b.reverse = 0.0;
+        }
     } else if input.throttle.abs() > 0.4 && speed < 0.8 {
         b.stuck += dt;
         if b.stuck > 1.5 {
             b.stuck = 0.0;
+            let again = b.since_stuck < 10.0 && b.stuck_at.distance(here) < 12.0;
+            b.stuck_at = here;
+            b.since_stuck = 0.0;
             b.reverse = b.rng.range(1.0, 1.8);
             b.reverse_steer = if b.rng.chance(0.5) { 1.0 } else { -1.0 };
             b.repath = 0.0;
             b.evade = 0.0;
+            if again {
+                // Stuck here before: back off further, then go round by a
+                // free point off to one side before trying the goal again.
+                b.reverse = b.rng.range(1.8, 2.6);
+                let back = -Vec2::new(fwd.x, fwd.z).normalize_or(Vec2::X);
+                let side = perp(back) * if b.rng.chance(0.5) { 1.0 } else { -1.0 };
+                for (k, dir) in [back + side, back - side, side, -side, back].into_iter().enumerate() {
+                    let pt = here + dir.normalize_or(back) * (18.0 + k as f32 * 2.0);
+                    let free = |p: Vec2| {
+                        let (x, z) = sim.nav.cell_of(p);
+                        let i = z * sim.nav.n + x;
+                        !sim.nav.blocked[i] && !sim.nav.avoid[i]
+                    };
+                    if free(pt) && free((pt + here) * 0.5) {
+                        b.detour = Some((pt, 5.0));
+                        break;
+                    }
+                }
+                b.claim = None;
+            }
             // Cover we can't reach isn't cover.
             if b.tactic != Tactic::Orbit {
                 b.tactic = Tactic::Orbit;
