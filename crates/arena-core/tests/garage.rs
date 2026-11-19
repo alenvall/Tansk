@@ -96,10 +96,12 @@ fn loadout_shows_in_snapshot_and_applies_on_respawn() {
     let t = snap.tank(me).unwrap();
     assert_eq!((t.chassis, t.paint, t.emblem), (ChassisClass::Scout, 3, 5));
     assert_eq!(s.players()[0].loadout.horn, 2);
-    // Switch in the Garage: applies when the tank next respawns.
+    // Switch in the Garage mid-match (spawn protection over): applies when
+    // the tank next respawns. (Before the match or just after spawning it
+    // applies at once: `set_loadout_reclasses_a_fresh_tank_at_once`.)
+    run(&mut s, 2.5);
     s.set_loadout(me, lo(ChassisClass::Hauler));
     assert_eq!(s.tank(me).unwrap().class, ChassisClass::Scout);
-    run(&mut s, 2.5);
     let i = idx(&s, me);
     let pos = s.tank_pose(me).unwrap().0;
     s.damage(i, None, HitLocation::Hull, 1.0e6, pos, Vec3::X, Weapon::World);
@@ -160,4 +162,28 @@ fn the_horn_honks() {
     let honks: Vec<_> = ev.iter().filter(|e| matches!(e, Event::Horn { .. })).collect();
     assert_eq!(honks.len(), 1, "one honk per press");
     assert!(matches!(honks[0], Event::Horn { player, horn: 2 } if *player == me));
+}
+
+/// A Garage pick lands on a live tank at once while it's safe (just spawned),
+/// health kept proportional; once the crew has fired it waits for the respawn.
+#[test]
+fn set_loadout_reclasses_a_fresh_tank_at_once() {
+    let mut sim = sim(3);
+    let me = sim.add_player("crew");
+    let i = sim.players.iter().position(|p| p.id == me).unwrap();
+    let start = sim.players[i].tank.class;
+    let other = ChassisClass::ALL.into_iter().find(|c| *c != start).unwrap();
+    sim.players[i].tank.health = sim.players[i].tank.stats.max_health * 0.5;
+    sim.set_loadout(me, Loadout { chassis: other, ..sim.players[i].loadout });
+    let tank = &sim.players[i].tank;
+    assert_eq!(tank.class, other, "a fresh tank takes the new chassis now");
+    assert!((tank.health / tank.stats.max_health - 0.5).abs() < 1e-3, "health stays proportional");
+    // Mid-match and out of spawn protection: it waits for the next respawn.
+    for _ in 0..(4 * 60) {
+        sim.step();
+    }
+    sim.players[i].tank.protect = 0.0;
+    sim.set_loadout(me, Loadout { chassis: start, ..sim.players[i].loadout });
+    assert_eq!(sim.players[i].tank.class, other);
+    assert_eq!(sim.players[i].loadout.chassis, start);
 }

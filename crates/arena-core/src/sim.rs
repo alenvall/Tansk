@@ -307,10 +307,21 @@ impl Sim {
         self.add(name, None, loadout)
     }
 
-    /// Change a player's Garage pick; the chassis applies at their next respawn.
+    /// Change a player's Garage pick. A live tank changes chassis at once
+    /// when that's safe (before the match starts, between matches, or still
+    /// under spawn protection: just spawned and not yet fired), health kept
+    /// proportional; otherwise the chassis applies at the next respawn.
     pub fn set_loadout(&mut self, id: PlayerId, loadout: crate::garage::Loadout) {
-        if let Some(i) = self.idx(id) {
-            self.players[i].loadout = loadout;
+        let Some(i) = self.idx(id) else { return };
+        self.players[i].loadout = loadout;
+        let tank = &self.players[i].tank;
+        let safe = self.match_ticks == 0 || self.phase != Phase::Playing || tank.protect > 0.0;
+        if tank.alive && safe && tank.vehicle == crate::parts::VehicleKind::Tank && tank.class != loadout.chassis {
+            let frac = (tank.health / tank.stats.max_health).clamp(0.0, 1.0);
+            let t = self.tuning.clone();
+            let tank = &mut self.players[i].tank;
+            tank.set_class(&mut self.phys, &t, loadout.chassis);
+            tank.health = (tank.stats.max_health * frac).max(1.0);
         }
     }
 
