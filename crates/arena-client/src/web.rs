@@ -420,6 +420,15 @@ fn install_input(state: &Shared) -> Result<()> {
         if matches!(code.as_str(), "Tab" | "Space" | "ArrowUp" | "ArrowDown") || prop(&ev, "ctrlKey").is_truthy() {
             ev.prevent_default();
         }
+        if code == "Escape" && game.screen() == Screen::Lobby && !game.wants_pointer() {
+            // The yard, wheel not taken: Esc folds the plate down (and back up).
+            if let Some(l) = web_sys::window().and_then(|w| w.document()).and_then(|d| d.get_element_by_id("t-lobby")) {
+                let folded = l.get_attribute("data-fold").as_deref() == Some("1");
+                let _ = l.set_attribute("data-fold", if folded { "0" } else { "1" });
+            }
+            game.ui_click();
+            return;
+        }
         if code == "Escape" && game.free_mouse {
             if game.paused {
                 game.resume();
@@ -715,7 +724,7 @@ fn mount_pause(document: &web_sys::Document) -> Option<web_sys::Element> {
          <button class=\"t-btn\" data-pause=\"resume\"><span class=\"t-btn-label\">Back in</span><span class=\"t-btn-hint t-off-touch\">Grabs the mouse</span></button>\
          <button class=\"t-btn\" data-pause=\"leave\"><span class=\"t-btn-label\">Leave</span><span class=\"t-btn-hint\">Back to the title</span></button>\
          <div class=\"t-pause-where\" id=\"t-pause-where\"></div>\
-         <div class=\"t-pause-tip\">The match keeps rolling while you're in here: your crew sits tight, the others don't. Settings live on the title screen.</div>\
+         <div class=\"t-pause-tip\" id=\"t-pause-tip\"></div>\
          </div><div class=\"plate t-pause-ctl\">{}</div></div>",
         crate::ui::CONTROLS_HTML
     ));
@@ -964,6 +973,13 @@ fn frame(s: &mut State) {
                 let where_ = d.get_element_by_id("t-mode").and_then(|e| e.text_content()).unwrap_or_default();
                 if let Some(w) = d.get_element_by_id("t-pause-where") {
                     w.set_text_content(Some(&where_));
+                }
+                if let Some(t) = d.get_element_by_id("t-pause-tip") {
+                    t.set_text_content(Some(if s.game.offline() {
+                        "Practice stands still while you're in here. Settings live on the title screen."
+                    } else {
+                        "The match keeps rolling while you're in here: your crew sits tight, the others don't. Settings live on the title screen."
+                    }));
                 }
             }
         }

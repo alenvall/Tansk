@@ -366,6 +366,11 @@ impl Game {
         self.paused = false;
     }
 
+    /// Offline Practice (pausing stops its clock; online rooms roll on).
+    pub fn offline(&self) -> bool {
+        matches!(self.session, Some(Session::Practice { .. }))
+    }
+
     /// The touch pause button: the pause card, fingers let go.
     pub fn touch_pause(&mut self) {
         self.touch.release_all();
@@ -990,7 +995,8 @@ impl Game {
                     self.ui.set_mode_label(&mode);
                     self.ui.set_scoreboard_title("Scoreboard", &mode);
                     if let Some(code) = &code {
-                        self.ui.chat_system(&format!("On the band in room {code}. Enter to talk."));
+                        let how = if self.touch.enabled { "Tap the talk plate to talk." } else { "Enter to talk." };
+                        self.ui.chat_system(&format!("On the band in room {code}. {how}"));
                     }
                     return self.game_frame(now, dt, wr);
                 }
@@ -1125,6 +1131,8 @@ impl Game {
             return self.title_frame(dt, wr);
         };
         net.send_input(input);
+        // Offline Practice stands still behind the pause card.
+        net.paused = self.paused && self.screen == Screen::InGame;
         let t_net = crate::world::clock_ms();
         net.update(now);
         self.prof_net_ms = crate::world::clock_ms() - t_net;
@@ -1560,6 +1568,7 @@ impl Game {
     fn score_rows(&self, snap: &Snapshot, rtt: f32) -> Vec<ScoreRow> {
         let you = self.you();
         let players = self.net.as_ref().map(|n| n.state().players.clone()).unwrap_or_default();
+        let pings = self.net.as_ref().map(|n| n.state().pings.clone()).unwrap_or_default();
         let mut rows: Vec<ScoreRow> = players
             .iter()
             .filter(|p| snap.raid.is_none() || p.team != Some(TEAM_RAIDERS))
@@ -1575,8 +1584,12 @@ impl Game {
                     deaths: s.map_or(0, |s| u32::from(s.deaths)),
                     tiers: t.map_or([0; 4], |t| t.tiers),
                     is_bot: p.is_bot,
-                    // Only your own round trip is known (none offline).
-                    ping_ms: (is_you && !p.is_bot && rtt > 0.0).then(|| rtt.round() as u32),
+                    // Yours live; the others' as the server shares them (none offline).
+                    ping_ms: if is_you {
+                        (!p.is_bot && rtt > 0.0).then(|| rtt.round() as u32)
+                    } else {
+                        pings.iter().find(|(id, _)| *id == p.id).map(|(_, ms)| u32::from(*ms))
+                    },
                     is_you,
                     dead: t.is_some_and(|t| !t.alive),
                 }

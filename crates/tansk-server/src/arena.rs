@@ -98,6 +98,8 @@ struct Human {
     team: TeamPick,
     vote: Option<u8>,
     loadout: Loadout,
+    /// The round trip the client last reported (`LobbyCmd::Ping`), ms.
+    ping: u16,
 }
 
 impl Human {
@@ -116,6 +118,7 @@ impl Human {
             team: TeamPick::Auto,
             vote: None,
             loadout: Loadout::default(),
+            ping: 0,
         }
     }
 }
@@ -414,6 +417,14 @@ impl ArenaRoom {
             }
         }
         self.send_lobby(false);
+        if self.sim.tick.is_multiple_of(2 * TICK_HZ) {
+            // Everyone's round trip, for the scoreboard.
+            let pings: Vec<(PlayerId, u16)> =
+                self.humans.iter().filter(|h| h.conn.is_some() && h.ping > 0).map(|h| (h.player, h.ping)).collect();
+            if !pings.is_empty() {
+                self.broadcast(&ServerMsg::Pings(pings));
+            }
+        }
 
         if self.sim.tick.is_multiple_of(TICK_HZ / arena_core::net::SNAPSHOT_HZ) {
             let snapshot = self.sim.snapshot();
@@ -530,6 +541,10 @@ impl ArenaRoom {
 
     fn lobby_cmd(&mut self, conn: u64, cmd: LobbyCmd) {
         let Some(i) = self.humans.iter().position(|h| h.conn == Some(conn)) else { return };
+        if let LobbyCmd::Ping(ms) = cmd {
+            self.humans[i].ping = ms.min(9999);
+            return;
+        }
         if let LobbyCmd::Loadout(l) = cmd {
             let l = Loadout { paint: l.paint % 8, emblem: l.emblem % 8, horn: l.horn % 8, ..l };
             self.humans[i].loadout = l;
@@ -574,7 +589,7 @@ impl ArenaRoom {
                     self.start_match();
                 }
             }
-            LobbyCmd::Settings(_) | LobbyCmd::Start | LobbyCmd::Loadout(_) => {}
+            LobbyCmd::Settings(_) | LobbyCmd::Start | LobbyCmd::Loadout(_) | LobbyCmd::Ping(_) => {}
         }
     }
 
@@ -1434,6 +1449,27 @@ mod tests {
     }
 
     /// Party rooms stay out of quick match; a Garage pick reaches the room.
+    /// Each crew's reported round trip reaches everyone (the scoreboard's ping column).
+    #[test]
+    fn pings_are_shared() {
+        let (mut r, _) = party_room(RoomSettings::default());
+        let ann = Sock::join(&mut r, 1, "Ann");
+        let bo = Sock::join(&mut r, 2, "Bo");
+        ann.send(&mut r, LobbyCmd::Ping(42));
+        bo.send(&mut r, LobbyCmd::Ping(130));
+        ticks(&mut r, 2 * TICK_HZ + 1);
+        let mut rx = bo.rx;
+        let mut got = None;
+        while let Ok(f) = rx.try_recv() {
+            if let ServerMsg::Pings(p) = decode::<ServerMsg>(&f.bytes).unwrap() {
+                got = Some(p);
+            }
+        }
+        let got = got.expect("a Pings message");
+        let (a, b) = (r.humans[0].player, r.humans[1].player);
+        assert!(got.contains(&(a, 42)) && got.contains(&(b, 130)), "{got:?}");
+    }
+
     #[test]
     fn party_rooms_skip_quick_match_and_take_loadouts() {
         let (mut r, info) = party_room(RoomSettings::default());

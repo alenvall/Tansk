@@ -79,6 +79,8 @@ pub struct NetState {
     pub chat: Vec<ChatLine>,
     /// Round trip, ms (0 offline).
     pub rtt_ms: f32,
+    /// Every human's round trip as the server last shared it, ms.
+    pub pings: Vec<(PlayerId, u16)>,
     /// Inputs sent but not yet applied by the server.
     pub unacked: usize,
     /// A party room's lobby (None elsewhere).
@@ -101,6 +103,7 @@ impl NetState {
             players: Vec::new(),
             chat: Vec::new(),
             rtt_ms: 0.0,
+            pings: Vec::new(),
             unacked: 0,
             lobby: None,
             welcomes: 0,
@@ -163,6 +166,9 @@ pub struct NetClient {
     last_now: Option<f64>,
     acc: f64,
     events: Vec<Event>,
+    /// Offline Practice only: the sim and its clock stand still (the
+    /// pause menu). Online rooms keep rolling.
+    pub paused: bool,
 }
 
 impl NetClient {
@@ -195,6 +201,7 @@ impl NetClient {
             last_now: None,
             acc: 0.0,
             events: Vec::new(),
+            paused: false,
         }
     }
 
@@ -258,6 +265,7 @@ impl NetClient {
             last_now: None,
             acc: 0.0,
             events,
+            paused: false,
         }
     }
 
@@ -328,6 +336,12 @@ impl NetClient {
         if ticks > MAX_TICKS_PER_UPDATE {
             ticks = MAX_TICKS_PER_UPDATE;
         }
+        if self.paused && matches!(self.mode, Mode::Practice(_)) {
+            // Frozen where it stood (the same in-between frame, no jump).
+            self.acc += f64::from(ticks) * DT as f64;
+            self.acc -= dt;
+            ticks = 0;
+        }
         let alpha = (self.acc / DT as f64) as f32;
         match &mut self.mode {
             Mode::Practice(p) => {
@@ -394,6 +408,10 @@ impl Online {
                         self.sent.pop_front();
                     }
                     p.tick(self.seq, input);
+                    // Every two seconds: our round trip, for everyone's scoreboard.
+                    if self.seq.is_multiple_of(120) && state.rtt_ms > 0.0 {
+                        t.send(encode(&ClientMsg::Lobby(LobbyCmd::Ping(state.rtt_ms.round().min(9999.0) as u16))));
+                    }
                 }
                 p.decay(dt);
                 state.unacked = p.unacked();
@@ -494,6 +512,7 @@ impl Online {
                     ServerMsg::Chat { from, text } => state.push_chat(Some(from), text),
                     ServerMsg::Info(text) => state.push_chat(None, text),
                     ServerMsg::Lobby(l) => state.lobby = Some(l),
+                    ServerMsg::Pings(p) => state.pings = p,
                 }
             }
         }

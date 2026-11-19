@@ -97,6 +97,9 @@ pub enum ServerMsg {
     /// countdown runs). A `Welcome` comes first whenever the room's world is
     /// rebuilt (match start, back to the lobby, a new map).
     Lobby(LobbyState),
+    /// Every human's round trip as they last reported it (ms; bots and
+    /// humans who haven't said are left out). Every couple of seconds.
+    Pings(Vec<(PlayerId, u16)>),
 }
 
 // ------------------------------------------------------------------ lobby
@@ -268,6 +271,9 @@ pub enum LobbyCmd {
     Vote(u8),
     /// Your Garage pick (any room; a live tank changes when that's safe).
     Loadout(crate::garage::Loadout),
+    /// Your measured round trip, ms (any room, every couple of seconds):
+    /// the server shares everyone's in [`ServerMsg::Pings`].
+    Ping(u16),
 }
 
 /// The winning card of a vote: most votes; a tie goes to the host's card

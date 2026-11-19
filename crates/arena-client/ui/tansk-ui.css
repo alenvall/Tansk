@@ -1234,10 +1234,18 @@ html[data-touch="1"] .t-scrap-ic { width: 1.9rem; height: 1.9rem; }
 html[data-touch="1"] .t-pips { gap: .15rem; }
 html[data-touch="1"] .t-pips i { width: .95rem; height: .95rem; }
 html[data-touch="1"] .t-tier { position: absolute; top: -.2rem; right: -.1rem; height: 1.2rem; min-width: 1.4rem; padding: 0 .2rem; font-size: .8rem; }
-html[data-touch="1"] .t-radio { bottom: 6.6rem; max-width: min(52rem, calc(100vw - 2 * (clamp(80px, 16vmin, 120px) + 150px))); }
-html[data-touch="1"] .t-radio-text { font-size: 1.15rem; }
+/* the caller: up under the clock, one line, clear of your own tank */
+html[data-touch="1"] .t-radio { top: 6.4rem; bottom: auto; max-width: min(46rem, 60vw); }
+html[data-touch="1"] .t-radio-plate { gap: .6rem; padding: .3rem 1.1rem .3rem .7rem; min-width: 0; }
+html[data-touch="1"] .t-radio-text { min-width: 0; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-touch="1"] .t-hint { top: 9.6rem; }
+html[data-touch="1"] .t-hud:has(#t-wells:not([hidden]), #t-lastcrew:not([hidden]), #t-convoy:not([hidden])) .t-radio { top: 10.6rem; }
+html[data-touch="1"] .t-hud:has(#t-wells:not([hidden]), #t-lastcrew:not([hidden]), #t-convoy:not([hidden])) .t-hint { top: 13.8rem; }
+/* a branch offer, or typing: what would sit under it steps away */
+html[data-touch="1"] .t-hud:has(#t-branch[data-on="1"]) .t-radio,
+html[data-touch="1"] .t-hud:has(.t-chat[data-open="1"]) :is(.t-top, .t-hint, .t-radio) { visibility: hidden; }
 html[data-touch="1"] .t-chat { left: max(14px, env(safe-area-inset-left)); bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 54px + 14.5rem * var(--hud-k)); width: min(27rem, 38vw); }
-html[data-touch="1"] .t-hud[data-lobby="1"] .t-chat { top: auto; bottom: 4.6rem; }
+html[data-touch="1"] .t-hud[data-lobby="1"] .t-chat:not([data-open="1"]) { top: calc(max(10px, env(safe-area-inset-top)) + 56px); bottom: auto; width: min(26rem, 36vw); }
 html[data-touch="1"] .t-chat-line { font-size: 1.05rem; }
 /* typing: the line goes to the top centre, clear of the on-screen keyboard */
 html[data-touch="1"] .t-chat[data-open="1"] { position: fixed; z-index: 60; top: max(8px, env(safe-area-inset-top)); left: 50%; bottom: auto; width: min(36rem, calc(100vw - 24px)); transform: translateX(-50%); padding: .4rem; border-radius: .3rem; background: rgba(30, 25, 22, .9); pointer-events: auto; visibility: visible; }
@@ -1343,7 +1351,16 @@ html[data-touch="1"] .t-vote-card, html[data-touch="1"] .t-crew-ready { min-heig
   html[data-touch="1"] .t-hud { --hud-k: .52; }
   .t-hint { top: 4.6rem; }
   .t-hud:has(#t-wells:not([hidden])) .t-hint, .t-hud:has(#t-lastcrew:not([hidden])) .t-hint, .t-hud:has(#t-convoy:not([hidden])) .t-hint { top: 8.6rem; }
-  .t-radio { bottom: 6rem; }
+  html[data-touch="1"] .t-radio { top: 4.3rem; }
+  html[data-touch="1"] .t-hint { top: 7.2rem; }
+  html[data-touch="1"] .t-hud:has(#t-wells:not([hidden]), #t-lastcrew:not([hidden]), #t-convoy:not([hidden])) .t-radio { top: 8rem; }
+  html[data-touch="1"] .t-hud:has(#t-wells:not([hidden]), #t-lastcrew:not([hidden]), #t-convoy:not([hidden])) .t-hint { top: 10.9rem; }
+  /* scrolling plates fade out at the bottom: there's more below */
+  .t-panel-body, .t-lobby-body, .t-howto-cols {
+    padding-bottom: 2.2rem;
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 2.4rem), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 2.4rem), transparent);
+  }
+  .t-code-field { display: none; }
   .t-branch { top: 50%; transform: translate(-50%, -50%); }
   .t-branch-card { width: 12.4rem; padding: .7rem .8rem .8rem; }
   .t-board { top: .6rem; max-height: calc(100% - 1.2rem); overflow: auto; }
@@ -1362,7 +1379,7 @@ html[data-touch="1"] .t-vote-card, html[data-touch="1"] .t-crew-ready { min-heig
 
   /* the yard: the plate takes the right, the vote the whole screen */
   .t-lobby-card { right: max(1rem, env(safe-area-inset-right)); top: .6rem; bottom: .6rem; width: min(40rem, 58vw); }
-  .t-lobby-body { padding: .6rem 1rem; gap: .6rem; }
+  .t-lobby-body { padding: .6rem 1rem 2.2rem; gap: .6rem; }
   .t-lobby-code-wrap .t-code { font-size: 2rem; }
   .t-lobby-copy .t-btn-label { font-size: 1.3rem; }
   .t-lobby-foot { flex-wrap: wrap; }
@@ -1387,6 +1404,10 @@ html[data-touch="1"] .t-vote-card, html[data-touch="1"] .t-crew-ready { min-heig
   .t-panel, .t-panel.t-howto, .t-panel-wide { left: .8rem; right: .8rem; top: max(.8rem, env(safe-area-inset-top)); bottom: 3.6rem; width: auto; max-height: none; }
   .t-panel-body { flex: 1; min-height: 0; }
   .t-howto-cols { grid-template-columns: 1fr; flex: 1; min-height: 0; }
+  .t-panel-body, .t-lobby-body, .t-howto-cols {
+    padding-bottom: 2.2rem;
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 2.4rem), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 2.4rem), transparent);
+  }
   .t-howto .t-panel-foot { flex-wrap: wrap; }
   .t-howto-keys { flex-basis: 100%; }
   .t-maps, .t-chassis { grid-template-columns: 1fr; }
