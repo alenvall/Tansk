@@ -1,51 +1,50 @@
-# Tansk!
+# TANSK 2026
 
-Multiplayer tank-arena deathmatch, originally a 2013 Chalmers TDA367 project
-(group B17) in Java with Slick2D and Kryonet. Now rewritten in Rust and
-playable in the browser.
+**Build it on the move. Shoot it apart.** A multiplayer tank arena shooter
+for the browser: hand-welded desert machines that grow as you grab scrap,
+and fall apart as you get shot. Play at https://tansk.alenvall.com.
+
+The 2013 original (Java, Slick2D) is kept in `java/`; the design of the
+reimagining is in `docs/DESIGN.md`, the plan in `docs/PLAN.md`.
+
+## Play
+
+- **Modes:** Scrap Brawl (free-for-all), Team Brawl, Convoy (escort or
+  stop the fuel tanker), Wellhead (hold the derricks), Last Crew Rolling
+  (no respawns, the storm wall closes in), Raid (co-op waves against
+  raiders, the War Rig and the Land-Ship). Practice any of them offline.
+- **Maps:** The Sink, The Refinery.
+- **Upgrades:** three scrap of a kind bolts a part onto your tank; at tier
+  2 you pick a branch; two tracks at tier 2 unlock a combo. Every part can
+  be shot off.
+- **Controls:** WASD drive, mouse aim, click fire, right-click alt fire,
+  Shift boost, F special, Z gunsight, H horn, Tab scores, Enter chat.
+  Gamepad supported. How to play is on the title screen.
 
 ## Layout
 
 | path | what |
 |-|-|
-| `crates/tansk-sim` | the game rules, ported from the Java model: tanks, six weapons, five power-ups, Standard and King of the Hill |
-| `crates/tansk3d-sim` | Tansk 3D's rules: hilly terrain, ballistic shells, the same weapons, power-ups and modes |
-| `crates/tansk-server` | axum server: game rooms over WebSocket at `/ws` (2D) and `/ws3d` (3D), open games at `/api/rooms` and `/api/rooms3d`, the web client at `/` |
-| `crates/tansk-web` | the browser client (WASM): the 2D game at `/` and the first-person WebGL2 game at `/3d`, menus, sound, offline playgrounds |
-| `assets/` | the original sprites, sounds and map (music converted to MP3) |
-| `java/` | the original Java version, untouched |
+| `crates/arena-core` | the game: rapier physics, tanks and parts, weapons, modes, bots, maps, the net protocol. Deterministic, native and wasm |
+| `crates/arena-client` | the browser client: wgpu on WebGPU, procedural models and effects, HTML UI, prediction and interpolation. Also builds natively for screenshots |
+| `crates/arena-audio` | every sound and the music, synthesized in code |
+| `crates/tansk-server` | axum: rooms at `/ws/arena`, quick match, bots, `/api/arena/rooms`, the static client |
+| `crates/tansk-sim`, `tansk3d-sim`, `tansk-web` | the earlier ports, no longer served |
 
-## Running locally
+## Develop
 
 ```sh
-cd crates/tansk-web && trunk build --release --dist ../../dist && cd ../..
-cargo run --release -p tansk-server     # http://localhost:8080
+cargo test -p arena-core -p arena-client -p arena-audio -p tansk-server
+cd crates/arena-client && trunk build --release --dist ../../dist-arena && cd ../..
+PORT=8080 TANSK_STATIC_DIR=dist-arena cargo run --release -p tansk-server
+cargo run --release -p arena-core --example harness -- [raid|convoy|wellhead|lastcrew] 200
+cargo test -p arena-client --release -- --ignored shots   # native screenshots into docs/shots
 ```
 
-`cargo test -p tansk-sim` runs the game-rule tests.
+Debug URL flags: `?autoplay=practice|raid|team|convoy|wellhead|lastcrew`,
+`&map=refinery`, `&mouse=free`, `&quality=low`, `&matchtime=45`, `&hints=reset`.
 
-## Playing
+## Deploy
 
-Host a game to get a four-letter code (or share the link), others join with
-it. Up to 4 players. Up to 4 players. WASD drive, mouse aims, click fires, Enter chats,
-Esc back to the menu. Playground (offline): keys 1-6 swap weapons, Q drops a
-pickup.
-
-## Tansk 3D
-
-`/3d` is a separate game: first person from your turret over hilly terrain,
-shells arc under gravity (the HUD shows where they land). Click to grab the
-mouse; mouse aims, WASD drives, click fires, Tab scores, Enter chats, Esc
-frees the mouse.
-
-## Deploying
-
-The `Dockerfile` builds both client and server; `railway.json` deploys it on
-Railway as a single service (health check `/health`, `PORT` from Railway).
-
-## Changes from the original
-
-Kept faithful where possible (speeds, damage, ammo, timings, 30 ticks/s).
-Fixed: Standard mode never scored (eliminations were never counted), the
-Rounds setting was unused, bounce shots slid through walls from the right,
-and players could get two tanks or spawn-lock.
+The `Dockerfile` builds the client and server; Railway (EU) builds the
+`rust-web` branch on every push.

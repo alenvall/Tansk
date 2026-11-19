@@ -828,6 +828,8 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-hud[data-demo] .t-branch-timer i { animation: none; transform: scaleX(.62); }
 
 /* scoreboard */
+/* The objective plates sit right under the clock; the board would cut them in half. */
+#t-hud:has(#t-board:not([hidden])) :is(#t-convoy, #t-wells, #t-lastcrew) { visibility: hidden; }
 .t-board { position: absolute; left: 50%; top: 11%; transform: translateX(-50%); width: 64rem; max-width: calc(100vw - 3rem); pointer-events: auto; animation: t-slam-down .22s cubic-bezier(.2, 1.6, .4, 1); }
 .t-board-sub { font-size: 1rem; letter-spacing: .14em; text-transform: uppercase; color: var(--fuel); }
 .t-board-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; padding: 1rem 1.4rem 1.3rem; }

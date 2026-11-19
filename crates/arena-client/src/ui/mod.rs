@@ -117,7 +117,8 @@ pub struct ScoreRow {
     pub deaths: u32,
     /// Current tier per track: Steel, Powder, Volts, Fuel.
     pub tiers: [u8; 4],
-    /// `None` marks a bot.
+    pub is_bot: bool,
+    /// Round trip; `None` when unknown (bots, other crews).
     pub ping_ms: Option<u32>,
     pub is_you: bool,
     pub dead: bool,
@@ -907,7 +908,7 @@ impl Ui {
                     if r.is_you { " data-you=\"1\"" } else { "" },
                     if r.dead { " data-dead=\"1\"" } else { "" },
                     esc(&r.name),
-                    if r.ping_ms.is_none() { "<em>BOT</em>" } else { "" },
+                    if r.is_bot { "<em>BOT</em>" } else { "" },
                     r.kills,
                     r.deaths
                 );
@@ -1104,6 +1105,11 @@ impl Ui {
         self.cache.last_crew = Some(h.clone());
     }
 
+    /// The line over the end title: "Match over · <map>".
+    pub fn set_end_kicker(&mut self, text: &str) {
+        self.dom.text("t-end-kicker", text);
+    }
+
     /// The end of match line-up. The 3D line-up renders behind the gap in
     /// the middle; `rows` are the cards under it, best first.
     pub fn show_endscreen(&mut self, title: &str, winner: Option<Team>, rows: &[EndRow], note: &str) {
@@ -1112,12 +1118,14 @@ impl Ui {
             let _ = write!(
                 h,
                 "<div class=\"t-ec plate\" data-team=\"{}\"><div class=\"t-ec-rank\">#{}</div><div class=\"t-ec-name\">{}</div>\
-                 <div class=\"t-ec-stat\"><span><b>{}</b> kills</span><span><b>{}</b> deaths</span></div>{}</div>",
+                 <div class=\"t-ec-stat\"><span><b>{}</b> {}</span><span><b>{}</b> {}</span></div>{}</div>",
                 r.team.css(),
                 i + 1,
                 esc(&r.name),
                 r.kills,
+                if r.kills == 1 { "kill" } else { "kills" },
                 r.deaths,
+                if r.deaths == 1 { "death" } else { "deaths" },
                 r.tag.as_deref().map_or(String::new(), |t| format!("<span class=\"t-ec-tag\">{}</span>", esc(t)))
             );
         }

@@ -780,6 +780,23 @@ impl Game {
         net.update(now);
         let st = net.state();
         let (status, seed, has_world, code, map_id) = (st.status.clone(), st.seed, st.world.is_some(), st.code.clone(), st.map);
+        // Joiners (by code or quick match) don't know the room's mode
+        // from the session: read it off the first snapshot.
+        let room_mode = st.world.as_ref().map_or(ModeKind::ScrapBrawl, |w| {
+            if w.raid.is_some() {
+                ModeKind::RaiderWaves
+            } else if w.convoy.is_some() {
+                ModeKind::Convoy
+            } else if w.wellhead.is_some() {
+                ModeKind::Wellhead
+            } else if w.storm_circle.is_some() {
+                ModeKind::LastCrew
+            } else if !w.teams.is_empty() {
+                ModeKind::TeamBrawl
+            } else {
+                ModeKind::ScrapBrawl
+            }
+        });
         match &status {
             Status::Closed(why) => {
                 let why = why.clone();
@@ -800,15 +817,11 @@ impl Game {
                     let mode = match (&self.session, &code) {
                         (Some(Session::Practice { mode: ModeKind::TeamBrawl }), _) => format!("Team Practice \u{b7} {map_name}"),
                         (Some(Session::Practice { mode: ModeKind::Convoy }), _) => format!("Convoy Practice \u{b7} {map_name}"),
+                        (Some(Session::Practice { mode: ModeKind::RaiderWaves }), _) => format!("Raid Practice \u{b7} {map_name}"),
                         (Some(Session::Practice { mode: m @ (ModeKind::Wellhead | ModeKind::LastCrew) }), _) => format!("{} Practice \u{b7} {map_name}", m.name()),
-                        (Some(Session::Online(Join::Host { mode: m @ (ModeKind::Wellhead | ModeKind::LastCrew), .. })), Some(code)) => {
-                            format!("{} \u{b7} {map_name} \u{b7} {code}", m.name())
-                        }
-                        (Some(Session::Online(Join::Host { mode: ModeKind::Convoy, .. })), Some(code)) => format!("Convoy \u{b7} {map_name} \u{b7} {code}"),
                         (Some(Session::Practice { .. }), _) | (_, None) => format!("Practice \u{b7} {map_name}"),
-                        (Some(Session::Online(Join::Host { mode: ModeKind::TeamBrawl, .. })), Some(code)) => format!("Team Brawl \u{b7} {map_name} \u{b7} {code}"),
-                        (Some(Session::Online(Join::Host { mode: ModeKind::RaiderWaves, .. })), Some(code)) => format!("Raider Waves \u{b7} {map_name} \u{b7} {code}"),
-                        (_, Some(code)) => format!("Scrap Brawl \u{b7} {map_name} \u{b7} {code}"),
+                        (Some(Session::Online(Join::Host { mode, .. })), Some(code)) => format!("{} \u{b7} {map_name} \u{b7} {code}", mode.name()),
+                        (_, Some(code)) => format!("{} \u{b7} {map_name} \u{b7} {code}", room_mode.name()),
                     };
                     self.ui.set_mode_label(&mode);
                     self.ui.set_scoreboard_title("Scoreboard", &mode);
@@ -1302,13 +1315,9 @@ impl Game {
                     kills: s.map_or(0, |s| u32::from(s.kills)),
                     deaths: s.map_or(0, |s| u32::from(s.deaths)),
                     tiers: t.map_or([0; 4], |t| t.tiers),
-                    ping_ms: if p.is_bot {
-                        None
-                    } else if is_you {
-                        Some(rtt.round() as u32)
-                    } else {
-                        Some(0)
-                    },
+                    is_bot: p.is_bot,
+                    // Only your own round trip is known (none offline).
+                    ping_ms: (is_you && !p.is_bot && rtt > 0.0).then(|| rtt.round() as u32),
                     is_you,
                     dead: t.is_some_and(|t| !t.alive),
                 }
@@ -1734,7 +1743,7 @@ impl Game {
                 deaths: r.deaths,
                 tag: if i == 0 && last_crew {
                     Some("Last one rolling".into())
-                } else if i == 0 {
+                } else if i == 0 && r.kills > 0 {
                     Some("Top gun".into())
                 } else if Some(i) == biggest {
                     Some("Biggest build".into())
@@ -1744,6 +1753,7 @@ impl Game {
             })
             .collect();
         self.ui.show_endscreen(title, winner, &end, note);
+        self.ui.set_end_kicker(&format!("Match over \u{b7} {}", self.map.name));
     }
 
     /// The battle music's intensity from the action round you: recent hits
@@ -2156,7 +2166,8 @@ impl Game {
             RaidPhase::Fighting => {
                 // Fighting: the clock shows how long the outpost has held.
                 self.ui.set_timer(snap.tick as f32 / 60.0);
-                format!("Wave {} \u{b7} {} raiders \u{b7} Outpost {:.0}%", r.wave, r.raiders_alive + r.raiders_queued, outpost)
+                let n = r.raiders_alive + r.raiders_queued;
+                format!("Wave {} \u{b7} {n} {} \u{b7} Outpost {:.0}%", r.wave, if n == 1 { "raider" } else { "raiders" }, outpost)
             }
         };
         if let Some(b) = snap.bosses.first() {

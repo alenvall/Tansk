@@ -41,8 +41,8 @@ pub const SPECIAL: Tip = Tip {
 };
 pub const LOW_HEALTH: Tip = Tip {
     key: "lowhp",
-    keys: "Hull's failing. Find a wrench (repair) or a teammate.",
-    pad: "Hull's failing. Find a wrench (repair) or a teammate.",
+    keys: "Hull's failing. Drive over a wrench to patch it up.",
+    pad: "Hull's failing. Drive over a wrench to patch it up.",
 };
 pub const PART_LOST: Tip = Tip {
     key: "partlost",

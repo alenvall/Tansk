@@ -178,10 +178,11 @@ pub fn outpost(frac: f32) -> Vec<String> {
 
 pub fn raid_lost(waves: u16, outpost_fell: bool) -> Vec<String> {
     let n = number(waves);
+    let w = if waves == 1 { "wave" } else { "waves" };
     if outpost_fell {
-        vec![format!("Outpost's gone. {} waves. They'll write songs. Short ones.", cap(&n))]
+        vec![format!("Outpost's gone. {} {w}. They'll write songs. Short ones.", cap(&n))]
     } else {
-        vec![format!("Whole crew's scrap. {} waves held. Not bad, not good.", cap(&n))]
+        vec![format!("Whole crew's scrap. {} {w} held. Not bad, not good.", cap(&n))]
     }
 }
 
