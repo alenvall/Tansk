@@ -428,7 +428,6 @@ impl Map {
         }
         b.place(ObstacleKind::Tent, 214.0, -232.0, 0.0);
         b.place(ObstacleKind::CarWreck, 152.8, -202.0, 0.05);
-        b.place(ObstacleKind::Pipe, 128.0, -132.0, 0.1);
         b.place(ObstacleKind::Sandbags, 102.0, -96.0, 0.5);
 
         // ---- THE MAGNET CRANE: over the pile of wrecks ---------------------------
@@ -537,8 +536,8 @@ impl Map {
                 h = carve(x, z, h);
                 // The canyon walls: high and steep north and south, lower
                 // where the canyon runs on east and west.
-                h += smoothstep(play_half - 12.0, size / 2.0, z.abs()) * 20.0;
-                h += smoothstep(play_half - 12.0, size / 2.0, x.abs()) * 12.0;
+                h += rim(play_half, size, z.abs(), 20.0);
+                h += rim(play_half, size, x.abs(), 12.0);
                 heights[iz * resolution + ix] = h;
             }
         }

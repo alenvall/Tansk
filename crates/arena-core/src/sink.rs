@@ -229,7 +229,7 @@ impl Map {
             Vec2::new(248.0, -35.0),
             Vec2::new(190.0, 212.0),
             Vec2::new(25.0, 228.0),
-            Vec2::new(-172.0, 232.0),
+            Vec2::new(-150.0, 240.0),
             Vec2::new(-248.0, 40.0),
             Vec2::new(-238.0, -150.0),
         ];
@@ -523,7 +523,7 @@ impl Map {
                 // The road wins over pads: its deck must sit flush.
                 h = road_blend(x, z, h);
                 let edge = x.abs().max(z.abs());
-                h += smoothstep(play_half - 15.0, size / 2.0, edge) * 16.0;
+                h += rim(play_half, size, edge, 16.0);
                 heights[iz * resolution + ix] = h;
             }
         }

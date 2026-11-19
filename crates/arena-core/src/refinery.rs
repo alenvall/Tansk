@@ -475,7 +475,7 @@ impl Map {
                 // The road and rails win over pads: their decks sit flush.
                 h = corridor(x, z, h);
                 let edge = x.abs().max(z.abs());
-                h += smoothstep(play_half - 15.0, size / 2.0, edge) * 16.0;
+                h += rim(play_half, size, edge, 16.0);
                 heights[iz * resolution + ix] = h;
             }
         }

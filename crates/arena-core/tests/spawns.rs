@@ -14,8 +14,10 @@ fn spawns_face_open_ground_toward_the_action() {
             for (i, s) in map.spawns.iter().enumerate() {
                 let p = Vec2::new(s.pos.x, s.pos.z);
                 let dir = Vec2::new(s.yaw.cos(), -s.yaw.sin());
-                if !map.heading_clear(p, s.yaw, SPAWN_CLEAR) {
-                    bad.push(format!("{id:?} seed {seed} spawn {i} at {p}: blocked within {SPAWN_CLEAR} m ahead"));
+                // A new player holds W for a good while: 120 m of open run.
+                let run = 4.0 * SPAWN_CLEAR;
+                if !map.heading_clear(p, s.yaw, run) {
+                    bad.push(format!("{id:?} seed {seed} spawn {i} at {p}: blocked within {run} m ahead"));
                 }
                 if dir.dot((o - p).normalize()) < 0.25 {
                     bad.push(format!("{id:?} seed {seed} spawn {i} at {p}: faces away from the action"));

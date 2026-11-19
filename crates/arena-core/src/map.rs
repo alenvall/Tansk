@@ -472,8 +472,9 @@ impl Map {
     }
 
     /// Turns every spawn toward the action: the heading nearest the outpost
-    /// (within 75 degrees of it) with twice [`SPAWN_CLEAR`] m of open ground
-    /// ahead, or at least [`SPAWN_CLEAR`].
+    /// (within 75 degrees of it) with four times [`SPAWN_CLEAR`] m of open
+    /// ground ahead (a new player holding W for a good while), else twice,
+    /// else at least [`SPAWN_CLEAR`].
     pub(crate) fn aim_spawns(&mut self) {
         let o = Vec2::new(self.outpost.x, self.outpost.z);
         for i in 0..self.spawns.len() {
@@ -481,7 +482,7 @@ impl Map {
             let d = o - p;
             let want = (-d.y).atan2(d.x);
             // Twice the minimum if we can get it (a long open run), else the minimum.
-            'search: for dist in [2.0 * SPAWN_CLEAR, SPAWN_CLEAR] {
+            'search: for dist in [4.0 * SPAWN_CLEAR, 2.0 * SPAWN_CLEAR, SPAWN_CLEAR] {
                 for k in 0..=15 {
                     for sign in [1.0f32, -1.0] {
                         let yaw = want + sign * k as f32 * 5f32.to_radians();
@@ -494,6 +495,14 @@ impl Map {
             }
         }
     }
+}
+
+/// The rim round the play area: flat right up to the invisible wall, then
+/// a steep rise of `height` m beyond it (a clean boundary: nothing inside
+/// the wall a tank can climb at a silly angle). `edge` is the distance from
+/// the centre along the axis (or the larger of |x| and |z|).
+pub(crate) fn rim(play_half: f32, size: f32, edge: f32, height: f32) -> f32 {
+    smoothstep(play_half + 0.5, size / 2.0, edge) * height
 }
 
 pub(crate) fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
