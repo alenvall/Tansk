@@ -200,6 +200,18 @@ impl NetClient {
         Self::offline(sim, me, seed)
     }
 
+    /// Offline Team Brawl: you and `per_team - 1` bot allies against
+    /// `per_team` bots (the sim puts each newcomer on the smaller team).
+    pub fn practice_team(seed: u64, per_team: usize, difficulty: f32) -> NetClient {
+        let mut sim = Sim::new_team_brawl(seed, arena_core::Map::the_sink(seed), arena_core::Tuning::default());
+        let me = sim.add_player("You");
+        for i in 0..per_team * 2 - 1 {
+            let names = arena_core::bots::BOT_NAMES;
+            sim.add_bot(names[i % names.len()], difficulty);
+        }
+        Self::offline(sim, me, seed)
+    }
+
     fn offline(mut sim: Sim, me: PlayerId, seed: u64) -> NetClient {
         let events = sim.drain_events();
         let snap = sim.snapshot();

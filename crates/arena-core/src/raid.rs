@@ -244,6 +244,7 @@ impl Sim {
             ram_cd: 0.0,
             team: Some(TEAM_RAIDERS),
             counts_as_human: false,
+            loadout: crate::garage::Loadout::default(),
         });
         let j = self.players.len() - 1;
         match kind {

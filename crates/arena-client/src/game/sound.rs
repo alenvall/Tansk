@@ -203,6 +203,11 @@ impl Sound {
             }
             Event::CraneHit { pos, .. } => a.play_pitched(SoundId::HitHull, p(*pos), 1.0, 0.7),
             Event::ObstacleDestroyed { pos, .. } => a.play_pitched(SoundId::PartBreak, p(*pos), 0.8, 0.6),
+            Event::Horn { player, horn } => {
+                // No horn in the bank yet: a tone, pitched per horn.
+                let rate = [0.55, 0.7, 0.85, 0.45][(*horn as usize) % 4];
+                a.play_pitched(SoundId::CountdownBeep, None, if mine(*player) { 0.8 } else { 0.5 }, rate);
+            }
             Event::MatchEnded { .. } => a.play_pitched(SoundId::CountdownGo, None, 0.8, 1.0),
             _ => {}
         }

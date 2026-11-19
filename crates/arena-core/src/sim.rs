@@ -50,6 +50,8 @@ pub struct PlayerInfo {
     pub is_bot: bool,
     /// None in free-for-all; Some(0) defenders, Some(1) raiders.
     pub team: Option<u8>,
+    /// Garage pick (chassis, paint, emblem, horn).
+    pub loadout: crate::garage::Loadout,
 }
 
 #[derive(Clone)]
@@ -67,6 +69,8 @@ pub struct Player {
     /// A human or a harness stand-in for one (statistics only: Raider Waves is lost when
     /// every defender, bots included, is down at once).
     pub counts_as_human: bool,
+    /// Garage pick: chassis class and cosmetics.
+    pub loadout: crate::garage::Loadout,
 }
 
 #[derive(Clone, Debug)]
@@ -157,6 +161,8 @@ pub struct Sim {
     pub mode: crate::raid::ModeKind,
     pub raid: Option<crate::raid::RaidState>,
     pub(crate) pending_team: Option<u8>,
+    /// The sandstorm (brawl modes).
+    pub storm: crate::storm::StormState,
 }
 
 fn yaw_of(rot: Quat) -> f32 {
@@ -200,6 +206,7 @@ impl Sim {
             mode,
             raid: None,
             pending_team: None,
+            storm: crate::storm::StormState::default(),
         };
         for s in sim.map.scrap_sites.clone() {
             sim.sites.push(Site { pos: s.pos, kind: PickupKind::Scrap(s.kind), timer: 0.0, live: None });
@@ -224,6 +231,8 @@ impl Sim {
         sim.init_world();
         if mode == crate::raid::ModeKind::RaiderWaves {
             sim.init_raid();
+        } else {
+            sim.schedule_storm();
         }
         sim.update_sites(0.0);
         sim
@@ -250,16 +259,35 @@ impl Sim {
     }
 
     pub fn add_player(&mut self, name: &str) -> PlayerId {
-        self.add(name, None)
+        self.add(name, None, crate::garage::Loadout::default())
+    }
+
+    /// A human with their Garage pick (chassis class and cosmetics).
+    pub fn add_player_with(&mut self, name: &str, loadout: crate::garage::Loadout) -> PlayerId {
+        self.add(name, None, loadout)
+    }
+
+    /// Change a player's Garage pick; the chassis applies at their next respawn.
+    pub fn set_loadout(&mut self, id: PlayerId, loadout: crate::garage::Loadout) {
+        if let Some(i) = self.idx(id) {
+            self.players[i].loadout = loadout;
+        }
     }
 
     /// A bot crew; `difficulty` 0 (sloppy) ..= 1 (sharp).
     pub fn add_bot(&mut self, name: &str, difficulty: f32) -> PlayerId {
         let seed = self.rng.next_u64();
-        self.add(name, Some(Brain::new(seed, difficulty)))
+        let brain = Brain::new(seed, difficulty);
+        let loadout = crate::garage::Loadout {
+            chassis: brain.style().chassis(),
+            paint: (seed % 8) as u8,
+            emblem: ((seed >> 8) % 8) as u8,
+            horn: ((seed >> 16) % 4) as u8,
+        };
+        self.add(name, Some(brain), loadout)
     }
 
-    fn add(&mut self, name: &str, brain: Option<Brain>) -> PlayerId {
+    fn add(&mut self, name: &str, brain: Option<Brain>, loadout: crate::garage::Loadout) -> PlayerId {
         let team = if self.raid.is_some() {
             Some(crate::raid::TEAM_DEFENDERS)
         } else if self.mode == crate::raid::ModeKind::TeamBrawl {
@@ -274,7 +302,9 @@ impl Sim {
         let counts_as_human = brain.is_none();
         let id = (0..=255u8).find(|i| self.players.iter().all(|p| p.id != *i)).expect("too many players");
         let (pos, yaw) = self.pick_spawn(None);
-        let tank = Tank::new(&mut self.phys, &self.tuning, pos, yaw);
+        let mut tank = Tank::new(&mut self.phys, &self.tuning, pos, yaw);
+        let t = self.tuning.clone();
+        tank.set_class(&mut self.phys, &t, loadout.chassis);
         self.players.push(Player {
             id,
             name: name.to_string(),
@@ -286,6 +316,7 @@ impl Sim {
             ram_cd: 0.0,
             team,
             counts_as_human,
+            loadout,
         });
         self.events.push(Event::Respawned { player: id, pos });
         id
@@ -307,7 +338,7 @@ impl Sim {
     pub fn players(&self) -> Vec<PlayerInfo> {
         self.players
             .iter()
-            .map(|p| PlayerInfo { id: p.id, name: p.name.clone(), is_bot: p.brain.is_some(), team: p.team })
+            .map(|p| PlayerInfo { id: p.id, name: p.name.clone(), is_bot: p.brain.is_some(), team: p.team, loadout: p.loadout })
             .collect()
     }
 
@@ -368,6 +399,9 @@ impl Sim {
         }
         self.projectiles.clear();
         self.reset_world();
+        if self.raid.is_none() {
+            self.schedule_storm();
+        }
         self.update_sites(0.0);
     }
 
@@ -405,6 +439,7 @@ impl Sim {
         self.step_world(dt);
         self.safety_net();
         self.step_raid(dt);
+        self.step_storm(dt);
         self.step_mode(dt);
         self.cull_raiders();
     }
@@ -437,6 +472,11 @@ impl Sim {
         self.tick_repair(i, dt);
         self.tick_choice(i, &input, t, dt);
         self.tick_special_passive(i, dt);
+        if input.horn && !self.players[i].tank.prev_horn {
+            let horn = self.players[i].loadout.horn;
+            self.events.push(Event::Horn { player: id, horn });
+        }
+        self.players[i].tank.prev_horn = input.horn;
 
         // Drive and aim.
         let report = {
@@ -553,7 +593,7 @@ impl Sim {
         let g = gun_stats(t, &self.players[i].tank.stats);
         let gun = self.players[i].tank.stats.gun;
         let dir0 = self.players[i].tank.barrel_dir(&hp, t);
-        let spread = (g.spread_deg + self.players[i].tank.bloom * t.guns.bloom_max_deg).to_radians();
+        let spread = (g.spread_deg + self.players[i].tank.bloom * t.guns.bloom_max_deg + self.storm.intensity * t.storm.spread_deg).to_radians();
         let twin = gun == GunKind::TwinBarrel;
         let mut muzzle_avg = Vec3::ZERO;
         for k in 0..g.shells_per_shot.max(1) {
@@ -1135,6 +1175,10 @@ impl Sim {
 
     fn respawn(&mut self, j: usize) {
         let t = self.tuning.clone();
+        let class = self.players[j].loadout.chassis;
+        if self.players[j].tank.vehicle == crate::parts::VehicleKind::Tank && self.players[j].tank.class != class {
+            self.players[j].tank.set_class(&mut self.phys, &t, class);
+        }
         let (pos, yaw) = self.pick_spawn(Some(j));
         let id = self.players[j].id;
         let tank = &mut self.players[j].tank;
@@ -1254,7 +1298,12 @@ impl Sim {
             if self.sites[si].live.is_some() {
                 continue;
             }
-            self.sites[si].timer -= dt;
+            let storm = if matches!(self.sites[si].kind, PickupKind::Scrap(_)) {
+                1.0 + (self.tuning.storm.scrap_respawn_mult - 1.0) * self.storm.intensity
+            } else {
+                1.0
+            };
+            self.sites[si].timer -= dt * storm;
             if self.sites[si].timer <= 0.0 {
                 let id = self.alloc_id();
                 if matches!(self.sites[si].kind, PickupKind::Rare(_)) {
@@ -1387,14 +1436,16 @@ impl Sim {
             return;
         }
         tank.scrap[k] += 1;
-        if tank.scrap[k] < t.upgrades.scrap_per_tier {
+        let per_tier = if tank.vehicle == crate::parts::VehicleKind::Tank { tank.class_stat(&t).scrap_per_tier } else { t.upgrades.scrap_per_tier };
+        if tank.scrap[k] < per_tier {
             return;
         }
         tank.scrap[k] = 0;
         tank.tiers[k] += 1;
         let tier = tank.tiers[k];
-        if tier == 2 {
-            let opts = branch_options(kind);
+        let class = tank.class;
+        let opts: Vec<PartKind> = branch_options(kind).iter().copied().filter(|o| class.allows(crate::parts::part_def(*o).slot)).collect();
+        if tier == 2 && !opts.is_empty() {
             tank.branch[k] = Some(opts[0]);
             tank.choice = Some(crate::tank::PendingChoice {
                 track: kind,
@@ -1549,6 +1600,9 @@ impl Sim {
                     rare_ammo: tank.rare_ammo,
                     air_strike: tank.air_strike,
                     team: p.team.unwrap_or(255),
+                    chassis: tank.class,
+                    paint: p.loadout.paint,
+                    emblem: p.loadout.emblem,
                     vehicle: tank.vehicle,
                 }
             })
@@ -1593,6 +1647,7 @@ impl Sim {
             raid: self.raid_snap(),
             bosses: self.boss_snaps(),
             teams: self.team_scores(),
+            storm: self.storm.intensity,
         }
     }
 

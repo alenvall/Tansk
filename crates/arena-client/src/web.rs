@@ -4,7 +4,8 @@
 //! Debug URL flags: `?autoplay=practice|raid|play|host-raid` starts at once, `&mouse=free`
 //! skips the pointer lock (the mouse always turns the camera; Esc pauses),
 //! `&name=X` sets the crew name. Practice test hooks: `&matchtime=45`,
-//! `&raidfast=1`, `&scrap=1` (Powder until a branch offer), `&flare=1`.
+//! `&raidfast=1`, `&scrap=1` (Powder until a branch offer), `&flare=1`,
+//! `&wave=N`, `&boss=1|weak`; `autoplay=team` for Team Brawl practice.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -143,7 +144,10 @@ async fn run() -> Result<()> {
 
     let wr = WorldRenderer::new(Renderer::new(device, queue, config.format, width, height));
     let mut game = Game::new();
-    let mut settings = load_settings().unwrap_or_default();
+    let saved = load_settings();
+    // First visit: Medium, and Low if the first seconds turn out slow.
+    game.quality_auto = saved.is_none();
+    let mut settings = saved.unwrap_or_else(|| Settings { quality: Quality::Medium, ..Settings::default() });
     if let Some(name) = query_flag("name").filter(|n| !n.is_empty()) {
         settings.name = name;
     }
@@ -156,10 +160,14 @@ async fn run() -> Result<()> {
     game.debug.raid_fast = query_flag("raidfast").is_some();
     game.debug.scrap = query_flag("scrap").is_some();
     game.debug.flare = query_flag("flare").is_some();
+    game.debug.wave = query_flag("wave").and_then(|v| v.parse().ok());
+    game.debug.fragile = query_flag("fragile").is_some();
+    game.debug.boss = query_flag("boss").map(|v| v == "weak");
     match query_flag("autoplay").as_deref() {
         Some("practice") => game.start_practice(),
         Some("play") => game.start_online(Join::Play),
         Some("raid") => game.start_practice_raid(),
+        Some("team") => game.start_practice_team(),
         Some("host-raid") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::RaiderWaves }),
         _ => {}
     }
@@ -311,8 +319,10 @@ fn install_input(state: &Shared) -> Result<()> {
             let Some(t) = prop(&ev, "target").dyn_into::<web_sys::Element>().ok() else { return };
             let Ok(Some(b)) = t.closest("[data-game]") else { return };
             let Ok(mut st) = s.try_borrow_mut() else { return };
-            if b.get_attribute("data-game").as_deref() == Some("raid") {
-                st.game.start_practice_raid();
+            match b.get_attribute("data-game").as_deref() {
+                Some("raid") => st.game.start_practice_raid(),
+                Some("team") => st.game.start_practice_team(),
+                _ => {}
             }
         })?;
     }
@@ -442,6 +452,32 @@ fn fetch_rooms(out: Rc<RefCell<Option<Vec<(String, u32, u32)>>>>) {
     });
 }
 
+// ---------------------------------------------------------------- gamepad
+
+/// The first connected standard-mapping gamepad, via `navigator.getGamepads()`.
+fn read_pad() -> Option<crate::game::Pad> {
+    let nav = web_sys::window()?.navigator();
+    let get = prop(&nav, "getGamepads").dyn_into::<js_sys::Function>().ok()?;
+    let list = get.call0(&nav).ok()?;
+    let list = js_sys::Array::from(&list);
+    for g in list.iter() {
+        if g.is_null() || g.is_undefined() || !prop(&g, "connected").is_truthy() {
+            continue;
+        }
+        let mut pad = crate::game::Pad::default();
+        let axes = js_sys::Array::from(&prop(&g, "axes"));
+        for (i, a) in axes.iter().take(4).enumerate() {
+            pad.axes[i] = a.as_f64().unwrap_or(0.0) as f32;
+        }
+        let buttons = js_sys::Array::from(&prop(&g, "buttons"));
+        for (i, b) in buttons.iter().take(16).enumerate() {
+            pad.buttons[i] = prop(&b, "value").as_f64().unwrap_or(0.0) as f32;
+        }
+        return Some(pad);
+    }
+    None
+}
+
 // ------------------------------------------------------------------ frame
 
 fn now_ms() -> f64 {
@@ -469,6 +505,7 @@ fn frame(s: &mut State) {
         s.wr.renderer.resize(w, h);
     }
 
+    s.game.pad = read_pad();
     // Platform requests from the game.
     if let Some(rooms) = s.rooms.borrow_mut().take() {
         s.game.set_rooms(&rooms);

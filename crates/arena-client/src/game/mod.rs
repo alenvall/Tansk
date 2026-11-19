@@ -27,12 +27,15 @@ use arena_core::{Event, Input, Phase, PlayerId};
 use glam::Vec3;
 
 use crate::camera::{Camera, ChaseCam};
+use crate::renderer::{Look, Quality, TimeOfDay};
+use crate::camera::CameraCollider;
 use crate::demo::{Demo, MapCollider};
 use crate::net::{self, ChatLine, NetClient, Status};
 use crate::ui::{BranchOption, EndRow, HitKind, OpenGame, ScoreRow, Settings, Team, TrackState, Ui, UiAction};
 use crate::world::{paint_for, RenderWorld, TankView, WorldRenderer};
 
-pub use controls::Controls;
+pub use controls::{Controls, Pad};
+use controls::pad;
 use juice::Juice;
 use radio::Radio;
 use sound::Sound;
@@ -43,6 +46,7 @@ const HOME_SEED: u64 = 7;
 const PRACTICE_BOTS: usize = 7;
 const PRACTICE_DIFFICULTY: f32 = 0.55;
 const RAID_ALLIES: usize = 3;
+const KILLCAM_SECS: f32 = 2.0;
 const BRANCH_SECS: f32 = 4.0;
 /// Seconds a blown track waits before the crew starts patching (tuning:
 /// track_repair_time - track_patch_duration).
@@ -60,6 +64,13 @@ pub struct DebugFlags {
     pub scrap: bool,
     /// `?flare=1`: start holding an air-strike flare.
     pub flare: bool,
+    /// `?fragile=1`: you start on 10% hull (to see the kill-cam).
+    pub fragile: bool,
+    /// `?wave=N`: raid practice starts at wave N.
+    pub wave: Option<u32>,
+    /// `?boss=1`: the War Rig spawns at once; `?boss=weak` with its
+    /// modules and hull nearly shot through (to see them come off).
+    pub boss: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -72,7 +83,7 @@ pub enum Screen {
 
 #[derive(Clone, Debug, PartialEq)]
 enum Session {
-    Practice { raid: bool },
+    Practice { mode: ModeKind },
     Online(Join),
 }
 
@@ -98,6 +109,11 @@ struct Match {
     ended: bool,
     debug_scrap_t: f32,
     names: HashMap<PlayerId, String>,
+    crowd_check: f32,
+    crowd_called: HashMap<usize, f32>,
+    /// Seconds since you died (kill-cam).
+    dead_for: f32,
+    killcam_angle: f32,
     /// Build the podium on the next frame (the end screen just opened).
     podium_pending: bool,
     /// Raid: the mode label last written, the outpost's max health, and the
@@ -116,6 +132,18 @@ pub struct Game {
     /// The pause menu is open (pointer released mid-match).
     pub paused: bool,
     pub debug: DebugFlags,
+    /// The Garage's pick (offline Practice uses it; online still default).
+    garage: Option<crate::ui::Garage>,
+    /// The newest gamepad state (web: Gamepad API), `None` without one.
+    pub pad: Option<Pad>,
+    prev_pad: Pad,
+    /// Seconds since the pad was last touched (it takes over from the mouse).
+    pad_idle: f32,
+    /// No saved quality: start Medium, drop to Low if the first 3 s are slow.
+    pub quality_auto: bool,
+    quality_probe: (f32, u32),
+    want_quality: Option<Quality>,
+    want_look: Option<TimeOfDay>,
     juice: Juice,
     heart: f32,
     sound: Sound,
@@ -172,6 +200,14 @@ impl Game {
             status_note: String::new(),
             podium: None,
             debug: DebugFlags::default(),
+            garage: None,
+            pad: None,
+            prev_pad: Pad::default(),
+            pad_idle: 1e9,
+            quality_auto: false,
+            quality_probe: (0.0, 0),
+            want_quality: None,
+            want_look: Some(TimeOfDay::GoldenHour),
             juice: Juice::default(),
             heart: 0.0,
         }
@@ -221,6 +257,7 @@ impl Game {
 
     pub fn apply_settings(&mut self, s: Settings) {
         self.sound.set_volumes(s.vol_master, s.vol_sfx);
+        self.want_quality = Some(render_quality(s.quality));
         self.ui.apply_settings(&s);
         self.settings = s;
     }
@@ -243,12 +280,17 @@ impl Game {
     }
 
     pub fn start_practice(&mut self) {
-        self.start(Session::Practice { raid: false });
+        self.start(Session::Practice { mode: ModeKind::ScrapBrawl });
     }
 
     /// Offline Raider Waves with bot allies.
     pub fn start_practice_raid(&mut self) {
-        self.start(Session::Practice { raid: true });
+        self.start(Session::Practice { mode: ModeKind::RaiderWaves });
+    }
+
+    /// Offline Team Brawl: you and 3 bot allies against 4 bots.
+    pub fn start_practice_team(&mut self) {
+        self.start(Session::Practice { mode: ModeKind::TeamBrawl });
     }
 
     pub fn start_online(&mut self, join: Join) {
@@ -274,11 +316,15 @@ impl Game {
         self.ui.show_respawn(None, None);
         self.ui.show_scoreboard(false, &[]);
         let net = match &session {
-            Session::Practice { raid: false } => {
+            Session::Practice { mode: ModeKind::TeamBrawl } => {
+                self.ui.show_loading("Picking sides", "You and three Rustbacks against four Dust Saints.", Some(0.6));
+                NetClient::practice_team(rand_seed(self.time), 4, PRACTICE_DIFFICULTY)
+            }
+            Session::Practice { mode: ModeKind::ScrapBrawl } => {
                 self.ui.show_loading("Rolling out", "Seven bots, no mercy. Warming the engines.", Some(0.6));
                 NetClient::practice(rand_seed(self.time), PRACTICE_BOTS, PRACTICE_DIFFICULTY)
             }
-            Session::Practice { raid: true } => {
+            Session::Practice { mode: ModeKind::RaiderWaves } => {
                 self.ui.show_loading("Manning the outpost", "Three allies, a lot of raiders. Dig in.", Some(0.6));
                 NetClient::practice_raid(rand_seed(self.time), RAID_ALLIES, PRACTICE_DIFFICULTY)
             }
@@ -286,6 +332,7 @@ impl Game {
                 let sub = match join {
                     Join::Code(c) => format!("Tuning the radio to {c}..."),
                     Join::Host { mode: ModeKind::RaiderWaves, .. } => "Fortifying the outpost...".to_string(),
+                    Join::Host { mode: ModeKind::TeamBrawl, .. } => "Painting the hulls...".to_string(),
                     Join::Host { .. } => "Opening the gates...".to_string(),
                     _ => "Looking for a crew to fight...".to_string(),
                 };
@@ -294,10 +341,45 @@ impl Game {
             }
         };
         self.ui.set_loading_tip(tip(self.time));
+        let roll = (self.time * 977.0).fract();
+        self.want_look = Some(if roll < 0.6 {
+            TimeOfDay::GoldenHour
+        } else if roll < 0.85 {
+            TimeOfDay::Dusk
+        } else {
+            TimeOfDay::Noon
+        });
         self.net = Some(net);
+        self.apply_garage();
         self.apply_debug();
         self.session = Some(session);
         self.screen = Screen::Loading;
+    }
+
+    /// The Garage loadout onto your tank in an offline match (it takes on
+    /// the next spawn).
+    fn apply_garage(&mut self) {
+        let Some(g) = self.garage.clone() else { return };
+        let you = self.you();
+        let Some(sim) = self.net.as_mut().and_then(|n| n.practice_sim()) else { return };
+        let Some(you) = you else { return };
+        let loadout = arena_core::garage::Loadout {
+            chassis: match g.chassis {
+                crate::ui::Chassis::Scout => arena_core::garage::ChassisClass::Scout,
+                crate::ui::Chassis::Brawler => arena_core::garage::ChassisClass::Brawler,
+                crate::ui::Chassis::Hauler => arena_core::garage::ChassisClass::Hauler,
+            },
+            paint: paint_index(&g.paint),
+            emblem: ["wrench", "cog", "skull", "flame", "star", "drop"].iter().position(|e| *e == g.emblem).unwrap_or(0) as u8,
+            horn: 0,
+        };
+        sim.set_loadout(you, loadout);
+    }
+
+    /// Your paint from the Garage (hex), for drawing your own tank.
+    fn my_paint(&self) -> Option<u32> {
+        let hex = self.garage.as_ref()?.paint.trim_start_matches('#').to_string();
+        u32::from_str_radix(&hex, 16).ok()
     }
 
     fn apply_debug(&mut self) {
@@ -316,11 +398,27 @@ impl Game {
                 r.health = r.max_health * 0.3;
             }
         }
-        if d.flare {
-            for p in &mut sim.players {
-                if p.brain.is_none() {
-                    p.tank.air_strike = true;
+        if let Some(n) = d.wave {
+            sim.debug_jump_to_wave(n);
+        }
+        if let Some(weak) = d.boss {
+            if let Some(id) = sim.debug_spawn_boss() {
+                if weak {
+                    if let Some(p) = sim.players.iter_mut().find(|p| p.id == id) {
+                        for part in &mut p.tank.parts {
+                            part.health = part.health.min(part.max_health * 0.01);
+                        }
+                        p.tank.health *= 0.03;
+                    }
                 }
+            }
+        }
+        for p in sim.players.iter_mut().filter(|p| p.brain.is_none()) {
+            if d.flare {
+                p.tank.air_strike = true;
+            }
+            if d.fragile {
+                p.tank.health *= 0.1;
             }
         }
     }
@@ -353,6 +451,7 @@ impl Game {
         self.session = None;
         self.paused = false;
         self.close_podium();
+        self.want_look = Some(TimeOfDay::GoldenHour);
         self.screen = Screen::Title;
         self.sound.clear_engines();
         self.ui.hide_endscreen();
@@ -384,17 +483,25 @@ impl Game {
                 UiAction::Play => self.start_online(Join::Play),
                 UiAction::Practice => self.start_practice(),
                 UiAction::Host(cfg) => {
-                    let mode = if cfg.mode == "raider_waves" { ModeKind::RaiderWaves } else { ModeKind::ScrapBrawl };
+                    let mode = match cfg.mode.as_str() {
+                        "raider_waves" => ModeKind::RaiderWaves,
+                        "team_brawl" => ModeKind::TeamBrawl,
+                        _ => ModeKind::ScrapBrawl,
+                    };
                     self.start_online(Join::Host { public: !cfg.private, mode });
                 }
                 UiAction::Join { code } => self.start_online(Join::Code(code)),
                 UiAction::RefreshGames => self.want_rooms = true,
                 UiAction::Cancel => self.leave(),
                 UiAction::SettingsChanged(s) => {
+                    self.quality_auto = false;
                     self.apply_settings(s);
                     self.settings_dirty = true;
                 }
-                UiAction::GarageChanged(_) => {}
+                UiAction::GarageChanged(g) => {
+                    self.garage = Some(g);
+                    self.apply_garage();
+                }
                 UiAction::BranchPicked(i) => self.pick_branch(i),
                 UiAction::Chat(text) => {
                     if let Some(n) = &mut self.net {
@@ -402,7 +509,7 @@ impl Game {
                     }
                 }
                 UiAction::Again => match self.session.clone() {
-                    Some(Session::Practice { raid }) => self.start(Session::Practice { raid }),
+                    Some(Session::Practice { mode }) => self.start(Session::Practice { mode }),
                     None => self.start_practice(),
                     Some(Session::Online(_)) => {
                         // The server rolls the next round by itself.
@@ -431,6 +538,8 @@ impl Game {
             wr.set_map(&self.map);
             self.map_built = true;
         }
+        self.render_settings(dt, wr);
+        self.pad_frame(dt);
         self.handle_actions();
         self.ui.tick(dt);
         self.radio.tick(dt);
@@ -447,6 +556,72 @@ impl Game {
         world
     }
 
+    fn render_settings(&mut self, dt: f32, wr: &mut WorldRenderer) {
+        wr.renderer.note_frame_time(dt);
+        if self.quality_auto && self.quality_probe.1 != u32::MAX {
+            if self.time < 3.0 {
+                if self.time > 0.5 {
+                    self.quality_probe.0 += dt;
+                    self.quality_probe.1 += 1;
+                }
+            } else {
+                let (sum, n) = self.quality_probe;
+                let avg = if n > 0 { sum / n as f32 } else { 0.0 };
+                if avg > 0.025 {
+                    log::info!("auto quality: {:.1} ms frames, dropping to Low", avg * 1000.0);
+                    self.settings.quality = crate::ui::Quality::Low;
+                    self.ui.apply_settings(&self.settings);
+                    self.want_quality = Some(Quality::Low);
+                }
+                self.quality_probe.1 = u32::MAX;
+            }
+        }
+        if let Some(q) = self.want_quality.take() {
+            wr.renderer.set_quality(q);
+        }
+        if let Some(t) = self.want_look.take() {
+            wr.renderer.look = Look::preset(t);
+        }
+    }
+
+    /// Pad edges (Start pauses, Back is the board, D-pad picks a branch).
+    fn pad_frame(&mut self, dt: f32) {
+        let Some(p) = self.pad else { return };
+        self.pad_idle = if p.active() { 0.0 } else { self.pad_idle + dt };
+        let prev = self.prev_pad;
+        let edge = |b: usize| p.down(b) && !prev.down(b);
+        if self.screen == Screen::InGame {
+            if edge(pad::START) {
+                self.paused = !self.paused;
+            }
+            if self.paused && edge(pad::B) {
+                self.leave();
+            }
+            if self.m.branch.is_some() {
+                for (i, b) in [pad::LEFT, pad::UP, pad::RIGHT].into_iter().enumerate() {
+                    if edge(b) {
+                        self.pick_branch(i as u8);
+                        self.ui.hide_branch();
+                    }
+                }
+            }
+        } else if self.screen == Screen::End && edge(pad::A) {
+            self.ui.hide_endscreen();
+            match self.session.clone() {
+                Some(Session::Practice { mode }) => self.start(Session::Practice { mode }),
+                _ => self.leave(),
+            }
+        } else if self.screen == Screen::Title && edge(pad::A) {
+            self.start_practice();
+        }
+        self.prev_pad = p;
+    }
+
+    /// The pad was used in the last few seconds: it drives, not the mouse.
+    fn pad_live(&self) -> bool {
+        self.pad.is_some() && self.pad_idle < 5.0
+    }
+
     fn use_map(&mut self, seed: u64, wr: &mut WorldRenderer) {
         if seed != self.map_seed {
             self.map = Map::the_sink(seed);
@@ -458,16 +633,35 @@ impl Game {
     /// The live backdrop: a demo match under a slow orbit.
     fn title_frame(&mut self, dt: f32, wr: &mut WorldRenderer) -> RenderWorld {
         self.use_map(HOME_SEED, wr);
+        wr.renderer.set_storm(0.0);
         let mut world = self.backdrop.advance(dt, wr).clone();
-        if let Some(t) = self.backdrop.follow.and_then(|f| world.tanks.iter().find(|t| t.player == f)) {
-            let k = 1.0 - (-dt * 0.6).exp();
-            if self.orbit_centre == Vec3::ZERO {
-                self.orbit_centre = t.pos;
+        // The fight: the closest pair of live bots (or one, if they're far apart).
+        let live: Vec<Vec3> = world.tanks.iter().filter(|t| t.alive).map(|t| t.pos).collect();
+        let mut subject = None;
+        let mut best = f32::MAX;
+        for (i, a) in live.iter().enumerate() {
+            for b in &live[i + 1..] {
+                let d = a.distance(*b);
+                if d < best {
+                    best = d;
+                    subject = Some(if d < 25.0 { (*a + *b) * 0.5 } else { *a });
+                }
             }
-            self.orbit_centre += (t.pos - self.orbit_centre) * k;
-            let mut cam = Camera::orbit(self.orbit_centre, 19.0, 5.5, self.time * 0.6, 0.0);
-            cam.fov_y = 44f32.to_radians();
-            world.camera = Some(cam);
+        }
+        if let Some(c) = subject.or_else(|| live.first().copied()) {
+            if self.orbit_centre == Vec3::ZERO {
+                self.orbit_centre = c;
+            }
+            self.orbit_centre += (c - self.orbit_centre) * (1.0 - (-dt * 0.35).exp());
+            let c = self.orbit_centre;
+            // A slow circle; the action sits right of centre, clear of the
+            // title's hazed left side.
+            let a = self.time * 0.05;
+            let eye = c + Vec3::new(a.cos() * 24.0, 6.5, a.sin() * 24.0);
+            let eye = Vec3::new(eye.x, eye.y.max(self.map.height_at(eye.x, eye.z) + 4.0), eye.z);
+            let fwd = (c - eye).normalize_or(Vec3::X);
+            let right = fwd.cross(Vec3::Y).normalize_or(Vec3::Z);
+            world.camera = Some(Camera::look(eye, c + Vec3::Y * 1.5 - right * 3.0, 46.0));
         }
         self.sound.frame(world.camera.map_or(Vec3::ZERO, |c| c.eye), Vec3::X, &[], None, 0.0);
         world
@@ -498,6 +692,7 @@ impl Game {
                     self.ui.show_hud();
                     self.ui.set_ffa(true);
                     let mode = match (&self.session, &code) {
+                        (Some(Session::Practice { mode: ModeKind::TeamBrawl }), _) => "Team Practice \u{b7} The Sink".to_string(),
                         (Some(Session::Practice { .. }), _) | (_, None) => "Practice \u{b7} The Sink".to_string(),
                         (_, Some(code)) => format!("Scrap Brawl \u{b7} The Sink \u{b7} {code}"),
                     };
@@ -518,7 +713,8 @@ impl Game {
         let you = self.you();
         // ---- Input, from last frame's camera.
         let typing = self.ui.chat_open();
-        let live = self.screen == Screen::InGame && !self.paused && !typing && self.controls.captured;
+        let pad_live = self.pad_live();
+        let live = self.screen == Screen::InGame && !self.paused && !typing && (self.controls.captured || pad_live);
         let sens = self.settings.mouse_sens.clamp(0.1, 3.0);
         let fov_k = self.camera.map_or(1.0, |c| c.fov_y / 62f32.to_radians());
         if self.controls.captured && !self.paused {
@@ -531,6 +727,15 @@ impl Game {
             self.chase.pitch =
                 (self.chase.pitch + self.controls.axis(&["ArrowDown"], &["ArrowUp"]) * 1.0 * dt).clamp(-0.75, 0.5);
         }
+        let pad = if pad_live { self.pad } else { None };
+        if let (Some(p), true) = (pad, live) {
+            // Right stick: the camera, slowed near a visible enemy (aim assist).
+            let assist = self.aim_assist();
+            let (rx, ry) = (p.axis(2), p.axis(3));
+            let rate = 2.6 * sens * fov_k * assist;
+            self.chase.yaw -= rx * rx.abs() * rate * dt;
+            self.chase.pitch = (self.chase.pitch - ry * ry.abs() * 1.6 * sens * fov_k * assist * dt).clamp(-0.75, 0.5);
+        }
         let c = &self.controls;
         let mut input = Input { aim_point: self.input.aim_point, ..Input::default() };
         if live {
@@ -540,8 +745,22 @@ impl Game {
             input.alt_fire = c.buttons[2];
             input.boost = c.any(&["ShiftLeft", "ShiftRight"]);
             input.special = c.any(&["KeyF", "KeyE"]);
+            input.horn = c.held("KeyH");
+            if let Some(p) = pad {
+                input.horn |= p.down(pad::LS);
+                if input.throttle == 0.0 {
+                    input.throttle = -p.axis(1);
+                }
+                if input.steer == 0.0 {
+                    input.steer = p.axis(0);
+                }
+                input.fire |= p.down(pad::RT);
+                input.alt_fire |= p.down(pad::RB);
+                input.boost |= p.down(pad::LB);
+                input.special |= p.down(pad::A) || p.down(pad::Y);
+            }
         }
-        let zoom = live && c.any(&["ControlLeft", "ControlRight", "KeyZ"]);
+        let zoom = live && (c.any(&["ControlLeft", "ControlRight", "KeyZ"]) || pad.is_some_and(|p| p.buttons[pad::LT] > 0.4));
         if let Some((i, left)) = &mut self.m.choice {
             input.choice = Some(*i);
             *left -= dt;
@@ -581,8 +800,21 @@ impl Game {
 
         self.debug_scrap(dt);
         let mut world = RenderWorld::from_snapshot(&snap, &paint_for);
+        if let (Some(c), Some(y), true) = (self.my_paint(), you, snap.teams.is_empty() && snap.raid.is_none()) {
+            if let Some(t) = world.tanks.iter_mut().find(|t| t.player == y) {
+                t.colour = c;
+            }
+        }
+        if !snap.teams.is_empty() {
+            for t in &mut world.tanks {
+                if snap.tank(t.player).is_some_and(|s| s.team == 1) {
+                    t.colour = crate::tank::DUST_SAINT;
+                }
+            }
+        }
         world.time = self.time;
         world.dt = dt * self.juice.time_scale(dt);
+        wr.renderer.set_storm(snap.storm);
         let me = you.and_then(|y| snap.tank(y)).cloned();
         let my_view = you.and_then(|y| world.tanks.iter().find(|t| t.player == y)).cloned();
 
@@ -600,6 +832,13 @@ impl Game {
         if alive && !self.m.alive {
             self.ui.show_respawn(None, None);
             self.m.killer = None;
+        }
+        if !alive && self.m.alive {
+            self.m.dead_for = 0.0;
+            self.m.killcam_angle = self.chase.yaw + std::f32::consts::PI;
+        }
+        if !alive {
+            self.m.dead_for += dt;
         }
         self.m.alive = alive;
         let killer_view = self.m.killer.and_then(|k| world.tanks.iter().find(|t| t.player == k && t.alive)).cloned();
@@ -633,6 +872,24 @@ impl Game {
             self.juice.track_landing(t.linvel[1]);
         }
         world.camera = Some(self.juice.apply(cam, dt, boosting, lag, self.chase.zoom));
+        if let (false, Some(k)) = (alive, &killer_view) {
+            if self.m.dead_for < KILLCAM_SECS {
+                // Kill-cam: a slow half-orbit round whoever did it.
+                let a = self.m.killcam_angle + self.m.dead_for * 0.9;
+                // Bigger machines (the War Rig) get a wider circle.
+                let big = self
+                    .net
+                    .as_ref()
+                    .and_then(|n| n.state().world.as_ref())
+                    .and_then(|w| w.tank(k.player))
+                    .is_some_and(|t| t.vehicle == arena_core::parts::VehicleKind::WarRig);
+                let r = if big { 30.0 } else { 13.0 } - self.m.dead_for * 1.5;
+                let eye = k.pos + Vec3::new(a.cos() * r, if big { 9.0 } else { 4.5 }, -a.sin() * r);
+                let free = MapCollider(&self.map).free_fraction(k.pos + Vec3::Y * 2.0, eye);
+                let eye = k.pos + Vec3::Y * 2.0 + (eye - k.pos - Vec3::Y * 2.0) * free.clamp(0.2, 1.0);
+                world.camera = Some(Camera::look(eye, k.pos + Vec3::Y * 1.4, 48.0));
+            }
+        }
         // ---- Aim: the screen centre onto the world.
         let dir = (cam.target - cam.eye).normalize_or(Vec3::X);
         let skip = (pivot + Vec3::Y * self.chase.pivot_height - cam.eye).dot(dir).max(0.0);
@@ -696,7 +953,9 @@ impl Game {
                 );
             }
         }
-        let board = self.screen == Screen::InGame && !typing && self.controls.held("Tab");
+        let board = self.screen == Screen::InGame
+            && !typing
+            && (self.controls.held("Tab") || self.pad.is_some_and(|p| p.down(pad::BACK)));
         self.m.board_refresh -= dt;
         if board && self.m.board_refresh <= 0.0 {
             let rows = self.score_rows(&snap, rtt);
@@ -710,6 +969,15 @@ impl Game {
             // Raiders grow too, but the bounty call is for crews.
         } else {
             self.bounty_watch(&world, dt);
+            self.crowd_watch(&snap, dt);
+        }
+        match snap.mode.phase {
+            Phase::Defeated { waves } if !self.m.ended => {
+                let fell = snap.raid.as_ref().is_some_and(|r| r.health == 0);
+                self.end_raid(waves, fell);
+            }
+            Phase::TeamWon { team } if !self.m.ended => self.end_team(team),
+            _ => {}
         }
         if std::mem::take(&mut self.m.podium_pending) {
             let mut ids: Vec<(PlayerId, u16)> = snap
@@ -744,6 +1012,44 @@ impl Game {
             }
         }
         world
+    }
+
+    /// Gamepad only: turning slows to under half when the view is within a
+    /// few degrees of a visible enemy.
+    fn aim_assist(&self) -> f32 {
+        let (Some(cam), Some(net)) = (self.camera, &self.net) else { return 1.0 };
+        let st = net.state();
+        let (Some(snap), you) = (&st.world, st.you) else { return 1.0 };
+        let fwd = (cam.target - cam.eye).normalize_or(Vec3::X);
+        let mine = you.and_then(|y| snap.tank(y));
+        let mut best = 1.0f32;
+        for t in &snap.tanks {
+            if Some(t.player) == you || !t.alive {
+                continue;
+            }
+            if let (Some(m), Some(team)) = (mine, st.players.iter().find(|p| p.id == t.player).and_then(|p| p.team)) {
+                // Raid: allies share your team.
+                let my_team = st.players.iter().find(|p| p.id == m.player).and_then(|p| p.team);
+                if my_team == Some(team) {
+                    continue;
+                }
+            }
+            let c = t.position() + Vec3::Y;
+            let to = c - cam.eye;
+            let d = to.length();
+            if !(5.0..250.0).contains(&d) {
+                continue;
+            }
+            let ang = fwd.angle_between(to / d);
+            if ang < 0.07 {
+                // Visible: the ray reaches about as far as the tank.
+                let hit = aim::cast(&self.map, &[], you, cam.eye, to / d, 0.0);
+                if hit.distance(cam.eye) > d - 3.0 {
+                    best = best.min(0.4 + ang / 0.07 * 0.6);
+                }
+            }
+        }
+        best
     }
 
     fn sync_chat(&mut self) {
@@ -805,11 +1111,18 @@ impl Game {
         ui.set_part_names(parts);
         ui.set_reticle(t.bloom as f32 / 255.0, 1.0 - t.reload as f32 / 255.0);
         ui.set_timer(snap.mode.ticks_left as f32 / 60.0);
-        // Free-for-all: your kills against the leader's.
-        let you = t.player;
-        let mine = snap.scores.iter().find(|s| s.player == you).map_or(0, |s| s.kills);
-        let best = snap.scores.iter().filter(|s| s.player != you).map(|s| s.kills).max().unwrap_or(0);
-        ui.set_scores(u32::from(mine), u32::from(best));
+        if snap.teams.is_empty() {
+            // Free-for-all: plates hidden; your kills against the leader's.
+            ui.set_ffa(true);
+            let you = t.player;
+            let mine = snap.scores.iter().find(|s| s.player == you).map_or(0, |s| s.kills);
+            let best = snap.scores.iter().filter(|s| s.player != you).map(|s| s.kills).max().unwrap_or(0);
+            ui.set_scores(u32::from(mine), u32::from(best));
+        } else {
+            ui.set_ffa(false);
+            let k = |team: u8| snap.teams.iter().find(|s| s.team == team).map_or(0, |s| u32::from(s.kills));
+            ui.set_scores(k(0), k(1));
+        }
     }
 
     fn score_rows(&self, snap: &Snapshot, rtt: f32) -> Vec<ScoreRow> {
@@ -824,7 +1137,7 @@ impl Game {
                 let is_you = Some(p.id) == you;
                 ScoreRow {
                     name: self.name_of(p.id),
-                    team: Team::Ffa,
+                    team: self.team_of(p.id),
                     kills: s.map_or(0, |s| u32::from(s.kills)),
                     deaths: s.map_or(0, |s| u32::from(s.deaths)),
                     tiers: t.map_or([0; 4], |t| t.tiers),
@@ -842,6 +1155,36 @@ impl Game {
             .collect();
         rows.sort_by(|a, b| b.kills.cmp(&a.kills).then(a.deaths.cmp(&b.deaths)));
         rows
+    }
+
+    /// Every few seconds: three or more crews piling into one named place.
+    fn crowd_watch(&mut self, snap: &Snapshot, dt: f32) {
+        self.m.crowd_check -= dt;
+        if self.m.crowd_check > 0.0 {
+            return;
+        }
+        self.m.crowd_check = 6.0;
+        let you = self.you();
+        let me = you.and_then(|y| snap.tank(y)).map(|t| t.position());
+        let flat = |v: Vec3| glam::Vec2::new(v.x, v.z);
+        for (i, r) in self.map.regions.iter().enumerate() {
+            // Not where you already are: you can see that.
+            if me.is_some_and(|m| flat(m).distance(flat(r.center)) < r.radius) {
+                continue;
+            }
+            let n = snap
+                .tanks
+                .iter()
+                .filter(|t| t.alive && Some(t.player) != you && flat(t.position()).distance(flat(r.center)) < r.radius)
+                .count();
+            let last = self.m.crowd_called.get(&i).copied().unwrap_or(-1e9);
+            if n >= 3 && self.time - last > 45.0 {
+                self.m.crowd_called.insert(i, self.time);
+                let place = names::place(&self.map, r.center, r.center, false);
+                self.radio.say(&radio::crowd(n, &place), false);
+                return;
+            }
+        }
     }
 
     /// The radio calls out anyone who has grown into a monster.
@@ -871,7 +1214,8 @@ impl Game {
         if let Some((p, parts, pos)) = call {
             let from = me.unwrap_or(Vec3::ZERO);
             let d = pos - from;
-            let lines = radio::bounty(&self.name_of(p), parts, names::compass(d.x, d.z), d.length());
+            let place = names::place(&self.map, pos, from, true);
+            let lines = radio::bounty(&self.name_of(p), parts, &place, d.length());
             self.radio.say(&lines, false);
         }
     }
@@ -903,7 +1247,9 @@ impl Game {
                 let victim_name = self.name_of(*victim);
                 let killer_name = killer.filter(|k| k != victim).map(|k| self.name_of(k));
                 let wname = names::weapon_name(*weapon);
-                self.ui.kill_feed(killer_name.as_deref().unwrap_or("The Sink"), Team::Ffa, &victim_name, Team::Ffa, wname);
+                let kt = killer.filter(|k| k != victim).map_or(Team::Ffa, |k| self.team_of(k));
+                let vt = self.team_of(*victim);
+                self.ui.kill_feed(killer_name.as_deref().unwrap_or("The Sink"), kt, &victim_name, vt, wname);
                 if let Some(k) = killer.filter(|k| k != victim) {
                     if is_you(k) {
                         self.ui.hit_marker(HitKind::Kill);
@@ -919,7 +1265,7 @@ impl Game {
                     if !self.m.first_blood {
                         self.m.first_blood = true;
                         self.radio.say(&radio::first_blood(&kn, &victim_name, is_you(k)), true);
-                    } else if n == 3 || n == 5 || n == 8 || n == 12 {
+                    } else if (n == 3 || n == 5 || n == 8 || n == 12) && !self.is_raider(k) {
                         self.radio.say(&radio::streak(&kn, n, is_you(k)), is_you(k));
                     }
                 }
@@ -990,8 +1336,8 @@ impl Game {
                 self.end_raid(*waves_survived, *reason == arena_core::raid::LossReason::OutpostFell);
             }
             Event::BossSpawned { pos, .. } => {
-                let d = *pos - my_pos;
-                self.radio.say(&radio::boss_spawned(names::compass(d.x, d.z)), true);
+                let place = names::place(&self.map, *pos, my_pos, true);
+                self.radio.say(&radio::boss_spawned(&place), true);
             }
             Event::BossModuleLost { part, .. } => self.radio.say(&radio::boss_module(names::part_name(*part)), false),
             Event::BossCoreExposed { .. } => self.radio.say(&radio::boss_core(), true),
@@ -1004,19 +1350,23 @@ impl Game {
                 self.radio.say(&radio::boss_down(k.as_deref(), mine), true);
             }
             Event::AirStrikeCalled { player, target, .. } => {
-                let d = *target - my_pos;
-                self.radio.say(&radio::air_strike(is_you(*player), names::compass(d.x, d.z)), true);
+                let place = names::place(&self.map, *target, my_pos, false);
+                self.radio.say(&radio::air_strike(is_you(*player), &place), true);
             }
             Event::HazardExploded { pos, .. } => {
-                let d = *pos - my_pos;
-                self.radio.say(&radio::hazard(names::compass(d.x, d.z), d.length() < 25.0), false);
+                let place = names::place(&self.map, *pos, my_pos, false);
+                self.radio.say(&radio::hazard(&place, pos.distance(my_pos) < 25.0), false);
             }
             Event::Respawned { player, .. } if is_you(*player) => {
                 self.ui.show_respawn(None, None);
                 self.m.killer = None;
                 self.m.killed_by = None;
             }
+            Event::StormIncoming { in_seconds } => self.radio.say(&radio::storm_incoming(*in_seconds), true),
+            Event::StormStarted { .. } => self.radio.say(&radio::storm_started(), false),
+            Event::StormEnded => self.radio.say(&radio::storm_ended(), false),
             Event::MatchEnded { winner } => self.end_match(*winner),
+            Event::TeamMatchEnded { team } => self.end_team(*team),
             _ => {}
         }
     }
@@ -1041,6 +1391,30 @@ impl Game {
         self.radio.say(&radio::match_over(wname.as_deref(), you_won), true);
     }
 
+    fn end_team(&mut self, team: Option<u8>) {
+        if self.m.ended {
+            return;
+        }
+        let mine = self.you().map(|y| self.team_of(y));
+        let (title, winner) = match team {
+            Some(0) => ("Rustbacks take the Sink", Some(Team::Rustbacks)),
+            Some(1) => ("Dust Saints take the Sink", Some(Team::DustSaints)),
+            _ => ("Dead even", None),
+        };
+        let note = match self.session {
+            Some(Session::Online(_)) => "Next round rolls out in a few seconds",
+            _ => "Again for another round",
+        };
+        self.show_end_team(title, note, winner);
+        let won = winner.map(|w| Some(w) == mine);
+        let name = match winner {
+            Some(Team::Rustbacks) => "Rustbacks",
+            Some(Team::DustSaints) => "Dust Saints",
+            _ => "",
+        };
+        self.radio.say(&radio::team_over(won, name), true);
+    }
+
     fn end_raid(&mut self, waves: u16, outpost_fell: bool) {
         if self.m.ended {
             return;
@@ -1052,6 +1426,10 @@ impl Game {
     }
 
     fn show_end(&mut self, title: &str, note: &str) {
+        self.show_end_team(title, note, None);
+    }
+
+    fn show_end_team(&mut self, title: &str, note: &str, winner: Option<Team>) {
         self.m.ended = true;
         self.m.podium_pending = true;
         self.screen = Screen::End;
@@ -1075,7 +1453,7 @@ impl Game {
             .enumerate()
             .map(|(i, r)| EndRow {
                 name: r.name.clone(),
-                team: Team::Ffa,
+                team: r.team,
                 kills: r.kills,
                 deaths: r.deaths,
                 tag: if i == 0 {
@@ -1087,7 +1465,20 @@ impl Game {
                 },
             })
             .collect();
-        self.ui.show_endscreen(title, None, &end, note);
+        self.ui.show_endscreen(title, winner, &end, note);
+    }
+
+    /// Rustbacks / Dust Saints in Team Brawl; everyone else a crew.
+    fn team_of(&self, id: PlayerId) -> Team {
+        let Some(snap) = self.net.as_ref().and_then(|n| n.state().world.as_ref()) else { return Team::Ffa };
+        if snap.teams.is_empty() {
+            return Team::Ffa;
+        }
+        match snap.tank(id).map(|t| t.team) {
+            Some(0) => Team::Rustbacks,
+            Some(1) => Team::DustSaints,
+            _ => Team::Ffa,
+        }
     }
 
     fn is_raider(&self, id: PlayerId) -> bool {
@@ -1151,6 +1542,29 @@ impl Game {
 impl Default for Game {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// The nearest paint-set entry to a Garage colour.
+fn paint_index(hex: &str) -> u8 {
+    let Ok(c) = u32::from_str_radix(hex.trim_start_matches('#'), 16) else { return 0 };
+    let rgb = |v: u32| [(v >> 16) & 255, (v >> 8) & 255, v & 255].map(|x| x as i32);
+    let want = rgb(c);
+    crate::world::PAINT_SET
+        .iter()
+        .enumerate()
+        .min_by_key(|(_, p)| {
+            let q = rgb(**p);
+            (0..3).map(|i| (q[i] - want[i]).pow(2)).sum::<i32>()
+        })
+        .map_or(0, |(i, _)| i as u8)
+}
+
+fn render_quality(q: crate::ui::Quality) -> Quality {
+    match q {
+        crate::ui::Quality::Low => Quality::Low,
+        crate::ui::Quality::Medium => Quality::Medium,
+        crate::ui::Quality::High | crate::ui::Quality::Ultra => Quality::High,
     }
 }
 

@@ -301,6 +301,17 @@ impl Style {
         }
     }
 
+    /// The chassis this style takes from the Garage.
+    pub fn chassis(self) -> crate::garage::ChassisClass {
+        use crate::garage::ChassisClass::*;
+        match self {
+            Style::Brawler => Hauler,
+            Style::Sniper => Brawler,
+            Style::Scavenger => Hauler,
+            Style::Speedster => Scout,
+        }
+    }
+
     fn range(self, base: f32) -> f32 {
         match self {
             Style::Brawler => base * 0.55,
@@ -379,7 +390,8 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             }
             let qhp = HullPose::of(&sim.phys, q.tank.body);
             let d = qhp.pos.distance(pos);
-            if d > bt.sight_range {
+            let storm = 1.0 + (t.storm.sight_mult - 1.0) * sim.storm.intensity;
+            if d > bt.sight_range * storm {
                 continue;
             }
             // Sight to the hull or the turret top (the no-peeking rule: walls block, low cover doesn't).

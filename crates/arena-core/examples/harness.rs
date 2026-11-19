@@ -20,6 +20,8 @@ struct MatchStats {
     branch_picks: BTreeMap<String, u32>,
     /// (loadout, won)
     loadouts: Vec<(String, bool)>,
+    /// (chassis, kills, deaths, won)
+    chassis: Vec<(String, u32, u32, bool)>,
     distance: f32,
     parts_off: u32,
     combos: u32,
@@ -44,6 +46,13 @@ fn run_match(seed: u64) -> MatchStats {
     let mut sim = Sim::new(seed, Map::the_sink(seed), Tuning::default());
     for k in 0..8 {
         sim.add_bot(arena_core::bots::BOT_NAMES[k], 0.3 + 0.1 * (k % 6) as f32);
+    }
+    // Chassis rotate independently of bot style so the chassis table compares like with like.
+    let t = sim.tuning.clone();
+    for (k, p) in sim.players.iter_mut().enumerate() {
+        let c = ChassisClass::ALL[(k + seed as usize) % 3];
+        p.loadout.chassis = c;
+        p.tank.set_class(&mut sim.phys, &t, c);
     }
     let mut st = MatchStats::default();
     let mut last: Vec<Vec3> = sim.players.iter().map(|p| sim.phys.body(p.tank.body).translation()).collect();
@@ -101,6 +110,9 @@ fn run_match(seed: u64) -> MatchStats {
             st.seconds = tick as f32 / 60.0;
             for p in &sim.players {
                 st.loadouts.push((loadout(&p.tank), w == Some(p.id)));
+            }
+            for p in &sim.players {
+                st.chassis.push((format!("{:?}", p.tank.class), p.kills, p.deaths, w == Some(p.id)));
             }
             break;
         }
@@ -161,6 +173,20 @@ fn main() {
     println!("per match: combos {:.1}, rare parts {:.1}, air strikes {:.2} ({:.2} kills), cover destroyed {:.1}, hazard blasts {:.1}, launches {:.1}, containers toppled {:.1}",
         mean(&|s| s.combos as f32), mean(&|s| s.rares as f32), mean(&|s| s.strikes as f32), mean(&|s| s.strike_kills as f32),
         mean(&|s| s.cover_destroyed as f32), mean(&|s| s.hazards as f32), mean(&|s| s.launches as f32), mean(&|s| s.topples as f32));
+    let mut ch: BTreeMap<String, (u32, u32, u32, u32)> = BTreeMap::new();
+    for s in &r {
+        for (c, k, d, w) in &s.chassis {
+            let e = ch.entry(c.clone()).or_default();
+            e.0 += 1;
+            e.1 += k;
+            e.2 += d;
+            e.3 += *w as u32;
+        }
+    }
+    println!("chassis (players, kills/match, deaths/match, win rate):");
+    for (c, (n, k, d, w)) in &ch {
+        println!("  {c:8} {n:5}  {:.2}  {:.2}  {:.1}%", *k as f32 / *n as f32, *d as f32 / *n as f32, 100.0 * *w as f32 / *n as f32);
+    }
     let mut picks: BTreeMap<String, u32> = BTreeMap::new();
     for s in &r {
         for (k, v) in &s.branch_picks {

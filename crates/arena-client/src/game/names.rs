@@ -32,6 +32,16 @@ pub fn part_name(p: PartKind) -> &'static str {
         SmokeLauncher => "Smoke launcher",
         MineLayer => "Mine layer",
         RepairRig => "Repair rig",
+        RigCannons => "twin cannons",
+        RigRockets => "rocket pods",
+        RigFlamer => "flamer",
+        RigPlateLeft => "left plate",
+        RigPlateRight => "right plate",
+        RigPlateFront => "front plate",
+        RigEngineLeft => "left engine",
+        RigEngineRight => "right engine",
+        RigMast => "mast",
+        #[allow(unreachable_patterns)]
         _ => "War rig part",
     }
 }
@@ -134,4 +144,44 @@ pub fn compass(dx: f32, dz: f32) -> &'static str {
     let a = if a < 0.0 { a + 360.0 } else { a };
     const P: [&str; 8] = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
     P[(((a + 22.5) / 45.0) as usize) % 8]
+}
+
+/// Where something is, for the radio: the named region it sits in
+/// ("on the Plateau"), else a compass direction from `from` ("to the north").
+pub fn place(map: &arena_core::Map, pos: glam::Vec3, from: glam::Vec3, moving: bool) -> String {
+    let flat = |v: glam::Vec3| glam::Vec2::new(v.x, v.z);
+    let inside = map
+        .regions
+        .iter()
+        .filter(|r| flat(r.center).distance(flat(pos)) < r.radius)
+        .min_by(|a, b| flat(a.center).distance(flat(pos)).total_cmp(&flat(b.center).distance(flat(pos))));
+    if let Some(r) = inside {
+        return format!("{} {}", region_preposition(&r.name), region_noun(&r.name));
+    }
+    let d = pos - from;
+    if moving {
+        format!("heading {}", compass(d.x, d.z))
+    } else {
+        format!("to the {}", compass(d.x, d.z))
+    }
+}
+
+fn region_preposition(name: &str) -> &'static str {
+    let n = name.to_lowercase();
+    if n.contains("highway") || n.contains("beach") || n.contains("plateau") {
+        "on"
+    } else if n.contains("yard") {
+        "in"
+    } else {
+        "at"
+    }
+}
+
+/// "Highway 9" stays bare; the rest take "the".
+fn region_noun(name: &str) -> String {
+    if name.chars().any(|c| c.is_ascii_digit()) || name.to_lowercase().starts_with("the ") {
+        name.to_string()
+    } else {
+        format!("the {name}")
+    }
 }

@@ -34,6 +34,10 @@ pub struct Tuning {
     pub war_rig: TankTuning,
     /// Raider Waves (co-op PvE).
     pub raid: RaidTuning,
+    /// Garage chassis classes.
+    pub chassis: ChassisTuning,
+    /// The sandstorm (brawl modes).
+    pub storm: StormTuning,
 }
 
 impl Tuning {
@@ -933,6 +937,8 @@ impl Default for Tuning {
             technical: TankTuning::technical(),
             war_rig: TankTuning::war_rig(),
             raid: RaidTuning::default(),
+            chassis: ChassisTuning::default(),
+            storm: StormTuning::default(),
         }
     }
 }
@@ -1114,6 +1120,74 @@ impl Default for RaidTuning {
             rig_flame_dps: 70.0,
             rig_blind_error_deg: 9.0,
             raider_aim_error_mult: 1.6,
+        }
+    }
+}
+
+/// One Garage chassis class, applied on top of the tank chassis.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ClassStat {
+    /// Hitpoints of the bare chassis (replaces `tank.base_health`).
+    pub health: f32,
+    /// Multiplier on the bare hull mass (lighter = faster, flips sooner).
+    pub mass_mult: f32,
+    /// Extra top-speed multiplier on top of what the mass gives.
+    pub speed_mult: f32,
+    pub traverse_mult: f32,
+    /// Scrap of a kind per tier.
+    pub scrap_per_tier: u8,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct ChassisTuning {
+    pub scout: ClassStat,
+    pub brawler: ClassStat,
+    pub hauler: ClassStat,
+}
+
+impl Default for ChassisTuning {
+    fn default() -> Self {
+        Self {
+            scout: ClassStat { health: 330.0, mass_mult: 0.72, speed_mult: 1.12, traverse_mult: 1.3, scrap_per_tier: 3 },
+            brawler: ClassStat { health: 400.0, mass_mult: 1.0, speed_mult: 1.0, traverse_mult: 1.15, scrap_per_tier: 3 },
+            hauler: ClassStat { health: 430.0, mass_mult: 1.4, speed_mult: 1.0, traverse_mult: 0.75, scrap_per_tier: 2 },
+        }
+    }
+}
+
+/// The sandstorm: about once per brawl match.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct StormTuning {
+    /// The storm arrives between these match times, s (0 disables storms).
+    pub earliest: f32,
+    pub latest: f32,
+    pub warning: f32,
+    pub duration_min: f32,
+    pub duration_max: f32,
+    /// Seconds to build up and to die down.
+    pub ramp: f32,
+    /// Bot sight range at full intensity (fraction of normal).
+    pub sight_mult: f32,
+    /// Extra shot spread at full intensity, deg.
+    pub spread_deg: f32,
+    /// Scrap sites respawn this many times faster at full intensity.
+    pub scrap_respawn_mult: f32,
+}
+
+impl Default for StormTuning {
+    fn default() -> Self {
+        Self {
+            earliest: 120.0,
+            latest: 300.0,
+            warning: 10.0,
+            duration_min: 45.0,
+            duration_max: 60.0,
+            ramp: 5.0,
+            sight_mult: 0.25,
+            spread_deg: 1.2,
+            scrap_respawn_mult: 3.0,
         }
     }
 }

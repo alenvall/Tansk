@@ -109,6 +109,8 @@ pub struct Fx {
     max_particles: usize,
     /// Where each tank was last seen (for events without a position).
     last_pos: HashMap<PlayerId, Vec3>,
+    /// Sandstorm intensity 0..1 (set by the world renderer from the look).
+    pub storm: f32,
 }
 
 const MAX_PARTICLES: usize = 5000;
@@ -133,6 +135,7 @@ impl Fx {
             timers: HashMap::new(),
             max_particles: MAX_PARTICLES,
             last_pos: HashMap::new(),
+            storm: 0.0,
         }
     }
 
@@ -403,8 +406,10 @@ impl Fx {
             f.age += dt;
         }
         self.flashes.retain(|f| f.age < f.life);
+        // A storm wipes the ruts away fast.
+        let rut_dt = dt * (1.0 + 10.0 * self.storm);
         for r in &mut self.ruts {
-            r.age += dt;
+            r.age += rut_dt;
         }
         self.ruts.retain(|r| r.age < RUT_LIFE);
         if self.ruts.len() > MAX_RUTS {
@@ -557,6 +562,60 @@ impl Fx {
                 }
             }
         }
+        // Sandstorm: dust sheets and streaks blowing past the camera.
+        if self.storm > 0.01 {
+            if let Some(cam) = world.camera {
+                let wind = Vec3::new(1.0, 0.0, 0.35).normalize() * (10.0 + 14.0 * self.storm);
+                let n = self.every(9990, 0.05 / self.storm, dt);
+                for _ in 0..n {
+                    let off = Vec3::new(self.rand() - 0.5, 0.0, self.rand() - 0.5) * 80.0 - wind.normalize() * 25.0;
+                    let p = cam.eye + off + Vec3::Y * (self.rand() * 10.0 - 3.0);
+                    let c = Vec3::new(0.82, 0.58, 0.36);
+                    let size = 5.0 + 7.0 * self.rand();
+                    self.spawn(Kind::Puff, p, wind + Vec3::Y * 0.4, 3.5, (size, size * 1.6), (c, c * 1.05), 0.32 * self.storm, 0.0, 0.0, 0.0);
+                }
+                let m = self.every(9991, 0.012 / self.storm, dt);
+                for _ in 0..m {
+                    let off = Vec3::new(self.rand() - 0.5, 0.0, self.rand() - 0.5) * 40.0;
+                    let p = cam.eye + off + Vec3::Y * (self.rand() * 6.0 - 2.0);
+                    let c = Vec3::new(0.7, 0.5, 0.32);
+                    self.spawn(Kind::Cable, p, wind * 1.6, 0.8, (0.03, 0.03), (c, c), 0.5 * self.storm, 0.0, 0.0, 0.0);
+                }
+            }
+        }
+        // Battle damage: engine smoke under half health, black smoke and
+        // flames under a quarter; failing parts spark.
+        for t in world.tanks.iter().filter(|t| t.alive) {
+            let health = world.health.iter().find(|h| h.0 == t.player).map(|h| h.1).unwrap_or(1.0);
+            let hull = t.hull_transform();
+            if health < 0.5 {
+                let deck = hull.transform_point3(Vec3::new(-1.9, 0.9, 0.2));
+                let rate = 0.25 * (health / 0.5).max(0.15);
+                let n = self.every(12000 + t.player as u32, rate, dt);
+                for _ in 0..n {
+                    let j = self.rand_dir() * 0.4;
+                    let dark = if health < 0.25 { 0.9 } else { 0.45 + 0.4 * (0.5 - health) };
+                    self.smoke(deck + j, Vec3::new(0.0, 2.5, 0.0) + j, 0.9, dark, 3.0);
+                    if health < 0.25 {
+                        self.fire(deck + j * 0.5, Vec3::Y * 2.0, 0.55, 0.35);
+                    }
+                }
+            }
+            for (_, kind, ph) in world.part_health.iter().filter(|h| h.0 == t.player && h.2 < 0.35) {
+                let def = arena_core::part_def(*kind);
+                let Some(hb) = def.hitboxes.first() else { continue };
+                let frame = match def.frame {
+                    arena_core::Frame::Hull => hull,
+                    arena_core::Frame::Turret => t.turret_transform(),
+                    arena_core::Frame::Gun => t.gun_transform(),
+                };
+                let p = frame.transform_point3(hb.center);
+                if self.every(13000 + t.player as u32 * 32 + *kind as u32, 0.15 + ph, dt) > 0 {
+                    self.sparks(p, Vec3::Y, 4, 6.0);
+                    self.smoke(p, Vec3::Y * 1.5, 0.4, 0.7, 1.2);
+                }
+            }
+        }
         // Smoke screens: keep each cloud filled while it lives.
         for (id, c, r, life) in &world.smokes {
             let n = self.every(9000 + *id as u32, 0.06, dt);
@@ -611,6 +670,7 @@ impl Fx {
             let axis = match p.kind {
                 Kind::Streak if p.heat > 1.5 => p.vel.normalize_or_zero() * p.heat,
                 Kind::Streak => p.vel * 0.03,
+                Kind::Cable => p.vel * 0.15,
                 _ => Vec3::ZERO,
             };
             let d = p.pos.distance_squared(eye);

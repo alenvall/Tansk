@@ -59,3 +59,49 @@ impl Controls {
         self.mouse = (0.0, 0.0);
     }
 }
+
+/// One gamepad in the standard mapping (the browser's Gamepad API).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Pad {
+    /// Left x, left y, right x, right y; -1..1, y down.
+    pub axes: [f32; 4],
+    /// Button values 0..1 (A B X Y LB RB LT RT Back Start LS RS Up Down Left Right).
+    pub buttons: [f32; 16],
+}
+
+pub mod pad {
+    pub const A: usize = 0;
+    pub const B: usize = 1;
+    pub const Y: usize = 3;
+    pub const LB: usize = 4;
+    pub const RB: usize = 5;
+    pub const LT: usize = 6;
+    pub const RT: usize = 7;
+    pub const BACK: usize = 8;
+    pub const START: usize = 9;
+    pub const LS: usize = 10;
+    pub const UP: usize = 12;
+    pub const LEFT: usize = 14;
+    pub const RIGHT: usize = 15;
+}
+
+impl Pad {
+    pub fn down(&self, b: usize) -> bool {
+        self.buttons.get(b).is_some_and(|v| *v > 0.5)
+    }
+
+    /// A stick axis with a radial-ish deadzone and the rest rescaled.
+    pub fn axis(&self, i: usize) -> f32 {
+        let v = self.axes[i];
+        let dz = 0.15;
+        if v.abs() < dz {
+            0.0
+        } else {
+            (v.abs() - dz) / (1.0 - dz) * v.signum()
+        }
+    }
+
+    pub fn active(&self) -> bool {
+        self.axes.iter().any(|a| a.abs() > 0.3) || self.buttons.iter().any(|b| *b > 0.5)
+    }
+}

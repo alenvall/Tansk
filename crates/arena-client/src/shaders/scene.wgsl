@@ -35,7 +35,7 @@ struct Globals {
     fog: vec4<f32>,
     // x haze density / m, y height-fog density at y = 0, z height falloff / m, w Mie g
     fog2: vec4<f32>,
-    // x map resolution, y PCF spacing (texels), z sun glow strength in the air, w unused
+    // x map resolution, y PCF spacing (texels), z sun glow strength in the air, w sandstorm 0..1
     shadow: vec4<f32>,
     // cascade far distances (xyz)
     splits: vec4<f32>,
@@ -242,7 +242,7 @@ fn sand_ground(p: vec3<f32>, fw: vec3<f32>) -> Surface {
     return s;
 }
 
-fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec3<f32>, edge: f32, camo: f32) -> Surface {
+fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec3<f32>, edge: f32, camo: f32, damage: f32) -> Surface {
     // Painted, not plastic: broad brush drift and a faint stipple.
     let drift = blotch3(lp * 0.45);
     let stipple = noise3(lp * 9.0);
@@ -270,7 +270,25 @@ fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec
     let dust = max(dust_top * mix(0.55, 0.3, camo), dust_low * 0.6);
     c = mix(c, DUST, dust);
 
-    var s = surface(c, 7.0, (0.08 + 1.1 * worn) * (1.0 - rust * 0.8) * (1.0 - dust * 0.8), 0.9 * (1.0 - dust * 0.5));
+    // Battle damage: paint knocked off to bare metal, then soot and
+    // scorch spreading as the machine nears the end.
+    var bump = vec3<f32>(0.0);
+    var spec_kill = 0.0;
+    if (damage > 0.02) {
+        let chips = paint_edge(blotch3(lp * 1.6 + vec3<f32>(17.0, 5.0, 3.0)) + damage * 0.55, 0.88, 0.04);
+        c = mix(c, vec3<f32>(0.5, 0.48, 0.45) * (0.8 + 0.3 * noise3(lp * 7.0)), chips);
+        let scorch = paint_edge(blotch3(lp * 0.6 + vec3<f32>(31.0, 2.0, 9.0)) + damage * 0.75, 1.02, 0.1);
+        let soot = vec3<f32>(0.055, 0.05, 0.045) * (0.8 + 0.4 * noise3(lp * 4.0));
+        c = mix(c, soot, scorch);
+        spec_kill = scorch;
+        // Dents: the normal pushed about by a coarse noise field.
+        let e = 0.15;
+        let q = lp * 1.8;
+        let h0 = noise3(q);
+        bump = vec3<f32>(noise3(q + vec3<f32>(e, 0.0, 0.0)) - h0, noise3(q + vec3<f32>(0.0, e, 0.0)) - h0, noise3(q + vec3<f32>(0.0, 0.0, e)) - h0) * damage * 1.6;
+    }
+    var s = surface(c, 7.0, (0.08 + 1.1 * worn) * (1.0 - rust * 0.8) * (1.0 - dust * 0.8) * (1.0 - spec_kill), 0.9 * (1.0 - dust * 0.5));
+    s.bump = bump;
     return s;
 }
 
@@ -387,7 +405,8 @@ fn sun_visibility(world: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
     let v = cascade_visibility(layer, world, n, n_dot_l, texel, range);
     // Fade out past the last cascade.
     let fade = smoothstep(globals.splits.z * 0.85, globals.splits.z, d);
-    return mix(v.x, 1.0, fade);
+    // A sandstorm washes the shadows out.
+    return mix(mix(v.x, 1.0, fade), 1.0, 0.65 * globals.shadow.w);
 }
 
 fn sphere_occlusion(p: vec3<f32>, n: vec3<f32>) -> f32 {
@@ -439,8 +458,9 @@ fn sky_at(dir: vec3<f32>) -> vec3<f32> {
     let toward = max(dot(dir, globals.sun_dir.xyz), 0.0);
     // A modest halo round the sun, warmer near the horizon.
     c = c + vec3<f32>(1.0, 0.74, 0.45) * (0.35 * pow(toward, 16.0) * (1.0 - 0.5 * y) + 0.7 * pow(toward, 120.0));
-    c = c + vec3<f32>(1.0, 0.88, 0.7) * 40.0 * smoothstep(0.99935, 0.9996, toward);
-    return c;
+    c = c + vec3<f32>(1.0, 0.88, 0.7) * 40.0 * smoothstep(0.99935, 0.9996, toward) * (1.0 - globals.shadow.w);
+    // Storm: the sky turns to amber dust.
+    return mix(c, horizon * (0.95 + 0.15 * y), min(globals.shadow.w * 1.35, 1.0));
 }
 
 // How much air lies along a view ray of length `d` from the eye: distance
@@ -497,9 +517,9 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
         s = sand_ground(in.world, fw);
         ao = sphere_occlusion(in.world, n);
     } else if (material == 0u) {
-        s = painted_steel(in.color, wear, in.local, height, n, edge, 0.0);
+        s = painted_steel(in.color, wear, in.local, height, n, edge, 0.0, 0.0);
     } else if (material == 5u) {
-        s = painted_steel(in.color, wear, in.local, height, n, edge, 1.0);
+        s = painted_steel(in.color, wear, in.local, height, n, edge, 1.0, in.iparams.w);
     } else if (material == 4u) {
         s = rock(in.world, n, face, edge);
         ao = sphere_occlusion(in.world, n);

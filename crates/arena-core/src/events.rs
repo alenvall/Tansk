@@ -138,4 +138,10 @@ pub enum Event {
     BossDefeated { player: PlayerId, killer: Option<PlayerId>, seconds: f32 },
     /// Team Brawl over (None on a draw).
     TeamMatchEnded { team: Option<u8> },
+    /// A sandstorm arrives in `in_seconds` (radio warning, wind rising).
+    StormIncoming { in_seconds: f32 },
+    StormStarted { duration: f32 },
+    StormEnded,
+    /// HONK. `horn` is the player's Garage horn.
+    Horn { player: PlayerId, horn: u8 },
 }

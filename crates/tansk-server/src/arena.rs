@@ -279,7 +279,7 @@ impl ArenaRoom {
 
         self.sim.step();
         self.events.extend(self.sim.drain_events());
-        if matches!(self.sim.phase, Phase::Ended { .. }) {
+        if matches!(self.sim.phase, Phase::Ended { .. } | Phase::TeamWon { .. }) {
             self.ended_for += 1;
             if self.ended_for >= END_TICKS {
                 self.ended_for = 0;
@@ -366,7 +366,7 @@ impl ArenaRoom {
         self.fill_bots();
         let mut info = self.info.lock().unwrap();
         info.humans = self.humans.len();
-        info.ended = matches!(self.sim.phase, Phase::Ended { .. } | Phase::Defeated { .. });
+        info.ended = matches!(self.sim.phase, Phase::Ended { .. } | Phase::Defeated { .. } | Phase::TeamWon { .. });
     }
 }
 

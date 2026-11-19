@@ -103,6 +103,8 @@ pub struct Look {
     pub contrast: f32,
     /// 0 ACES, 1 AgX.
     pub curve: u32,
+    /// Sandstorm intensity 0..1 (see `Renderer::set_storm`).
+    pub storm: f32,
 }
 
 impl Look {
@@ -167,6 +169,7 @@ impl Default for Look {
             bloom: 0.16,
             bloom_threshold: 0.85,
             contrast: 1.1,
+            storm: 0.0,
             curve: 0,
         }
     }
@@ -729,6 +732,13 @@ impl Renderer {
         log::info!("quality: {quality:?} {:?}", self.settings);
     }
 
+    /// Sandstorm intensity 0..1: thick warm dust, short visibility, a
+    /// muted sun, soft shadows, an amber sky. Effects add dust sheets and
+    /// wipe ruts faster (the world renderer reads it from the look).
+    pub fn set_storm(&mut self, intensity: f32) {
+        self.look.storm = intensity.clamp(0.0, 1.0);
+    }
+
     /// Feeds the last frame's wall time; adjusts the render scale (between
     /// 0.6 and the preset's) to hold `frame_budget`.
     #[allow(dead_code)] // wired to the Settings menu by the game layer
@@ -913,6 +923,22 @@ impl Renderer {
         }
         let shadow_size = self.settings.shadow_size as f32;
         let texel = |r: f32| 2.0 * r / shadow_size;
+        // The storm bends the look: everything below reads `l`.
+        let s = look.storm;
+        let storm_dust = Vec3::new(0.78, 0.5, 0.3);
+        let mut l = look.clone();
+        if s > 0.0 {
+            l.haze = look.haze.lerp(storm_dust * 1.1, s);
+            l.haze_start = look.haze_start + (4.0 - look.haze_start) * s;
+            l.haze_density = look.haze_density * (1.0 + 30.0 * s * s) + 0.004 * s;
+            l.height_fog = look.height_fog * (1.0 + 10.0 * s);
+            l.height_falloff = look.height_falloff * (1.0 - 0.6 * s);
+            l.sun_color = look.sun_color.lerp(Vec3::new(1.0, 0.62, 0.38) * 1.2, s);
+            l.sky_color = look.sky_color.lerp(storm_dust * 0.7, s);
+            l.ground_color = look.ground_color.lerp(storm_dust * 0.8, s * 0.6);
+            l.air_glow = look.air_glow * (1.0 + 2.0 * s);
+        }
+        let look = &l;
         let globals = Globals {
             view_proj: view_proj.to_cols_array_2d(),
             inv_view_proj: view_proj.inverse().to_cols_array_2d(),
@@ -926,7 +952,7 @@ impl Renderer {
             ground_color: look.ground_color.extend(0.0).to_array(),
             fog: look.haze.extend(look.haze_start).to_array(),
             fog2: [look.haze_density, look.height_fog, look.height_falloff, look.mie_g],
-            shadow: [shadow_size, look.shadow_softness, look.air_glow, 0.0],
+            shadow: [shadow_size, look.shadow_softness, look.air_glow, look.storm],
             splits: [look.splits[0], look.splits[1], look.splits[2], 0.0],
             texels: [texel(cascades[0].2), texel(cascades[1].2), texel(cascades[2].2), 0.0],
             ranges: [2.0 * cascades[0].2 + SHADOW_BACK, 2.0 * cascades[1].2 + SHADOW_BACK, 2.0 * cascades[2].2 + SHADOW_BACK, 0.0],

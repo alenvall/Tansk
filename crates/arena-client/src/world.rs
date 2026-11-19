@@ -132,6 +132,10 @@ pub struct RenderWorld {
     pub raid: Option<(Vec3, f32, f32)>,
     /// Bosses whose core is exposed (glowing and smoking).
     pub exposed_cores: Vec<PlayerId>,
+    /// Hull health 0..1 per tank (battle damage, smoke, fire).
+    pub health: Vec<(PlayerId, f32)>,
+    /// Part health 0..1 (scorch, sparks before they break off).
+    pub part_health: Vec<(PlayerId, PartKind, f32)>,
 }
 
 fn gun_part(g: GunKind) -> PartKind {
@@ -226,6 +230,8 @@ impl RenderWorld {
                 .collect(),
             raid: snap.raid.as_ref().map(|r| (Vec3::from(r.outpost), r.radius, r.health as f32 / r.max_health.max(1) as f32)),
             exposed_cores: snap.bosses.iter().filter(|b| b.core_exposed).map(|b| b.player).collect(),
+            health: snap.tanks.iter().map(|t| (t.player, t.health as f32 / t.max_health.max(1) as f32)).collect(),
+            part_health: snap.tanks.iter().flat_map(|t| t.parts.iter().map(move |p| (t.player, p.kind, p.health as f32 / 255.0))).collect(),
             shields: snap.tanks.iter().filter(|t| t.alive && t.shield > 0).map(|t| (t.player, t.shield as f32 / 255.0)).collect(),
             flaming: snap.tanks.iter().filter(|t| t.alive && t.flaming).map(|t| t.player).collect(),
         }
@@ -291,6 +297,9 @@ pub struct WorldRenderer {
     scene_meshes: Vec<MeshId>,
     /// The current map (ground heights for markers).
     map: Option<Map>,
+    /// Wreck props, kept past the sim's lifetime and then sunk:
+    /// prop id -> (pose, seconds since first seen, seconds since gone).
+    wrecks: HashMap<u16, (Mat4, f32, Option<f32>)>,
 }
 
 impl WorldRenderer {
@@ -308,6 +317,7 @@ impl WorldRenderer {
             tuning: arena_core::Tuning::default(),
             scene_meshes: Vec::new(),
             map: None,
+            wrecks: HashMap::new(),
         }
     }
 
@@ -647,7 +657,48 @@ impl WorldRenderer {
         }
         let r = &mut self.renderer;
         let lib = &mut self.lib;
+        // Wrecks: track each one, hold it a while after the sim drops it,
+        // then sink it into the sand.
+        for w in self.wrecks.values_mut() {
+            w.1 += dt;
+            if let Some(g) = &mut w.2 {
+                *g += dt;
+            }
+        }
+        for p in world.props.iter().filter(|p| p.kind == PropKind::Wreck) {
+            let e = self.wrecks.entry(p.id).or_insert((Mat4::IDENTITY, 0.0, None));
+            e.0 = Mat4::from_rotation_translation(p.rot, p.pos);
+            e.2 = None;
+        }
+        for (id, w) in self.wrecks.iter_mut() {
+            if w.2.is_none() && !world.props.iter().any(|p| p.id == *id) {
+                w.2 = Some(0.0);
+            }
+        }
+        self.wrecks.retain(|_, w| w.2.is_none_or(|g| g < 12.0));
+        let charred = 0x2c2622;
+        for (id, (pose, _age, gone)) in &self.wrecks {
+            let sink = gone.map(|g| ((g - 8.0) / 4.0).clamp(0.0, 1.0)).unwrap_or(0.0);
+            let pose = Mat4::from_translation(Vec3::Y * -2.6 * sink) * *pose;
+            let hull = lib.get(r, "wreck:hull", || tank::hull_mesh(charred));
+            instances.push(Instance { mesh: hull, model: pose, params: Vec4::new(0.0, 0.0, 0.0, 1.0) });
+            // The turret, blown off and lying beside the hull.
+            let side = if id % 2 == 0 { 1.0 } else { -1.0 };
+            let turret_pose = pose
+                * Mat4::from_rotation_translation(
+                    Quat::from_rotation_y(0.9 * side) * Quat::from_rotation_x(0.5 * side) * Quat::from_rotation_z(0.25),
+                    Vec3::new(-1.2, -0.35, side * 3.4),
+                );
+            let turret = lib.get(r, "wreck:turret", || tank::turret_mesh(charred));
+            instances.push(Instance { mesh: turret, model: turret_pose, params: Vec4::new(0.0, 0.0, 0.0, 1.0) });
+        }
+
         for t in &world.tanks {
+            if !t.alive {
+                continue;
+            }
+            let health = world.health.iter().find(|h| h.0 == t.player).map(|h| h.1).unwrap_or(1.0);
+            let damage = (1.0 - health).clamp(0.0, 1.0);
             let anim = self.anims.entry(t.player).or_default();
             for s in 0..2 {
                 anim.tread[s] = (anim.tread[s] + t.track_speed[s] * dt).rem_euclid(1000.0);
@@ -655,7 +706,7 @@ impl WorldRenderer {
             anim.seen = true;
             let col = if t.alive { t.colour } else { 0x2c2622 };
             let hull = t.hull_transform();
-            let params = Vec4::new(anim.tread[0], 0.0, anim.tread[1], 0.0);
+            let params = Vec4::new(anim.tread[0], 0.0, anim.tread[1], damage);
             let vehicle = world.vehicles.iter().find(|v| v.0 == t.player);
             let kind = vehicle.map(|v| v.1).unwrap_or(VehicleKind::Tank);
             if kind != VehicleKind::Tank {
@@ -713,11 +764,12 @@ impl WorldRenderer {
             }
             let hull_id = lib.get(r, &format!("hull:{col:x}"), || tank::hull_mesh(col));
             instances.push(Instance { mesh: hull_id, model: hull, params });
+            let dmg = Vec4::new(0.0, 0.0, 0.0, damage);
             let turret_id = lib.get(r, &format!("turret:{col:x}"), || tank::turret_mesh(col));
-            instances.push(Instance::new(turret_id, t.turret_transform()));
+            instances.push(Instance { mesh: turret_id, model: t.turret_transform(), params: dmg });
             let gun = t.gun;
             let gun_id = lib.get(r, &format!("gun:{gun:?}:{col:x}"), || parts::gun_mesh(gun, col));
-            instances.push(Instance::new(gun_id, t.gun_transform()));
+            instances.push(Instance { mesh: gun_id, model: t.gun_transform(), params: dmg });
             let wheel = lib.get(r, "wheel", tank::road_wheel_mesh);
             for (i, c) in t.wheels.iter().enumerate() {
                 let side = if i < 5 { -1.0 } else { 1.0 };
@@ -735,7 +787,9 @@ impl WorldRenderer {
                     arena_core::Frame::Turret => t.turret_transform(),
                     arena_core::Frame::Gun => t.gun_transform(),
                 };
-                instances.push(Instance::new(id, frame));
+                let part_health = world.part_health.iter().find(|h| h.0 == t.player && h.1 == p).map(|h| h.2).unwrap_or(1.0);
+                let part_damage = (1.0 - part_health).max(damage * 0.6).clamp(0.0, 1.0);
+                instances.push(Instance { mesh: id, model: frame, params: Vec4::new(0.0, 0.0, 0.0, part_damage) });
             }
             occluders.push(hull.transform_point3(Vec3::new(1.4, -0.1, 0.0)).extend(1.7));
             occluders.push(hull.transform_point3(Vec3::new(-1.4, -0.1, 0.0)).extend(1.7));
@@ -748,15 +802,8 @@ impl WorldRenderer {
                     lib.get(r, &format!("drum:{c:x}"), || props::oil_drum(c, 0.6))
                 }
                 PropKind::Debris(kind) => lib.get(r, &format!("debris:{kind:?}"), || centred(if parts::is_gun(kind) { parts::gun_mesh(kind, 0x3a3430) } else { parts::part_mesh(kind, 0x3a3430) })),
-                PropKind::Wreck => lib.get(r, "wreck", || {
-                    let mut m = tank::hull_mesh(0x2c2622);
-                    let t = tank::turret_mesh(0x2c2622);
-                    let base = m.vertices.len();
-                    m.vertices.extend(t.vertices.iter().copied());
-                    m.indices.extend(t.indices.iter().map(|i| i + base as u32));
-                    m.transform_from(base, tank::turret_local(0.6));
-                    m
-                }),
+                // Drawn above from the wreck tracker (held, then sunk).
+                PropKind::Wreck => continue,
                 PropKind::Container => lib.get(r, "container:loose", || props::container(Vec3::new(6.1, 1.3, 1.22), 0xb3302a)),
                 PropKind::Rubble(_) => lib.get(r, "rubble:chunk", || props::boulder(5, 0.8)),
                 _ => lib.get(r, "ball", || {
@@ -837,6 +884,7 @@ impl WorldRenderer {
         let sprites = self.fx.sprites(world, camera.eye, &ropes);
         let ruts = self.fx.ruts();
         self.fx.set_max_particles(self.renderer.quality_settings().max_particles);
+        self.fx.storm = self.renderer.look.storm;
         self.renderer.render(output, &camera, world.time, &instances, &sprites, &ruts, &blobs, &lights, &occluders);
     }
 }
@@ -1122,7 +1170,7 @@ mod shots {
             let (mut sim, _me) = arena_core::Sim::practice_raid(seed, 3, 0.7);
             wr.set_map(&arena_core::Map::the_sink(seed));
             let dt = arena_core::DT;
-            let mut world = RenderWorld::default();
+            let mut world: RenderWorld;
             let mut boss_ticks = 0;
             let limit = 60 * 60 * 20;
             let mut tick = 0;
@@ -1166,6 +1214,57 @@ mod shots {
             );
             world.dt = 0.0;
             log::info!("raid shot: boss {:?} at {focus:?}, {} tanks, raid {:?}", rig.is_some(), world.tanks.len(), world.raid);
+            world
+        });
+    }
+
+    /// A practice match under a sandstorm.
+    #[test]
+    #[ignore]
+    fn shots_storm() {
+        render("storm", |wr| {
+            let (mut sim, _) = arena_core::Sim::practice(7, 7, 0.7);
+            wr.set_map(&arena_core::Map::the_sink(7));
+            wr.renderer.set_storm(0.75);
+            let mut world = RenderWorld::default();
+            for tick in 0..(60 * 40) {
+                sim.step();
+                let ev = sim.drain_events();
+                if tick > 60 * 30 {
+                    world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                    let t = world.tanks.iter().find(|t| t.alive).map(|t| t.pos).unwrap_or(Vec3::ZERO);
+                    world.camera = Some(Camera::look(t + Vec3::new(-11.0, 4.5, 6.0), t + Vec3::Y * 1.5, 55.0));
+                    for e in &ev {
+                        wr.event(e, t);
+                    }
+                    wr.fx.update(arena_core::DT, &world);
+                }
+            }
+            world
+        });
+    }
+
+    /// Battle damage from full health to burning, and a wreck.
+    #[test]
+    #[ignore]
+    fn shots_damage() {
+        render("damage", |wr| {
+            let mut world = lineup_parts(wr);
+            world.tanks.clear();
+            for (i, h) in [1.0f32, 0.6, 0.35, 0.15].into_iter().enumerate() {
+                let t = parked_tank(i as PlayerId, tank::RUSTBACK, Vec3::new(-16.0 + i as f32 * 10.0, 0.0, 6.0), 0.5, PartKind::HeavyCannon, vec![PartKind::FlankPlates, PartKind::SensorMast]);
+                world.health.push((t.player, h));
+                world.part_health.push((t.player, PartKind::FlankPlates, h * 0.8));
+                world.part_health.push((t.player, PartKind::SensorMast, h));
+                world.tanks.push(t);
+            }
+            world.props.push(PropView { id: 9, kind: PropKind::Wreck, pos: Vec3::new(4.0, tank::HULL_Y - 0.1, -8.0), rot: Quat::from_rotation_y(0.7) * Quat::from_rotation_z(0.08) });
+            world.camera = Some(Camera::look(Vec3::new(0.0, 12.0, 26.0), Vec3::new(0.0, 0.5, 0.0), 55.0));
+            for _ in 0..90 {
+                world.dt = 1.0 / 30.0;
+                wr.fx.update(world.dt, &world);
+            }
+            world.dt = 0.0;
             world
         });
     }

@@ -84,27 +84,42 @@ pub fn you_died(killer: Option<&str>) -> Vec<String> {
     }
 }
 
-pub fn bounty(name: &str, parts: usize, dir: &str, dist: f32) -> Vec<String> {
+/// `place`: "on the Plateau", "in the Yard" or "heading north".
+pub fn bounty(name: &str, parts: usize, place: &str, dist: f32) -> Vec<String> {
     let m = (dist / 10.0).round() as i32 * 10;
     vec![
-        format!("Big one heading {dir}. {name}, {parts} parts and counting."),
-        format!("{name}'s built like a refinery. {m} metres {dir}. Take it apart."),
+        format!("Big one {place}. {name}, {parts} parts and counting."),
+        format!("{name}'s built like a refinery, {m} metres out, {place}. Take it apart."),
     ]
 }
 
-pub fn air_strike(by_you: bool, dir: &str) -> Vec<String> {
+/// Several tanks piling into one named place.
+pub fn crowd(n: usize, place: &str) -> Vec<String> {
+    let n = cap(&number(n as u16));
+    vec![format!("{n} crews scrapping {place}. Bring a big gun."), format!("{n} of them {place}. Lots of loose scrap soon.")]
+}
+
+pub fn air_strike(by_you: bool, place: &str) -> Vec<String> {
     if by_you {
         vec!["Flare's lit. Bombers inbound. Maybe don't stand under it.".into()]
     } else {
-        vec![format!("Flare's up, {dir}. Get clear of the red smoke."), format!("Air strike called, {dir}. Off the red smoke, now.")]
+        vec![format!("Flare's up {place}. Get clear of the red smoke."), format!("Air strike called {place}. Off the red smoke, now.")]
     }
 }
 
-pub fn hazard(dir: &str, close: bool) -> Vec<String> {
+pub fn hazard(place: &str, close: bool) -> Vec<String> {
     if close {
         vec!["Fuel went up right next to you. Eyebrows still on?".into()]
     } else {
-        vec![format!("Fuel went up to the {dir}. Lovely colour."), format!("Something big just cooked off, {dir}.")]
+        vec![format!("Fuel went up {place}. Lovely colour."), format!("Something big just cooked off {place}.")]
+    }
+}
+
+pub fn team_over(won: Option<bool>, team: &str) -> Vec<String> {
+    match won {
+        Some(true) => vec![format!("That's the match. {team} take the Sink. Drinks are warm.")],
+        Some(false) => vec![format!("That's the match. {team} have it. We'll get them next time.")],
+        None => vec!["That's the match. Dead even. Nobody's buying.".into()],
     }
 }
 
@@ -170,12 +185,12 @@ pub fn raid_lost(waves: u16, outpost_fell: bool) -> Vec<String> {
     }
 }
 
-pub fn boss_spawned(dir: &str) -> Vec<String> {
-    vec![format!("That's the War Rig, {dir}. Take its engines out."), "War Rig on the field. Plates first, then the core.".into()]
+pub fn boss_spawned(place: &str) -> Vec<String> {
+    vec![format!("That's the War Rig, {place}. Take its engines out."), "War Rig on the field. Plates first, then the core.".into()]
 }
 
 pub fn boss_module(part: &str) -> Vec<String> {
-    vec![format!("Rig's lost its {part}. Keep cutting."), format!("{part} off the rig. It noticed.")]
+    vec![format!("Rig's lost its {part}. Keep cutting."), format!("{} off the rig. It noticed.", cap(part))]
 }
 
 pub fn boss_core() -> Vec<String> {
@@ -188,4 +203,17 @@ pub fn boss_down(killer: Option<&str>, you: bool) -> Vec<String> {
         (false, Some(k)) => vec![format!("War Rig's down. {k} gets the drinks.")],
         (false, None) => vec!["War Rig's down. Nobody's sure who did it.".into()],
     }
+}
+
+pub fn storm_incoming(secs: f32) -> Vec<String> {
+    let n = number(secs.round().max(1.0) as u16);
+    vec![format!("Storm's coming in from the west. {} seconds.", cap(&n)), format!("Sand wall to the west. {} seconds, then you're blind.", cap(&n))]
+}
+
+pub fn storm_started() -> Vec<String> {
+    vec!["Here it comes. Trust your gauges, you won't see much else.".into(), "Storm's on us. Listen for engines.".into()]
+}
+
+pub fn storm_ended() -> Vec<String> {
+    vec!["Storm's passing. Get your bearings.".into(), "Sky's back. Count your parts.".into()]
 }

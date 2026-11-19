@@ -26,6 +26,7 @@
 
 pub mod bots;
 pub mod events;
+pub mod garage;
 pub mod map;
 pub mod net;
 pub mod parts;
@@ -35,6 +36,7 @@ pub mod rng;
 pub mod sim;
 pub mod sink;
 pub mod snapshot;
+pub mod storm;
 pub mod specials;
 pub mod tank;
 pub mod tuning;
@@ -45,6 +47,7 @@ pub use map::{Cover, Map, Obstacle, ObstacleBox, ObstacleKind, ScrapKind};
 pub use parts::{part_def, VehicleKind, AltKind, Frame, GunKind, HitBox, Part, PartKind, Slot};
 pub use sim::{Phase, PlayerInfo, PropKind, Sim};
 pub use raid::{BossKind, ModeKind, RaidPhase};
+pub use garage::{ChassisClass, Loadout};
 pub use snapshot::Snapshot;
 pub use tuning::Tuning;
 
@@ -78,4 +81,7 @@ pub struct Input {
     /// holding a flare, call the air strike on `aim_point`.
     #[serde(default)]
     pub special: bool,
+    /// Added in wave 6: sound the horn (an edge sends `Event::Horn`).
+    #[serde(default)]
+    pub horn: bool,
 }

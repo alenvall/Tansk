@@ -38,6 +38,8 @@ pub struct Snapshot {
     pub bosses: Vec<crate::raid::BossSnap>,
     /// Team Brawl scores (empty in other modes).
     pub teams: Vec<TeamScoreSnap>,
+    /// Sandstorm intensity, 0 (clear) ..= 1 (full storm).
+    pub storm: f32,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -96,6 +98,10 @@ pub struct TankSnap {
     pub team: u8,
     /// Chassis to draw (tank, buggy, technical, War Rig).
     pub vehicle: crate::parts::VehicleKind,
+    // --- Added in wave 6 (Garage).
+    pub chassis: crate::garage::ChassisClass,
+    pub paint: u8,
+    pub emblem: u8,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

@@ -109,6 +109,9 @@ pub struct Tank {
     pub health_mult: f32,
     /// Chassis size relative to a tank (scales the base hit boxes).
     pub hit_scale: Vec3,
+    /// Garage chassis class (tanks only).
+    pub class: crate::garage::ChassisClass,
+    pub prev_horn: bool,
 }
 
 /// Hull pose helpers.
@@ -278,6 +281,8 @@ impl Tank {
             vehicle,
             health_mult: 1.0,
             hit_scale: scale,
+            class: crate::garage::ChassisClass::Brawler,
+            prev_horn: false,
         };
         tank.apply_mass(phys, t);
         tank
@@ -294,6 +299,9 @@ impl Tank {
         let old: Vec<Part> = self.parts.iter().filter(|p| p.track == track && p.tier > 0).cloned().collect();
         self.parts.retain(|p| p.track != track || p.tier == 0);
         for (kind, tier, mk) in want {
+            if !self.class.allows(crate::parts::part_def(kind).slot) {
+                continue;
+            }
             let mut p = Part::new(t, kind, tier, mk);
             if let Some(o) = old.iter().find(|o| o.kind == kind && o.mk == mk) {
                 p.health = o.health.min(p.max_health);
@@ -338,6 +346,17 @@ impl Tank {
     pub fn refresh_stats(&mut self, phys: &mut Physics, t: &Tuning) {
         let old_max = self.stats.max_health;
         self.stats = compute_stats_on(t, self.chassis(t), &self.parts, &self.tiers);
+        if self.vehicle == VehicleKind::Tank {
+            let c = self.class_stat(t);
+            self.stats.max_health += c.health - t.tank.base_health;
+            self.stats.mass += t.tank.base_mass * (c.mass_mult - 1.0);
+            self.stats.speed_mult *= c.speed_mult;
+            self.stats.traverse_mult *= c.traverse_mult;
+            // The Scout comes with nitro plumbed in: it can boost from the start.
+            if self.class == crate::garage::ChassisClass::Scout {
+                self.stats.can_boost = true;
+            }
+        }
         self.stats.max_health *= self.health_mult;
         if self.vehicle == VehicleKind::WarRig {
             // Lose an engine: it slows. Lose both: it crawls.
@@ -361,6 +380,24 @@ impl Tank {
         let b = &mut w.bodies[self.body];
         b.set_additional_mass_properties(props, true);
         b.recompute_mass_properties_from_colliders(&w.colliders);
+    }
+
+    /// Garage class numbers for this tank.
+    pub fn class_stat(&self, t: &Tuning) -> crate::tuning::ClassStat {
+        match self.class {
+            crate::garage::ChassisClass::Scout => t.chassis.scout,
+            crate::garage::ChassisClass::Brawler => t.chassis.brawler,
+            crate::garage::ChassisClass::Hauler => t.chassis.hauler,
+        }
+    }
+
+    /// Set the Garage class (rebuilds parts and stats).
+    pub fn set_class(&mut self, phys: &mut Physics, t: &Tuning, class: crate::garage::ChassisClass) {
+        self.class = class;
+        for k in crate::map::ScrapKind::ALL {
+            self.rebuild_track(phys, t, k);
+        }
+        self.health = self.stats.max_health;
     }
 
     /// The chassis tuning this machine drives with.
