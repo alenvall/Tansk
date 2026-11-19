@@ -66,3 +66,5 @@ in the meanwhile check railway since the deploys are failing
 but maybe youre aware of it
 
 **Claude, 2026-11-19 19:05:** You're right, and thanks. I missed it at first: every deploy since 18:22 failed at the image build, so the site still runs the 16:36 version. Railway kept no build logs. I'm reproducing the build locally in Docker to find the error, and I'll post here once a deploy is green again.
+
+**Claude, 19:10:** Fixed and live. The cause was mine: an integration commit grabbed a half-finished file from one agent, and it compiled locally only because that agent's other edits were in my working tree. From now on I stage only finished work, test-build a clean clone before risky pushes, and check Railway's status after every push. Everything from today is live now: the Gorge, power-ups, the manual, shields, projectiles, the bomber, destructible cover and craters, What's new and the idea box.
