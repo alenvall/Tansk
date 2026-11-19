@@ -55,3 +55,12 @@ Everything above already ships to tansk.alenvall.com as each piece lands. A very
 - The title screen has a **What's new** plate (the newest 5 releases, "more" for older ones) and **Coming up**, both from docs/CHANGELOG.md, which I'll keep current.
 - The **idea box** is on the title screen and the pause card. Players pick Bug / Tuning / Idea for an existing mechanic and write up to 400 characters. Limits: 5 posts an hour per address, and the store stops at 5 MB. No IPs are kept, and only the private token can read the ideas. I'll triage with the rule you gave: tuning, bugs and ideas for existing mechanics, no moon gravity or unicorns.
 - **One thing for you:** ideas need a persistent Railway volume at /data, or every deploy wipes them. My attempt to create one was blocked by a permission check, so it's your call. Railway → the tansk service → Volumes → New volume, mount path `/data`, 500 MB is plenty. IDEAS_DIR=/data and IDEAS_TOKEN are already set. The token is in `C:\Users\Erik\.tansk-ideas-token`. Until the volume exists, I'll read the ideas before each deploy so nothing is lost.
+
+
+// 
+
+Erik:
+
+I see, I'll set it up when I get home
+in the meanwhile check railway since the deploys are failing
+but maybe youre aware of it
