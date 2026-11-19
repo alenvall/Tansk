@@ -451,6 +451,51 @@ impl Map {
     }
 }
 
+/// How far ahead of a spawn the ground must be clear and drivable.
+pub const SPAWN_CLEAR: f32 = 30.0;
+
+impl Map {
+    /// Is the ground ahead of `p` along `yaw` (0 faces +X) open and drivable
+    /// for `dist` m: no cover within 3 m of the line, nothing steep, inside
+    /// the walls? (A new player holding W drives straight down it.)
+    pub fn heading_clear(&self, p: Vec2, yaw: f32, dist: f32) -> bool {
+        let dir = Vec2::new(yaw.cos(), -yaw.sin());
+        let mut d = 3.0;
+        while d <= dist {
+            let q = p + dir * d;
+            if q.x.abs() > self.play_half - 4.0 || q.y.abs() > self.play_half - 4.0 || self.blocked_xz(q, 3.0) || self.normal_at(q.x, q.y).y < 0.88 {
+                return false;
+            }
+            d += 1.5;
+        }
+        true
+    }
+
+    /// Turns every spawn toward the action: the heading nearest the outpost
+    /// (within 75 degrees of it) with twice [`SPAWN_CLEAR`] m of open ground
+    /// ahead, or at least [`SPAWN_CLEAR`].
+    pub(crate) fn aim_spawns(&mut self) {
+        let o = Vec2::new(self.outpost.x, self.outpost.z);
+        for i in 0..self.spawns.len() {
+            let p = Vec2::new(self.spawns[i].pos.x, self.spawns[i].pos.z);
+            let d = o - p;
+            let want = (-d.y).atan2(d.x);
+            // Twice the minimum if we can get it (a long open run), else the minimum.
+            'search: for dist in [2.0 * SPAWN_CLEAR, SPAWN_CLEAR] {
+                for k in 0..=15 {
+                    for sign in [1.0f32, -1.0] {
+                        let yaw = want + sign * k as f32 * 5f32.to_radians();
+                        if self.heading_clear(p, yaw, dist) {
+                            self.spawns[i].yaw = yaw;
+                            break 'search;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub(crate) fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
     let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)

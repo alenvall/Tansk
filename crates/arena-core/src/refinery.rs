@@ -526,6 +526,7 @@ impl Map {
             map.spawns[i].pos.y = map.height_at(p.x, p.z);
         }
         map.outpost = Vec3::new(0.0, map.height_at(0.0, 0.0), 0.0);
+        map.aim_spawns();
         let at3 = |m: &Map, p: Vec2| Vec3::new(p.x, m.height_at(p.x, p.y), p.y);
         map.regions = vec![
             Region { name: "The Control House".into(), center: map.outpost, radius: 50.0 },

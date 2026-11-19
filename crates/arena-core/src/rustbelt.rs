@@ -314,7 +314,7 @@ impl Map {
             Vec2::new(115.0, 252.0),
             Vec2::new(-80.0, 252.0),
             Vec2::new(-255.0, 140.0),
-            Vec2::new(-252.0, -95.0),
+            Vec2::new(-255.0, -45.0),
         ];
         let mut spawns = Vec::new();
         for (i, s) in spawn_xz.into_iter().enumerate() {
@@ -362,7 +362,7 @@ impl Map {
             b.place(ObstacleKind::Stall, p.x, p.y, face(p, MARKET) + std::f32::consts::FRAC_PI_2);
         }
         // Hedgehogs and barriers out front of the gates.
-        for (x, z, yaw) in [(mx - 14.0, mz - h - 12.0, 0.0), (mx + 14.0, mz + h + 12.0, 0.0), (mx - h - 12.0, mz - 13.0, 1.57), (mx + h + 12.0, mz + 13.0, 1.57)] {
+        for (x, z, yaw) in [(mx - 14.0, mz - h - 26.0, 0.0), (mx + 14.0, mz + h + 26.0, 0.0), (mx - h - 26.0, mz - 13.0, 1.57), (mx + h + 26.0, mz + 13.0, 1.57)] {
             let j = b.jit(2.0);
             b.place(ObstacleKind::Barrier, x + j, z, yaw);
         }
@@ -434,11 +434,6 @@ impl Map {
         // ---- THE MAGNET CRANE: over the pile of wrecks ---------------------------
         let crane_at = PILE + Vec2::new(-34.0, -20.0);
         b.place(ObstacleKind::MagnetCrane, crane_at.x, crane_at.y, face(crane_at, PILE));
-        // The crowning wreck (the rest of the heap is junk you drive over).
-        for (dx, dz, yaw) in [(0.0, 0.0, 0.4)] {
-            let j = b.jit(0.2);
-            b.place(ObstacleKind::CarWreck, PILE.x + dx, PILE.y + dz, yaw + j);
-        }
         // Cube stacks round the pile's foot, open toward the tracks.
         b.cubes(PILE.x + 44.0, PILE.y + 24.0, 1.0, &[3, 2, 3]);
         b.cubes(PILE.x + 6.0, PILE.y + 48.0, 0.1, &[2, 3, 4, 3]);
@@ -623,6 +618,7 @@ impl Map {
             map.spawns[i].pos.y = map.height_at(p.x, p.z);
         }
         map.outpost = Vec3::new(MARKET.x, map.height_at(MARKET.x, MARKET.y), MARKET.y);
+        map.aim_spawns();
         let at3 = |m: &Map, p: Vec2| Vec3::new(p.x, m.height_at(p.x, p.y), p.y);
         map.regions = vec![
             Region { name: "The Salvage Market".into(), center: map.outpost, radius: 52.0 },
@@ -641,7 +637,7 @@ impl Map {
             map.convoy_route.push(at3(&map, Vec2::new(x, river_z(x) + dz)));
             x += 30.0;
         }
-        for (x, z) in [(205.0, river_z(205.0)), (205.0, 2.0)] {
+        for (x, z) in [(205.0, river_z(205.0)), (205.0, 5.0)] {
             map.convoy_route.push(at3(&map, Vec2::new(x, z)));
         }
 
