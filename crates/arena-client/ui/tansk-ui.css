@@ -302,7 +302,9 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-title[data-panel="host"] [data-for="host"],
 .t-title[data-panel="join"] [data-for="join"],
 .t-title[data-panel="settings"] [data-for="settings"],
-.t-title[data-panel="garage"] [data-for="garage"] { display: flex; animation: t-slam .32s cubic-bezier(.2, 1.6, .4, 1); }
+.t-title[data-panel="garage"] [data-for="garage"],
+.t-title[data-panel="controls"] [data-for="controls"],
+.t-title[data-panel="howto"] [data-for="howto"] { display: flex; animation: t-slam .32s cubic-bezier(.2, 1.6, .4, 1); }
 @keyframes t-slam {
   0% { transform: translateX(-2rem) rotate(-2deg) scale(1.04); opacity: 0 }
   100% { transform: none; opacity: 1 }
@@ -829,3 +831,88 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-ec-tag { display: inline-block; margin-top: .45rem; padding: .05rem .5rem 0; font-size: .82rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); background: var(--fuel); border-radius: 2px; }
 .t-end-foot { display: flex; justify-content: center; align-items: center; gap: 1rem; padding: 1.4rem 0 2rem; }
 .t-end-foot .t-note { margin-right: 1rem; font-size: 1.15rem; }
+
+/* --------------------------------------------------------------- key caps */
+#tansk-ui kbd {
+  display: inline-block; min-width: 1.7em; margin: 0 .12em; padding: .08em .42em 0;
+  font: 700 .92em/1.25 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: .04em; text-align: center;
+  color: #22140b; background: linear-gradient(180deg, #fbf1dc, #d9c7a4); border-radius: .22em;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,.18), 0 .14em 0 #5e4c3a, 0 .18em .3em rgba(0,0,0,.35);
+  vertical-align: .06em;
+}
+
+/* ----------------------------------------------------- onboarding tips */
+.t-hint {
+  position: absolute; top: 10.4rem; left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: min(48rem, calc(100vw - 4rem));
+  opacity: 0; transition: opacity .45s;
+}
+.t-hint[data-on="1"] { opacity: 1; transition: opacity .12s; }
+.t-hint[data-on="1"] .t-hint-plate { animation: t-slam .32s cubic-bezier(.2, 1.6, .4, 1); }
+.t-hint-plate { display: flex; align-items: center; gap: .9rem; padding: .6rem 1.7rem .6rem 1rem; }
+.t-hint-tag {
+  flex: none; padding: .12rem .55rem 0; font-size: .9rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ink); background: var(--cream); border-radius: 2px;
+}
+.t-hint-text { font-size: 1.4rem; font-weight: 700; line-height: 1.35; letter-spacing: .02em; color: var(--cream); text-shadow: 0 1px 0 #000; }
+
+/* --------------------------------------------------------- controls card */
+.t-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; }
+.t-ctl-head {
+  margin-bottom: .5rem; padding-bottom: .3rem; border-bottom: 1px solid rgba(0,0,0,.45);
+  font-size: 1rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--fuel);
+}
+.t-ctl-list { display: grid; grid-template-columns: auto 1fr; gap: .32rem 1rem; margin: 0; align-items: center; }
+.t-ctl-list dt { font-size: 1.1rem; letter-spacing: .06em; text-transform: uppercase; color: var(--cream-dim); }
+.t-ctl-list dd { margin: 0; font-size: 1.05rem; color: var(--cream-dim); }
+#tansk-pause .t-pause-wrap { display: flex; gap: 1.2rem; align-items: stretch; }
+#tansk-pause .t-pause-ctl { padding: 1.2rem 1.6rem 1.3rem; }
+
+/* ---------------------------------------------------------- how to play */
+.t-howto-btn { position: absolute; top: 7.4rem; right: 2rem; }
+.t-howto-btn .t-btn-label::before { content: "?"; display: inline-block; margin-right: .5rem; color: var(--fuel); }
+.t-title[data-panel="howto"] .t-menu,
+.t-title[data-panel="howto"] .t-wordmark,
+.t-title[data-panel="howto"] .t-howto-btn { opacity: .12; pointer-events: none; }
+.t-panel.t-howto { left: calc(50% - 31rem); top: 3.2rem; width: 62rem; max-height: calc(100vh - 7rem); }
+.t-howto-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem 1.4rem; overflow: auto; }
+.t-howto-card {
+  display: flex; flex-direction: column; gap: .5rem; padding: .9rem 1.1rem 1rem; border-radius: .25rem;
+  background: rgba(0,0,0,.24); box-shadow: inset 0 0 0 1px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,236,206,.06);
+}
+.t-howto-card h3 {
+  display: flex; align-items: center; gap: .6rem; margin: .2rem 0 0;
+  font-family: 'Black Ops One', sans-serif; font-weight: 400; font-size: 1.45rem; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--cream); text-shadow: 0 2px 0 #000;
+}
+.t-howto-card h3 b {
+  display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.15rem; color: var(--ink); background: var(--fuel);
+}
+.t-howto-card p { margin: 0; font-size: 1.08rem; font-weight: 500; line-height: 1.32; color: var(--cream-dim); }
+.t-howto-art {
+  display: flex; align-items: center; justify-content: center; gap: .3rem; height: 6.4rem;
+  border-radius: .2rem; background: radial-gradient(ellipse at 50% 70%, rgba(242, 194, 48, .16), transparent 70%), rgba(0,0,0,.18);
+}
+.t-howto-ic { width: 2.2rem; height: 2.2rem; }
+.t-howto-arrow { font-size: 1.6rem; color: var(--fuel); margin: 0 .2rem; }
+.t-howto-tank { width: 8.4rem; height: 4.2rem; }
+.t-howto-modes-art svg { width: 2.4rem; height: 2.4rem; color: var(--cream-dim); }
+.t-howto-modes-art svg:nth-child(1) { color: var(--rust); }
+.t-howto-modes-art svg:nth-child(2) { color: #2fa39b; }
+.t-howto-modes-art svg:nth-child(4) { color: #6fb4e8; }
+.t-howto-tracks { list-style: none; margin: 0; padding: 0; display: grid; gap: .18rem; }
+.t-howto-tracks li { display: flex; align-items: center; gap: .45rem; font-size: 1.05rem; color: var(--cream-dim); }
+.t-howto-tracks svg { width: 1.45rem; height: 1.45rem; flex: none; }
+.t-howto-tracks b { color: var(--cream); font-weight: 800; letter-spacing: .04em; }
+.t-howto-modes { display: grid; gap: .1rem; margin: 0; }
+.t-howto-modes dt { font-size: 1.1rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--cream); margin-top: .25rem; }
+.t-howto-modes dd { margin: 0; font-size: 1.05rem; font-weight: 500; line-height: 1.28; color: var(--cream-dim); }
+.t-howto .t-panel-foot { align-items: center; }
+.t-howto-keys { flex: 1; font-size: 1.05rem; color: var(--cream-dim); white-space: nowrap; }
+@media (max-height: 660px) {
+  .t-panel.t-howto { top: 1.6rem; max-height: calc(100vh - 5rem); }
+  .t-howto-art { height: 4.6rem; }
+  .t-howto-card p { font-size: 1rem; }
+  .t-howto-btn { top: 6.4rem; }
+}

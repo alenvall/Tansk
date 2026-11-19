@@ -32,6 +32,8 @@ use dom_stub::Dom;
 pub(crate) const CSS: &str = include_str!("../../ui/tansk-ui.css");
 pub(crate) const MENUS_HTML: &str = include_str!("../../ui/menus.html");
 pub(crate) const HUD_HTML: &str = include_str!("../../ui/hud.html");
+/// The controls card (Settings > Controls and the pause menu).
+pub(crate) const CONTROLS_HTML: &str = include_str!("../../ui/controls.html");
 
 // ------------------------------------------------------------------ types
 
@@ -162,6 +164,8 @@ pub enum Panel {
     Join,
     Settings,
     Garage,
+    Controls,
+    HowTo,
 }
 
 impl Panel {
@@ -172,6 +176,8 @@ impl Panel {
             Panel::Join => "join",
             Panel::Settings => "settings",
             Panel::Garage => "garage",
+            Panel::Controls => "controls",
+            Panel::HowTo => "howto",
         }
     }
 }
@@ -353,6 +359,20 @@ fn esc(s: &str) -> String {
         }
     }
     o
+}
+
+/// Escapes `text` and turns `[Key]` marks into `<kbd>Key</kbd>` caps.
+fn keycaps(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 32);
+    let mut rest = text;
+    while let Some(open) = rest.find('[') {
+        let Some(len) = rest[open..].find(']') else { break };
+        out.push_str(&esc(&rest[..open]));
+        let _ = write!(out, "<kbd>{}</kbd>", esc(&rest[open + 1..open + len]));
+        rest = &rest[open + len + 1..];
+    }
+    out.push_str(&esc(rest));
+    out
 }
 
 fn clock(secs: i32) -> String {
@@ -652,6 +672,16 @@ impl Ui {
         self.dom.text("t-radio-text", text);
         self.dom.retrigger("t-radio", "data-on", "1");
         self.radio_left = 4.0 + text.len() as f32 * 0.05;
+    }
+
+    /// A crew-chief tip under the top plates; `[W]` marks become key caps.
+    pub fn show_hint(&mut self, text: &str) {
+        self.dom.html("t-hint-text", &keycaps(text));
+        self.dom.retrigger("t-hint", "data-on", "1");
+    }
+
+    pub fn hide_hint(&mut self) {
+        self.dom.attr("t-hint", "data-on", "0");
     }
 
     pub fn chat_line(&mut self, name: &str, team: Team, text: &str) {

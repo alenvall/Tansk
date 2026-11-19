@@ -11,6 +11,7 @@
 
 pub mod aim;
 pub mod controls;
+pub mod hints;
 pub mod juice;
 pub mod names;
 pub mod radio;
@@ -156,6 +157,8 @@ pub struct Game {
     want_look: Option<TimeOfDay>,
     juice: Juice,
     heart: f32,
+    /// Onboarding tips, once per browser.
+    pub hints: hints::Hints,
     sound: Sound,
     screen: Screen,
     backdrop: Demo,
@@ -229,6 +232,7 @@ impl Game {
             want_look: Some(TimeOfDay::GoldenHour),
             juice: Juice::default(),
             heart: 0.0,
+            hints: hints::Hints::default(),
         }
     }
 
@@ -493,6 +497,7 @@ impl Game {
         self.want_look = Some(TimeOfDay::GoldenHour);
         self.screen = Screen::Title;
         self.sound.clear_engines();
+        self.hints.clear_queue(&mut self.ui);
         self.ui.hide_endscreen();
         self.ui.hide_branch();
         self.ui.show_respawn(None, None);
@@ -1002,6 +1007,7 @@ impl Game {
         }
         self.raid_hud(&snap);
         self.convoy_hud(&snap, &mut world, you, wr);
+        self.onboarding(me.as_ref(), &snap, &world, dt);
         if let Some(left) = &mut self.m.branch {
             *left -= dt;
             let closed = me.as_ref().is_some_and(|t| t.choice.is_none());
@@ -1287,6 +1293,35 @@ impl Game {
         }
     }
 
+    /// Onboarding tips the situation calls for (each shows once per browser).
+    fn onboarding(&mut self, me: Option<&TankSnap>, snap: &Snapshot, world: &RenderWorld, dt: f32) {
+        let alive = me.is_some_and(|t| t.alive);
+        if let (Some(t), true) = (me, alive) {
+            // Mode first, then the controls, as you roll out.
+            if snap.convoy.is_some() {
+                self.hints.want(hints::CONVOY);
+            } else if self.snap_is_raid(snap) {
+                self.hints.want(hints::RAID);
+            }
+            self.hints.want(hints::DRIVE);
+            let pos = Vec3::from(t.pos);
+            if self.hints.seen(hints::DRIVE)
+                && world.pickups.iter().any(|p| matches!(p.kind, arena_core::PickupKind::Scrap(_)) && p.pos.distance(pos) < 30.0)
+            {
+                self.hints.want(hints::SCRAP);
+            }
+            if t.rare_ammo > 0 || t.air_strike {
+                self.hints.want(hints::SPECIAL);
+            }
+            if (t.health as f32) < 0.3 * f32::from(t.max_health.max(1)) {
+                self.hints.want(hints::LOW_HEALTH);
+            }
+        }
+        let can_show = alive && self.screen == Screen::InGame && !self.paused && !self.m.ended;
+        let pad = self.pad_live();
+        self.hints.tick(dt, can_show, pad, &mut self.ui);
+    }
+
     fn on_event(&mut self, e: &Event, you: Option<PlayerId>, world: &RenderWorld, cam: Camera) {
         let is_you = |p: PlayerId| Some(p) == you;
         let my_pos = you.and_then(|y| world.tanks.iter().find(|t| t.player == y)).map_or(cam.eye, |t| t.pos);
@@ -1365,6 +1400,7 @@ impl Game {
                 let title = format!("{} tier 2 \u{b7} pick one", names::scrap_name(*track));
                 self.ui.offer_branch(&title, &opts, def, BRANCH_SECS);
                 self.m.branch = Some(BRANCH_SECS);
+                self.hints.want_now(hints::BRANCH);
             }
             Event::BranchChosen { player, part, .. } if is_you(*player) => {
                 self.ui.hide_branch();
@@ -1373,6 +1409,10 @@ impl Game {
             }
             Event::PartBrokeOff { player, part, .. } if is_you(*player) => {
                 self.radio.say(&radio::part_lost(names::part_name(*part)), false);
+                self.hints.want(hints::PART_LOST);
+            }
+            Event::PickedUp { player, kind: arena_core::PickupKind::Rare(_) | arena_core::PickupKind::AirStrike, .. } if is_you(*player) => {
+                self.hints.want(hints::SPECIAL);
             }
             Event::TrackBlown { player, side } if is_you(*player) => {
                 self.m.track_blown_at[(*side as usize).min(1)] = Some(self.time);

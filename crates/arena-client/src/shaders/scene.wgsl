@@ -58,7 +58,7 @@ struct VertexIn {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) color: vec3<f32>,
-    @location(3) params: vec3<f32>,
+    @location(3) params: vec4<f32>,
 };
 
 struct InstanceIn {
@@ -67,6 +67,7 @@ struct InstanceIn {
     @location(6) m2: vec4<f32>,
     @location(7) m3: vec4<f32>,
     @location(8) iparams: vec4<f32>,
+    @location(9) tint: vec4<f32>,
 };
 
 struct VertexOut {
@@ -77,6 +78,7 @@ struct VertexOut {
     @location(3) params: vec3<f32>,
     @location(4) local: vec3<f32>,
     @location(5) iparams: vec4<f32>,
+    @location(6) tint: vec4<f32>,
 };
 
 @vertex
@@ -88,9 +90,12 @@ fn vs_main(v: VertexIn, i: InstanceIn) -> VertexOut {
     out.world = world.xyz;
     out.normal = (model * vec4<f32>(v.normal, 0.0)).xyz;
     out.color = v.color;
-    out.params = v.params;
-    out.local = v.position;
+    out.params = v.params.xyz;
+    // Merged chunks carry each piece's ground height in params.w, so the
+    // shader's "height above the ground" (local y) still holds.
+    out.local = v.position + vec3<f32>(0.0, v.params.w, 0.0);
     out.iparams = i.iparams;
+    out.tint = i.tint;
     return out;
 }
 
@@ -280,10 +285,12 @@ fn salt_flat(base: Surface, p: vec3<f32>, fw: vec3<f32>, salt: f32) -> Surface {
     return s;
 }
 
-fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec3<f32>, edge: f32, camo: f32, damage: f32) -> Surface {
+// `detail` 1 up close .. 0 once the fine wear (stipple, chips) is smaller
+// than a pixel: it fades to its average instead of sparkling.
+fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec3<f32>, edge: f32, camo: f32, damage: f32, detail: f32) -> Surface {
     // Painted, not plastic: broad brush drift and a faint stipple.
     let drift = blotch3(lp * 0.45);
-    let stipple = noise3(lp * 9.0);
+    let stipple = mix(0.5, noise3(lp * 9.0), detail);
     var paint = base * (0.88 + 0.22 * drift) * (0.96 + 0.08 * stipple);
     paint = mix(paint, vec3<f32>(luminance(paint)) * 1.12, (0.1 + 0.15 * max(n.y, 0.0)) * (1.0 - 0.5 * camo));
     // Two-tone camo: a darker, browner shade in big soft blobs.
@@ -298,8 +305,8 @@ fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec
 
     // Worn edges: the bevel bands chipped to bright bare metal, broken up
     // so they read as hand-painted wear, plus worn corners.
-    let chip = noise3(lp * 6.0);
-    let worn = paint_edge(edge * 3.4 + 0.35 * chip + 0.25 * wear, 0.55, 0.05);
+    let chip = mix(0.3, noise3(lp * 6.0), detail);
+    let worn = paint_edge(edge * 3.4 + 0.35 * chip + 0.25 * wear, 0.55, 0.05 + 0.2 * (1.0 - detail));
     c = mix(c, vec3<f32>(0.78, 0.74, 0.68), worn * 0.9);
 
     // Dust: caked low down and on the running gear, settled on top faces.
@@ -314,7 +321,7 @@ fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec
     var spec_kill = 0.0;
     if (damage > 0.02) {
         let chips = paint_edge(blotch3(lp * 1.6 + vec3<f32>(17.0, 5.0, 3.0)) + damage * 0.55, 0.88, 0.04);
-        c = mix(c, vec3<f32>(0.5, 0.48, 0.45) * (0.8 + 0.3 * noise3(lp * 7.0)), chips);
+        c = mix(c, vec3<f32>(0.5, 0.48, 0.45) * (0.8 + 0.3 * mix(0.5, noise3(lp * 7.0), detail)), chips);
         let scorch = paint_edge(blotch3(lp * 0.6 + vec3<f32>(31.0, 2.0, 9.0)) + damage * 0.75, 1.02, 0.1);
         let soot = vec3<f32>(0.055, 0.05, 0.045) * (0.8 + 0.4 * noise3(lp * 4.0));
         c = mix(c, soot, scorch);
@@ -542,6 +549,12 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
     let face = select(n, face_raw * inverseSqrt(max(dot(face_raw, face_raw), 1e-30)), dot(face_raw, face_raw) > 1e-14);
     var edge = 1.0 - abs(dot(n, face));
     let material = u32(in.params.y + 0.5);
+    // How big a pixel is here (m): fine detail fades out as it shrinks
+    // below a pixel or two, so far props read as clean paint, not sparkle.
+    let px = max(max(fw.x, fw.y), fw.z);
+    let detail = 1.0 - smoothstep(0.012, 0.045, px);
+    // Bevel bands (the edge-wear signal) go sub-pixel a little further out.
+    edge = edge * (1.0 - smoothstep(0.02, 0.06, px));
     // Painted corrugated sheets (params.x = 100 front / 300 back + wave
     // cycles across): the vertex normal is the sheet's; rebuild the wave's
     // normal from the phase, and fade it to flat once a wave gets thinner
@@ -581,9 +594,11 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
         }
         ao = sphere_occlusion(in.world, n);
     } else if (material == 0u) {
-        s = painted_steel(in.color, wear, in.local, height, n, edge, 0.0, 0.0);
+        s = painted_steel(in.color, wear, in.local, height, n, edge, 0.0, 0.0, detail);
     } else if (material == 5u) {
-        s = painted_steel(in.color, wear, in.local, height, n, edge, 1.0, in.iparams.w);
+        // Team paint takes the instance's colour when it carries one.
+        let team = select(in.color, in.tint.rgb, in.tint.a > 0.5);
+        s = painted_steel(team, wear, in.local, height, n, edge, 1.0, in.iparams.w, detail);
     } else if (material == 4u) {
         s = rock(in.world, n, face, edge);
         ao = sphere_occlusion(in.world, n);

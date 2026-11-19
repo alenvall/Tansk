@@ -182,17 +182,25 @@ impl Default for Look {
 pub struct MeshId(pub u32);
 
 /// One placed mesh. `params` reaches the shader per instance (x/z tread
-/// scroll, y hit flash).
+/// scroll, y hit flash, w damage). `tint` (linear rgb, a = 1 to use it)
+/// repaints the mesh's team paint, so every crew's tanks share one mesh per
+/// part instead of one per colour (fewer draw calls).
 #[derive(Clone, Copy, Debug)]
 pub struct Instance {
     pub mesh: MeshId,
     pub model: Mat4,
     pub params: Vec4,
+    pub tint: Vec4,
 }
 
 impl Instance {
     pub fn new(mesh: MeshId, model: Mat4) -> Self {
-        Self { mesh, model, params: Vec4::ZERO }
+        Self { mesh, model, params: Vec4::ZERO, tint: Vec4::ZERO }
+    }
+
+    /// With per-instance params and a team-paint tint.
+    pub fn tinted(mesh: MeshId, model: Mat4, params: Vec4, tint: Vec4) -> Self {
+        Self { mesh, model, params, tint }
     }
 }
 
@@ -209,6 +217,7 @@ pub struct Light {
 struct GpuInstance {
     model: [[f32; 4]; 4],
     params: [f32; 4],
+    tint: [f32; 4],
 }
 
 /// An instance ready to cull and pack: its world bounding sphere and GPU row.
@@ -219,6 +228,12 @@ struct Placed {
     radius: f32,
     gpu: GpuInstance,
 }
+
+/// Meshes bigger than this (vertices) are not kept by the CPU recorder.
+pub const RECORD_MAX_VERTS: usize = 12_000;
+
+/// Side of the cells the static scene is culled by first, m.
+const STATIC_CELL: f32 = 48.0;
 
 /// On-screen size (pixels of radius) below which the camera skips a mesh.
 const MIN_SCREEN_RADIUS: f32 = 1.5;
@@ -329,12 +344,19 @@ pub struct Renderer {
     pub stats: (u32, u32),
     /// Sprites drawn last frame.
     pub sprite_count: u32,
-    /// The static scene, sorted by mesh (see `set_statics`).
+    /// The static scene, grouped by map cell (see `set_statics`).
     statics: Vec<Placed>,
+    /// Bounding sphere and `statics` range of each cell.
+    static_cells: Vec<(Vec3, f32, u32, u32)>,
     /// Scratch for this frame's moving instances (kept to reuse its memory).
     moving: Vec<Placed>,
+    /// While set, `add_mesh` keeps a CPU copy of each mesh here (the map
+    /// build uses them to merge dressing into chunks).
+    pub recorded: Option<std::collections::HashMap<MeshId, MeshBuilder>>,
     /// CPU ms the last frame spent culling and packing instances.
     pub cull_ms: f64,
+    /// CPU ms the last frame spent on buffer uploads, encoding passes, and submit.
+    pub phase_ms: [f64; 3],
     quality: Quality,
     settings: QualitySettings,
     output_format: wgpu::TextureFormat,
@@ -480,8 +502,8 @@ impl Renderer {
             })
             .collect();
 
-        let vertex_attributes = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x3, 3 => Float32x3];
-        let instance_attributes = wgpu::vertex_attr_array![4 => Float32x4, 5 => Float32x4, 6 => Float32x4, 7 => Float32x4, 8 => Float32x4];
+        let vertex_attributes = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x3, 3 => Float32x4];
+        let instance_attributes = wgpu::vertex_attr_array![4 => Float32x4, 5 => Float32x4, 6 => Float32x4, 7 => Float32x4, 8 => Float32x4, 9 => Float32x4];
         let mesh_buffers = [
             Some(wgpu::VertexBufferLayout {
                 array_stride: std::mem::size_of::<crate::meshkit::Vertex>() as u64,
@@ -723,8 +745,11 @@ impl Renderer {
             stats: (0, 0),
             sprite_count: 0,
             statics: Vec::new(),
+            static_cells: Vec::new(),
             moving: Vec::new(),
+            recorded: None,
             cull_ms: 0.0,
+            phase_ms: [0.0; 3],
             quality,
             settings,
             output_format,
@@ -755,6 +780,7 @@ impl Renderer {
         fresh.free_slots = std::mem::take(&mut self.free_slots);
         fresh.scope = self.scope.take();
         fresh.statics = std::mem::take(&mut self.statics);
+        fresh.static_cells = std::mem::take(&mut self.static_cells);
         fresh.look = self.look.clone();
         fresh.frame_budget = self.frame_budget;
         *self = fresh;
@@ -814,7 +840,7 @@ impl Renderer {
             mesh: inst.mesh,
             centre: m.transform_point3(mesh.centre),
             radius: mesh.radius * scale,
-            gpu: GpuInstance { model: m.to_cols_array_2d(), params: inst.params.to_array() },
+            gpu: GpuInstance { model: m.to_cols_array_2d(), params: inst.params.to_array(), tint: inst.tint.to_array() },
         })
     }
 
@@ -823,7 +849,22 @@ impl Renderer {
     /// alive until the next call.
     pub fn set_statics(&mut self, statics: &[Instance]) {
         let mut placed: Vec<Placed> = statics.iter().filter_map(|i| self.place(i)).collect();
-        placed.sort_by_key(|p| p.mesh);
+        // Grouped by map cell, so a view can skip a whole cell at once.
+        let cell_of = |p: &Placed| ((p.centre.x / STATIC_CELL).floor() as i32, (p.centre.z / STATIC_CELL).floor() as i32);
+        placed.sort_by_key(|p| (cell_of(p), p.mesh));
+        self.static_cells.clear();
+        let mut i = 0;
+        while i < placed.len() {
+            let key = cell_of(&placed[i]);
+            let start = i;
+            while i < placed.len() && cell_of(&placed[i]) == key {
+                i += 1;
+            }
+            let group = &placed[start..i];
+            let centre = group.iter().map(|p| p.centre).sum::<Vec3>() / group.len() as f32;
+            let radius = group.iter().map(|p| p.centre.distance(centre) + p.radius).fold(0.0, f32::max);
+            self.static_cells.push((centre, radius, start as u32, i as u32));
+        }
         self.statics = placed;
     }
 
@@ -835,11 +876,15 @@ impl Renderer {
         }
         let (centre, radius) = if m.vertices.is_empty() { (Vec3::ZERO, 0.0) } else { ((lo + hi) * 0.5, (hi - lo).length() * 0.5) };
         let empty = m.indices.is_empty();
-        let verts: &[u8] = if empty { &[0u8; 48] } else { bytemuck::cast_slice(&m.vertices) };
+        let verts: &[u8] = if empty { &[0u8; std::mem::size_of::<crate::meshkit::Vertex>()] } else { bytemuck::cast_slice(&m.vertices) };
         let idx: &[u8] = if empty { &[0u8; 12] } else { bytemuck::cast_slice(&m.indices) };
         let mesh = GpuMesh {
             vertices: self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("mesh vertices"), contents: verts, usage: wgpu::BufferUsages::VERTEX }),
-            indices: self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("mesh indices"), contents: idx, usage: wgpu::BufferUsages::INDEX }),
+            indices: self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("mesh indices"),
+                contents: idx,
+                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+            }),
             count: m.indices.len() as u32,
             centre,
             radius,
@@ -857,7 +902,44 @@ impl Renderer {
         if let Some(scope) = &mut self.scope {
             scope.push(id);
         }
+        if let Some(rec) = &mut self.recorded {
+            if m.vertices.len() <= RECORD_MAX_VERTS {
+                rec.insert(id, m.clone());
+            }
+        }
         id
+    }
+
+    /// Whether `id` was uploaded in the open scope.
+    pub fn in_open_scope(&self, id: MeshId) -> bool {
+        self.scope.as_ref().is_some_and(|s| s.contains(&id))
+    }
+
+    /// Overwrites part of a mesh's index buffer (`first` in indices): merged
+    /// chunks blank a destroyed piece's triangles this way, and restore them.
+    pub fn write_indices(&self, id: MeshId, first: u32, indices: &[u32]) {
+        if let Some(m) = self.meshes.get(id.0 as usize).and_then(|m| m.as_ref()) {
+            if !indices.is_empty() && first as usize + indices.len() <= m.count as usize {
+                self.queue.write_buffer(&m.indices, first as u64 * 4, bytemuck::cast_slice(indices));
+            }
+        }
+    }
+
+    /// Frees a mesh uploaded in the open scope and forgets it there (so the
+    /// scope's end does not free its slot again once reused).
+    pub fn free_scoped(&mut self, id: MeshId) {
+        if let Some(scope) = &mut self.scope {
+            scope.retain(|m| *m != id);
+        }
+        if let Some(rec) = &mut self.recorded {
+            rec.remove(&id);
+        }
+        self.free_mesh(id);
+    }
+
+    /// Radius of a mesh's bounding sphere (0 for missing meshes).
+    pub fn mesh_radius(&self, id: MeshId) -> f32 {
+        self.meshes.get(id.0 as usize).and_then(|m| m.as_ref()).map_or(0.0, |m| m.radius)
     }
 
     /// Like `add_mesh`, but never recorded in an open scope (for meshes a
@@ -1050,24 +1132,32 @@ impl Renderer {
         for view in 0..=CASCADES {
             visible.clear();
             let light = (view > 0).then(|| (cascades[view - 1].1, cascades[view - 1].2));
-            let keep = |p: &Placed| -> bool {
-                let (c, r) = (p.centre, p.radius);
-                let d = c.distance(eye);
+            let inside = |c: Vec3, r: f32| -> bool {
                 match light {
-                    None => sphere_in_planes(&planes, c, r) && r * focal >= MIN_SCREEN_RADIUS * d,
+                    None => sphere_in_planes(&planes, c, r),
                     Some((lv, radius)) => {
-                        // Shadows skip small casters far from the eye.
-                        if r * SHADOW_LOD < d {
-                            return false;
-                        }
                         let q = lv.transform_point3(c);
                         q.x.abs() < radius + r && q.y.abs() < radius + r && -q.z > -r && -q.z < 2.0 * radius + SHADOW_BACK + r
                     }
                 }
             };
-            for (k, p) in statics.iter().enumerate() {
-                if keep(p) {
-                    visible.push((p.mesh, k as u32));
+            let keep = |p: &Placed| -> bool {
+                let (c, r) = (p.centre, p.radius);
+                let d = c.distance(eye);
+                // The camera skips what is tiny on screen; shadows skip
+                // small casters far from the eye.
+                let big_enough = if light.is_none() { r * focal >= MIN_SCREEN_RADIUS * d } else { r * SHADOW_LOD >= d };
+                big_enough && inside(c, r)
+            };
+            for &(c, r, start, end) in &self.static_cells {
+                if !inside(c, r) {
+                    continue;
+                }
+                for k in start..end {
+                    let p = &statics[k as usize];
+                    if keep(p) {
+                        visible.push((p.mesh, k));
+                    }
                 }
             }
             for (k, p) in moving.iter().enumerate() {
@@ -1101,6 +1191,7 @@ impl Renderer {
         self.blobs.write(&self.device, &self.queue, bytemuck::cast_slice(&near_blobs));
         self.stats = (batches.iter().map(|b| b.len() as u32).sum(), packed.len() as u32);
 
+        let t_upload = crate::world::clock_ms();
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
         for (i, layer) in self.shadow_layers.iter().enumerate() {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1170,7 +1261,10 @@ impl Renderer {
             pass.set_bind_group(0, &self.targets.post_bind, &[]);
             pass.draw(0..3, 0..1);
         }
+        let t_encode = crate::world::clock_ms();
         self.queue.submit(std::iter::once(encoder.finish()));
+        let t_end = crate::world::clock_ms();
+        self.phase_ms = [t_upload - cull_start - self.cull_ms, t_encode - t_upload, t_end - t_encode];
     }
 
     fn draw_batches(&self, pass: &mut wgpu::RenderPass<'_>, batches: &[(MeshId, u32, u32)]) {

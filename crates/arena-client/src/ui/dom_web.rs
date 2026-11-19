@@ -13,7 +13,7 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{Document, Element, EventTarget, HtmlElement};
 
-use super::{Chassis, Garage, HostConfig, Quality, Settings, UiAction, CSS, HUD_HTML, MENUS_HTML};
+use super::{Chassis, Garage, HostConfig, Quality, Settings, UiAction, CONTROLS_HTML, CSS, HUD_HTML, MENUS_HTML};
 
 #[derive(Default)]
 struct Shared {
@@ -288,7 +288,7 @@ impl Dom {
             }
         };
         if root.child_element_count() == 0 {
-            root.set_inner_html(&format!("{MENUS_HTML}{HUD_HTML}"));
+            root.set_inner_html(&format!("{}{HUD_HTML}", MENUS_HTML.replace("<!--CONTROLS-->", CONTROLS_HTML)));
         }
 
         let shared = Rc::new(RefCell::new(Shared::default()));

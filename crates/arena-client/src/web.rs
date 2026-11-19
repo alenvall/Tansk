@@ -6,7 +6,8 @@
 //! `&name=X` sets the crew name. Practice test hooks: `&matchtime=45`,
 //! `&raidfast=1`, `&scrap=1` (Powder until a branch offer), `&flare=1`,
 //! `&wave=N`, `&boss=1|weak`, `&landship=1`; `autoplay=team|convoy|host-convoy` for Team Brawl / Convoy.
-//! `&quality=low|medium|high|ultra` forces a preset (profiling). The canvas
+//! `&quality=low|medium|high|ultra` forces a preset (profiling); `&hints=reset`
+//! shows the onboarding tips again. The canvas
 //! carries `data-cpu`: mean/max CPU ms per frame (game, draw) over 60 frames.
 
 use std::cell::RefCell;
@@ -89,7 +90,7 @@ struct State {
     /// CPU time per frame, ms: (sum, max, game sum, draw sum) since the last report.
     cpu: (f64, f64, f64, f64),
     /// Sums of `WorldRenderer::prof` since the last report.
-    prof: [f64; 5],
+    prof: [f64; 8],
 }
 
 type Shared = Rc<RefCell<State>>;
@@ -162,6 +163,13 @@ async fn run() -> Result<()> {
         game.quality_auto = false;
     }
     game.apply_settings(settings);
+    if query_flag("hints").as_deref() == Some("reset") {
+        if let Some(st) = storage() {
+            let _ = st.remove_item(HINTS_KEY);
+        }
+    } else if let Some(seen) = storage().and_then(|st| st.get_item(HINTS_KEY).ok().flatten()) {
+        game.hints.load(&seen);
+    }
     if query_flag("mouse").as_deref() == Some("free") {
         game.free_mouse = true;
         game.controls.captured = true;
@@ -206,7 +214,7 @@ async fn run() -> Result<()> {
         last: now,
         frames: 0,
         cpu: (0.0, 0.0, 0.0, 0.0),
-        prof: [0.0; 5],
+        prof: [0.0; 8],
     }));
     install_input(&state)?;
     fetch_rooms(rooms);
@@ -383,13 +391,14 @@ fn mount_pause(document: &web_sys::Document) -> Option<web_sys::Element> {
         "style",
         "display:grid;place-items:center;pointer-events:auto;background:rgba(24,14,8,.5);z-index:50",
     );
-    el.set_inner_html(
-        "<div class=\"plate\" style=\"padding:1.4rem 1.8rem;display:flex;flex-direction:column;gap:.8rem;min-width:18rem\">\
+    el.set_inner_html(&format!(
+        "<div class=\"t-pause-wrap\"><div class=\"plate\" style=\"padding:1.4rem 1.8rem;display:flex;flex-direction:column;gap:.8rem;min-width:18rem\">\
          <h2 style=\"margin:0 0 .3rem;font-family:'Black Ops One',sans-serif;letter-spacing:.08em;color:var(--cream)\">Engine idling</h2>\
          <button class=\"t-btn\" data-pause=\"resume\"><span class=\"t-btn-label\">Back in</span><span class=\"t-btn-hint\">Grabs the mouse</span></button>\
          <button class=\"t-btn\" data-pause=\"leave\"><span class=\"t-btn-label\">Leave</span><span class=\"t-btn-hint\">Back to the title</span></button>\
-         </div>",
-    );
+         </div><div class=\"plate t-pause-ctl\">{}</div></div>",
+        crate::ui::CONTROLS_HTML
+    ));
     root.append_child(&el).ok()?;
     Some(el)
 }
@@ -397,6 +406,8 @@ fn mount_pause(document: &web_sys::Document) -> Option<web_sys::Element> {
 // --------------------------------------------------------------- settings
 
 const SETTINGS_KEY: &str = "tansk.settings.v1";
+/// Onboarding tips already shown (comma separated keys).
+const HINTS_KEY: &str = "tansk.hints.v1";
 
 fn storage() -> Option<web_sys::Storage> {
     web_sys::window()?.local_storage().ok().flatten()
@@ -546,6 +557,11 @@ fn frame(s: &mut State) {
     if s.game.settings_dirty() {
         save_settings(&s.game.settings);
     }
+    if std::mem::take(&mut s.game.hints.dirty) {
+        if let Some(st) = storage() {
+            let _ = st.set_item(HINTS_KEY, &s.game.hints.saved());
+        }
+    }
 
     let world = s.game.frame(now / 1000.0, dt, &mut s.wr);
     let t_game = now_ms();
@@ -582,7 +598,8 @@ fn frame(s: &mut State) {
     s.cpu.2 += t_game - now;
     s.cpu.3 += t_draw - t_game;
     let cull = s.wr.renderer.cull_ms;
-    for (sum, v) in s.prof.iter_mut().zip(s.wr.prof.into_iter().chain([cull])) {
+    let phases = s.wr.renderer.phase_ms;
+    for (sum, v) in s.prof.iter_mut().zip(s.wr.prof.into_iter().chain([cull]).chain(phases)) {
         *sum += v;
     }
     // For headless checks: frames drawn and what is on screen.
@@ -610,7 +627,7 @@ fn frame(s: &mut State) {
         let _ = s.canvas.set_attribute(
             "data-cpu",
             &format!(
-                "cpu={:.2} max={max:.2} game={:.2} draw={:.2} fx={:.2} inst={:.2} sprites={:.2} render={:.2} cull={:.2}",
+                "cpu={:.2} max={max:.2} game={:.2} draw={:.2} fx={:.2} inst={:.2} sprites={:.2} render={:.2} cull={:.2} upload={:.2} encode={:.2} submit={:.2}",
                 sum / 60.0,
                 game / 60.0,
                 draw / 60.0,
@@ -618,10 +635,13 @@ fn frame(s: &mut State) {
                 p[1],
                 p[2],
                 p[3],
-                p[4]
+                p[4],
+                p[5],
+                p[6],
+                p[7]
             ),
         );
         s.cpu = (0.0, 0.0, 0.0, 0.0);
-        s.prof = [0.0; 5];
+        s.prof = [0.0; 8];
     }
 }

@@ -97,8 +97,10 @@ pub struct Vertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
     pub color: [f32; 3],
-    /// x: roughness, y: material id, z: wear.
-    pub params: [f32; 3],
+    /// x: roughness, y: material id, z: wear, w: height of the mesh's
+    /// ground above this vertex's frame (0, except in merged chunks, where
+    /// each piece keeps its own "height above the ground" for the shader).
+    pub params: [f32; 4],
 }
 
 /// CPU-side mesh under construction.
@@ -119,7 +121,7 @@ impl MeshBuilder {
             position: p.to_array(),
             normal: n.normalize_or_zero().to_array(),
             color: paint.color.to_array(),
-            params: [paint.roughness, paint.material as u32 as f32, paint.wear],
+            params: [paint.roughness, paint.material as u32 as f32, paint.wear, 0.0],
         });
         i
     }

@@ -277,6 +277,11 @@ impl Library {
         id
     }
 
+    /// Forgets one scene mesh (freed early).
+    fn forget_scene_mesh(&mut self, id: MeshId) {
+        self.scene_ids.retain(|_, v| *v != id);
+    }
+
     /// Forgets the scene meshes (the scene that owned them is being freed).
     fn clear_scene(&mut self) {
         self.scene_ids.clear();
@@ -296,6 +301,26 @@ impl Library {
         self.ids.insert(key.to_string(), id);
         id
     }
+}
+
+/// The team colour tank meshes are built with when an instance tint
+/// repaints them (any colour works; this one shows up if a tint is missed).
+const TINTED: u32 = 0xff00ff;
+
+/// Side of a dressing chunk cell, m.
+const CHUNK_CELL: f32 = 64.0;
+/// Static meshes placed at most this many times are merged into chunks
+/// (one-off obstacle pieces: hulls, walls cut to size, towers). Meshes
+/// placed more often stay instanced: they already cost one draw.
+const CHUNK_MAX_COPIES: usize = 4;
+
+/// Static pieces merged into one mesh per map cell, to save draw calls.
+struct Chunk {
+    mesh: MeshId,
+    /// Pieces that can be shot away: owner, first index, their indices.
+    owned: Vec<((u16, u8), u32, Vec<u32>)>,
+    /// Which of `owned` are blanked out (removed) on the GPU right now.
+    blanked: Vec<bool>,
 }
 
 /// A static piece of the map, and which obstacle box it belongs to.
@@ -345,6 +370,8 @@ pub struct WorldRenderer {
     statics_dirty: bool,
     /// The removed-pieces list the renderer's static scene was built with.
     statics_removed: Vec<(u16, u8)>,
+    /// Merged one-off map pieces (see `chunk_statics`).
+    chunks: Vec<Chunk>,
     /// CPU ms spent in the last `draw`: effects sim, instance build,
     /// sprite build, renderer (cull + pack + encode).
     pub prof: [f64; 4],
@@ -385,6 +412,7 @@ impl WorldRenderer {
             prof: [0.0; 4],
             statics_dirty: true,
             statics_removed: Vec::new(),
+            chunks: Vec::new(),
         }
     }
 
@@ -408,6 +436,7 @@ impl WorldRenderer {
 
     pub fn set_map(&mut self, map: &Map) {
         self.begin_scene();
+        self.renderer.recorded = Some(HashMap::new());
         self.map = Some(map.clone());
         self.statics.clear();
         self.blobs.clear();
@@ -542,16 +571,114 @@ impl WorldRenderer {
             }
         }
         self.dress(map);
+        let before = self.statics.len();
+        self.chunk_statics();
+        self.renderer.recorded = None;
         self.end_scene();
         self.statics_dirty = true;
         let total = self.statics.len();
-        log::info!("map: {} static pieces, {} meshes", total, self.renderer.mesh_count());
+        log::info!("map: {before} static pieces, {total} after chunking ({} chunks), {} meshes", self.chunks.len(), self.renderer.mesh_count());
+    }
+
+    /// Merges one-off static pieces (meshes placed at most
+    /// `CHUNK_MAX_COPIES` times) into one mesh per `CHUNK_CELL` map cell:
+    /// each unique mesh would otherwise cost a draw call in every view. The
+    /// merged pieces' own meshes are freed, so memory stays about level.
+    /// A piece that can be shot away is blanked out of its chunk's index
+    /// buffer when it goes (see `sync_chunks`); nothing is rebuilt.
+    fn chunk_statics(&mut self) {
+        self.chunks.clear();
+        let Some(rec) = self.renderer.recorded.take() else { return };
+        let mut copies: HashMap<MeshId, usize> = HashMap::new();
+        for s in &self.statics {
+            *copies.entry(s.instance.mesh).or_default() += 1;
+        }
+        let asphalt = crate::meshkit::Material::Asphalt as u32 as f32;
+        let mergeable = |s: &StaticPiece| -> bool {
+            let id = s.instance.mesh;
+            copies.get(&id).is_some_and(|n| *n <= CHUNK_MAX_COPIES)
+                && s.instance.params == Vec4::ZERO
+                && self.renderer.in_open_scope(id)
+                && self.renderer.mesh_radius(id) < 40.0
+                // Asphalt paints its lanes in the deck's own frame.
+                && rec.get(&id).is_some_and(|m| !m.indices.is_empty() && !m.vertices.iter().any(|v| v.params[1] == asphalt))
+        };
+        let mut cells: std::collections::BTreeMap<(i32, i32), Vec<usize>> = std::collections::BTreeMap::new();
+        let mut keep: Vec<StaticPiece> = Vec::new();
+        let mut merged: Vec<MeshId> = Vec::new();
+        for (i, s) in self.statics.iter().enumerate() {
+            if mergeable(s) {
+                let at = s.instance.model.w_axis.truncate();
+                cells.entry(((at.x / CHUNK_CELL).floor() as i32, (at.z / CHUNK_CELL).floor() as i32)).or_default().push(i);
+                merged.push(s.instance.mesh);
+            }
+        }
+        for ((cx, cz), pieces) in &cells {
+            let origin = Vec3::new((*cx as f32 + 0.5) * CHUNK_CELL, 0.0, (*cz as f32 + 0.5) * CHUNK_CELL);
+            let mut m = MeshBuilder::new();
+            let mut owned = Vec::new();
+            for &i in pieces {
+                let piece = &self.statics[i];
+                let Some(src) = rec.get(&piece.instance.mesh) else { continue };
+                let model = piece.instance.model;
+                let normal_m = glam::Mat3::from_mat4(model).inverse().transpose();
+                let ground = model.w_axis.y;
+                let base = m.vertices.len() as u32;
+                for v in &src.vertices {
+                    let mut v = *v;
+                    v.position = (model.transform_point3(Vec3::from(v.position)) - origin).to_array();
+                    v.normal = (normal_m * Vec3::from(v.normal)).normalize_or_zero().to_array();
+                    // local.y + w = height above this piece's ground.
+                    v.params[3] += origin.y - ground;
+                    m.vertices.push(v);
+                }
+                let first = m.indices.len() as u32;
+                m.indices.extend(src.indices.iter().map(|k| k + base));
+                if let Some(owner) = piece.owner {
+                    owned.push((owner, first, m.indices[first as usize..].to_vec()));
+                }
+            }
+            let mesh = self.renderer.add_mesh(&m);
+            let blanked = vec![false; owned.len()];
+            self.chunks.push(Chunk { mesh, owned, blanked });
+            keep.push(StaticPiece { instance: Instance::new(mesh, Mat4::from_translation(origin)), owner: None });
+        }
+        drop(rec);
+        let statics = std::mem::take(&mut self.statics);
+        let merged_set: std::collections::HashSet<usize> = cells.values().flatten().copied().collect();
+        self.statics = statics.into_iter().enumerate().filter(|(i, _)| !merged_set.contains(i)).map(|(_, s)| s).collect();
+        self.statics.extend(keep);
+        // The merged pieces' own meshes are unused now.
+        merged.sort();
+        merged.dedup();
+        for id in merged {
+            if !self.statics.iter().any(|s| s.instance.mesh == id) {
+                self.renderer.free_scoped(id);
+                self.lib.forget_scene_mesh(id);
+            }
+        }
+    }
+
+    /// Blanks chunk pieces that were shot away (and restores any that came
+    /// back) by rewriting their slice of the chunk's index buffer.
+    fn sync_chunks(&mut self, removed: &[(u16, u8)]) {
+        for c in &mut self.chunks {
+            for (k, ((o, b), first, indices)) in c.owned.iter().enumerate() {
+                let gone = removed.iter().any(|&(ro, rb)| ro == *o && (rb == 255 || rb == *b));
+                if gone != c.blanked[k] {
+                    let data = if gone { vec![0u32; indices.len()] } else { indices.clone() };
+                    self.renderer.write_indices(c.mesh, *first, &data);
+                    c.blanked[k] = gone;
+                }
+            }
+        }
     }
 
     /// Replaces the static scene with hand-placed instances (lineups).
     /// Meshes uploaded since the last `begin_scene` belong to this scene.
     pub fn set_statics(&mut self, statics: Vec<Instance>) {
         self.statics = statics.into_iter().map(|instance| StaticPiece { instance, owner: None }).collect();
+        self.chunks.clear();
         self.statics_dirty = true;
         self.blobs.clear();
         self.crane_anchors.clear();
@@ -770,6 +897,7 @@ impl WorldRenderer {
                 .map(|s| s.instance)
                 .collect();
             self.renderer.set_statics(&kept);
+            self.sync_chunks(&world.removed);
             self.statics_removed = world.removed.clone();
             self.statics_dirty = false;
         }
@@ -809,7 +937,7 @@ impl WorldRenderer {
             let sink = gone.map(|g| ((g - 8.0) / 4.0).clamp(0.0, 1.0)).unwrap_or(0.0);
             let pose = Mat4::from_translation(Vec3::Y * -2.6 * sink) * *pose;
             let hull = lib.get(r, "wreck:hull", || tank::hull_mesh(charred));
-            instances.push(Instance { mesh: hull, model: pose, params: Vec4::new(0.0, 0.0, 0.0, 1.0) });
+            instances.push(Instance { params: Vec4::new(0.0, 0.0, 0.0, 1.0), ..Instance::new(hull, pose) });
             // The turret, blown off and lying beside the hull.
             let side = if id % 2 == 0 { 1.0 } else { -1.0 };
             let turret_pose = pose
@@ -818,7 +946,7 @@ impl WorldRenderer {
                     Vec3::new(-1.2, -0.35, side * 3.4),
                 );
             let turret = lib.get(r, "wreck:turret", || tank::turret_mesh(charred));
-            instances.push(Instance { mesh: turret, model: turret_pose, params: Vec4::new(0.0, 0.0, 0.0, 1.0) });
+            instances.push(Instance { params: Vec4::new(0.0, 0.0, 0.0, 1.0), ..Instance::new(turret, turret_pose) });
         }
 
         for t in &world.tanks {
@@ -914,14 +1042,17 @@ impl WorldRenderer {
                 occluders.push(hull.transform_point3(Vec3::new(0.0, -size.y, 0.0)).extend(size.x.max(size.z)));
                 continue;
             }
-            let hull_id = lib.get(r, &format!("hull:{col:x}"), || tank::hull_mesh(col));
-            instances.push(Instance { mesh: hull_id, model: hull, params });
+            // One mesh per part for every crew: the team paint comes from
+            // the instance tint.
+            let tint = crate::meshkit::srgb_hex(col).extend(1.0);
+            let hull_id = lib.get(r, "hull", || tank::hull_mesh(TINTED));
+            instances.push(Instance::tinted(hull_id, hull, params, tint));
             let dmg = Vec4::new(0.0, 0.0, 0.0, damage);
-            let turret_id = lib.get(r, &format!("turret:{col:x}"), || tank::turret_mesh(col));
-            instances.push(Instance { mesh: turret_id, model: t.turret_transform(), params: dmg });
+            let turret_id = lib.get(r, "turret", || tank::turret_mesh(TINTED));
+            instances.push(Instance::tinted(turret_id, t.turret_transform(), dmg, tint));
             let gun = t.gun;
-            let gun_id = lib.get(r, &format!("gun:{gun:?}:{col:x}"), || parts::gun_mesh(gun, col));
-            instances.push(Instance { mesh: gun_id, model: t.gun_transform(), params: dmg });
+            let gun_id = lib.get(r, &format!("gun:{gun:?}"), || parts::gun_mesh(gun, TINTED));
+            instances.push(Instance::tinted(gun_id, t.gun_transform(), dmg, tint));
             let wheel = lib.get(r, "wheel", tank::road_wheel_mesh);
             for (i, c) in t.wheels.iter().enumerate() {
                 let side = if i < 5 { -1.0 } else { 1.0 };
@@ -933,7 +1064,7 @@ impl WorldRenderer {
                 instances.push(Instance::new(wheel, hull * local));
             }
             for &p in &t.parts {
-                let id = lib.get(r, &format!("part:{p:?}:{col:x}"), || parts::part_mesh(p, col));
+                let id = lib.get(r, &format!("part:{p:?}"), || parts::part_mesh(p, TINTED));
                 let frame = match arena_core::part_def(p).frame {
                     arena_core::Frame::Hull => hull,
                     arena_core::Frame::Turret => t.turret_transform(),
@@ -941,7 +1072,7 @@ impl WorldRenderer {
                 };
                 let part_health = world.part_health.iter().find(|h| h.0 == t.player && h.1 == p).map(|h| h.2).unwrap_or(1.0);
                 let part_damage = (1.0 - part_health).max(damage * 0.6).clamp(0.0, 1.0);
-                instances.push(Instance { mesh: id, model: frame, params: Vec4::new(0.0, 0.0, 0.0, part_damage) });
+                instances.push(Instance::tinted(id, frame, Vec4::new(0.0, 0.0, 0.0, part_damage), tint));
             }
             occluders.push(hull.transform_point3(Vec3::new(1.4, -0.1, 0.0)).extend(1.7));
             occluders.push(hull.transform_point3(Vec3::new(-1.4, -0.1, 0.0)).extend(1.7));
@@ -1477,6 +1608,68 @@ mod shots {
             world.dt = 0.0;
             world
         });
+    }
+
+    /// What the static scene is made of (for sizing dressing chunks).
+    #[test]
+    #[ignore]
+    fn map_static_stats() {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor { backends: wgpu::Backends::PRIMARY, ..wgpu::InstanceDescriptor::new_without_display_handle() });
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).expect("adapter");
+        let (device, queue) = pollster::block_on(crate::renderer::request_device(&adapter)).expect("device");
+        let mut wr = WorldRenderer::new(Renderer::new(device, queue, wgpu::TextureFormat::Rgba8Unorm, 64, 64));
+        for id in [arena_core::MapId::Sink, arena_core::MapId::Refinery] {
+            wr.renderer.recorded = Some(HashMap::new());
+            wr.set_map(&Map::by_id(id, 7));
+            let rec = wr.renderer.recorded.take().unwrap_or_default();
+            let mut meshes = std::collections::HashSet::new();
+            let (mut owned, mut verts, mut small_verts, mut small) = (0, 0usize, 0usize, 0);
+            let mut by_mesh: HashMap<MeshId, (usize, usize)> = HashMap::new();
+            for s in &wr.statics {
+                meshes.insert(s.instance.mesh);
+                owned += s.owner.is_some() as usize;
+                let v = rec.get(&s.instance.mesh).map_or(0, |m| m.vertices.len());
+                verts += v;
+                let e = by_mesh.entry(s.instance.mesh).or_insert((0, v));
+                e.0 += 1;
+                if wr.renderer.mesh_radius(s.instance.mesh) < 2.0 {
+                    small += 1;
+                    small_verts += v;
+                }
+            }
+            let mut top: Vec<_> = by_mesh.values().map(|(n, v)| (n * v, *n, *v)).collect();
+            top.sort();
+            top.reverse();
+            for lim in [300usize, 600, 1000, 2000, 5000] {
+                let (mut n, mut v, mut u) = (0, 0, 0);
+                for (_, (cnt, verts)) in by_mesh.iter() {
+                    if *verts <= lim {
+                        n += cnt;
+                        v += cnt * verts;
+                        u += 1;
+                    }
+                }
+                println!("  <= {lim} verts: {n} pieces of {u} meshes, {v} verts merged");
+            }
+            for maxn in [1usize, 2, 4, 8] {
+                for lim in [4000usize, 12000, 40000] {
+                    let (mut n, mut v, mut u, mut freed) = (0, 0, 0, 0);
+                    for (_, (cnt, verts)) in by_mesh.iter() {
+                        if *cnt <= maxn && *verts <= lim {
+                            n += cnt;
+                            v += cnt * verts;
+                            u += 1;
+                            freed += verts;
+                        }
+                    }
+                    println!("  count <= {maxn}, verts <= {lim}: {n} pieces of {u} meshes, {v} verts merged, {freed} freed");
+                }
+            }
+            let uniq: usize = rec.values().map(|m| m.vertices.len()).sum();
+            let uniq_small: usize = rec.values().map(|m| m.vertices.len()).filter(|v| *v <= 40_000).sum();
+            println!("  unique recorded: {} meshes, {uniq} verts ({uniq_small} in meshes <= 40k)", rec.len());
+            println!("{id:?}: {} statics ({owned} owned), {} meshes, {verts} verts merged, {small} small ({small_verts} verts); top {:?}", wr.statics.len(), meshes.len(), &top[..8.min(top.len())]);
+        }
     }
 
     /// Rebuilding maps and podiums over and over frees what each scene made:

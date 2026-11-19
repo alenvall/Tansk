@@ -10,6 +10,27 @@
     <symbol id="e-flame" viewBox="0 0 32 32"><path d="M16 2c1 5.5 7.5 8 7.5 16A7.5 7.5 0 0 1 16 29a7.5 7.5 0 0 1-7.5-7.5c0-4 2-6.5 3.6-8.4.4 2.4 1.4 4 3 4.6C14.6 12.5 16.4 7.6 16 2z" fill="currentColor"/></symbol>
     <symbol id="e-star" viewBox="0 0 32 32"><path d="M16 2.5l3.9 8.6 9.4 1-7 6.4 2 9.2L16 23l-8.3 4.7 2-9.2-7-6.4 9.4-1z" fill="currentColor"/></symbol>
     <symbol id="e-drop" viewBox="0 0 32 32"><path d="M16 2.5S6.5 13.5 6.5 20a9.5 9.5 0 0 0 19 0C25.5 13.5 16 2.5 16 2.5zm-4.5 17.8c0 2.6 1.6 4.5 4 5" fill="currentColor" stroke="var(--hole, #2b2622)" stroke-width="2" stroke-linecap="round"/></symbol>
+    <!-- How to play: a side-on tank with a fresh gun, and one losing a plate -->
+    <symbol id="h-tank-body" viewBox="0 0 120 60">
+      <path d="M14 38 H104 L110 44 L104 54 H16 L10 44 Z" fill="#3a332d" stroke="#1a1715" stroke-width="2.4" stroke-linejoin="round"/>
+      <g fill="#6f665c" stroke="#1a1715" stroke-width="1.6"><circle cx="24" cy="46" r="5"/><circle cx="41" cy="46" r="5"/><circle cx="58" cy="46" r="5"/><circle cx="75" cy="46" r="5"/><circle cx="92" cy="46" r="5"/></g>
+      <path d="M18 26 H100 L106 38 H12 Z" fill="#e2581e" stroke="#1a1715" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M40 14 H76 L82 26 H36 Z" fill="#c94c18" stroke="#1a1715" stroke-width="2.4" stroke-linejoin="round"/>
+      <g fill="#2a1d18"><circle cx="24" cy="32" r="1.3"/><circle cx="34" cy="32" r="1.3"/><circle cx="84" cy="32" r="1.3"/><circle cx="94" cy="32" r="1.3"/></g>
+    </symbol>
+    <symbol id="h-tank-gun" viewBox="0 0 120 60">
+      <use href="#h-tank-body"/>
+      <rect x="78" y="17" width="38" height="6" rx="1" fill="#f2c230" stroke="#1a1715" stroke-width="2"/>
+      <rect x="110" y="15" width="8" height="10" rx="1" fill="#f2c230" stroke="#1a1715" stroke-width="2"/>
+      <path d="M86 9 l3 -6 M96 9 l5 -5 M104 11 l6 -3" stroke="#ffd36a" stroke-width="2.2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="h-tank-hit" viewBox="0 0 120 60">
+      <use href="#h-tank-body"/>
+      <rect x="78" y="18" width="30" height="5" rx="1" fill="#6f665c" stroke="#1a1715" stroke-width="2"/>
+      <path d="M58 6 L74 2 L78 12 L62 16 Z" fill="#b8bec2" stroke="#1a1715" stroke-width="2" stroke-linejoin="round" transform="rotate(-18 68 9)"/>
+      <path d="M52 20 l-6 -5 M56 16 l-2 -8 M64 20 l4 -7" stroke="#ffd36a" stroke-width="2.2" stroke-linecap="round"/>
+      <g fill="none" stroke="#f6ead2" stroke-width="1.8"><circle cx="40" cy="28" r="9"/><path d="M40 15 v5 M40 36 v5 M27 28 h5 M48 28 h5"/></g>
+    </symbol>
     <symbol id="e-radio" viewBox="0 0 32 32"><rect x="4" y="11" width="24" height="17" rx="2" fill="currentColor"/><path d="M9 11 23 3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="19.5" r="4.2" fill="var(--hole, #2b2622)"/><rect x="19" y="15" width="6" height="2.2" fill="var(--hole, #2b2622)"/><rect x="19" y="19" width="6" height="2.2" fill="var(--hole, #2b2622)"/><rect x="19" y="23" width="6" height="2.2" fill="var(--hole, #2b2622)"/></symbol>
   </defs>
 </svg>
@@ -46,6 +67,8 @@
     <button class="t-btn" data-goto="garage"><span class="t-btn-label">Garage</span><span class="t-btn-hint">Chassis &amp; paint</span></button>
     <button class="t-btn" data-goto="settings"><span class="t-btn-label">Settings</span><span class="t-btn-hint">Ears, eyes, hands</span></button>
   </nav>
+
+  <button class="t-btn t-btn-small t-howto-btn" data-goto="howto"><span class="t-btn-label">How to play</span></button>
 
   <aside class="t-crewtag plate">
     <svg class="t-crewtag-emblem" id="t-crew-emblem"><use href="#e-wrench"/></svg>
@@ -151,7 +174,69 @@
     </div>
     <div class="t-panel-foot">
       <button class="t-btn t-btn-small" data-goto="none"><span class="t-btn-label">Back</span></button>
+      <button class="t-btn t-btn-small" data-goto="controls"><span class="t-btn-label">Controls</span></button>
       <button class="t-btn t-btn-go" data-action="settings-apply"><span class="t-btn-label">Bolt it down</span></button>
+    </div>
+  </div>
+
+  <!-- ---------------------------- CONTROLS ---------------------------- -->
+  <div class="t-panel t-panel-wide plate" data-for="controls">
+    <div class="t-panel-head"><span class="t-hazard"></span><h2>Controls</h2><button class="t-x" data-goto="none" aria-label="Back">&#x2715;</button></div>
+    <div class="t-panel-body">
+<!--CONTROLS-->
+    </div>
+    <div class="t-panel-foot">
+      <button class="t-btn t-btn-small" data-goto="settings"><span class="t-btn-label">Settings</span></button>
+      <button class="t-btn t-btn-small" data-goto="none"><span class="t-btn-label">Back</span></button>
+    </div>
+  </div>
+
+  <!-- --------------------------- HOW TO PLAY -------------------------- -->
+  <div class="t-panel t-howto plate" data-for="howto">
+    <div class="t-panel-head"><span class="t-hazard"></span><h2>How to play</h2><button class="t-x" data-goto="none" aria-label="Back">&#x2715;</button></div>
+    <div class="t-howto-cols">
+      <section class="t-howto-card">
+        <div class="t-howto-art" aria-hidden="true">
+          <svg class="t-howto-ic"><use href="#i-powder"/></svg><svg class="t-howto-ic"><use href="#i-powder"/></svg><svg class="t-howto-ic"><use href="#i-powder"/></svg>
+          <span class="t-howto-arrow">&#10140;</span>
+          <svg class="t-howto-tank" viewBox="0 0 120 60"><use href="#h-tank-gun"/></svg>
+        </div>
+        <h3><b>1</b>Grow your machine</h3>
+        <p>Drive over scrap. Three of a kind and your crew bolts on an upgrade:</p>
+        <ul class="t-howto-tracks">
+          <li><svg><use href="#i-steel"/></svg><b>Steel</b> armour</li>
+          <li><svg><use href="#i-powder"/></svg><b>Powder</b> bigger guns</li>
+          <li><svg><use href="#i-volts"/></svg><b>Volts</b> gadgets</li>
+          <li><svg><use href="#i-fuel"/></svg><b>Fuel</b> speed &amp; boost</li>
+        </ul>
+        <p>At tier 2 you pick one of three: <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>.</p>
+      </section>
+      <section class="t-howto-card">
+        <div class="t-howto-art" aria-hidden="true">
+          <svg class="t-howto-tank" viewBox="0 0 120 60"><use href="#h-tank-hit"/></svg>
+        </div>
+        <h3><b>2</b>Shoot it apart</h3>
+        <p>Every part on a tank can be shot off, and what falls off is scrap: grab it, theirs or yours.</p>
+        <p>Side and rear plates are thinner, so flank. A blown track leaves you limping until the crew patches it.</p>
+        <p>Golden crates hold rare parts and air strikes: <kbd>F</kbd> to use.</p>
+      </section>
+      <section class="t-howto-card">
+        <div class="t-howto-art t-howto-modes-art" aria-hidden="true">
+          <svg><use href="#e-skull"/></svg><svg><use href="#e-star"/></svg><svg><use href="#e-cog"/></svg><svg><use href="#e-drop"/></svg>
+        </div>
+        <h3><b>3</b>Modes</h3>
+        <dl class="t-howto-modes">
+          <dt>Scrap Brawl</dt><dd>Every crew for itself. Most wrecks wins.</dd>
+          <dt>Team Brawl</dt><dd>Rustbacks against Dust Saints.</dd>
+          <dt>Raid</dt><dd>Co-op: hold the outpost against the waves.</dd>
+          <dt>Convoy</dt><dd>Escort the tanker to the depot, then stop theirs.</dd>
+        </dl>
+      </section>
+    </div>
+    <div class="t-panel-foot">
+      <span class="t-howto-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive &middot; <kbd>Mouse</kbd> aim &middot; <kbd>Click</kbd> fire</span>
+      <button class="t-btn t-btn-small" data-goto="controls"><span class="t-btn-label">All controls</span></button>
+      <button class="t-btn t-btn-go" data-action="practice"><span class="t-btn-label">Try it: practice</span></button>
     </div>
   </div>
 
