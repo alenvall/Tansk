@@ -460,6 +460,15 @@ impl Game {
             horn: 0,
         };
         sim.set_loadout(you, loadout);
+        // `set_loadout` only takes effect at the next respawn; offline the tank
+        // is already on the field, so re-class it now (else every Garage
+        // chassis rolls out as a Brawler until the first death).
+        let tuning = &sim.tuning;
+        if let Some(p) = sim.players.iter_mut().find(|p| p.id == you) {
+            if p.tank.class != loadout.chassis {
+                p.tank.set_class(&mut sim.phys, tuning, loadout.chassis);
+            }
+        }
     }
 
     /// Your paint from the Garage (hex), for drawing your own tank.
