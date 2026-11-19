@@ -134,6 +134,32 @@ const HULL_GREY: u32 = 0x56636a;
 const RUST_RED: u32 = 0x8a2e1e;
 const DECK: u32 = 0x5a524a;
 
+/// The Land-Ship's hull outline at the deck and at the keel (x, z), stern
+/// to bow, one side.
+const HULL_TOP: [(f32, f32); 5] = [(-15.0, 4.5), (-2.0, 4.6), (8.0, 4.5), (12.5, 2.8), (15.6, 0.0)];
+const HULL_BOT: [(f32, f32); 5] = [(-14.4, 3.4), (-2.0, 3.7), (7.5, 3.6), (10.5, 2.0), (12.4, 0.0)];
+const HULL_DECK_Y: f32 = 2.0;
+const HULL_KEEL_Y: f32 = -2.0;
+
+/// Half-beam of the Land-Ship's hull side at `x`, height `y` (hull frame).
+fn hull_half_beam(x: f32, y: f32) -> f32 {
+    let outline = |pts: &[(f32, f32); 5]| -> f32 {
+        if x <= pts[0].0 {
+            return pts[0].1;
+        }
+        for w in pts.windows(2) {
+            if x <= w[1].0 {
+                let t = (x - w[0].0) / (w[1].0 - w[0].0);
+                return w[0].1 + (w[1].1 - w[0].1) * t;
+            }
+        }
+        0.0
+    };
+    let f = ((y - HULL_KEEL_Y) / (HULL_DECK_Y - HULL_KEEL_Y)).clamp(0.0, 1.0);
+    let (zt, zb) = (outline(&HULL_TOP), outline(&HULL_BOT));
+    zb + (zt - zb) * f
+}
+
 /// The ship's hull core (hull frame; hull half 15 x 2 x 4.5, deck at y = 2):
 /// a raked bow and a square stern, naval grey gone to rust over a red
 /// waterline, plate seams, rivet rows, portholes, a deck rail and an anchor.
@@ -142,12 +168,11 @@ pub fn land_ship(colour: u32) -> MeshBuilder {
     let mut m = MeshBuilder::new();
     let grey = Paint::painted(HULL_GREY, 0.95);
     let red = Paint::painted(RUST_RED, 0.9);
-    // Outline at the deck and at the keel (x, z), stern to bow, one side.
-    let top: [(f32, f32); 5] = [(-15.0, 4.5), (-2.0, 4.6), (8.0, 4.5), (12.5, 2.8), (15.6, 0.0)];
-    let bot: [(f32, f32); 5] = [(-14.4, 3.4), (-2.0, 3.7), (7.5, 3.6), (10.5, 2.0), (12.4, 0.0)];
-    let y_top = 2.0;
+    let top = HULL_TOP;
+    let bot = HULL_BOT;
+    let y_top = HULL_DECK_Y;
     let y_mid = -0.6;
-    let y_bot = -2.0;
+    let y_bot = HULL_KEEL_Y;
     let inside = Vec3::new(0.0, 0.0, 0.0);
     let ring = |pts: &[(f32, f32)], y: f32, side: f32| -> Vec<Vec3> { pts.iter().map(|(x, z)| Vec3::new(*x, y, z * side)).collect() };
     for side in [-1.0f32, 1.0] {
@@ -453,17 +478,45 @@ pub fn ship_part(kind: PartKind, colour: u32) -> MeshBuilder {
                 let x = d.center.x - d.half.x + w * (2 * k + 1) as f32;
                 plate(&mut m, Vec3::new(x, d.center.y + 0.02 * (k % 2) as f32, d.center.z), Vec3::new(w - 0.05, d.half.y, d.half.z - 0.3), 1, 1.0, steel, rivet);
             }
+            // Belt plates: thin slabs laid on the hull side, below the deck
+            // line and above the waterline, following the bow's rake (and
+            // stopping short of the stem) so the hull's lines still read.
+            // Visual only: the hit boxes stay the flat slabs they were.
             for b in &boxes[1..] {
                 let side = b.center.z.signum();
-                let n = 3;
+                let (y0, y1) = (-0.4, HULL_DECK_Y - 0.45);
+                let (x0, x1) = (b.center.x - b.half.x, (b.center.x + b.half.x).min(11.2));
+                let n = 4;
+                let w = (x1 - x0) / n as f32;
                 for k in 0..n {
-                    let w = b.half.x / n as f32;
-                    let x = b.center.x - b.half.x + w * (2 * k + 1) as f32;
+                    let xc = x0 + w * (k as f32 + 0.5);
+                    let yc = 0.5 * (y0 + y1);
                     let paint = Paint::painted(if (k + (side > 0.0) as usize) % 2 == 0 { 0x5a4a3e } else { 0x4e4038 }, 0.95);
-                    plate(&mut m, Vec3::new(x, b.center.y, b.center.z + side * 0.03 * (k % 2) as f32), Vec3::new(w - 0.04, b.half.y, b.half.z), 2, side, paint, rivet);
+                    let thick = 0.05 + 0.015 * (k % 2) as f32;
+                    // The hull side's frame here: along the hull, up its
+                    // flare, and out.
+                    let e = 0.05;
+                    let dzdx = (hull_half_beam(xc + e, yc) - hull_half_beam(xc - e, yc)) / (2.0 * e);
+                    let dzdy = (hull_half_beam(xc, yc + e) - hull_half_beam(xc, yc - e)) / (2.0 * e);
+                    let along = Vec3::new(1.0, 0.0, side * dzdx).normalize();
+                    let up = Vec3::new(0.0, 1.0, side * dzdy);
+                    let up = (up - along * up.dot(along)).normalize();
+                    let mut x_axis = along;
+                    let mut out = x_axis.cross(up);
+                    if out.z * side < 0.0 {
+                        x_axis = -x_axis;
+                        out = -out;
+                    }
+                    let centre = Vec3::new(xc, yc, side * hull_half_beam(xc, yc)) + out * (thick + 0.005);
+                    let frame = Mat4::from_cols(x_axis.extend(0.0), up.extend(0.0), out.extend(0.0), centre.extend(1.0));
+                    let h = 0.5 * (y1 - y0);
+                    let mut pm = MeshBuilder::new();
+                    plate(&mut pm, Vec3::ZERO, Vec3::new(0.5 * w - 0.04, h, thick), 2, 1.0, paint, rivet);
+                    pm.bevel_box(Vec3::new(0.5 * w - 0.04, 0.12, 0.02), 0.01, 1, crew, at(Vec3::new(0.0, h - 0.35, thick + 0.01)));
+                    pm.bevel_box(Vec3::new(0.5 * w - 0.04, 0.08, 0.02), 0.01, 1, hazard(), at(Vec3::new(0.0, -h + 0.14, thick + 0.01)));
+                    pm.transform_from(0, frame);
+                    append(&mut m, pm);
                 }
-                m.bevel_box(Vec3::new(b.half.x, 0.14, 0.03), 0.02, 1, crew, at(b.center + Vec3::new(0.0, b.half.y - 0.4, side * (b.half.z + 0.01))));
-                m.bevel_box(Vec3::new(b.half.x, 0.1, 0.03), 0.02, 1, hazard(), at(b.center + Vec3::new(0.0, -b.half.y + 0.15, side * (b.half.z + 0.01))));
             }
         }
         PartKind::ShipHangar => {

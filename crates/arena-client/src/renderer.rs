@@ -3,10 +3,12 @@
 //! The same code drives the browser (WebGPU), the native window (Vulkan)
 //! and the headless `--shot` path; only the target texture differs.
 //!
-//! Meshes are uploaded once ([`Renderer::add_mesh`]); every frame the caller
-//! hands over a flat list of [`Instance`]s, which are frustum-culled per
-//! view (camera and each cascade), sorted by mesh and drawn one instanced
-//! call per mesh.
+//! Meshes are uploaded once ([`Renderer::add_mesh`]). The static scene (map,
+//! dressing) is handed over once with [`Renderer::set_statics`], its bounding
+//! spheres and GPU rows precomputed; every frame the caller hands over the
+//! moving [`Instance`]s. Both are culled per view (camera and each cascade:
+//! frustum, then tiny-on-screen for the camera and small casters far away for
+//! the shadows), sorted by mesh and drawn one instanced call per mesh.
 
 use glam::camera::rh::proj::directx as proj;
 use glam::camera::rh::view::look_at_mat4;
@@ -209,6 +211,20 @@ struct GpuInstance {
     params: [f32; 4],
 }
 
+/// An instance ready to cull and pack: its world bounding sphere and GPU row.
+#[derive(Clone, Copy)]
+struct Placed {
+    mesh: MeshId,
+    centre: Vec3,
+    radius: f32,
+    gpu: GpuInstance,
+}
+
+/// On-screen size (pixels of radius) below which the camera skips a mesh.
+const MIN_SCREEN_RADIUS: f32 = 1.5;
+/// Shadow casters smaller than `distance / SHADOW_LOD` (m) are skipped.
+const SHADOW_LOD: f32 = 80.0;
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Globals {
@@ -311,6 +327,14 @@ pub struct Renderer {
     blobs: Dynamic,
     /// Draw statistics of the last frame: (draw calls, instances).
     pub stats: (u32, u32),
+    /// Sprites drawn last frame.
+    pub sprite_count: u32,
+    /// The static scene, sorted by mesh (see `set_statics`).
+    statics: Vec<Placed>,
+    /// Scratch for this frame's moving instances (kept to reuse its memory).
+    moving: Vec<Placed>,
+    /// CPU ms the last frame spent culling and packing instances.
+    pub cull_ms: f64,
     quality: Quality,
     settings: QualitySettings,
     output_format: wgpu::TextureFormat,
@@ -697,6 +721,10 @@ impl Renderer {
             blob_pipeline,
             blobs,
             stats: (0, 0),
+            sprite_count: 0,
+            statics: Vec::new(),
+            moving: Vec::new(),
+            cull_ms: 0.0,
             quality,
             settings,
             output_format,
@@ -726,6 +754,7 @@ impl Renderer {
         fresh.meshes = std::mem::take(&mut self.meshes);
         fresh.free_slots = std::mem::take(&mut self.free_slots);
         fresh.scope = self.scope.take();
+        fresh.statics = std::mem::take(&mut self.statics);
         fresh.look = self.look.clone();
         fresh.frame_budget = self.frame_budget;
         *self = fresh;
@@ -770,6 +799,32 @@ impl Renderer {
     #[allow(dead_code)] // wired to the Settings menu by the game layer
     pub fn render_scale(&self) -> f32 {
         self.scale
+    }
+
+    /// Bounding sphere and GPU row of an instance; `None` for missing or
+    /// empty meshes.
+    fn place(&self, inst: &Instance) -> Option<Placed> {
+        let mesh = self.meshes.get(inst.mesh.0 as usize)?.as_ref()?;
+        if mesh.count == 0 {
+            return None;
+        }
+        let m = &inst.model;
+        let scale = m.x_axis.truncate().length_squared().max(m.y_axis.truncate().length_squared()).max(m.z_axis.truncate().length_squared()).sqrt();
+        Some(Placed {
+            mesh: inst.mesh,
+            centre: m.transform_point3(mesh.centre),
+            radius: mesh.radius * scale,
+            gpu: GpuInstance { model: m.to_cols_array_2d(), params: inst.params.to_array() },
+        })
+    }
+
+    /// Sets the static scene (terrain, obstacles, dressing): placed once
+    /// here, then only culled and packed each frame. Its meshes must stay
+    /// alive until the next call.
+    pub fn set_statics(&mut self, statics: &[Instance]) {
+        let mut placed: Vec<Placed> = statics.iter().filter_map(|i| self.place(i)).collect();
+        placed.sort_by_key(|p| p.mesh);
+        self.statics = placed;
     }
 
     pub fn add_mesh(&mut self, m: &MeshBuilder) -> MeshId {
@@ -978,55 +1033,66 @@ impl Renderer {
         self.queue.write_buffer(&self.post_uniform, 0, bytemuck::cast_slice(&post));
 
         // Cull per view, sort by mesh, pack all views into one buffer.
+        let cull_start = crate::world::clock_ms();
+        let mut moving = std::mem::take(&mut self.moving);
+        moving.clear();
+        moving.extend(instances.iter().filter_map(|i| self.place(i)));
         let planes = frustum_planes(view_proj);
-        let mut packed: Vec<GpuInstance> = Vec::with_capacity(instances.len() * 2);
-        let mut batches: Vec<Vec<(MeshId, u32, u32)>> = Vec::new();
-        let mut views: Vec<(Box<dyn Fn(Vec3, f32) -> bool>, bool)> = Vec::new();
-        views.push((Box::new(move |c, r| sphere_in_planes(&planes, c, r)), true));
-        for c in cascades.iter() {
-            let (lv, radius) = (c.1, c.2);
-            views.push((
-                Box::new(move |p: Vec3, r: f32| {
-                    let q = lv.transform_point3(p);
-                    q.x.abs() < radius + r && q.y.abs() < radius + r && -q.z > -r && -q.z < 2.0 * radius + SHADOW_BACK + r
-                }),
-                false,
-            ));
-        }
-        let mut visible: Vec<(MeshId, usize)> = Vec::new();
-        for (test, main) in &views {
+        // Pixels per metre at unit distance, for the on-screen size test.
+        let focal = self.height as f32 * 0.5 / (camera.fov_y * 0.5).tan();
+        let eye = camera.eye;
+        let statics = &self.statics;
+        let total = statics.len() + moving.len();
+        let mut packed: Vec<GpuInstance> = Vec::with_capacity(total * 2);
+        let mut batches: Vec<Vec<(MeshId, u32, u32)>> = Vec::with_capacity(CASCADES + 1);
+        // (mesh, index into statics, or statics.len() + index into moving).
+        let mut visible: Vec<(MeshId, u32)> = Vec::with_capacity(total);
+        for view in 0..=CASCADES {
             visible.clear();
-            for (k, inst) in instances.iter().enumerate() {
-                let Some(mesh) = self.meshes.get(inst.mesh.0 as usize).and_then(|m| m.as_ref()) else { continue };
-                if mesh.count == 0 {
-                    continue;
-                }
-                let c = inst.model.transform_point3(mesh.centre);
-                let scale = inst.model.x_axis.truncate().length().max(inst.model.y_axis.truncate().length()).max(inst.model.z_axis.truncate().length());
-                let r = mesh.radius * scale;
-                if test(c, r) {
-                    // Shadows skip tiny things far away from the eye.
-                    if !*main && r < 1.0 && c.distance(camera.eye) > 60.0 {
-                        continue;
+            let light = (view > 0).then(|| (cascades[view - 1].1, cascades[view - 1].2));
+            let keep = |p: &Placed| -> bool {
+                let (c, r) = (p.centre, p.radius);
+                let d = c.distance(eye);
+                match light {
+                    None => sphere_in_planes(&planes, c, r) && r * focal >= MIN_SCREEN_RADIUS * d,
+                    Some((lv, radius)) => {
+                        // Shadows skip small casters far from the eye.
+                        if r * SHADOW_LOD < d {
+                            return false;
+                        }
+                        let q = lv.transform_point3(c);
+                        q.x.abs() < radius + r && q.y.abs() < radius + r && -q.z > -r && -q.z < 2.0 * radius + SHADOW_BACK + r
                     }
-                    visible.push((inst.mesh, k));
+                }
+            };
+            for (k, p) in statics.iter().enumerate() {
+                if keep(p) {
+                    visible.push((p.mesh, k as u32));
                 }
             }
-            visible.sort_by_key(|v| v.0);
+            for (k, p) in moving.iter().enumerate() {
+                if keep(p) {
+                    visible.push((p.mesh, (statics.len() + k) as u32));
+                }
+            }
+            visible.sort_unstable_by_key(|v| (v.0, v.1));
             let mut list = Vec::new();
             let mut i = 0;
             while i < visible.len() {
                 let mesh = visible[i].0;
                 let first = packed.len() as u32;
                 while i < visible.len() && visible[i].0 == mesh {
-                    let inst = &instances[visible[i].1];
-                    packed.push(GpuInstance { model: inst.model.to_cols_array_2d(), params: inst.params.to_array() });
+                    let k = visible[i].1 as usize;
+                    packed.push(if k < statics.len() { statics[k].gpu } else { moving[k - statics.len()].gpu });
                     i += 1;
                 }
                 list.push((mesh, first, packed.len() as u32 - first));
             }
             batches.push(list);
         }
+        self.moving = moving;
+        self.cull_ms = crate::world::clock_ms() - cull_start;
+        self.sprite_count = sprites.len() as u32;
         self.instances.write(&self.device, &self.queue, bytemuck::cast_slice(&packed));
         self.sprites.write(&self.device, &self.queue, bytemuck::cast_slice(sprites));
         self.ruts.write(&self.device, &self.queue, bytemuck::cast_slice(ruts));

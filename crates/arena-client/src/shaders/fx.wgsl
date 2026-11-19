@@ -87,7 +87,9 @@ fn fs_sprite(in: SpriteOut) -> @location(0) vec4<f32> {
         let through = pow(max(dot(dir, globals.sun_dir.xyz), 0.0), 6.0) * (1.0 - z) * 0.8;
         var c = in.color.rgb * lit + globals.sun_color.rgb * in.color.rgb * through;
         c = mix(c, air_colour(dir), air);
-        let a = in.color.a * mask;
+        // Soft near fade: smoke, dust and debris right at the lens melt
+        // away (3..8 m) instead of filling the screen.
+        let a = in.color.a * mask * smoothstep(3.0, 8.0, dist);
         return vec4<f32>(c * a, a);
     }
     if (kind == 1u) {

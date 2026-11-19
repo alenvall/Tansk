@@ -341,6 +341,26 @@ pub struct WorldRenderer {
     /// Wreck props, kept past the sim's lifetime and then sunk:
     /// prop id -> (pose, seconds since first seen, seconds since gone).
     wrecks: HashMap<u16, (Mat4, f32, Option<f32>)>,
+    /// The static scene must be handed to the renderer again (it changed).
+    statics_dirty: bool,
+    /// The removed-pieces list the renderer's static scene was built with.
+    statics_removed: Vec<(u16, u8)>,
+    /// CPU ms spent in the last `draw`: effects sim, instance build,
+    /// sprite build, renderer (cull + pack + encode).
+    pub prof: [f64; 4],
+}
+
+/// A millisecond clock for the frame profile.
+pub fn clock_ms() -> f64 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        web_sys::window().and_then(|w| w.performance()).map(|p| p.now()).unwrap_or(0.0)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+        START.get_or_init(std::time::Instant::now).elapsed().as_secs_f64() * 1000.0
+    }
 }
 
 impl WorldRenderer {
@@ -362,6 +382,9 @@ impl WorldRenderer {
             scene_meshes: Vec::new(),
             map: None,
             wrecks: HashMap::new(),
+            prof: [0.0; 4],
+            statics_dirty: true,
+            statics_removed: Vec::new(),
         }
     }
 
@@ -376,6 +399,7 @@ impl WorldRenderer {
         }
         self.lib.clear_scene();
         self.renderer.begin_scope();
+        self.statics_dirty = true;
     }
 
     fn end_scene(&mut self) {
@@ -519,6 +543,7 @@ impl WorldRenderer {
         }
         self.dress(map);
         self.end_scene();
+        self.statics_dirty = true;
         let total = self.statics.len();
         log::info!("map: {} static pieces, {} meshes", total, self.renderer.mesh_count());
     }
@@ -527,6 +552,7 @@ impl WorldRenderer {
     /// Meshes uploaded since the last `begin_scene` belong to this scene.
     pub fn set_statics(&mut self, statics: Vec<Instance>) {
         self.statics = statics.into_iter().map(|instance| StaticPiece { instance, owner: None }).collect();
+        self.statics_dirty = true;
         self.blobs.clear();
         self.crane_anchors.clear();
         self.pumpjacks.clear();
@@ -729,17 +755,25 @@ impl WorldRenderer {
         self.clock = world.time;
         self.ramps.retain(|_, s| world.time - *s < 6.0 && world.time >= *s);
         let dt = world.dt.clamp(0.0, 0.1);
+        let t0 = clock_ms();
         self.fx.update(dt, world);
+        let t1 = clock_ms();
 
-        let mut instances: Vec<Instance> = Vec::with_capacity(self.statics.len() + 400);
-        for s in &self.statics {
-            if let Some((o, b)) = s.owner {
-                if world.removed.iter().any(|&(ro, rb)| ro == o && (rb == 255 || rb == b)) {
-                    continue;
-                }
-            }
-            instances.push(s.instance);
+        // The static scene goes to the renderer once, and again only when
+        // it changes (a new scene, or map pieces shot away).
+        if self.statics_dirty || self.statics_removed != world.removed {
+            let removed = &world.removed;
+            let kept: Vec<Instance> = self
+                .statics
+                .iter()
+                .filter(|s| !s.owner.is_some_and(|(o, b)| removed.iter().any(|&(ro, rb)| ro == o && (rb == 255 || rb == b))))
+                .map(|s| s.instance)
+                .collect();
+            self.renderer.set_statics(&kept);
+            self.statics_removed = world.removed.clone();
+            self.statics_dirty = false;
         }
+        let mut instances: Vec<Instance> = Vec::with_capacity(400);
         let mut occluders = self.map_occluders.clone();
         let mut blobs = self.blobs.clone();
         for t in world.tanks.iter() {
@@ -1019,11 +1053,15 @@ impl WorldRenderer {
                 lights.push(Light { pos: p.pos + Vec3::Y, radius: 4.0, color: Vec3::new(1.0, 0.8, 0.4) * 0.6 });
             }
         }
+        let t2 = clock_ms();
         let sprites = self.fx.sprites(world, camera.eye, &ropes);
         let ruts = self.fx.ruts();
         self.fx.set_max_particles(self.renderer.quality_settings().max_particles);
         self.fx.storm = self.renderer.look.storm;
+        let t3 = clock_ms();
         self.renderer.render(output, &camera, world.time, &instances, &sprites, &ruts, &blobs, &lights, &occluders);
+        let t4 = clock_ms();
+        self.prof = [t1 - t0, t2 - t1, t3 - t2, t4 - t3];
     }
 }
 
@@ -1582,6 +1620,32 @@ mod shots {
             eprintln!("convoy: phase {:?}, progress {:.2}, truck {:?}, {} route pts", c.phase, c.progress, truck.0, path.len());
             world.dt = 0.0;
             world
+        });
+    }
+
+    /// Container stacks near and far (`containers.png`): the corrugation
+    /// should read up close and fade to clean paint far off, no moire.
+    #[test]
+    #[ignore]
+    fn shots_containers() {
+        render("containers", |wr| {
+            wr.begin_scene();
+            let r = &mut wr.renderer;
+            let mut statics = Vec::new();
+            let floor = r.add_mesh(&crate::terrain::flat(400.0));
+            statics.push(Instance::new(floor, Mat4::IDENTITY));
+            let ids: Vec<MeshId> = props::CONTAINER_COLOURS.iter().map(|c| r.add_mesh(&on_ground(props::container(Vec3::new(6.1, 1.3, 1.22), *c), 1.3))).collect();
+            for (k, (x, z)) in [(-9.0f32, -14.0f32), (14.0, -45.0), (-30.0, -90.0), (25.0, -150.0), (-10.0, -230.0)].into_iter().enumerate() {
+                for level in 0..3 {
+                    for row in 0..2 {
+                        let id = ids[(k + level * 3 + row) % ids.len()];
+                        let p = Vec3::new(x, level as f32 * 2.6, z - row as f32 * 2.5);
+                        statics.push(Instance::new(id, Mat4::from_rotation_translation(Quat::from_rotation_y(0.35), p)));
+                    }
+                }
+            }
+            wr.set_statics(statics);
+            RenderWorld { camera: Some(Camera::look(Vec3::new(0.0, 4.0, 8.0), Vec3::new(2.0, 2.5, -60.0), 55.0)), ..RenderWorld::default() }
         });
     }
 

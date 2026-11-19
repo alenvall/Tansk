@@ -116,6 +116,10 @@ pub struct Fx {
 }
 
 const MAX_PARTICLES: usize = 5000;
+/// Puffs nearer than this (m) count towards the screen-coverage cap.
+const NEAR_PUFF: f32 = 30.0;
+/// Most of the view near puffs may cover (opacity weighted, overlaps counted).
+const MAX_NEAR_COVER: f32 = 0.55;
 const MAX_RUTS: usize = 2500;
 const RUT_LIFE: f32 = 30.0;
 
@@ -172,13 +176,22 @@ impl Fx {
     }
 
     fn smoke(&mut self, pos: Vec3, vel: Vec3, size: f32, dark: f32, life: f32) {
+        self.smoke_a(pos, vel, size, dark, life, 0.85);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn smoke_a(&mut self, pos: Vec3, vel: Vec3, size: f32, dark: f32, life: f32, alpha: f32) {
         let c = Vec3::new(0.62, 0.58, 0.54).lerp(Vec3::new(0.12, 0.1, 0.09), dark);
-        self.spawn(Kind::Puff, pos, vel, life, (size * 0.5, size * 1.6), (c, c * 1.1), 0.85, 1.2, 1.2, 0.0);
+        self.spawn(Kind::Puff, pos, vel, life, (size * 0.5, size * 1.6), (c, c * 1.1), alpha, 1.2, 1.2, 0.0);
     }
 
     fn dust(&mut self, pos: Vec3, vel: Vec3, size: f32, life: f32) {
+        self.dust_a(pos, vel, size, life, 0.7);
+    }
+
+    fn dust_a(&mut self, pos: Vec3, vel: Vec3, size: f32, life: f32, alpha: f32) {
         let c = Vec3::new(0.78, 0.58, 0.38);
-        self.spawn(Kind::Puff, pos, vel, life, (size * 0.4, size * 1.5), (c, c * 1.08), 0.7, 2.2, 0.25, 0.0);
+        self.spawn(Kind::Puff, pos, vel, life, (size * 0.4, size * 1.5), (c, c * 1.08), alpha, 2.2, 0.25, 0.0);
     }
 
     fn fire(&mut self, pos: Vec3, vel: Vec3, size: f32, life: f32) {
@@ -243,14 +256,16 @@ impl Fx {
                 let s = if big { 1.6 } else if main { 1.0 } else { 0.35 };
                 self.spawn(Kind::Glow, *pos + *dir * 0.3 * s, *dir * 6.0, 0.09, (0.9 * s, 1.4 * s), (Vec3::new(9.0, 6.0, 2.5), Vec3::new(4.0, 1.4, 0.3)), 1.0, 4.0, 0.0, 1.0);
                 if main {
-                    for k in 0..6 {
+                    // A short bark of smoke that clears in about a second,
+                    // so the next shot can be aimed.
+                    for k in 0..5 {
                         let side = self.rand_dir();
-                        self.smoke(*pos + *dir * (0.5 + k as f32 * 0.35), *dir * (4.0 + k as f32) + side * 1.5 + Vec3::Y * 0.6, 0.6 * s, 0.15, 1.8);
+                        self.smoke_a(*pos + *dir * (0.5 + k as f32 * 0.4), *dir * (4.5 + k as f32) + side * 1.5 + Vec3::Y * 0.6, 0.55 * s, 0.15, 0.9, 0.6);
                     }
-                    for _ in 0..5 {
+                    for _ in 0..4 {
                         let mut d = self.rand_dir();
                         d.y = 0.0;
-                        self.dust(*pos - Vec3::Y * 1.6 + d * 0.8, d * 7.0 * s, 0.9 * s, 1.4);
+                        self.dust_a(*pos - Vec3::Y * 1.6 + d * 0.8, d * 7.0 * s, 0.9 * s, 0.8, 0.5);
                     }
                     self.flash(*pos, Vec3::new(1.0, 0.7, 0.35) * 30.0 * s, 9.0 * s, 0.12);
                 }
@@ -420,11 +435,24 @@ impl Fx {
             self.ruts.drain(..drop);
         }
 
+        // The tank the camera rides behind (yours, or the one spectated):
+        // its own plume blows straight back at the lens, so it is thinner.
+        let chased = world.camera.and_then(|c| {
+            world
+                .tanks
+                .iter()
+                .filter(|t| t.alive)
+                .map(|t| (t.player, t.pos.distance(c.eye)))
+                .filter(|(_, d)| *d < 22.0)
+                .min_by(|a, b| a.1.total_cmp(&b.1))
+                .map(|(p, _)| p)
+        });
         for t in &world.tanks {
             self.last_pos.insert(t.player, t.pos);
             if !t.alive {
                 continue;
             }
+            let own = chased == Some(t.player);
             let hull = t.hull_transform();
             let mut st = self.tanks.remove(&t.player).unwrap_or_default();
             // Exhaust: lazy puffs at idle, chugging under load, flame on boost.
@@ -437,18 +465,29 @@ impl Fx {
                     self.fire(tip, up * 4.0, 0.35, 0.25);
                 }
                 let jitter = self.rand_dir() * 0.3;
-                self.smoke(tip, up * 2.2 + jitter, 0.35 + 0.25 * t.throttle, 0.55 + 0.3 * t.throttle, 1.6);
+                let (life, alpha, size) = if own { (0.75, 0.3, 0.75) } else { (1.6, 0.85, 1.0) };
+                self.smoke_a(tip, up * 2.2 + jitter, (0.35 + 0.25 * t.throttle) * size, 0.55 + 0.3 * t.throttle, life, alpha);
             }
-            // Dust plumes off the tracks when moving.
+            // Dust plumes off the tracks when moving: fewer, larger puffs
+            // spaced out at speed, so a plume reads from afar without
+            // walling off the view behind it. The chased tank's own plume
+            // is thinner and hugs the ground.
             if t.speed > 1.2 {
-                st.dust_t += dt * (t.speed * 1.6).min(24.0);
+                let rate = (t.speed * 0.85).min(9.0) * if own { 0.6 } else { 1.0 };
+                st.dust_t += dt * rate;
                 while st.dust_t >= 1.0 {
                     st.dust_t -= 1.0;
                     for side in [-1.42f32, 1.42] {
                         let p = hull.transform_point3(Vec3::new(-2.6 + self.rand() * 0.6, -0.85, side));
-                        let back = hull.transform_vector3(Vec3::new(-1.0, 0.6, 0.0)) * t.speed.min(12.0) * 0.25;
+                        let rise = if own { 0.25 } else { 0.6 };
+                        let back = hull.transform_vector3(Vec3::new(-1.0, rise, 0.0)) * t.speed.min(12.0) * if own { 0.15 } else { 0.25 };
                         let j = self.rand_dir() * 0.6;
-                        self.dust(p, back + j + Vec3::Y * 0.8, 0.9 + t.speed * 0.06, 2.4);
+                        let size = 1.1 + t.speed * 0.08;
+                        if own {
+                            self.dust_a(p, back + j * 0.7 + Vec3::Y * 0.4, size * 0.85, 1.7, 0.32);
+                        } else {
+                            self.dust_a(p, back + j + Vec3::Y * 0.8, size, 2.4, 0.6);
+                        }
                     }
                 }
             }
@@ -670,7 +709,23 @@ impl Fx {
 
     /// This frame's sprites, back to front from `eye`, including shells.
     pub fn sprites(&self, world: &RenderWorld, eye: Vec3, cables: &[(Vec3, Vec3)]) -> Vec<Sprite> {
-        let mut out: Vec<(f32, Sprite)> = Vec::with_capacity(self.parts.len() + world.shells.len());
+        let mut out: Vec<(f32, Sprite)> = Vec::with_capacity(self.parts.len() + world.shells.len() + 16);
+        // Screen coverage of the puffs near the eye (a fraction of the view,
+        // opacity weighted): past the cap, near puffs thin out so the fight
+        // stays visible through a convoy's dust. Far plumes keep their weight.
+        let tan = world.camera.map_or(0.5, |c| (c.fov_y * 0.5).tan());
+        let view_area = 4.0 * tan * tan * (16.0 / 9.0);
+        let mut near_cover = 0.0;
+        for p in self.parts.iter().filter(|p| p.kind == Kind::Puff) {
+            let d = p.pos.distance(eye);
+            if d < NEAR_PUFF {
+                let t = (p.age / p.life).clamp(0.0, 1.0);
+                let size = p.size0 + (p.size1 - p.size0) * (1.0 - (1.0 - t) * (1.0 - t));
+                let r = size / d.max(size + 0.5);
+                near_cover += std::f32::consts::PI * r * r * p.alpha * (1.0 - t) / view_area;
+            }
+        }
+        let near_scale = if near_cover > MAX_NEAR_COVER { MAX_NEAR_COVER / near_cover } else { 1.0 };
         for p in &self.parts {
             let t = (p.age / p.life).clamp(0.0, 1.0);
             let size = p.size0 + (p.size1 - p.size0) * (1.0 - (1.0 - t) * (1.0 - t));
@@ -690,6 +745,13 @@ impl Fx {
                 _ => Vec3::ZERO,
             };
             let d = p.pos.distance_squared(eye);
+            let a = if p.kind == Kind::Puff && near_scale < 1.0 && d < NEAR_PUFF * NEAR_PUFF {
+                // Back to full weight towards the edge of the near zone.
+                let k = d / (NEAR_PUFF * NEAR_PUFF);
+                a * (near_scale + (1.0 - near_scale) * k)
+            } else {
+                a
+            };
             out.push((
                 d,
                 Sprite {
@@ -753,7 +815,7 @@ impl Fx {
                 out.push((c.distance_squared(eye), Sprite { pos_size: c.extend(0.6).to_array(), color: [9.0, 1.2, 0.5, pulse], params: [Kind::Glow as u32 as f32, 0.0, 0.0, 1.0], axis: [0.0; 4] }));
             }
         }
-        out.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        out.sort_unstable_by(|a, b| b.0.total_cmp(&a.0));
         out.into_iter().map(|(_, s)| s).collect()
     }
 

@@ -6,6 +6,8 @@
 //! `&name=X` sets the crew name. Practice test hooks: `&matchtime=45`,
 //! `&raidfast=1`, `&scrap=1` (Powder until a branch offer), `&flare=1`,
 //! `&wave=N`, `&boss=1|weak`, `&landship=1`; `autoplay=team|convoy|host-convoy` for Team Brawl / Convoy.
+//! `&quality=low|medium|high|ultra` forces a preset (profiling). The canvas
+//! carries `data-cpu`: mean/max CPU ms per frame (game, draw) over 60 frames.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -84,6 +86,10 @@ struct State {
     start: f64,
     last: f64,
     frames: u32,
+    /// CPU time per frame, ms: (sum, max, game sum, draw sum) since the last report.
+    cpu: (f64, f64, f64, f64),
+    /// Sums of `WorldRenderer::prof` since the last report.
+    prof: [f64; 5],
 }
 
 type Shared = Rc<RefCell<State>>;
@@ -151,6 +157,10 @@ async fn run() -> Result<()> {
     if let Some(name) = query_flag("name").filter(|n| !n.is_empty()) {
         settings.name = name;
     }
+    if let Some(q) = query_flag("quality").filter(|q| !q.is_empty()) {
+        settings.quality = Quality::parse(&q);
+        game.quality_auto = false;
+    }
     game.apply_settings(settings);
     if query_flag("mouse").as_deref() == Some("free") {
         game.free_mouse = true;
@@ -195,6 +205,8 @@ async fn run() -> Result<()> {
         start: now,
         last: now,
         frames: 0,
+        cpu: (0.0, 0.0, 0.0, 0.0),
+        prof: [0.0; 5],
     }));
     install_input(&state)?;
     fetch_rooms(rooms);
@@ -536,6 +548,7 @@ fn frame(s: &mut State) {
     }
 
     let world = s.game.frame(now / 1000.0, dt, &mut s.wr);
+    let t_game = now_ms();
 
     if !s.game.wants_pointer() && pointer_locked() {
         if let Some(d) = web_sys::window().and_then(|w| w.document()) {
@@ -560,7 +573,18 @@ fn frame(s: &mut State) {
     };
     let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
     s.wr.draw(&view, &world);
+    let t_draw = now_ms();
     s.wr.renderer.queue.present(frame);
+    let end = now_ms();
+    let total = end - now;
+    s.cpu.0 += total;
+    s.cpu.1 = s.cpu.1.max(total);
+    s.cpu.2 += t_game - now;
+    s.cpu.3 += t_draw - t_game;
+    let cull = s.wr.renderer.cull_ms;
+    for (sum, v) in s.prof.iter_mut().zip(s.wr.prof.into_iter().chain([cull])) {
+        *sum += v;
+    }
     // For headless checks: frames drawn and what is on screen.
     s.frames += 1;
     if s.frames % 30 == 0 {
@@ -569,8 +593,35 @@ fn frame(s: &mut State) {
         let elapsed = ((now - s.start) / 1000.0) as f32;
         let _ = s.canvas.set_attribute(
             "data-stats",
-            &format!("tanks={} draws={calls} instances={inst} particles={} t={elapsed:.1}", world.tanks.len(), s.wr.fx.particle_count()),
+            &format!(
+                "tanks={} draws={calls} instances={inst} particles={} sprites={} q={:?} scale={:.2} t={elapsed:.1}",
+                world.tanks.len(),
+                s.wr.fx.particle_count(),
+                s.wr.renderer.sprite_count,
+                s.wr.renderer.quality(),
+                s.wr.renderer.render_scale()
+            ),
         );
         let _ = s.canvas.set_attribute("data-game", &s.game.debug_line());
+    }
+    if s.frames % 60 == 0 {
+        let (sum, max, game, draw) = s.cpu;
+        let p = s.prof.map(|v| v / 60.0);
+        let _ = s.canvas.set_attribute(
+            "data-cpu",
+            &format!(
+                "cpu={:.2} max={max:.2} game={:.2} draw={:.2} fx={:.2} inst={:.2} sprites={:.2} render={:.2} cull={:.2}",
+                sum / 60.0,
+                game / 60.0,
+                draw / 60.0,
+                p[0],
+                p[1],
+                p[2],
+                p[3],
+                p[4]
+            ),
+        );
+        s.cpu = (0.0, 0.0, 0.0, 0.0);
+        s.prof = [0.0; 5];
     }
 }

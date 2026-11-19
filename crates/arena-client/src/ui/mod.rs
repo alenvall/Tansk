@@ -185,7 +185,7 @@ pub enum Quality {
 }
 
 impl Quality {
-    fn parse(s: &str) -> Self {
+    pub(crate) fn parse(s: &str) -> Self {
         match s {
             "low" => Quality::Low,
             "medium" => Quality::Medium,

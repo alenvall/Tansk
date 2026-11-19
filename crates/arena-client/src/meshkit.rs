@@ -84,6 +84,12 @@ pub fn srgb_hex(hex: u32) -> Vec3 {
     Vec3::new(c(16), c(8), c(0))
 }
 
+/// `params.x` base of a painted corrugated sheet's front face (see
+/// [`MeshBuilder::corrugated`]); painted steel has no use for roughness.
+pub const CORRUGATED_FRONT: f32 = 100.0;
+/// ... and of its back face.
+pub const CORRUGATED_BACK: f32 = 300.0;
+
 /// One vertex as the GPU sees it. Matches `VertexIn` in `scene.wgsl`.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -298,19 +304,31 @@ impl MeshBuilder {
     /// A corrugated metal sheet in the XY plane (corrugations run along Y),
     /// `width` x `height`, waves of `pitch` and `depth`, `thickness` apart
     /// front and back. Edges are left open; nobody looks at a sheet's rim.
+    ///
+    /// Painted sheets carry the sheet's flat normal and their wave phase
+    /// (`params.x` = [`CORRUGATED_FRONT`] or [`CORRUGATED_BACK`] + cycles
+    /// across), so the shader rebuilds the wavy normal up close and fades it
+    /// out once a wave gets thinner than a pixel: far stacks read as clean
+    /// painted metal, not moire.
     pub fn corrugated(&mut self, width: f32, height: f32, pitch: f32, depth: f32, thickness: f32, paint: Paint, transform: Mat4) {
         let first = self.vertices.len();
         let steps = ((width / pitch) * 8.0).ceil().max(2.0) as u32;
         let k = std::f32::consts::TAU / pitch;
+        let painted = matches!(paint.material, Material::PaintedSteel | Material::TeamPaint);
         for side in [1.0f32, -1.0] {
             let base = self.vertices.len() as u32;
             for i in 0..=steps {
                 let x = -0.5 * width + width * i as f32 / steps as f32;
                 let z = 0.5 * depth * (k * x).sin() + side * 0.5 * thickness;
                 let dz = 0.5 * depth * k * (k * x).cos();
-                let n = Vec3::new(-dz, 0.0, 1.0).normalize() * side;
-                self.push(Vec3::new(x, -0.5 * height, z), n, paint);
-                self.push(Vec3::new(x, 0.5 * height, z), n, paint);
+                let n = if painted { Vec3::Z * side } else { Vec3::new(-dz, 0.0, 1.0).normalize() * side };
+                let a = self.push(Vec3::new(x, -0.5 * height, z), n, paint);
+                let b = self.push(Vec3::new(x, 0.5 * height, z), n, paint);
+                if painted {
+                    let phase = if side > 0.0 { CORRUGATED_FRONT } else { CORRUGATED_BACK } + x / pitch;
+                    self.vertices[a as usize].params[0] = phase;
+                    self.vertices[b as usize].params[0] = phase;
+                }
             }
             for i in 0..steps {
                 let a = base + 2 * i;

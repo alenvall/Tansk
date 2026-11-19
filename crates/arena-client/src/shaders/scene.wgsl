@@ -253,10 +253,25 @@ fn salt_flat(base: Surface, p: vec3<f32>, fw: vec3<f32>, salt: f32) -> Surface {
     let crust = vec3<f32>(0.76, 0.70, 0.61) * (0.92 + 0.12 * fbm2(xz * 0.03));
     var c = mix(base.albedo, crust, salt * (0.3 + 0.45 * crusty));
     // Irregular crust plates with darker rims, only where the crust is.
-    let warp = vec2<f32>(noise2(xz * 0.11), noise2(xz * 0.11 + 5.0)) * 1.4;
-    let edge = voronoi_edge(xz * 0.16 + warp);
-    let rim = (1.0 - smoothstep(0.025, 0.025 + w * 0.4, edge)) * (1.0 - smoothstep(0.1, 0.3, w)) * crusty;
-    c = mix(c, c * 0.82, rim * salt);
+    // Like the Sink's clay: the plate size drifts across the flat, the rims
+    // wander at two scales, their width varies and some fade out, and a
+    // finer net of hairline cracks splits the bigger plates, so up close
+    // it reads as dried crust, not tiles.
+    let scale = mix(0.12, 0.22, noise2(xz * 0.013 + 3.0));
+    let warp = vec2<f32>(noise2(xz * 0.11), noise2(xz * 0.11 + 5.0)) * 1.4
+        + vec2<f32>(noise2(xz * 0.47 + 2.0), noise2(xz * 0.47 + 7.0)) * 0.22;
+    let edge = voronoi_edge(xz * scale + warp);
+    let cw = (0.012 + 0.03 * noise2(xz * 0.35 + 1.0)) * smoothstep(0.15, 0.45, noise2(xz * 0.06 + 11.0));
+    let near = 1.0 - smoothstep(0.1, 0.3, w);
+    let rim = (1.0 - smoothstep(cw, cw + w * scale * 2.5, edge)) * near * crusty;
+    let fine_s = scale * 2.6;
+    let fine_edge = voronoi_edge(xz * fine_s + warp * 1.7 + 13.0);
+    let fine = (1.0 - smoothstep(0.012, 0.012 + w * fine_s * 2.5, fine_edge))
+        * smoothstep(0.45, 0.7, noise2(xz * 0.09 + 4.0)) * (1.0 - smoothstep(0.05, 0.15, w)) * crusty;
+    c = mix(c, c * 0.8, rim * salt);
+    c = mix(c, c * 0.88, fine * salt * 0.8);
+    // A faint mottle across the crust.
+    c = c * (1.0 + 0.05 * salt * crusty * (noise2(xz * 0.9) - 0.5));
     // Oily grey-rust stains round the plant.
     let stain = paint_edge(fbm2(xz * 0.018 + vec2<f32>(9.0, 3.0)), 0.62, 0.08);
     c = mix(c, vec3<f32>(0.40, 0.33, 0.27), stain * salt * 0.5);
@@ -525,8 +540,31 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
         n = -n;
     }
     let face = select(n, face_raw * inverseSqrt(max(dot(face_raw, face_raw), 1e-30)), dot(face_raw, face_raw) > 1e-14);
-    let edge = 1.0 - abs(dot(n, face));
+    var edge = 1.0 - abs(dot(n, face));
     let material = u32(in.params.y + 0.5);
+    // Painted corrugated sheets (params.x = 100 front / 300 back + wave
+    // cycles across): the vertex normal is the sheet's; rebuild the wave's
+    // normal from the phase, and fade it to flat once a wave gets thinner
+    // than about three pixels, so far container stacks read as clean paint.
+    let dcx = dpdx(in.params.x);
+    let dcy = dpdy(in.params.x);
+    let dpx = dpdx(in.world);
+    let dpy = dpdy(in.world);
+    if (in.params.x > 50.0 && (material == 0u || material == 5u)) {
+        let back = in.params.x > 200.0;
+        let cyc = in.params.x - select(100.0, 300.0, back);
+        let r1 = cross(dpy, face);
+        let r2 = cross(face, dpx);
+        let det = dot(dpx, r1);
+        let g = (dcx * r1 + dcy * r2) / select(det, 1e-8, abs(det) < 1e-12);
+        let gl = length(g);
+        let t = g / max(gl, 1e-6);
+        let per_px = max(max(fw.x, fw.y), fw.z) * gl;
+        let fade = 1.0 - smoothstep(0.1, 0.33, per_px);
+        let full = normalize(n - select(1.0, -1.0, back) * 0.8 * cos(6.2831853 * cyc) * t);
+        edge = (1.0 - abs(dot(full, face))) * fade;
+        n = normalize(mix(n, full, fade));
+    }
     let wear = in.params.z;
     let v = normalize(globals.camera.xyz - in.world);
     let l = globals.sun_dir.xyz;

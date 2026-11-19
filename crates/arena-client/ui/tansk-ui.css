@@ -265,6 +265,40 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
   transform-origin: left top;
 }
 .t-panel-wide { width: 50rem; }
+
+/* Short screens (720p and below): the root font is at its 12px floor, so
+   tighten the wordmark and the button stack to keep clear air above the
+   ticker; below ~660px the sub-labels shrink too, and nothing scrolls. */
+@media (max-height: 820px) {
+  .t-wordmark { top: 2.4rem; }
+  .t-logo { font-size: 10.5rem; }
+  .t-logo-bar { width: 35rem; margin-top: .9rem; }
+  .t-year { font-size: 1.75rem; }
+  .t-tagline { margin-top: 1rem; font-size: 1.5rem; }
+  .t-menu, .t-panel { top: 21.5rem; }
+  .t-panel { max-height: calc(100vh - 25.5rem); }
+  .t-menu { gap: .32rem; }
+  .t-btn-play { padding: .8rem 1.4rem .75rem 1.8rem; }
+  .t-btn-play .t-btn-label { font-size: 2.3rem; }
+  .t-menu .t-btn:not(.t-btn-play) { padding-top: .45rem; padding-bottom: .4rem; }
+  .t-menu .t-btn-hint { font-size: .88rem; }
+}
+@media (max-height: 660px) {
+  .t-wordmark { top: 1.6rem; }
+  .t-logo { font-size: 8.5rem; }
+  .t-logo-bar { width: 29rem; margin-top: .7rem; }
+  .t-year { font-size: 1.45rem; }
+  .t-tagline { margin-top: .8rem; font-size: 1.3rem; }
+  .t-menu, .t-panel { top: 16.5rem; }
+  .t-panel { max-height: calc(100vh - 20.5rem); }
+  .t-menu { gap: .26rem; }
+  .t-btn-play { padding: .6rem 1.4rem .55rem 1.8rem; }
+  .t-btn-play .t-btn-label { font-size: 2rem; }
+  .t-menu .t-btn:not(.t-btn-play) { padding-top: .32rem; padding-bottom: .28rem; }
+  .t-menu .t-btn:not(.t-btn-play) .t-btn-label { font-size: 1.5rem; }
+  .t-menu .t-btn-hint { font-size: .75rem; }
+  .t-pmap label span { padding: .25rem .7rem .2rem; }
+}
 .t-title[data-panel="host"] [data-for="host"],
 .t-title[data-panel="join"] [data-for="join"],
 .t-title[data-panel="settings"] [data-for="settings"],
