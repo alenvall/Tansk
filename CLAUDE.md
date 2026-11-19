@@ -39,3 +39,14 @@
 - **More destructible terrain and props:** this comes after the canyon map.
 
 Everything above already ships to tansk.alenvall.com as each piece lands. A very brief recap waits for you when you're back.
+
+
+/////
+
+Erik: Cool!!!
+Can you add a "change log" thing on tye main menu? To tell tye player (and mostly me) what the latest thing is.
+also a "coming up" section
+
+and the coolest: an idea box, where players can post stuff and you take into consideration
+this can get crazy so only implement stuff that is reasonable, like tuning and bug fixes or ideas for existing mechanics
+maybe not "moon like gravity and unicorns"
