@@ -352,14 +352,105 @@ pub fn part_mesh(kind: PartKind, team: u32) -> MeshBuilder {
             m.bevel_box(Vec3::new(0.06, 0.1, 0.06), 0.02, 1, Paint::steel(0xb8b4aa, 0.3), at(hand + Vec3::new(0.2, 0.05, 0.0)));
             m.cylinder(0.06, 0.03, 0.01, 1, 8, Paint::glow(0x50ff80, 2.5), at(c + Vec3::new(0.2, 0.22, 0.15)));
         }
+        // ── The War Rig's modules (hull frame unless noted), 3x scale ──
         PartKind::RigCannons => {
-            // The war rig's twin cannon block on its turret.
-            let c = Vec3::new(1.2, 0.75, -0.8);
-            m.bevel_box(Vec3::new(0.6, 0.35, 0.45), 0.06, 2, trim, at(c));
-            for z in [-0.2f32, 0.2] {
-                m.cylinder(0.14, 1.0, 0.02, 1, 12, paint, along_x(c + Vec3::new(1.4, 0.05, z)));
-                m.cylinder(0.2, 0.15, 0.04, 2, 12, trim, along_x(c + Vec3::new(2.35, 0.05, z)));
+            // Turret frame: a squat armoured house with two long cannons.
+            let base = Vec3::new(0.0, 1.2, 0.0);
+            m.wedge(Vec3::new(3.2, 1.2, 2.2), 0.18, 2, 0.75, paint, at(base));
+            for side in [-1.0f32, 1.0] {
+                plate(&mut m, base + Vec3::new(-0.4, 0.0, side * 2.25), Vec3::new(2.2, 0.8, 0.06), 2, side, paint, rivet);
             }
+            m.cylinder(1.4, 0.14, 0.05, 2, 16, trim, at(base + Vec3::new(-0.8, 1.25, 0.0)));
+            m.bevel_box(Vec3::new(0.35, 0.9, 1.5), 0.1, 2, trim, at(Vec3::new(3.3, 1.3, 0.0)));
+            for z in [-0.8f32, 0.8] {
+                let c = Vec3::new(5.0, 1.3, z);
+                m.cylinder(0.3, 2.4, 0.04, 1, 14, paint, along_x(c));
+                m.cylinder(0.4, 0.18, 0.05, 2, 14, trim, along_x(c - Vec3::X * 1.6));
+                m.cylinder(0.46, 0.4, 0.08, 2, 14, trim, along_x(c + Vec3::X * 2.4));
+                bolt_ring(&mut m, c + Vec3::X * 2.4, 0.46, 10, 0.06);
+                m.cylinder(0.26, 0.01, 0.0, 1, 12, Paint::steel(0x0c0a09, 0.9), along_x(c + Vec3::X * 2.81));
+            }
+        }
+        PartKind::RigRockets => {
+            // Two big launcher pods on the rear deck, 3 x 4 tubes each.
+            for side in [-1.0f32, 1.0] {
+                let c = Vec3::new(-4.6, 2.2, side * 2.4);
+                m.bevel_box(Vec3::new(1.2, 0.8, 0.7), 0.1, 2, paint, at(c));
+                for row in 0..3 {
+                    for col in 0..4 {
+                        let p = c + Vec3::new(1.21, -0.5 + row as f32 * 0.5, -0.5 + col as f32 * 0.33);
+                        m.cylinder(0.13, 0.03, 0.0, 1, 8, Paint::steel(0x141210, 0.9), along_x(p));
+                        m.cylinder(0.09, 0.05, 0.0, 1, 8, Paint::painted(0xb02a20, 0.3), along_x(p + Vec3::X * 0.02));
+                    }
+                }
+                m.bevel_box(Vec3::new(0.3, 0.5, 0.3), 0.05, 1, trim, at(c - Vec3::Y * 1.0));
+                plate(&mut m, c + Vec3::Y * 0.82, Vec3::new(1.1, 0.04, 0.65), 1, 1.0, paint, rivet);
+            }
+        }
+        PartKind::RigFlamer => {
+            // A fan of three nozzles in the nose, fed from twin tanks.
+            let c = Vec3::new(8.1, 0.3, 0.0);
+            m.bevel_box(Vec3::new(0.45, 0.5, 1.0), 0.08, 2, trim, at(c));
+            for z in [-0.6f32, 0.0, 0.6] {
+                m.cylinder(0.16, 0.5, 0.04, 1, 10, Paint::steel(0x5a4a3a, 0.5), along_x(c + Vec3::new(0.6, 0.1, z)));
+                m.cylinder(0.22, 0.12, 0.04, 2, 10, trim, along_x(c + Vec3::new(1.05, 0.1, z)));
+                m.cylinder(0.08, 0.02, 0.0, 1, 8, Paint::glow(0x60b0ff, 3.0), along_x(c + Vec3::new(1.18, 0.1, z)));
+            }
+            for z in [-0.75f32, 0.75] {
+                m.cylinder(0.35, 0.6, 0.15, 3, 12, Paint::painted(0xb02a20, 0.4), along_x(c + Vec3::new(-0.6, 0.75, z)));
+            }
+        }
+        PartKind::RigPlateLeft | PartKind::RigPlateRight => {
+            // Big overlapping riveted side plates with a dark trim band.
+            let side = if kind == PartKind::RigPlateLeft { -1.0f32 } else { 1.0 };
+            for k in 0..4 {
+                let x = -4.95 + k as f32 * 3.3;
+                let c = Vec3::new(x, 0.2 + 0.05 * (k % 2) as f32, side * (3.75 + 0.04 * (k % 2) as f32));
+                plate(&mut m, c, Vec3::new(1.7, 1.25, 0.12), 2, side, paint, rivet);
+            }
+            m.bevel_box(Vec3::new(6.6, 0.12, 0.14), 0.05, 2, trim, at(Vec3::new(0.0, 1.45, side * 3.8)));
+            m.bevel_box(Vec3::new(6.6, 0.12, 0.14), 0.05, 2, trim, at(Vec3::new(0.0, -1.05, side * 3.8)));
+            m.bevel_box(Vec3::new(1.2, 0.18, 0.01), 0.01, 1, Paint::painted(0xd8ccb0, 0.7), at(Vec3::new(3.0, 0.6, side * 3.92)));
+        }
+        PartKind::RigPlateFront => {
+            // A sloped ram plate over the nose, with a hazard-striped lip.
+            let c = Vec3::new(7.7, 0.5, 0.0);
+            plate(&mut m, c, Vec3::new(0.18, 1.2, 3.3), 0, 1.0, paint, rivet);
+            m.bevel_box(Vec3::new(0.22, 0.18, 3.32), 0.05, 2, Paint::with(Material::Hazard, 0xffffff, 0.6), at(c - Vec3::Y * 1.05));
+            for z in [-2.2f32, 0.0, 2.2] {
+                m.bevel_box(Vec3::new(0.5, 0.15, 0.15), 0.04, 1, trim, at(c + Vec3::new(-0.5, 0.6, z)));
+            }
+        }
+        PartKind::RigEngineLeft | PartKind::RigEngineRight => {
+            // An exposed engine block: finned cylinders, a blower, two stacks.
+            let side = if kind == PartKind::RigEngineLeft { -1.0f32 } else { 1.0 };
+            let c = Vec3::new(-6.5, 1.9, side * 1.6);
+            m.bevel_box(Vec3::new(1.0, 0.55, 1.1), 0.1, 2, Paint::steel(0x5a5650, 0.4), at(c - Vec3::Y * 0.2));
+            for k in 0..6 {
+                m.bevel_box(Vec3::new(0.05, 0.6, 1.15), 0.02, 1, trim, at(c + Vec3::new(-0.8 + k as f32 * 0.32, -0.15, 0.0)));
+            }
+            m.cylinder(0.4, 0.3, 0.08, 2, 12, Paint::steel(0x8a8070, 0.3), at(c + Vec3::Y * 0.6));
+            for z in [-0.6f32, 0.6] {
+                crate::tank::octo_pipe(&mut m, c + Vec3::new(-0.6, 0.3, z), c + Vec3::new(-0.8, 2.6, z), 0.17, Paint::steel(0x2b2725, 0.75));
+                crate::tank::octo_pipe(&mut m, c + Vec3::new(-0.8, 2.5, z), c + Vec3::new(-1.3, 3.2, z), 0.17, Paint::steel(0x2b2725, 0.75));
+            }
+        }
+        PartKind::RigMast => {
+            // A tall lattice mast with a sensor head and a red lamp.
+            let b = Vec3::new(-2.5, 2.0, -2.6);
+            m.bevel_box(Vec3::new(0.45, 0.12, 0.45), 0.04, 1, trim, at(b));
+            for (sx, sz) in [(-1.0f32, -1.0f32), (-1.0, 1.0), (1.0, -1.0), (1.0, 1.0)] {
+                crate::tank::octo_pipe(&mut m, b + Vec3::new(sx * 0.3, 0.0, sz * 0.3), b + Vec3::new(sx * 0.12, 4.6, sz * 0.12), 0.05, trim);
+            }
+            for k in 0..6 {
+                let y = 0.6 + k as f32 * 0.7;
+                let s = 0.3 - 0.18 * (y / 4.6);
+                m.bevel_box(Vec3::new(s, 0.03, s), 0.01, 1, trim, at(b + Vec3::Y * y));
+            }
+            let head = Vec3::new(-2.5, 7.0, -2.6);
+            m.bevel_box(Vec3::new(0.5, 0.4, 0.5), 0.08, 2, paint, at(head));
+            m.cylinder(0.25, 0.05, 0.02, 1, 12, Paint::glow(0x5fc8ff, 2.0), along_x(head + Vec3::X * 0.51));
+            m.cylinder(0.1, 0.12, 0.05, 2, 8, Paint::glow(0xff3020, 3.0), at(head + Vec3::Y * 0.55));
         }
         // Guns are drawn with `gun_mesh`.
         k if is_gun(k) => {}

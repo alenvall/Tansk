@@ -3,7 +3,8 @@
 //!
 //! Debug URL flags: `?autoplay=practice|raid|play|host-raid` starts at once, `&mouse=free`
 //! skips the pointer lock (the mouse always turns the camera; Esc pauses),
-//! `&name=X` sets the crew name.
+//! `&name=X` sets the crew name. Practice test hooks: `&matchtime=45`,
+//! `&raidfast=1`, `&scrap=1` (Powder until a branch offer), `&flare=1`.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -151,6 +152,10 @@ async fn run() -> Result<()> {
         game.free_mouse = true;
         game.controls.captured = true;
     }
+    game.debug.match_time = query_flag("matchtime").and_then(|v| v.parse().ok());
+    game.debug.raid_fast = query_flag("raidfast").is_some();
+    game.debug.scrap = query_flag("scrap").is_some();
+    game.debug.flare = query_flag("flare").is_some();
     match query_flag("autoplay").as_deref() {
         Some("practice") => game.start_practice(),
         Some("play") => game.start_online(Join::Play),

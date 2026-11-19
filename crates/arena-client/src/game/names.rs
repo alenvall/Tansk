@@ -110,6 +110,12 @@ pub fn ui_scrap(k: ScrapKind) -> ui::ScrapKind {
     }
 }
 
+/// A tier-2 branch option (picked on a card).
+pub fn is_branch(p: PartKind) -> bool {
+    use PartKind::*;
+    matches!(p, BigBore | TwinBarrel | LongGun | Coilgun | TeslaSpire | Bulwark | SpacedArmour | Afterburner | TwinEngines)
+}
+
 /// Which track a part grows on (combos and rares: none).
 pub fn track_of(p: PartKind) -> Option<usize> {
     use PartKind::*;

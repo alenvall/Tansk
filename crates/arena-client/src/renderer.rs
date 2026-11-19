@@ -294,7 +294,11 @@ pub struct Renderer {
     post_pipeline: wgpu::RenderPipeline,
     post_layout: wgpu::BindGroupLayout,
     encode_srgb: bool,
-    meshes: Vec<GpuMesh>,
+    /// Uploaded meshes; `None` slots were freed and are reused.
+    meshes: Vec<Option<GpuMesh>>,
+    free_slots: Vec<u32>,
+    /// While a scope is open, `add_mesh` records its ids here.
+    scope: Option<Vec<MeshId>>,
     instances: Dynamic,
     sprites: Dynamic,
     ruts: Dynamic,
@@ -680,6 +684,8 @@ impl Renderer {
             post_layout,
             encode_srgb: !output_format.is_srgb(),
             meshes: Vec::new(),
+            free_slots: Vec::new(),
+            scope: None,
             instances,
             sprites,
             ruts,
@@ -715,6 +721,8 @@ impl Renderer {
         }
         let mut fresh = Renderer::with_quality(self.device.clone(), self.queue.clone(), self.output_format, self.width, self.height, quality);
         fresh.meshes = std::mem::take(&mut self.meshes);
+        fresh.free_slots = std::mem::take(&mut self.free_slots);
+        fresh.scope = self.scope.take();
         fresh.look = self.look.clone();
         fresh.frame_budget = self.frame_budget;
         *self = fresh;
@@ -764,18 +772,63 @@ impl Renderer {
         let empty = m.indices.is_empty();
         let verts: &[u8] = if empty { &[0u8; 48] } else { bytemuck::cast_slice(&m.vertices) };
         let idx: &[u8] = if empty { &[0u8; 12] } else { bytemuck::cast_slice(&m.indices) };
-        self.meshes.push(GpuMesh {
+        let mesh = GpuMesh {
             vertices: self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("mesh vertices"), contents: verts, usage: wgpu::BufferUsages::VERTEX }),
             indices: self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("mesh indices"), contents: idx, usage: wgpu::BufferUsages::INDEX }),
             count: m.indices.len() as u32,
             centre,
             radius,
-        });
-        MeshId(self.meshes.len() as u32 - 1)
+        };
+        let id = match self.free_slots.pop() {
+            Some(slot) => {
+                self.meshes[slot as usize] = Some(mesh);
+                MeshId(slot)
+            }
+            None => {
+                self.meshes.push(Some(mesh));
+                MeshId(self.meshes.len() as u32 - 1)
+            }
+        };
+        if let Some(scope) = &mut self.scope {
+            scope.push(id);
+        }
+        id
+    }
+
+    /// Like `add_mesh`, but never recorded in an open scope (for meshes a
+    /// cache keeps across scenes).
+    pub fn add_mesh_pinned(&mut self, m: &MeshBuilder) -> MeshId {
+        let scope = self.scope.take();
+        let id = self.add_mesh(m);
+        self.scope = scope;
+        id
+    }
+
+    /// Frees a mesh's GPU buffers; its id may be reused by a later upload.
+    pub fn free_mesh(&mut self, id: MeshId) {
+        if let Some(slot) = self.meshes.get_mut(id.0 as usize) {
+            if slot.take().is_some() {
+                self.free_slots.push(id.0);
+            }
+        }
+    }
+
+    /// Starts recording uploaded meshes (a map, a line-up, a podium).
+    pub fn begin_scope(&mut self) {
+        self.scope = Some(Vec::new());
+    }
+
+    pub fn in_scope(&self) -> bool {
+        self.scope.is_some()
+    }
+
+    /// Stops recording and returns what was uploaded since `begin_scope`.
+    pub fn end_scope(&mut self) -> Vec<MeshId> {
+        self.scope.take().unwrap_or_default()
     }
 
     pub fn mesh_count(&self) -> usize {
-        self.meshes.len()
+        self.meshes.iter().filter(|m| m.is_some()).count()
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -913,7 +966,7 @@ impl Renderer {
         for (test, main) in &views {
             visible.clear();
             for (k, inst) in instances.iter().enumerate() {
-                let mesh = &self.meshes[inst.mesh.0 as usize];
+                let Some(mesh) = self.meshes.get(inst.mesh.0 as usize).and_then(|m| m.as_ref()) else { continue };
                 if mesh.count == 0 {
                     continue;
                 }
@@ -1026,7 +1079,7 @@ impl Renderer {
     fn draw_batches(&self, pass: &mut wgpu::RenderPass<'_>, batches: &[(MeshId, u32, u32)]) {
         pass.set_vertex_buffer(1, self.instances.buffer.slice(..));
         for &(mesh, first, count) in batches {
-            let m = &self.meshes[mesh.0 as usize];
+            let Some(m) = self.meshes[mesh.0 as usize].as_ref() else { continue };
             pass.set_vertex_buffer(0, m.vertices.slice(..));
             pass.set_index_buffer(m.indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..m.count, 0, first..first + count);

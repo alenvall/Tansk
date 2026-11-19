@@ -136,4 +136,6 @@ pub enum Event {
     /// The last plate is gone: the core takes full damage now.
     BossCoreExposed { player: PlayerId },
     BossDefeated { player: PlayerId, killer: Option<PlayerId>, seconds: f32 },
+    /// Team Brawl over (None on a draw).
+    TeamMatchEnded { team: Option<u8> },
 }

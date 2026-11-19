@@ -434,8 +434,8 @@ pub(crate) fn make_obstacle(kind: ObstacleKind, rng: &mut Rng) -> Obstacle {
         ObstacleKind::GasStation => {
             cover = Cover::Tall;
             boxes.push(bx(Vec3::new(0.0, 1.7, -7.0), Vec3::new(6.0, 1.9, 4.0), 0.0));
-            boxes.push(bx(Vec3::new(0.0, 5.2, 7.0), Vec3::new(8.0, 0.3, 5.0), 0.0));
-            for (x, z) in [(-6.5, 3.5), (6.5, 3.5), (-6.5, 10.5), (6.5, 10.5)] {
+            boxes.push(bx(Vec3::new(0.0, 5.2, 7.0), Vec3::new(8.0, 0.3, 5.5), 0.0));
+            for (x, z) in [(-6.5, 2.5), (6.5, 2.5), (-6.5, 11.5), (6.5, 11.5)] {
                 boxes.push(bx(Vec3::new(x, 2.4, z), Vec3::new(0.3, 2.5, 0.3), 0.0));
             }
             radius = 14.0;

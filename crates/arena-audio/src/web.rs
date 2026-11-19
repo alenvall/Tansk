@@ -15,9 +15,9 @@
 //! deprecated but not removed; if it is ever missing, engines are silent and
 //! everything else still plays.
 //!
-//! Pre-rendering: `unlock()` renders one take of every sound (about 120 ms
-//! in WASM, measured in Node; it logs the real time), and `tick()` renders
-//! the remaining variations (about 170 ms more) 3 ms per frame.
+//! Pre-rendering: `unlock()` renders one take of every sound (about 200 ms
+//! in WASM, measured in Node; capped at 200 ms, it logs the real time), and
+//! `tick()` renders whatever is left, 3 ms per frame.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -40,6 +40,9 @@ use crate::{schedule, take_seed};
 const MAX_ONE_SHOTS: usize = 64;
 /// Frames per engine callback.
 const ENGINE_BLOCK: u32 = 2048;
+/// Most milliseconds `unlock()` spends rendering before handing the rest
+/// to `tick()`.
+const UNLOCK_BUDGET_MS: f64 = 200.0;
 /// Milliseconds of background rendering per `tick()`.
 const TICK_BUDGET_MS: f64 = 3.0;
 
@@ -196,11 +199,14 @@ impl Audio {
         };
         // One take of every sound now, so anything can play from the start.
         let t0 = now_ms();
-        while live.next_render < SoundId::ALL.len() {
+        // Capped, so a slow machine does not stall the click that unlocked
+        // audio; the air-strike sounds come last and finish in `tick()`.
+        while live.next_render < SoundId::ALL.len() && now_ms() - t0 < UNLOCK_BUDGET_MS {
             live.render_one()?;
         }
         log(&format!(
-            "arena-audio: {} sounds ready in {:.0} ms ({} Hz output); {} more takes render in the background",
+            "arena-audio: {} of {} sounds ready in {:.0} ms ({} Hz output); {} more takes render in the background",
+            live.next_render.min(SoundId::ALL.len()),
             SoundId::ALL.len(),
             now_ms() - t0,
             rate,

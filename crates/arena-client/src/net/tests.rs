@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 use arena_core::net::{decode, encode, ClientMsg, Join, ServerMsg};
 use arena_core::{Input, Map, Sim, Tuning, Vec3, DT};
+use glam::Vec2;
 
 use super::transport::{Incoming, Transport};
 use super::{NetClient, Status};
@@ -60,6 +61,8 @@ impl FakeServer {
             match decode::<ClientMsg>(&bytes).unwrap() {
                 ClientMsg::Hello { .. } => {
                     let you = self.sim.add_player("Crew");
+                    let (x, z, yaw) = clear_lane(&self.sim, 120.0);
+                    self.sim.teleport(you, x, z, yaw);
                     self.me = Some(you);
                     Self::send(link, &ServerMsg::Welcome { code: "TEST".into(), public: false, you, seed: 5, token: 1 });
                 }
@@ -85,10 +88,48 @@ impl FakeServer {
     }
 }
 
+/// A start point and heading with `len` metres of open ground ahead (no
+/// cover, walls or steep slope within 6 m of the line, no oil drums), so the
+/// scripted drive doesn't depend on the map's layout.
+fn clear_lane(sim: &Sim, len: f32) -> (f32, f32, f32) {
+    let map = &sim.map;
+    let edge = map.play_half - 8.0;
+    let open = |x: f32, z: f32| {
+        x.abs() < edge
+            && z.abs() < edge
+            && !sim.nav.is_blocked(Vec2::new(x, z))
+            && map.props.iter().all(|p| Vec2::new(p.pos.x - x, p.pos.z - z).length() > 6.0)
+    };
+    let mut x = -edge;
+    while x < edge {
+        let mut z = -edge;
+        while z < edge {
+            for k in 0..8 {
+                let yaw = k as f32 * std::f32::consts::FRAC_PI_4;
+                // Hull yaw 0 faces +X; positive yaw turns left (toward -Z).
+                let (fwd, side) = (Vec2::new(yaw.cos(), -yaw.sin()), Vec2::new(yaw.sin(), yaw.cos()));
+                let clear = (0..=(len / 2.0) as i32).all(|i| {
+                    (-1..=1).all(|j| {
+                        let p = Vec2::new(x, z) + fwd * (i as f32 * 2.0) + side * (j as f32 * 6.0);
+                        open(p.x, p.y)
+                    })
+                });
+                if clear {
+                    return (x, z, yaw);
+                }
+            }
+            z += 8.0;
+        }
+        x += 8.0;
+    }
+    panic!("no {len} m clear lane on the map");
+}
+
 fn script(t: f64) -> Input {
     Input {
         throttle: if t < 7.0 { 1.0 } else { -0.6 },
-        steer: (t * 0.9).sin() as f32 * 0.8,
+        // A gentle weave: exercises turning without leaving the lane.
+        steer: (t * 0.9).sin() as f32 * 0.15,
         boost: (3.0..4.0).contains(&t),
         ..Input::default()
     }

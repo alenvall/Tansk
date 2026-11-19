@@ -634,6 +634,8 @@ pub struct ModeTuning {
     /// Scrap Brawl length, s.
     pub time_limit: f32,
     pub kill_limit: u32,
+    /// Team Brawl: first team to this many kills wins.
+    pub team_kill_limit: u32,
     pub respawn_delay: f32,
     /// Seconds wrecks and debris stay around.
     pub wreck_lifetime: f32,
@@ -645,6 +647,7 @@ impl Default for ModeTuning {
         Self {
             time_limit: 7.0 * 60.0,
             kill_limit: 10,
+            team_kill_limit: 20,
             respawn_delay: 3.0,
             wreck_lifetime: 12.0,
             debris_lifetime: 10.0,
@@ -1085,7 +1088,7 @@ impl Default for RaidTuning {
             sabotage_dps: 10.0,
             boss_sabotage_dps: 60.0,
             buggy_kamikaze: 90.0,
-            outpost_splash_mult: 0.6,
+            outpost_splash_mult: 0.3,
             drop_buggy: 1,
             drop_technical: 2,
             drop_tank: 3,

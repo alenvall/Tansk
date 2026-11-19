@@ -218,6 +218,15 @@ impl NetClient {
         }
     }
 
+    /// Offline only: the local sim, for debug hooks (short matches, free
+    /// scrap). `None` online.
+    pub fn practice_sim(&mut self) -> Option<&mut Sim> {
+        match &mut self.mode {
+            Mode::Practice(p) => Some(&mut p.sim),
+            Mode::Online(_) => None,
+        }
+    }
+
     /// The controls to apply from now on (sent once per 60 Hz tick, tagged
     /// with a sequence number).
     pub fn send_input(&mut self, input: Input) {

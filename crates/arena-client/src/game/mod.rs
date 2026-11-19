@@ -11,6 +11,7 @@
 
 pub mod aim;
 pub mod controls;
+pub mod juice;
 pub mod names;
 pub mod radio;
 pub mod sound;
@@ -32,6 +33,7 @@ use crate::ui::{BranchOption, EndRow, HitKind, OpenGame, ScoreRow, Settings, Tea
 use crate::world::{paint_for, RenderWorld, TankView, WorldRenderer};
 
 pub use controls::Controls;
+use juice::Juice;
 use radio::Radio;
 use sound::Sound;
 
@@ -46,6 +48,19 @@ const BRANCH_SECS: f32 = 4.0;
 /// track_repair_time - track_patch_duration).
 const TRACK_WAIT: f32 = 2.5;
 const TRACK_PATCH: f32 = 1.5;
+
+/// Test hooks from URL flags; they only touch the offline Practice sim.
+#[derive(Clone, Debug, Default)]
+pub struct DebugFlags {
+    /// `?matchtime=45`: Scrap Brawl length, seconds.
+    pub match_time: Option<f32>,
+    /// `?raidfast=1`: waves at once, a boss every wave, a weak outpost.
+    pub raid_fast: bool,
+    /// `?scrap=1`: a Powder scrap every second until tier 2 (branch offer).
+    pub scrap: bool,
+    /// `?flare=1`: start holding an air-strike flare.
+    pub flare: bool,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Screen {
@@ -81,6 +96,8 @@ struct Match {
     chat_seen: usize,
     chat_last: Option<ChatLine>,
     ended: bool,
+    debug_scrap_t: f32,
+    names: HashMap<PlayerId, String>,
     /// Build the podium on the next frame (the end screen just opened).
     podium_pending: bool,
     /// Raid: the mode label last written, the outpost's max health, and the
@@ -98,6 +115,9 @@ pub struct Game {
     pub free_mouse: bool,
     /// The pause menu is open (pointer released mid-match).
     pub paused: bool,
+    pub debug: DebugFlags,
+    juice: Juice,
+    heart: f32,
     sound: Sound,
     screen: Screen,
     backdrop: Demo,
@@ -151,6 +171,9 @@ impl Game {
             radio: Radio::default(),
             status_note: String::new(),
             podium: None,
+            debug: DebugFlags::default(),
+            juice: Juice::default(),
+            heart: 0.0,
         }
     }
 
@@ -272,8 +295,53 @@ impl Game {
         };
         self.ui.set_loading_tip(tip(self.time));
         self.net = Some(net);
+        self.apply_debug();
         self.session = Some(session);
         self.screen = Screen::Loading;
+    }
+
+    fn apply_debug(&mut self) {
+        let d = self.debug.clone();
+        let Some(sim) = self.net.as_mut().and_then(|n| n.practice_sim()) else { return };
+        if let Some(t) = d.match_time {
+            sim.tuning.mode.time_limit = t;
+            sim.time_left = t;
+        }
+        if d.raid_fast {
+            sim.tuning.raid.boss_every = 1;
+            sim.tuning.raid.breather = 4.0;
+            sim.tuning.raid.first_wave_delay = 3.0;
+            if let Some(r) = &mut sim.raid {
+                r.timer = r.timer.min(3.0);
+                r.health = r.max_health * 0.3;
+            }
+        }
+        if d.flare {
+            for p in &mut sim.players {
+                if p.brain.is_none() {
+                    p.tank.air_strike = true;
+                }
+            }
+        }
+    }
+
+    /// `?scrap=1`: feeds Powder until tier 2 so a branch offer opens.
+    fn debug_scrap(&mut self, dt: f32) {
+        if !self.debug.scrap {
+            return;
+        }
+        self.m.debug_scrap_t += dt;
+        if self.m.debug_scrap_t < 1.0 {
+            return;
+        }
+        self.m.debug_scrap_t = 0.0;
+        let you = self.you();
+        let Some(sim) = self.net.as_mut().and_then(|n| n.practice_sim()) else { return };
+        if let Some(j) = sim.players.iter().position(|p| Some(p.id) == you) {
+            if sim.players[j].tank.tiers[1] < 2 && sim.players[j].tank.alive {
+                sim.add_scrap(j, arena_core::ScrapKind::Powder);
+            }
+        }
     }
 
     /// Back to the title screen.
@@ -302,7 +370,12 @@ impl Game {
         if Some(id) == self.you() {
             return self.settings.name.clone();
         }
-        self.net.as_ref().and_then(|n| n.state().name_of(id)).map_or_else(|| format!("Crew {id}"), str::to_string)
+        self.net
+            .as_ref()
+            .and_then(|n| n.state().name_of(id))
+            .map(str::to_string)
+            .or_else(|| self.m.names.get(&id).cloned())
+            .unwrap_or_else(|| "a raider".to_string())
     }
 
     fn handle_actions(&mut self) {
@@ -499,11 +572,17 @@ impl Game {
         }
         let Some(snap) = st.world.clone() else { return RenderWorld::default() };
         let rtt = st.rtt_ms;
+        for p in &st.players {
+            if !self.m.names.contains_key(&p.id) {
+                self.m.names.insert(p.id, p.name.clone());
+            }
+        }
         self.sync_chat();
 
+        self.debug_scrap(dt);
         let mut world = RenderWorld::from_snapshot(&snap, &paint_for);
         world.time = self.time;
-        world.dt = dt;
+        world.dt = dt * self.juice.time_scale(dt);
         let me = you.and_then(|y| snap.tank(y)).cloned();
         let my_view = you.and_then(|y| world.tanks.iter().find(|t| t.player == y)).cloned();
 
@@ -541,8 +620,19 @@ impl Game {
         if long_gun {
             cam.fov_y *= 1.0 - 0.5 * self.chase.zoom;
         }
-        world.camera = Some(cam);
         self.camera = Some(cam);
+        // Feel, on the drawn camera only (the aim keeps the rig's line).
+        let (boosting, lag) = match (&my_view, alive) {
+            (Some(v), true) => {
+                let tf = v.turret_transform().transform_vector3(Vec3::X);
+                (v.boosting, wrap((-tf.z).atan2(tf.x) - self.chase.yaw))
+            }
+            _ => (false, 0.0),
+        };
+        if let Some(t) = &me {
+            self.juice.track_landing(t.linvel[1]);
+        }
+        world.camera = Some(self.juice.apply(cam, dt, boosting, lag, self.chase.zoom));
         // ---- Aim: the screen centre onto the world.
         let dir = (cam.target - cam.eye).normalize_or(Vec3::X);
         let skip = (pivot + Vec3::Y * self.chase.pivot_height - cam.eye).dot(dir).max(0.0);
@@ -558,6 +648,17 @@ impl Game {
                     wr.fx.weld(t.pos + Vec3::Y * 1.5);
                 }
             }
+            if let Event::Fired { player, weapon, .. } = e {
+                if Some(*player) == you {
+                    match weapon {
+                        arena_core::Weapon::Gun(g) => {
+                            let shake = self.juice.fire(*g);
+                            self.chase.add_trauma(shake);
+                        }
+                        _ => self.juice.small_fire(),
+                    }
+                }
+            }
             self.sound.event(e, you);
             self.on_event(e, you, &world, cam);
         }
@@ -566,6 +667,16 @@ impl Game {
         // ---- HUD.
         if let Some(t) = &me {
             self.hud(t, &snap, dt);
+            let hp = t.health as f32 / f32::from(t.max_health.max(1));
+            if t.alive && hp < 0.3 {
+                self.heart -= dt;
+                if self.heart <= 0.0 {
+                    self.sound.heartbeat(hp);
+                    self.heart = 0.55 + hp * 1.5;
+                }
+            } else {
+                self.heart = 0.0;
+            }
         }
         self.raid_hud(&snap);
         if let Some(left) = &mut self.m.branch {
@@ -776,6 +887,7 @@ impl Game {
                         _ => HitKind::Armour,
                     };
                     self.ui.hit_marker(kind);
+                    self.sound.hit_tick(kind == HitKind::Part);
                 }
                 if is_you(*target) {
                     if let Some(src) = attacker.filter(|a| !is_you(*a)).and_then(|a| world.tanks.iter().find(|t| t.player == a)) {
@@ -795,6 +907,8 @@ impl Game {
                 if let Some(k) = killer.filter(|k| k != victim) {
                     if is_you(k) {
                         self.ui.hit_marker(HitKind::Kill);
+                        self.sound.kill_tick();
+                        self.juice.kill();
                     }
                     let n = {
                         let s = self.m.streaks.entry(k).or_insert(0);
@@ -818,7 +932,7 @@ impl Game {
                     self.m.branch = None;
                 }
             }
-            Event::UpgradeApplied { player, track, tier, part } if is_you(*player) => {
+            Event::UpgradeApplied { player, track, tier, part } if is_you(*player) && !(*tier == 2 && part.is_some_and(names::is_branch)) => {
                 let name = part.map_or(names::scrap_name(*track), names::part_name);
                 self.radio.say(&radio::upgraded(name, *tier), *tier >= 3);
             }
@@ -947,7 +1061,15 @@ impl Game {
         let snap = self.net.as_ref().and_then(|n| n.state().world.clone());
         let mut rows = snap.as_ref().map(|s| self.score_rows(s, 0.0)).unwrap_or_default();
         rows.truncate(8);
-        let biggest = rows.iter().enumerate().max_by_key(|(_, r)| r.tiers.iter().map(|t| u32::from(*t)).sum::<u32>()).map(|(i, _)| i);
+        let size = |r: &ScoreRow| r.tiers.iter().map(|t| u32::from(*t)).sum::<u32>();
+        let mut biggest = None;
+        let mut most = 0;
+        for (i, r) in rows.iter().enumerate() {
+            if size(r) > most {
+                most = size(r);
+                biggest = Some(i);
+            }
+        }
         let end: Vec<EndRow> = rows
             .iter()
             .enumerate()

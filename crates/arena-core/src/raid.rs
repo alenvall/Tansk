@@ -27,6 +27,8 @@ pub enum ModeKind {
     ScrapBrawl,
     /// Co-op: hold the outpost against raider waves.
     RaiderWaves,
+    /// Rustbacks (team 0) vs Dust Saints (team 1), team kills, no friendly fire.
+    TeamBrawl,
 }
 
 pub const TEAM_DEFENDERS: u8 = 0;
@@ -72,6 +74,8 @@ pub struct RaidState {
     /// Living bosses: (player, spawn time in match seconds).
     pub bosses: Vec<(PlayerId, f32)>,
     pending_hit: f32,
+    /// Per raider: (id, best distance to the outpost, seconds without progress).
+    progress: Vec<(PlayerId, f32, f32)>,
 }
 
 /// Raid state for the client (outpost bar, wave banner, countdown).
@@ -166,6 +170,7 @@ impl Sim {
             boss_lifetimes: Vec::new(),
             bosses: Vec::new(),
             pending_hit: 0.0,
+            progress: Vec::new(),
         });
     }
 
@@ -252,6 +257,11 @@ impl Sim {
                 }
                 // Branch picks stay at random defaults; clear the choice window.
                 self.players[j].tank.choice = None;
+                // Raider tanks don't get combo parts (shield bubbles etc. stay rare).
+                let t2 = self.tuning.clone();
+                self.players[j].tank.parts.retain(|p| p.tier > 0);
+                self.players[j].tank.refresh_stats(&mut self.phys, &t2);
+                self.players[j].tank.shield = 0.0;
             }
             VehicleKind::Technical => self.attach_special(j, PartKind::RocketRack),
             VehicleKind::WarRig => {
@@ -358,6 +368,8 @@ impl Sim {
             }
         }
 
+        self.recycle_stuck_raiders(dt);
+
         // Sabotage: raiders inside the zone drain it; buggies blow themselves up on it.
         let (o, rad) = {
             let r = self.raid.as_ref().unwrap();
@@ -403,7 +415,8 @@ impl Sim {
         if raid.health <= 0.0 {
             reason = Some(LossReason::OutpostFell);
         } else {
-            let core: Vec<&Player> = self.players.iter().filter(|p| p.team == Some(TEAM_DEFENDERS) && p.counts_as_human).collect();
+            // Every defender (humans and bot allies) down at the same moment.
+            let core: Vec<&Player> = self.players.iter().filter(|p| p.team == Some(TEAM_DEFENDERS)).collect();
             if !core.is_empty() && core.iter().all(|p| !p.tank.alive) && raid.wave > 0 {
                 reason = Some(LossReason::AllDefendersDown);
             }
@@ -439,7 +452,8 @@ impl Sim {
             return;
         }
         let d = Vec2::new(pos.x - r.outpost.x, pos.z - r.outpost.z).length();
-        if d < r.radius + radius {
+        // The whole compound counts: shells on the walls hurt the outpost too.
+        if d < r.radius + 24.0 + radius {
             let mult = self.tuning.raid.outpost_splash_mult;
             self.hit_outpost(splash * mult, pos);
         }
@@ -634,5 +648,100 @@ impl Sim {
         }
         self.spawn_raider(kind);
         self.players.last().map(|p| p.id)
+    }
+}
+
+impl Sim {
+    /// Raiders that make no progress toward the outpost for a while (wedged on
+    /// a mesa, lost in the yard) and aren't fighting go back to the edge: small
+    /// fry are re-queued, the boss is moved to a fresh edge spot. Keeps waves
+    /// from stalling forever.
+    fn recycle_stuck_raiders(&mut self, dt: f32) {
+        let Some(raid) = self.raid.as_ref() else { return };
+        let o = raid.outpost;
+        let rad = raid.radius;
+        let mut prog = raid.progress.clone();
+        prog.retain(|(id, _, _)| self.players.iter().any(|p| p.id == *id && p.tank.alive));
+        let mut recycle = Vec::new();
+        for p in &self.players {
+            if p.team != Some(TEAM_RAIDERS) || !p.tank.alive {
+                continue;
+            }
+            let c = self.phys.body(p.tank.body).translation();
+            let d = Vec2::new(c.x - o.x, c.z - o.z).length();
+            match prog.iter_mut().find(|e| e.0 == p.id) {
+                Some(e) => {
+                    if d < e.1 - 5.0 {
+                        e.1 = d;
+                        e.2 = 0.0;
+                    } else {
+                        e.2 += dt;
+                    }
+                    if e.2 > 25.0 && p.tank.since_damage > 10.0 && d > rad + 5.0 {
+                        recycle.push(p.id);
+                        e.1 = f32::MAX;
+                        e.2 = 0.0;
+                    }
+                }
+                None => prog.push((p.id, d, 0.0)),
+            }
+        }
+        self.raid.as_mut().unwrap().progress = prog;
+        for id in recycle {
+            let Some(j) = self.idx(id) else { continue };
+            let kind = self.players[j].tank.vehicle;
+            if kind == VehicleKind::WarRig {
+                for _ in 0..30 {
+                    let a = self.rng.range(0.0, std::f32::consts::TAU);
+                    let r = self.map.play_half - 30.0;
+                    let p = Vec2::new(a.cos() * r, a.sin() * r);
+                    if !self.map.blocked_xz(p, 10.0) {
+                        let d = Vec2::new(o.x, o.z) - p;
+                        self.teleport(id, p.x, p.y, (-d.y).atan2(d.x));
+                        let b = self.players[j].tank.body;
+                        let pos = self.phys.body(b).translation() + Vec3::Y * 2.0;
+                        let rot = *self.phys.body(b).rotation();
+                        self.phys.body_mut(b).set_position(pose(pos, rot), true);
+                        break;
+                    }
+                }
+            } else {
+                let p = self.players.remove(j);
+                self.phys.world.remove_body(p.tank.body);
+                self.raid.as_mut().unwrap().queue.push(kind);
+            }
+        }
+    }
+}
+
+impl Sim {
+    /// Debug: skip to wave `n` (its breather ends now). Living raiders leave.
+    pub fn debug_jump_to_wave(&mut self, n: u32) {
+        if self.raid.is_none() {
+            return;
+        }
+        let mut k = 0;
+        while k < self.players.len() {
+            if self.players[k].team == Some(TEAM_RAIDERS) {
+                let p = self.players.remove(k);
+                self.phys.world.remove_body(p.tank.body);
+            } else {
+                k += 1;
+            }
+        }
+        let r = self.raid.as_mut().unwrap();
+        r.wave = n.saturating_sub(1);
+        r.waves_survived = r.wave;
+        r.queue.clear();
+        r.bosses.clear();
+        r.lost = None;
+        r.phase = RaidPhase::Breather;
+        r.timer = 0.0;
+        self.phase = Phase::Playing;
+    }
+
+    /// Debug: spawn THE WAR RIG at the map edge now.
+    pub fn debug_spawn_boss(&mut self) -> Option<PlayerId> {
+        self.spawn_raider_now(VehicleKind::WarRig)
     }
 }

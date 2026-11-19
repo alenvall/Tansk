@@ -39,6 +39,8 @@ pub enum Phase {
     Ended { winner: Option<PlayerId> },
     /// Raider Waves lost (the outpost fell or every defender was down at once).
     Defeated { waves: u16 },
+    /// Team Brawl over: the winning team (None on a draw).
+    TeamWon { team: Option<u8> },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -62,7 +64,8 @@ pub struct Player {
     pub ram_cd: f32,
     /// None in free-for-all; Some(0) defenders, Some(1) raiders in Raider Waves.
     pub team: Option<u8>,
-    /// Counts toward "all humans dead" in Raider Waves (humans, and bot stand-ins).
+    /// A human or a harness stand-in for one (statistics only: Raider Waves is lost when
+    /// every defender, bots included, is down at once).
     pub counts_as_human: bool,
 }
 
@@ -153,6 +156,7 @@ pub struct Sim {
     // --- Wave 3.
     pub mode: crate::raid::ModeKind,
     pub raid: Option<crate::raid::RaidState>,
+    pub(crate) pending_team: Option<u8>,
 }
 
 fn yaw_of(rot: Quat) -> f32 {
@@ -195,6 +199,7 @@ impl Sim {
             removed: Vec::new(),
             mode,
             raid: None,
+            pending_team: None,
         };
         for s in sim.map.scrap_sites.clone() {
             sim.sites.push(Site { pos: s.pos, kind: PickupKind::Scrap(s.kind), timer: 0.0, live: None });
@@ -255,7 +260,17 @@ impl Sim {
     }
 
     fn add(&mut self, name: &str, brain: Option<Brain>) -> PlayerId {
-        let team = if self.raid.is_some() { Some(crate::raid::TEAM_DEFENDERS) } else { None };
+        let team = if self.raid.is_some() {
+            Some(crate::raid::TEAM_DEFENDERS)
+        } else if self.mode == crate::raid::ModeKind::TeamBrawl {
+            // Fill the smaller team (ties go to the Rustbacks).
+            let n0 = self.players.iter().filter(|p| p.team == Some(0)).count();
+            let n1 = self.players.iter().filter(|p| p.team == Some(1)).count();
+            Some(if n1 < n0 { 1 } else { 0 })
+        } else {
+            None
+        };
+        self.pending_team = team;
         let counts_as_human = brain.is_none();
         let id = (0..=255u8).find(|i| self.players.iter().all(|p| p.id != *i)).expect("too many players");
         let (pos, yaw) = self.pick_spawn(None);
@@ -314,6 +329,19 @@ impl Sim {
     /// Restart the match on the same map: scores, tiers and pickups reset.
     pub fn reset_match(&mut self) {
         self.phase = Phase::Playing;
+        // Raider Waves: raiders leave, the raid starts over from wave 0.
+        if self.raid.is_some() {
+            let mut k = 0;
+            while k < self.players.len() {
+                if self.players[k].team == Some(crate::raid::TEAM_RAIDERS) {
+                    let p = self.players.remove(k);
+                    self.phys.world.remove_body(p.tank.body);
+                } else {
+                    k += 1;
+                }
+            }
+            self.init_raid();
+        }
         self.time_left = self.tuning.mode.time_limit;
         self.match_ticks = 0;
         let ids: Vec<PlayerId> = self.players.iter().map(|p| p.id).collect();
@@ -384,7 +412,7 @@ impl Sim {
     fn tick_player(&mut self, i: usize, t: &Tuning, dt: f32) {
         let id = self.players[i].id;
         self.players[i].ram_cd = (self.players[i].ram_cd - dt).max(0.0);
-        if !self.players[i].tank.alive && self.players[i].team == Some(crate::raid::TEAM_RAIDERS) {
+        if self.raid.is_some() && !self.players[i].tank.alive && self.players[i].team == Some(crate::raid::TEAM_RAIDERS) {
             return;
         }
         if !self.players[i].tank.alive {
@@ -1075,8 +1103,19 @@ impl Sim {
         if let Some(p) = self.raid_spawn() {
             return p;
         }
+        let team = match except {
+            Some(j) => self.players[j].team,
+            None => self.pending_team,
+        };
+        let team_side = if self.mode == crate::raid::ModeKind::TeamBrawl { team } else { None };
         let mut best = (f32::MIN, 0usize);
         for (si, s) in self.map.spawns.iter().enumerate() {
+            // Team Brawl: Rustbacks spawn on the west half, Dust Saints on the east.
+            if let Some(t) = team_side {
+                if (s.pos.x < 0.0) != (t == 0) {
+                    continue;
+                }
+            }
             let mut nearest = 1e6f32;
             for (j, p) in self.players.iter().enumerate() {
                 if Some(j) == except || !p.tank.alive {
@@ -1425,6 +1464,10 @@ impl Sim {
         let _ = dt;
         self.match_ticks += 1;
         self.time_left = self.tuning.mode.time_limit - self.match_ticks as f32 / crate::TICK_HZ as f32;
+        if self.mode == crate::raid::ModeKind::TeamBrawl {
+            self.step_team_mode();
+            return;
+        }
         let limit = self.tuning.mode.kill_limit;
         let top = self.players.iter().map(|p| p.kills).max().unwrap_or(0);
         if self.time_left <= 0.0 || (limit > 0 && top >= limit) {
@@ -1549,6 +1592,7 @@ impl Sim {
             tethers: self.tether_snaps(),
             raid: self.raid_snap(),
             bosses: self.boss_snaps(),
+            teams: self.team_scores(),
         }
     }
 
@@ -1596,5 +1640,40 @@ impl Sim {
 
     pub fn hull_yaw(&self, id: PlayerId) -> Option<f32> {
         self.tank_pose(id).map(|(_, r)| yaw_of(r))
+    }
+}
+
+impl Sim {
+    /// Team Brawl: team score = team kills; first to `team_kill_limit` or the most at the whistle.
+    fn step_team_mode(&mut self) {
+        let limit = self.tuning.mode.team_kill_limit;
+        let scores = self.team_scores();
+        let top = scores.iter().map(|t| t.kills).max().unwrap_or(0);
+        if self.time_left <= 0.0 || (limit > 0 && top as u32 >= limit) {
+            self.time_left = self.time_left.max(0.0);
+            let leaders: Vec<u8> = scores.iter().filter(|t| t.kills == top).map(|t| t.team).collect();
+            let team = if leaders.len() == 1 { Some(leaders[0]) } else { None };
+            self.phase = Phase::TeamWon { team };
+            self.events.push(Event::TeamMatchEnded { team });
+        }
+    }
+
+    /// Kills per team (Team Brawl; empty otherwise).
+    pub fn team_scores(&self) -> Vec<TeamScoreSnap> {
+        if self.mode != crate::raid::ModeKind::TeamBrawl {
+            return Vec::new();
+        }
+        (0..2u8)
+            .map(|t| TeamScoreSnap {
+                team: t,
+                kills: self.players.iter().filter(|p| p.team == Some(t)).map(|p| p.kills).sum::<u32>() as u16,
+            })
+            .collect()
+    }
+
+    /// A Team Brawl match: Rustbacks (team 0) vs Dust Saints (team 1). Players and
+    /// bots are put on the smaller team as they join.
+    pub fn new_team_brawl(seed: u64, map: Map, tuning: Tuning) -> Sim {
+        Sim::with_mode(seed, map, tuning, crate::raid::ModeKind::TeamBrawl)
     }
 }

@@ -36,6 +36,8 @@ pub struct Snapshot {
     pub raid: Option<crate::raid::RaidSnap>,
     /// Living bosses and their modules.
     pub bosses: Vec<crate::raid::BossSnap>,
+    /// Team Brawl scores (empty in other modes).
+    pub teams: Vec<TeamScoreSnap>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -287,4 +289,11 @@ pub struct TetherSnap {
     pub player: PlayerId,
     pub from: [f32; 3],
     pub to: [f32; 3],
+}
+
+/// One team's score in Team Brawl (team 0 Rustbacks, team 1 Dust Saints).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TeamScoreSnap {
+    pub team: u8,
+    pub kills: u16,
 }

@@ -18,6 +18,7 @@ pub mod dsp;
 pub mod engine;
 pub mod layers;
 pub mod mixer;
+mod raid;
 pub mod sounds;
 pub mod spatial;
 pub mod wav;

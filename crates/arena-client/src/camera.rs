@@ -46,27 +46,58 @@ pub struct ChaseCam {
     pub zoom_target: f32,
     /// Shake: 0..1, decays; shake amount is trauma squared.
     pub trauma: f32,
+    /// Third-person and gunsight fields of view, degrees.
+    pub fov: f32,
+    pub zoom_fov: f32,
     /// Smoothed boom length after collision, so the camera does not pop.
     boom: f32,
 }
 
+/// The chase rig's numbers, in one place for tuning.
+#[derive(Clone, Copy, Debug)]
+pub struct ChaseTuning {
+    /// Boom length behind the pivot, m.
+    pub distance: f32,
+    /// Pivot height above the hull origin, m.
+    pub pivot_height: f32,
+    /// Sideways shoulder offset, m.
+    pub shoulder: f32,
+    /// Resting look pitch, radians (negative looks down).
+    pub pitch: f32,
+    /// Field of view in third person and in the gunsight, degrees.
+    pub fov: f32,
+    pub zoom_fov: f32,
+}
+
+impl Default for ChaseTuning {
+    fn default() -> Self {
+        Self { distance: 13.0, pivot_height: 3.2, shoulder: 1.6, pitch: -0.17, fov: 62.0, zoom_fov: 22.0 }
+    }
+}
+
 impl Default for ChaseCam {
     fn default() -> Self {
-        Self {
-            yaw: 0.0,
-            pitch: -0.12,
-            distance: 10.5,
-            shoulder: 1.6,
-            pivot_height: 2.6,
-            zoom: 0.0,
-            zoom_target: 0.0,
-            trauma: 0.0,
-            boom: 10.5,
-        }
+        Self::from_tuning(ChaseTuning::default())
     }
 }
 
 impl ChaseCam {
+    pub fn from_tuning(t: ChaseTuning) -> Self {
+        Self {
+            yaw: 0.0,
+            pitch: t.pitch,
+            distance: t.distance,
+            shoulder: t.shoulder,
+            pivot_height: t.pivot_height,
+            zoom: 0.0,
+            zoom_target: 0.0,
+            trauma: 0.0,
+            boom: t.distance,
+            fov: t.fov,
+            zoom_fov: t.zoom_fov,
+        }
+    }
+
     pub fn add_trauma(&mut self, amount: f32) {
         self.trauma = (self.trauma + amount).min(1.0);
     }
@@ -102,7 +133,7 @@ impl ChaseCam {
             eye += jolt;
             target += Vec3::new(n(17.0, 11.0), n(21.0, 5.0), n(13.0, 2.0)) * 1.6 * s;
         }
-        let fov = 62.0 + (22.0 - 62.0) * self.zoom;
+        let fov = self.fov + (self.zoom_fov - self.fov) * self.zoom;
         Camera::look(eye, target, fov)
     }
 }

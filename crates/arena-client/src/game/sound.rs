@@ -85,6 +85,25 @@ impl Sound {
         self.audio.set_engine_volume(sfx * 0.8);
     }
 
+    /// Your shot landed: a bright tick on a part, a dull one on armour.
+    pub fn hit_tick(&mut self, part: bool) {
+        if part {
+            self.audio.play_pitched(SoundId::UiTick, None, 0.75, 1.6);
+        } else {
+            self.audio.play_pitched(SoundId::UiTick, None, 0.55, 0.7);
+        }
+    }
+
+    pub fn kill_tick(&mut self) {
+        self.audio.play_pitched(SoundId::UiConfirm, None, 0.8, 0.9);
+    }
+
+    /// Low hull: a thump, quicker and louder the lower it gets.
+    pub fn heartbeat(&mut self, hp: f32) {
+        let g = 0.25 + (0.3 - hp).max(0.0) * 1.5;
+        self.audio.play_pitched(SoundId::ArmourThud, None, g, 0.35);
+    }
+
     /// One sim event. `you` hears your own guns centred.
     pub fn event(&mut self, e: &Event, you: Option<PlayerId>) {
         let a = &mut self.audio;
@@ -169,17 +188,19 @@ impl Sound {
             Event::HazardExploded { pos, .. } => a.play_pitched(SoundId::ExplosionLarge, p(*pos), 1.2, 0.8),
             Event::MineTriggered { pos, .. } => a.play_pitched(SoundId::ExplosionSmall, p(*pos), 1.0, 1.0),
             Event::AirStrikeCalled { target, .. } => {
-                // No siren in the bank yet: a low, slow beep and the radio.
-                a.play_pitched(SoundId::RadioSquelchOn, None, 0.8, 1.0);
-                a.play_pitched(SoundId::CountdownBeep, p(*target), 1.2, 0.45);
+                a.play_pitched(SoundId::FlarePop, p(*target), 1.0, 1.0);
+                a.play_pitched(SoundId::AirRaidSiren, None, 0.7, 1.0);
             }
-            Event::WaveStarted { .. } => a.play_pitched(SoundId::CountdownGo, None, 0.8, 0.8),
+            Event::WaveStarted { .. } => a.play_pitched(SoundId::WaveHorn, None, 0.9, 1.0),
             Event::WaveCleared { .. } => a.play_pitched(SoundId::UiConfirm, None, 0.7, 1.0),
-            Event::BossSpawned { pos, .. } => a.play_pitched(SoundId::ExplosionLarge, p(*pos), 1.0, 0.45),
-            Event::BossModuleLost { pos, .. } => a.play_pitched(SoundId::PartBreak, p(*pos), 1.2, 0.7),
+            Event::BossSpawned { pos, .. } => a.play_pitched(SoundId::BossRoar, p(*pos), 1.2, 1.0),
+            Event::BossModuleLost { pos, .. } => a.play_pitched(SoundId::ModuleBlowout, p(*pos), 1.2, 1.0),
             Event::BossDefeated { .. } => a.play_pitched(SoundId::TankDestroyed, None, 1.2, 0.6),
             Event::RaidLost { .. } => a.play_pitched(SoundId::UiError, None, 0.8, 0.8),
-            Event::BombingRun { from, .. } => a.play_pitched(SoundId::ShellWhistle, p(*from), 1.0, 0.8),
+            Event::BombingRun { from, to, .. } => {
+                a.play_pitched(SoundId::BomberFlyover, p((*from + *to) * 0.5), 1.0, 1.0);
+                a.play_pitched(SoundId::BombWhistle, p((*from + *to) * 0.5), 0.9, 1.0);
+            }
             Event::CraneHit { pos, .. } => a.play_pitched(SoundId::HitHull, p(*pos), 1.0, 0.7),
             Event::ObstacleDestroyed { pos, .. } => a.play_pitched(SoundId::PartBreak, p(*pos), 0.8, 0.6),
             Event::MatchEnded { .. } => a.play_pitched(SoundId::CountdownGo, None, 0.8, 1.0),

@@ -325,12 +325,16 @@ impl Map {
                 let z = 70.0 + iz as f32 * 15.0;
                 let p = Vec2::new(x, z);
                 // Keep the crane's swing and its tower clear, and some cells open for the maze.
-                if p.distance(tip) < 30.0 || p.distance(YARD) < 14.0 || b.rng.chance(0.22) {
+                if p.distance(tip) < 30.0 || p.distance(YARD) < 14.0 || b.rng.chance(0.3) {
                     continue;
                 }
                 let a = 1 + b.rng.below(3) as u8;
-                let c = 1 + b.rng.below(2) as u8;
-                b.containers(x, z, 0.0, &[a, c]);
+                if b.rng.chance(0.5) {
+                    let c = 1 + b.rng.below(2) as u8;
+                    b.containers(x, z, 0.0, &[a, c]);
+                } else {
+                    b.containers(x, z, 0.0, &[a]);
+                }
             }
         }
         b.place(ObstacleKind::Crates, YARD.x - 4.0, YARD.y + 30.0, 0.0);
@@ -495,11 +499,11 @@ impl Map {
             // Outpost courtyard.
             (-8.0, -6.0), (9.0, -7.0), (-9.0, 8.0), (10.0, 9.0), (0.0, -14.0),
             // Highway and gas station.
-            (92.0, -122.0), (74.0, -142.0), (60.0, -108.0), (-62.0, -100.0), (-150.0, -122.0), (165.0, -105.0), (225.0, -96.0), (116.0, -124.0),
+            (92.0, -113.0), (74.0, -142.0), (60.0, -108.0), (-62.0, -100.0), (-150.0, -122.0), (165.0, -105.0), (225.0, -96.0), (116.0, -124.0),
             // The yard.
             (-138.0, 108.0), (-172.0, 92.0), (-118.0, 160.0), (-200.0, 140.0), (-100.0, 95.0), (-160.0, 175.0),
             // The beach.
-            (180.0, 0.0), (198.0, 100.0), (238.0, 122.0), (190.0, 190.0), (242.0, 10.0), (175.0, 60.0),
+            (180.0, 0.0), (198.0, 100.0), (238.0, 122.0), (176.0, 174.0), (242.0, 10.0), (175.0, 60.0),
             // The plateau.
             (-172.0, -212.0), (-145.0, -200.0), (-185.0, -195.0),
             // Open ground.

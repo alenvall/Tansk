@@ -250,3 +250,118 @@ fn bots_have_styles_and_pick_branches_variously() {
     assert!(picks.len() >= 2, "picks {picks:?}");
     assert_eq!(Tuning::default().mode.kill_limit, 10);
 }
+
+#[test]
+fn reset_match_restarts_a_lost_raid() {
+    let mut s = raid(9);
+    s.add_player("me");
+    s.raid.as_mut().unwrap().health = 50.0;
+    let id = s.spawn_raider_now(VehicleKind::Buggy).unwrap();
+    let o = s.raid.as_ref().unwrap().outpost;
+    s.teleport(id, o.x, o.z, 0.0);
+    run(&mut s, 0.5);
+    assert!(matches!(s.phase, Phase::Defeated { .. }));
+    s.reset_match();
+    assert_eq!(s.phase, Phase::Playing);
+    let r = s.raid.as_ref().unwrap();
+    assert_eq!((r.wave, r.waves_survived, r.lost), (0, 0, None));
+    assert_eq!(r.health, r.max_health);
+    assert!(s.players.iter().all(|p| p.team == Some(TEAM_DEFENDERS)));
+    let ev = run(&mut s, Tuning::default().raid.first_wave_delay + 2.0);
+    assert!(ev.iter().any(|e| matches!(e, Event::WaveStarted { wave: 1, .. })), "the raid runs again");
+}
+
+#[test]
+fn team_brawl_splits_teams_and_counts_team_kills() {
+    let mut s = Sim::new_team_brawl(10, Map::the_sink(10), Tuning::default());
+    let me = s.add_player("me");
+    for k in 0..7 {
+        s.add_bot(arena_core::bots::BOT_NAMES[k], 0.5);
+    }
+    let t0 = s.players.iter().filter(|p| p.team == Some(0)).count();
+    let t1 = s.players.iter().filter(|p| p.team == Some(1)).count();
+    assert_eq!((t0, t1), (4, 4));
+    // Rustbacks spawn west, Dust Saints east.
+    for p in &s.players {
+        let x = s.phys.body(p.tank.body).translation().x;
+        assert_eq!(x < 0.0, p.team == Some(0), "{} spawned on the wrong side", p.name);
+    }
+    // No friendly fire.
+    run(&mut s, 2.5);
+    let mate = s.players.iter().find(|p| p.team == s.team_of(me) && p.id != me).unwrap().id;
+    let mi = idx(&s, mate);
+    let h0 = s.players[mi].tank.health;
+    let pos = s.tank_pose(mate).unwrap().0;
+    s.damage(mi, Some(me), HitLocation::Hull, 100.0, pos, Vec3::X, Weapon::World);
+    assert_eq!(s.players[mi].tank.health, h0);
+    let snap = s.snapshot();
+    assert_eq!(snap.teams.len(), 2);
+    // Play it out: someone reaches 20 team kills or the clock runs out.
+    let mut ended = None;
+    for _ in 0..(8 * 3600) {
+        s.step();
+        for e in s.drain_events() {
+            if let Event::TeamMatchEnded { team } = e {
+                ended = Some(team);
+            }
+        }
+        if ended.is_some() {
+            break;
+        }
+    }
+    let scores = s.team_scores();
+    println!("team brawl: {:?} -> {:?}", scores, ended);
+    assert!(ended.is_some(), "the match ends");
+    assert!(matches!(s.phase, Phase::TeamWon { .. }));
+    let total: u32 = scores.iter().map(|t| t.kills as u32).sum();
+    assert!(total > 0);
+}
+
+#[test]
+fn an_idle_outpost_gets_raided_and_waves_move_on() {
+    // Nobody shoots back: raiders must still reach (or shell) the outpost.
+    let (mut s, _me) = Sim::practice_raid(12, 0, 0.5);
+    // The idle "human" would die and lose the raid (AllDefendersDown); keep only the outpost at stake.
+    for p in &mut s.players {
+        p.counts_as_human = false;
+    }
+    let max = s.raid.as_ref().unwrap().max_health;
+    let ev = run(&mut s, 240.0);
+    let mut how = std::collections::BTreeMap::new();
+    for e in &ev {
+        if let Event::Destroyed { weapon, killer, .. } = e {
+            *how.entry(format!("{weapon:?} by {}", if killer.is_some() { "someone" } else { "nobody" })).or_insert(0) += 1;
+        }
+    }
+    println!("idle raid deaths: {how:?}");
+    let r = s.raid.as_ref().unwrap();
+    println!("idle raid after 4 min: wave {}, outpost {:.0}/{max:.0}, phase {:?}", r.wave, r.health, s.phase);
+    assert!(r.health < max || r.lost.is_some(), "no raider ever hurt the outpost");
+    // Shields stay rare: no raider spawns with a bubble.
+    assert!(s.snapshot().tanks.iter().filter(|t| t.team == TEAM_RAIDERS).all(|t| t.shield == 0));
+}
+
+#[test]
+fn debug_helpers_jump_and_spawn_the_boss() {
+    let mut s = raid(13);
+    s.add_player("me");
+    s.debug_jump_to_wave(5);
+    let ev = run(&mut s, 12.0);
+    assert!(ev.iter().any(|e| matches!(e, Event::WaveStarted { wave: 5, boss: true, .. })));
+    assert!(ev.iter().any(|e| matches!(e, Event::BossSpawned { .. })));
+    let b = s.debug_spawn_boss().unwrap();
+    assert_eq!(s.tank(b).unwrap().vehicle, VehicleKind::WarRig);
+}
+
+#[test]
+fn allies_holding_the_line_keep_the_raid_alive() {
+    let (mut s, me) = Sim::practice_raid(14, 3, 0.5);
+    s.raid.as_mut().unwrap().timer = 0.0;
+    run(&mut s, 3.0);
+    let i = idx(&s, me);
+    let pos = s.tank_pose(me).unwrap().0;
+    s.damage(i, None, HitLocation::Hull, 1.0e6, pos, Vec3::X, Weapon::World);
+    let ev = run(&mut s, 1.0);
+    assert!(!ev.iter().any(|e| matches!(e, Event::RaidLost { .. })), "the human alone going down must not lose the raid");
+    assert_eq!(s.phase, Phase::Playing);
+}

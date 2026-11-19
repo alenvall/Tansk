@@ -348,7 +348,7 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
     let eye = tank.eye(&hp);
     let mut input = Input::default();
     let outpost = sim.raid.as_ref().map(|r| r.outpost);
-    let raider = p.team == Some(crate::raid::TEAM_RAIDERS);
+    let raider = outpost.is_some() && p.team == Some(crate::raid::TEAM_RAIDERS);
 
     // Branch pick: bots choose at random after a short "thinking" pause.
     if let Some(c) = &tank.choice {
@@ -654,7 +654,7 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             let (wy, wp) = tank.aim_solution(&hp, t, aim, g.shell_speed, 9.81 * g.gravity_scale);
             let tol = bt.fire_tolerance_deg.to_radians() * 2.0;
             let aligned = wrap(wy - tank.turret_yaw).abs() < tol && (wp - tank.gun_pitch).abs() < tol;
-            if can_gun && aligned && d < g.shell_speed * g.lifetime * 0.8 && sim.sight_clear(tank.muzzle(&hp, t, 0.0), o + Vec3::Y * 1.5) {
+            if can_gun && aligned && d < g.shell_speed * g.lifetime * 0.8 {
                 input.fire = true;
             }
         }

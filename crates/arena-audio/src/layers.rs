@@ -334,6 +334,34 @@ impl<'a> Tone<'a> {
     }
 }
 
+/// One cycle of a harmonic stack, read with linear interpolation.
+#[derive(Clone, Debug)]
+pub struct Wavetable(Vec<f32>);
+
+impl Wavetable {
+    const SIZE: usize = 2048;
+
+    /// `harmonics[h]` is the level of harmonic `h + 1`.
+    #[must_use]
+    pub fn new(harmonics: &[f32]) -> Self {
+        let mut t = vec![0.0f32; Self::SIZE + 1];
+        for (i, v) in t.iter_mut().enumerate() {
+            let p = i as f32 / Self::SIZE as f32;
+            *v = harmonics.iter().enumerate().map(|(h, a)| a * sin01(p * (h + 1) as f32)).sum();
+        }
+        Self(t)
+    }
+
+    /// The value at `phase` turns, `0..1`.
+    #[must_use]
+    pub fn at(&self, phase: f32) -> f32 {
+        let x = phase.clamp(0.0, 1.0) * Self::SIZE as f32;
+        let i = (x as usize).min(Self::SIZE - 1);
+        let f = x - i as f32;
+        self.0[i] + (self.0[i + 1] - self.0[i]) * f
+    }
+}
+
 pub fn tone(b: &mut [f32], t0: f32, t: Tone<'_>, amp: f32) {
     let start = at(t0);
     let len = at(t.dur).max(1);
@@ -343,6 +371,10 @@ pub fn tone(b: &mut [f32], t0: f32, t: Tone<'_>, amp: f32) {
     let mut phase = 0.0f32;
     let mut wob = 0.0f32;
     let mut f = t.f0;
+    // Every harmonic stays under Nyquist for the whole glide: one table
+    // lookup per sample instead of a sine per harmonic.
+    let top = t.f0.max(t.f1) * t.harmonics.len() as f32;
+    let table = (t.harmonics.len() > 2 && top < SR * 0.45).then(|| Wavetable::new(t.harmonics));
     for i in 0..len {
         let Some(out) = b.get_mut(start + i) else { break };
         let x = i as f32 / len as f32;
@@ -351,13 +383,17 @@ pub fn tone(b: &mut [f32], t0: f32, t: Tone<'_>, amp: f32) {
         }
         phase = (phase + f / SR).fract();
         wob = (wob + t.wobble_hz / SR).fract();
-        let mut s = 0.0;
-        for (h, lvl) in t.harmonics.iter().enumerate() {
-            let hf = f * (h + 1) as f32;
-            if hf < SR * 0.45 {
-                s += lvl * sin01(phase * (h + 1) as f32);
+        let s = if let Some(table) = &table {
+            table.at(phase)
+        } else {
+            let mut s = 0.0;
+            for (h, lvl) in t.harmonics.iter().enumerate() {
+                if f * ((h + 1) as f32) < SR * 0.45 {
+                    s += lvl * sin01(phase * (h + 1) as f32);
+                }
             }
-        }
+            s
+        };
         let e_a = (i as f32 / att as f32).min(1.0);
         let e_r = ((len - i) as f32 / rel as f32).min(1.0);
         let w = 1.0 - t.wobble * (0.5 + 0.5 * sin01(wob));

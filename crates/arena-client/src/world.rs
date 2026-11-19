@@ -251,7 +251,7 @@ impl Library {
         if let Some(id) = self.ids.get(key) {
             return *id;
         }
-        let id = r.add_mesh(&build());
+        let id = r.add_mesh_pinned(&build());
         self.ids.insert(key.to_string(), id);
         id
     }
@@ -286,6 +286,11 @@ pub struct WorldRenderer {
     strike_runs: HashMap<u16, f32>,
     /// Chassis sizes, suspension and turret pivots for every vehicle.
     tuning: arena_core::Tuning,
+    /// Meshes owned by the current static scene (map, line-up, podium),
+    /// freed when the scene is replaced.
+    scene_meshes: Vec<MeshId>,
+    /// The current map (ground heights for markers).
+    map: Option<Map>,
 }
 
 impl WorldRenderer {
@@ -301,11 +306,29 @@ impl WorldRenderer {
             crane_anchors: Vec::new(),
             strike_runs: HashMap::new(),
             tuning: arena_core::Tuning::default(),
+            scene_meshes: Vec::new(),
+            map: None,
         }
     }
 
     /// Builds the static map: terrain, obstacles, set dressing.
+    /// Frees the previous static scene's meshes and starts recording the
+    /// next one's. `set_map`, the line-ups and the podium call this.
+    pub fn begin_scene(&mut self) {
+        for id in std::mem::take(&mut self.scene_meshes) {
+            self.renderer.free_mesh(id);
+        }
+        self.renderer.end_scope();
+        self.renderer.begin_scope();
+    }
+
+    fn end_scene(&mut self) {
+        self.scene_meshes = self.renderer.end_scope();
+    }
+
     pub fn set_map(&mut self, map: &Map) {
+        self.begin_scene();
+        self.map = Some(map.clone());
         self.statics.clear();
         self.blobs.clear();
         self.crane_anchors = map.cranes.iter().map(|c| c.anchor).collect();
@@ -407,13 +430,20 @@ impl WorldRenderer {
             }
         }
         self.dress(map);
+        self.end_scene();
         let total = self.statics.len();
         log::info!("map: {} static pieces, {} meshes", total, self.renderer.mesh_count());
     }
 
     /// Replaces the static scene with hand-placed instances (lineups).
+    /// Meshes uploaded since the last `begin_scene` belong to this scene.
     pub fn set_statics(&mut self, statics: Vec<Instance>) {
         self.statics = statics.into_iter().map(|instance| StaticPiece { instance, owner: None }).collect();
+        self.blobs.clear();
+        self.crane_anchors.clear();
+        if self.renderer.in_scope() {
+            self.end_scene();
+        }
     }
 
     /// Visual-only set dressing: cacti, boulders, tyres, crates, hedgehogs,
@@ -771,8 +801,11 @@ impl WorldRenderer {
             instances.push(Instance::new(id, Mat4::from_translation(*p)));
         }
         if let Some((centre, radius, _)) = world.raid {
-            let id = lib.get(r, &format!("raidzone:{radius:.1}"), || props::raid_zone(radius, tank::RUSTBACK));
-            instances.push(Instance::new(id, Mat4::from_translation(centre)));
+            let map = self.map.as_ref();
+            let ground = |x: f32, z: f32| map.map(|m| m.height_at(centre.x + x, centre.z + z)).unwrap_or(centre.y);
+            let key = format!("raidzone:{radius:.1}:{:.0}:{:.0}", centre.x, centre.z);
+            let id = lib.get(r, &key, || props::raid_zone(radius, tank::RUSTBACK, &ground));
+            instances.push(Instance::new(id, Mat4::from_translation(Vec3::new(centre.x, 0.0, centre.z))));
         }
         // Wrecking balls hang from the nearest crane jib tip.
         let mut ropes: Vec<(Vec3, Vec3)> = world.tethers.clone();
@@ -876,6 +909,7 @@ fn on_ground(mut m: MeshBuilder, dy: f32) -> MeshBuilder {
 /// kit reads as one family. Sets the static scene; returns the world.
 #[allow(dead_code)] // called by the game layer (shots, end screen)
 pub fn lineup_props(wr: &mut WorldRenderer) -> RenderWorld {
+    wr.begin_scene();
     let r = &mut wr.renderer;
     let mut statics = Vec::new();
     let floor = r.add_mesh(&crate::terrain::flat(90.0));
@@ -942,6 +976,7 @@ pub fn lineup_props(wr: &mut WorldRenderer) -> RenderWorld {
 /// the front row, the rest on orange hulls behind.
 #[allow(dead_code)] // called by the game layer (shots, end screen)
 pub fn lineup_parts(wr: &mut WorldRenderer) -> RenderWorld {
+    wr.begin_scene();
     let r = &mut wr.renderer;
     let floor = r.add_mesh(&crate::terrain::flat(90.0));
     wr.set_statics(vec![Instance::new(floor, Mat4::IDENTITY)]);
@@ -966,6 +1001,7 @@ pub fn lineup_parts(wr: &mut WorldRenderer) -> RenderWorld {
 /// scene; returns the world to draw (camera included).
 #[allow(dead_code)] // called by the game layer (shots, end screen)
 pub fn podium(wr: &mut WorldRenderer, top: &[TankView]) -> RenderWorld {
+    wr.begin_scene();
     let r = &mut wr.renderer;
     let mut statics = Vec::new();
     let floor = r.add_mesh(&crate::terrain::flat(90.0));
@@ -1053,6 +1089,84 @@ mod shots {
                 parked_tank(3, PAINT_SET[3], Vec3::ZERO, 0.0, PartKind::TwinBarrel, vec![PartKind::Bulwark, PartKind::TeslaSpire]),
             ];
             podium(wr, &top)
+        });
+    }
+
+    /// Every shader parses and validates (no GPU needed): a broken shader
+    /// once panicked the native window at start.
+    #[test]
+    fn shaders_validate() {
+        use wgpu::naga;
+        let scene = include_str!("shaders/scene.wgsl");
+        let sources = [
+            ("scene", scene.to_string()),
+            ("scene+fx", format!("{scene}
+{}", include_str!("shaders/fx.wgsl"))),
+            ("post", include_str!("shaders/post.wgsl").to_string()),
+            ("bloom", include_str!("shaders/bloom.wgsl").to_string()),
+        ];
+        for (name, src) in sources {
+            let module = naga::front::wgsl::parse_str(&src).unwrap_or_else(|e| panic!("{name}: {}", e.emit_to_string(&src)));
+            naga::valid::Validator::new(naga::valid::ValidationFlags::all(), naga::valid::Capabilities::empty())
+                .validate(&module)
+                .unwrap_or_else(|e| panic!("{name}: {e:?}"));
+        }
+    }
+
+    /// Raider Waves played until the War Rig has been on the field a while.
+    #[test]
+    #[ignore]
+    fn shots_raid() {
+        render(if std::env::var("TANSK_RAID_CLOSE").is_ok() { "raid-close" } else { "raid" }, |wr| {
+            let seed = 7;
+            let (mut sim, _me) = arena_core::Sim::practice_raid(seed, 3, 0.7);
+            wr.set_map(&arena_core::Map::the_sink(seed));
+            let dt = arena_core::DT;
+            let mut world = RenderWorld::default();
+            let mut boss_ticks = 0;
+            let limit = 60 * 60 * 20;
+            let mut tick = 0;
+            while tick < limit {
+                sim.step();
+                tick += 1;
+                let events = sim.drain_events();
+                let boss = tick % 30 == 0 && !sim.snapshot().bosses.is_empty();
+                if boss || boss_ticks > 0 {
+                    boss_ticks += 1;
+                }
+                // Effects for the last stretch before the picture.
+                let late = boss_ticks > 60 * 15 || tick > limit - 600;
+                if late {
+                    world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                    world.time = tick as f32 * dt;
+                    for e in &events {
+                        wr.event(e, Vec3::ZERO);
+                    }
+                    wr.fx.update(dt, &world);
+                }
+                if boss_ticks > 60 * 25 {
+                    break;
+                }
+            }
+            let snap = sim.snapshot();
+            world = RenderWorld::from_snapshot(&snap, &paint_for);
+            world.time = tick as f32 * dt;
+            let rig = snap.bosses.first().and_then(|b| world.tanks.iter().find(|t| t.player == b.player)).map(|t| t.pos);
+            let raider = world.vehicles.first().and_then(|v| world.tanks.iter().find(|t| t.player == v.0)).map(|t| t.pos);
+            let focus = rig.or(raider).or(world.raid.map(|r| r.0)).unwrap_or(Vec3::ZERO);
+            let close = std::env::var("TANSK_RAID_CLOSE").is_ok();
+            let listener = focus + if close { Vec3::new(9.0, 4.0, 9.0) } else { Vec3::new(24.0, 12.0, 24.0) };
+            world.camera = Some(Camera::look(listener, focus + Vec3::Y * 1.2, 50.0));
+            eprintln!(
+                "raid shot: tick {tick}, boss {}, raiders {}, tanks {}, raid {:?}",
+                rig.is_some(),
+                world.vehicles.len(),
+                world.tanks.len(),
+                world.raid
+            );
+            world.dt = 0.0;
+            log::info!("raid shot: boss {:?} at {focus:?}, {} tanks, raid {:?}", rig.is_some(), world.tanks.len(), world.raid);
+            world
         });
     }
 

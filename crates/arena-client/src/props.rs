@@ -796,7 +796,7 @@ pub fn sheet_on_ground(seed: u32) -> MeshBuilder {
 
 /// The Raider Waves outpost zone: a hazard-striped ring on the ground with
 /// banner poles round it in the defenders' colour, centred, on y = 0.
-pub fn raid_zone(radius: f32, colour: u32) -> MeshBuilder {
+pub fn raid_zone(radius: f32, colour: u32, ground: &dyn Fn(f32, f32) -> f32) -> MeshBuilder {
     let mut m = MeshBuilder::new();
     let ring = [
         (radius - 0.35, 0.0, Vec2::NEG_Y),
@@ -806,11 +806,20 @@ pub fn raid_zone(radius: f32, colour: u32) -> MeshBuilder {
         (radius + 0.35, 0.08, Vec2::new(0.6, 0.8)),
         (radius + 0.35, 0.0, Vec2::NEG_Y),
     ];
-    m.lathe(&ring, 96, false, Paint::with(Material::Hazard, 0xffffff, 0.6), Mat4::IDENTITY);
+    // The ring follows the ground in short striped segments.
+    let _ = ring;
+    let segs = 96;
+    for k in 0..segs {
+        let a = (k as f32 + 0.5) / segs as f32 * std::f32::consts::TAU;
+        let (x, z) = (a.cos() * radius, a.sin() * radius);
+        let len = radius * std::f32::consts::TAU / segs as f32 * 0.55;
+        let rot = Quat::from_rotation_y(-a + std::f32::consts::FRAC_PI_2);
+        m.bevel_box(Vec3::new(len, 0.08, 0.35), 0.03, 1, Paint::with(Material::Hazard, 0xffffff, 0.6), Mat4::from_rotation_translation(rot, Vec3::new(x, ground(x, z) + 0.05, z)));
+    }
     let poles = ((radius * std::f32::consts::TAU) / 18.0).round().max(6.0) as u32;
     for k in 0..poles {
         let a = k as f32 / poles as f32 * std::f32::consts::TAU;
-        let p = Vec3::new(a.cos() * radius, 0.0, a.sin() * radius);
+        let p = Vec3::new(a.cos() * radius, ground(a.cos() * radius, a.sin() * radius), a.sin() * radius);
         m.cylinder(0.06, 2.0, 0.0, 1, 6, Paint::steel(0x4a4440, 0.5), at(p + Vec3::Y * 2.0));
         // A banner hanging off the pole, facing outwards.
         let out = Vec3::new(a.cos(), 0.0, a.sin());

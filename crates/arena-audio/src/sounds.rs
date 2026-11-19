@@ -9,6 +9,7 @@
 //! not a laser.
 
 use crate::dsp::{finish, finish_channels, Rng, SR};
+use crate::raid::{air_raid_siren, bomb_whistle, bomber_flyover, boss_roar, flare_pop, module_blowout, wave_horn};
 use crate::layers::{
     buzz, clatter, crackle, echo, m, modes, noise, ratchet, strike, thump, tone, Crackle, Noise,
     Thump, Tone, BAR, PLATE, SHARD,
@@ -80,6 +81,14 @@ sound_ids! {
     CountdownGo => "countdown_go",
     RadioSquelchOn => "radio_squelch_on",
     RadioSquelchOff => "radio_squelch_off",
+    // The air strike and the War Rig.
+    AirRaidSiren => "air_raid_siren",
+    BomberFlyover => "bomber_flyover",
+    BombWhistle => "bomb_whistle",
+    FlarePop => "flare_pop",
+    WaveHorn => "wave_horn",
+    BossRoar => "boss_roar",
+    ModuleBlowout => "module_blowout",
 }
 
 /// How a sound is rendered and played.
@@ -149,6 +158,13 @@ impl SoundId {
             CountdownGo => info(0.7, false, 0.55, 2, 1, 0.0, false),
             RadioSquelchOn => info(0.3, false, 0.45, 2, 3, 0.03, false),
             RadioSquelchOff => info(0.35, false, 0.45, 2, 3, 0.03, false),
+            AirRaidSiren => info(4.3, false, 0.7, 1, 2, 0.02, false),
+            BomberFlyover => info(5.3, false, 0.8, 2, 2, 0.03, true),
+            BombWhistle => info(2.0, false, 0.6, 6, 3, 0.05, true),
+            FlarePop => info(1.4, false, 0.75, 4, 3, 0.05, true),
+            WaveHorn => info(3.0, false, 0.8, 1, 1, 0.0, false),
+            BossRoar => info(3.8, false, 0.95, 1, 2, 0.02, true),
+            ModuleBlowout => info(2.8, true, 0.97, 3, 2, 0.03, true),
         }
     }
 }
@@ -248,6 +264,13 @@ fn recipe(id: SoundId) -> Recipe {
         CountdownGo => countdown_go,
         RadioSquelchOn => radio_squelch_on,
         RadioSquelchOff => radio_squelch_off,
+        AirRaidSiren => air_raid_siren,
+        BomberFlyover => bomber_flyover,
+        BombWhistle => bomb_whistle,
+        FlarePop => flare_pop,
+        WaveHorn => wave_horn,
+        BossRoar => boss_roar,
+        ModuleBlowout => module_blowout,
     }
 }
 
@@ -551,7 +574,7 @@ fn ricochet(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
 
 // ── Explosions and the ground ───────────────────────────────────────────
 
-fn boom(b: &mut [f32], t0: f32, size: f32, p: &mut Rng, n: &mut Rng) {
+pub(crate) fn boom(b: &mut [f32], t0: f32, size: f32, p: &mut Rng, n: &mut Rng) {
     let pitch = p.vary(0.06) / size.sqrt();
     thump(b, t0, Thump::new(105.0 * pitch, 38.0 * pitch, 0.06 * size, 0.22 * size).drive(2.0), 0.85);
     noise(b, t0, Noise::bp(480.0 * pitch, 0.8, 0.07 * size).attack(0.0008).drive(2.0), 0.6, n);
