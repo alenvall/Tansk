@@ -702,6 +702,24 @@ pub struct BotTuning {
     /// Scrap farther than this is ignored.
     pub scrap_range: f32,
     pub nav_cell: f32,
+    // Personalities (bots.rs `Style`).
+    /// Health fraction under which each personality breaks off for a wrench
+    /// (the Scavenger also runs from the fight when there's none).
+    pub retreat_brawler: f32,
+    pub retreat_sniper: f32,
+    pub retreat_scavenger: f32,
+    pub retreat_hunter: f32,
+    /// Brawler: a ram run starts inside this range, then waits this long.
+    pub ram_range: f32,
+    pub ram_cooldown: f32,
+    /// Hunter: score bonus (metres) on the scoreboard leader when picking a target.
+    pub hunter_leader_bonus: f32,
+    /// Sniper: metres of orbit-spot score per metre of height (high ground).
+    pub high_ground_weight: f32,
+    /// Team modes: score bonus (metres) on an enemy a teammate just hit
+    /// (focus fire), and the radius in which a crew counts heads to regroup.
+    pub focus_fire_bonus: f32,
+    pub regroup_radius: f32,
 }
 
 impl Default for BotTuning {
@@ -717,6 +735,16 @@ impl Default for BotTuning {
             repair_threshold: 0.4,
             scrap_range: 160.0,
             nav_cell: 4.0,
+            retreat_brawler: 0.25,
+            retreat_sniper: 0.4,
+            retreat_scavenger: 0.55,
+            retreat_hunter: 0.33,
+            ram_range: 38.0,
+            ram_cooldown: 7.0,
+            hunter_leader_bonus: 55.0,
+            high_ground_weight: 2.5,
+            focus_fire_bonus: 22.0,
+            regroup_radius: 70.0,
         }
     }
 }

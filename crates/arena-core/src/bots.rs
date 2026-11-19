@@ -8,7 +8,9 @@
 //! reload, sit hull-down behind low cover, swing round to a flank, turn on
 //! whoever shoots them in the back, go for a wrench when hurt, don't all race
 //! for the same pickup, gang up on one enemy in team modes, and honk after a
-//! kill. How well they do all that is the difficulty ([`Difficulty`]).
+//! kill. How well they do all that is the difficulty ([`Difficulty`]); what
+//! they like doing is their personality ([`Style`]: Sniper, Brawler,
+//! Scavenger, Hunter), which goes with the name.
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -24,8 +26,11 @@ use crate::sim::Sim;
 use crate::tank::{gun_stats, HullPose};
 use crate::Input;
 
+/// Bot names hint at the crew's personality ([`Style::of_name`]): Sniper,
+/// Brawler, Scavenger, Hunter, in an order that gives each block of four
+/// seats (and either team of eight crews, filled alternately) one of each.
 pub const BOT_NAMES: [&str; 12] = [
-    "Rusty", "Gravel", "Dusty", "Sump", "Bolt", "Clank", "Mirage", "Cinder", "Jerrycan", "Sprocket", "Grit", "Weld",
+    "Longshot", "Crusher", "Magpie", "Bloodhound", "Bruiser", "Scope", "Stalker", "Rummage", "Farsight", "Ram", "Jackal", "Tracker",
 ];
 
 // ------------------------------------------------------------------ nav grid
@@ -528,6 +533,17 @@ pub struct Brain {
     /// Horn after a kill: seconds until the next press, presses left.
     horn_t: f32,
     honks: u8,
+    /// The personality has been read off the crew's name.
+    named: bool,
+    /// Brawler: seconds left on a ram run, and until the next one.
+    ram: f32,
+    ram_cd: f32,
+    /// The gun's reload last tick (a jump up is a shot).
+    last_reload: f32,
+    /// Running from a fight it's losing (low, no wrench about), to here.
+    flee: Option<Vec2>,
+    /// Falling back on the team (outnumbered).
+    regroup: bool,
     stats: BotStats,
 }
 
@@ -552,6 +568,12 @@ pub struct BotStats {
     pub cover_s: f32,
     /// Seconds spent fighting (manoeuvring on a target).
     pub fight_s: f32,
+    /// Personality moves: ram runs (Brawler), moves after a shot (Sniper),
+    /// runs from a losing fight, falls back on the team when outnumbered.
+    pub rams: u32,
+    pub repositions: u32,
+    pub flees: u32,
+    pub regroups: u32,
 }
 
 impl Brain {
@@ -601,8 +623,25 @@ impl Brain {
             last_kills: 0,
             horn_t: 0.0,
             honks: 0,
+            named: false,
+            ram: 0.0,
+            ram_cd: 0.0,
+            last_reload: 0.0,
+            flee: None,
+            regroup: false,
             stats: BotStats::default(),
         }
+    }
+
+    /// A brain whose personality comes from the crew's name when it's one of
+    /// [`BOT_NAMES`] (seeded otherwise).
+    pub fn named(seed: u64, difficulty: f32, name: &str) -> Brain {
+        let mut b = Brain::new(seed, difficulty);
+        if let Some(s) = Style::of_name(name) {
+            b.style = s;
+        }
+        b.named = true;
+        b
     }
 
     pub fn style(&self) -> Style {
@@ -652,29 +691,47 @@ impl Brain {
 }
 
 /// A bot crew's personality: how it picks branches, what range it likes,
-/// how greedy it is for scrap, how it fights.
+/// whom it goes for, how greedy it is for scrap and when it runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Style {
-    /// Gets close: Twin Barrel / Big Bore, Bulwark, Tesla, Afterburner. Flanks.
+    /// Charges in: Big Bore / Twin Barrel, Bulwark, Tesla, Afterburner. Boosts
+    /// into a fight, rams, flanks; last to run.
     Brawler,
-    /// Hangs back: Long Gun, Coilgun, Spaced Armour, Twin Engines. Peeks from cover.
+    /// Hangs back: Long Gun, Coilgun, Spaced Armour, Twin Engines. Holds high
+    /// ground and cover, peeks, moves after a shot.
     Sniper,
-    /// Scrap first, fights second; picks branches at random. A bit of everything.
+    /// Scrap and crates first, fights second; upgrades fast, runs when low.
     Scavenger,
-    /// Fast and flanky: Twin Barrel, Twin Engines, Tesla, Spaced Armour.
-    Speedster,
+    /// Goes for whoever leads the scoreboard: Twin Barrel, Coilgun, Spaced
+    /// Armour, Twin Engines. Fast, flanky, boosts after its quarry.
+    Hunter,
 }
 
 impl Style {
-    pub const ALL: [Style; 4] = [Style::Brawler, Style::Sniper, Style::Scavenger, Style::Speedster];
+    pub const ALL: [Style; 4] = [Style::Brawler, Style::Sniper, Style::Scavenger, Style::Hunter];
+
+    /// The personality a [`BOT_NAMES`] name stands for.
+    pub fn of_name(name: &str) -> Option<Style> {
+        let k = BOT_NAMES.iter().position(|n| *n == name)?;
+        Some([Style::Sniper, Style::Brawler, Style::Scavenger, Style::Hunter, Style::Brawler, Style::Sniper, Style::Hunter, Style::Scavenger][k % 8])
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Style::Brawler => "Brawler",
+            Style::Sniper => "Sniper",
+            Style::Scavenger => "Scavenger",
+            Style::Hunter => "Hunter",
+        }
+    }
 
     fn preferred(self) -> &'static [PartKind] {
         use PartKind::*;
         match self {
             Style::Brawler => &[TwinBarrel, BigBore, Bulwark, TeslaSpire, Afterburner],
             Style::Sniper => &[LongGun, Coilgun, SpacedArmour, TwinEngines],
-            Style::Scavenger => &[],
-            Style::Speedster => &[TwinBarrel, TwinEngines, TeslaSpire, SpacedArmour, Afterburner],
+            Style::Scavenger => &[BigBore, TeslaSpire, Bulwark, TwinEngines],
+            Style::Hunter => &[TwinBarrel, Coilgun, SpacedArmour, TwinEngines],
         }
     }
 
@@ -685,7 +742,7 @@ impl Style {
             Style::Brawler => Hauler,
             Style::Sniper => Brawler,
             Style::Scavenger => Hauler,
-            Style::Speedster => Scout,
+            Style::Hunter => Scout,
         }
     }
 
@@ -694,7 +751,27 @@ impl Style {
             Style::Brawler => base * 0.4,
             Style::Sniper => base * 2.2,
             Style::Scavenger => base,
-            Style::Speedster => base * 0.6,
+            Style::Hunter => base * 0.7,
+        }
+    }
+
+    /// How far off a seen enemy gets fought (on top of `BotTuning::engage_range`).
+    fn reach(self, base: f32) -> f32 {
+        match self {
+            Style::Brawler => base,
+            Style::Sniper => base + 40.0,
+            Style::Scavenger => base * 0.7,
+            Style::Hunter => base + 15.0,
+        }
+    }
+
+    /// Health fraction under which it breaks off for a wrench.
+    fn retreat(self, bt: &crate::tuning::BotTuning) -> f32 {
+        match self {
+            Style::Brawler => bt.retreat_brawler,
+            Style::Sniper => bt.retreat_sniper,
+            Style::Scavenger => bt.retreat_scavenger,
+            Style::Hunter => bt.retreat_hunter,
         }
     }
 
@@ -702,10 +779,10 @@ impl Style {
     /// the rest is orbiting.
     fn tactic_weights(self) -> (f32, f32) {
         match self {
-            Style::Brawler => (0.25, 0.5),
+            Style::Brawler => (0.15, 0.5),
             Style::Sniper => (0.75, 0.1),
             Style::Scavenger => (0.45, 0.3),
-            Style::Speedster => (0.15, 0.65),
+            Style::Hunter => (0.15, 0.65),
         }
     }
 }
@@ -828,6 +905,13 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
     let p = &sim.players[me];
     let tank = &p.tank;
     let skill = Skill::of(b.difficulty);
+    if !b.named {
+        // The personality goes with the name (see `BOT_NAMES`).
+        b.named = true;
+        if let Some(s) = Style::of_name(&p.name) {
+            b.style = s;
+        }
+    }
     if !tank.alive {
         b.path.clear();
         b.path_goal = None;
@@ -842,6 +926,9 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         b.claim = None;
         b.last_health = 0.0;
         b.last_kills = p.kills;
+        b.ram = 0.0;
+        b.flee = None;
+        b.regroup = false;
         return Input::default();
     }
     let hp = HullPose::of(&sim.phys, tank.body);
@@ -872,7 +959,7 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             // Style preference most of the time, any option otherwise.
             let pref = c.options.iter().position(|o| b.style.preferred().contains(o));
             let pick = match pref {
-                Some(k) if b.rng.chance(0.75) => k,
+                Some(k) if b.rng.chance(0.85) => k,
                 _ => b.rng.below(c.options.len()),
             };
             input.choice = Some(pick as u8);
@@ -909,6 +996,30 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
     }
     b.evade = (b.evade - dt).max(0.0);
     b.evade_wait = (b.evade_wait - dt).max(0.0);
+    b.ram = (b.ram - dt).max(0.0);
+    b.ram_cd = (b.ram_cd - dt).max(0.0);
+
+    // --- A shot just went off. A Sniper doesn't stay where it fired from:
+    // round to the other side of its orbit, or off to new low cover.
+    let fired = tank.reload > b.last_reload + 0.3;
+    b.last_reload = tank.reload;
+    if fired && b.style == Style::Sniper && crew && b.target.is_some() {
+        let moved = match b.tactic {
+            Tactic::Orbit => b.rng.chance(0.6),
+            Tactic::Cover { peek: None, .. } => b.rng.chance(0.3),
+            _ => false,
+        };
+        if moved {
+            if b.tactic == Tactic::Orbit {
+                b.strafe = -b.strafe;
+                b.strafe_t = b.rng.range(3.0, 6.0);
+            } else {
+                b.tactic_t = 0.0;
+            }
+            b.think = b.think.min(0.05);
+            b.stats.repositions += 1;
+        }
+    }
 
     // --- A kill: a honk or two now and then.
     if p.kills > b.last_kills {
@@ -947,6 +1058,22 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         let storm = 1.0 + (t.storm.sight_mult - 1.0) * sim.storm.intensity;
         // Score everyone first (cheap), then look (a sight ray each) in
         // order of score until someone is in sight.
+        // Hunter: the enemy crew on top of the scoreboard (once anyone scores).
+        let leader = if b.style == Style::Hunter {
+            sim.players
+                .iter()
+                .filter(|q| q.id != p.id && q.tank.vehicle == VehicleKind::Tank && (p.team.is_none() || q.team != p.team))
+                .max_by_key(|q| q.kills)
+                .filter(|q| q.kills > 0)
+                .map(|q| q.id)
+        } else {
+            None
+        };
+        let near_bias = match b.style {
+            Style::Brawler => 1.3,
+            Style::Sniper => 0.75,
+            _ => 1.0,
+        };
         let mut cands: Vec<(f32, usize, f32)> = Vec::with_capacity(sim.players.len());
         for (k, q) in sim.players.iter().enumerate() {
             if q.id == p.id || !q.tank.alive || (p.team.is_some() && q.team == p.team) {
@@ -957,7 +1084,10 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             if d > bt.sight_range * storm {
                 continue;
             }
-            let mut score = d;
+            let mut score = d * near_bias;
+            if leader == Some(q.id) {
+                score -= bt.hunter_leader_bonus;
+            }
             if tank.last_attacker == Some(q.id) {
                 score -= if tank.since_damage < 3.0 { 55.0 } else { 30.0 };
             }
@@ -989,6 +1119,12 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
                     .count()
                     .min(2);
                 score -= mates as f32 * 14.0 * (0.5 + 0.5 * b.difficulty);
+                // Call the target: one a teammate just hit gets everyone's attention.
+                let hit_by_mate = q.tank.since_damage < 2.0
+                    && q.tank.last_attacker.is_some_and(|a| a != p.id && sim.players.iter().any(|m| m.id == a && m.team == p.team));
+                if hit_by_mate {
+                    score -= bt.focus_fire_bonus * (0.5 + 0.5 * b.difficulty);
+                }
             }
             cands.push((score, k, d));
         }
@@ -1089,7 +1225,8 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
                     tpos + side * b.strafe * 6.0
                 } else {
                     // Ride shotgun, a little ahead, on our side of the road.
-                    flat(c.ahead) + side * b.strafe * 11.0
+                    // (A Sniper rides wide, on overwatch.)
+                    flat(c.ahead) + side * b.strafe * if b.style == Style::Sniper { 20.0 } else { 11.0 }
                 }
             } else {
                 tpos
@@ -1145,7 +1282,8 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             if let Some(k) = b.well.filter(|k| *k < wells.len()) {
                 let c = flat(wells[k].pos);
                 let a = p.id as f32 * 2.39996 + b.goal_age * 0.05;
-                let post = c + Vec2::new(a.cos(), a.sin()) * ring * 0.5;
+                // A Sniper holds the edge of the ring; the rest the middle.
+                let post = c + Vec2::new(a.cos(), a.sin()) * ring * if b.style == Style::Sniper { 0.75 } else { 0.5 };
                 well_post = Some((c, post));
                 let inside = here.distance(c) < ring * 1.2;
                 let threat = b.last_seen.filter(|(tp, _, age)| *age < 0.5 && flat(*tp).distance(c) < 70.0);
@@ -1176,9 +1314,10 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         // and not fighting, if one is near.
         let engaged = b.last_seen.is_some_and(|ls| ls.2 < 1.0);
         let crippled = tank.tracks.iter().any(|s| s.blown > 0.0);
-        let want_repair = (health_frac < bt.repair_threshold || crippled || (health_frac < 0.65 && !engaged)) && tank.repair.is_none();
+        let retreat = b.style.retreat(bt);
+        let want_repair = (health_frac < retreat || crippled || (health_frac < 0.65 && !engaged)) && tank.repair.is_none();
         if want_repair {
-            let reach = if health_frac < bt.repair_threshold || crippled { 260.0 } else { 90.0 };
+            let reach = if health_frac < retreat || crippled { 260.0 } else { 90.0 };
             let kit = sim
                 .pickups
                 .iter()
@@ -1247,13 +1386,13 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
                         if tank.parts.iter().any(|p| p.kind == kind) {
                             continue;
                         }
-                        90.0
+                        if scav { 150.0 } else { 90.0 }
                     }
                     PickupKind::AirStrike => {
                         if tank.air_strike {
                             continue;
                         }
-                        120.0
+                        if scav { 170.0 } else { 120.0 }
                     }
                 };
             // Someone nearer is already on it: look elsewhere.
@@ -1285,7 +1424,11 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             let leash = outpost.is_none_or(|o| flat(tp).distance(flat(o)) < 110.0)
                 && convoy.is_none_or(|c| flat(tp).distance(flat(c.pos)) < 140.0)
                 && (!looting || d < 55.0);
-            let reach = if b.style == Style::Sniper { bt.engage_range + 40.0 } else { bt.engage_range };
+            // Personal reach; anyone fights back at whoever is shooting it.
+            let mut reach = b.style.reach(bt.engage_range);
+            if tank.last_attacker == b.target && tank.since_damage < 4.0 {
+                reach = reach.max(bt.engage_range);
+            }
             let in_cover = matches!(b.tactic, Tactic::Cover { .. });
             if (age < 0.5 || (in_cover && age < bt.memory * 2.0)) && d < reach && leash {
                 engage = Some((tp, d));
@@ -1296,6 +1439,73 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         // A mode post or a wrench: duty first, no ducking off it.
         let duty = goal.is_some();
         b.duty = duty && claim.is_none();
+        // Losing a fight with no wrench about: a Scavenger runs (a Sniper
+        // only when it's nearly done), shooting back as it goes; to the team
+        // if it has one.
+        let runs = crew
+            && outpost.is_none()
+            && match b.style {
+                Style::Scavenger => health_frac < retreat,
+                Style::Sniper => health_frac < retreat * 0.6,
+                _ => false,
+            };
+        let threat = b.last_seen.filter(|ls| ls.2 < 2.0).map(|ls| flat(ls.0));
+        match (goal.is_none() && runs, threat) {
+            (true, Some(tp)) => {
+                let keep = b.flee.filter(|f| f.distance(here) > 8.0 && f.distance(tp) > here.distance(tp) * 0.8);
+                if keep.is_none() {
+                    let away = (here - tp).normalize_or(Vec2::X);
+                    let home = team_centre(sim, me).filter(|c| (*c - here).dot(away) > 0.0 && c.distance(here) > 15.0);
+                    let pick = home.or_else(|| {
+                        [0.0f32, 0.6, -0.6, 1.2, -1.2]
+                            .iter()
+                            .map(|a| {
+                                let (sn, cs) = a.sin_cos();
+                                here + Vec2::new(away.x * cs - away.y * sn, away.x * sn + away.y * cs) * 50.0
+                            })
+                            .find(|pt| !sim.nav.is_blocked(*pt))
+                    });
+                    if b.flee.is_none() && pick.is_some() {
+                        b.stats.flees += 1;
+                    }
+                    b.flee = pick;
+                } else {
+                    b.flee = keep;
+                }
+            }
+            _ => b.flee = None,
+        }
+        if let Some(f) = b.flee {
+            goal = Some(f);
+            b.tactic = Tactic::Orbit;
+            b.peeking = false;
+        }
+        // Team modes, off duty: outnumbered round here, fall back on the team
+        // (a healthy Brawler stands its ground).
+        let mut regroup = false;
+        if team_mode && crew && goal.is_none() && outpost.is_none() && !(b.style == Style::Brawler && health_frac > 0.5) {
+            let r2 = bt.regroup_radius * bt.regroup_radius;
+            let (mut foes, mut mates) = (0, 1);
+            for q in sim.players.iter().filter(|q| q.id != p.id && q.tank.alive && q.tank.vehicle == VehicleKind::Tank) {
+                if flat(sim.phys.body(q.tank.body).translation()).distance_squared(here) < r2 {
+                    if q.team == p.team {
+                        mates += 1;
+                    } else {
+                        foes += 1;
+                    }
+                }
+            }
+            if foes >= 2 && foes > mates {
+                if let Some(c) = team_centre(sim, me).filter(|c| c.distance(here) > 25.0) {
+                    goal = Some(c);
+                    regroup = true;
+                    if !b.regroup {
+                        b.stats.regroups += 1;
+                    }
+                }
+            }
+        }
+        b.regroup = regroup;
         if goal.is_none() {
             // Grab scrap close by, even mid-fight (closer then).
             let close_fight = engage.is_some_and(|(_, d)| d < 80.0);
@@ -1354,6 +1564,16 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         }
         if goal.is_none() {
             goal = convoy_post;
+        }
+        // Hunter, nothing in sight: the radio says where the leader is (in a
+        // free-for-all; in a team it sticks with the team).
+        if goal.is_none() && b.style == Style::Hunter && crew && !team_mode && convoy.is_none() && outpost.is_none() && sim.wellhead.is_none() && !looting && health_frac > 0.45 {
+            if let Some(q) = leader.and_then(|id| sim.players.iter().find(|q| q.id == id && q.tank.alive)) {
+                let lp = flat(sim.phys.body(q.tank.body).translation());
+                if lp.distance(here) > 30.0 {
+                    goal = Some(lp);
+                }
+            }
         }
         let pushing = sim.mode == crate::raid::ModeKind::TeamBrawl && !scav && sim.match_ticks > 40 * crate::TICK_HZ;
         if goal.is_none() && pushing {
@@ -1473,7 +1693,7 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         let err = steer_to(to);
         input.steer = (-err * 2.2).clamp(-1.0, 1.0);
         input.throttle = if err.abs() > 1.1 { 0.0 } else { err.cos().max(0.25) };
-        if b.path.len() == 1 && dist < if matches!(b.tactic, Tactic::Cover { .. }) { 3.5 } else { 8.0 } {
+        if b.ram <= 0.0 && b.path.len() == 1 && dist < if matches!(b.tactic, Tactic::Cover { .. }) { 3.5 } else { 8.0 } {
             input.throttle = 0.0;
             input.steer = 0.0;
             // Parked behind cover (or on a post): turn the front armour to the threat.
@@ -1486,7 +1706,7 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         }
         // Make room for other tanks in front.
         for q in &sim.players {
-            if q.id == p.id || !q.tank.alive {
+            if q.id == p.id || !q.tank.alive || (b.ram > 0.0 && b.target == Some(q.id)) {
                 continue;
             }
             let rel = sim.phys.body(q.tank.body).translation() - pos;
@@ -1498,12 +1718,23 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             }
         }
         // Boost on long straight runs, and on a flanking run.
-        let thirst = if b.style == Style::Speedster { 0.3 } else { 0.6 };
+        // Hunters boost after their quarry, Brawlers into a fight, anyone running away.
+        let thirst = match b.style {
+            Style::Hunter => 0.3,
+            Style::Brawler => 0.4,
+            _ => 0.6,
+        };
         let flanking = matches!(b.tactic, Tactic::Flank { .. });
-        input.boost = (b.last_seen.is_none() || b.style == Style::Speedster || flanking)
+        let charging = b.style == Style::Brawler && b.last_seen.is_some();
+        input.boost = (b.last_seen.is_none() || b.style == Style::Hunter || flanking || charging || b.flee.is_some())
             && err.abs() < 0.2
-            && dist > if flanking { 25.0 } else { 50.0 }
+            && dist > if flanking || charging { 25.0 } else { 50.0 }
             && tank.fuel > tank.stats.fuel_max * thirst;
+        if b.ram > 0.0 {
+            // Full tilt into it.
+            input.throttle = input.throttle.max(if err.abs() < 0.8 { 1.0 } else { 0.4 });
+            input.boost = err.abs() < 0.35 && tank.fuel > tank.stats.fuel_max * 0.1;
+        }
         // Caught outside the wall: burn everything to get back in.
         if let Some(((wc, wr), _)) = zone {
             if here.distance(wc) > wr - 5.0 && err.abs() < 0.4 {
@@ -1736,6 +1967,25 @@ fn fight(sim: &Sim, b: &mut Brain, skill: &Skill, here: Vec2, tp: Vec3, d: f32, 
     let t2 = flat(tp);
     let range = b.style.range(bt.preferred_range);
     let threat_eye = tp + Vec3::Y * 2.0;
+    // Brawler: now and then, a ram run straight through the target.
+    if crew && b.style == Style::Brawler {
+        if b.ram > 0.0 {
+            if d < 4.0 || d > bt.ram_range * 1.6 {
+                b.ram = 0.0;
+            } else {
+                let tv = b.last_seen.map_or(Vec2::ZERO, |ls| flat(ls.1));
+                return t2 + tv * 0.4 + (t2 - here).normalize_or_zero() * 8.0;
+            }
+        } else if b.ram_cd <= 0.0 && d > 10.0 && d < bt.ram_range && health_frac > 0.35 && reload > 0.4 && b.rng.chance(0.25 + 0.35 * b.difficulty) {
+            b.ram = 2.8;
+            b.ram_cd = 2.8 + bt.ram_cooldown * b.rng.range(0.8, 1.3);
+            b.tactic = Tactic::Orbit;
+            b.tactic_t = 3.0;
+            b.peeking = false;
+            b.stats.rams += 1;
+            return t2;
+        }
+    }
     if crew && b.tactic_t <= 0.0 {
         // Time to (re)think how to fight.
         b.tactic_t = b.rng.range(3.0, 5.5);
@@ -1834,5 +2084,22 @@ fn fight(sim: &Sim, b: &mut Brain, skill: &Skill, here: Vec2, tp: Vec3, d: f32, 
     let ang = 0.7 * b.strafe;
     let rot = Vec2::new(ang.cos(), ang.sin());
     let dir = Vec2::new(away.x * rot.x - away.y * rot.y, away.x * rot.y + away.y * rot.x);
+    if crew && b.style == Style::Sniper {
+        // The high ground: of a few spots round the orbit, the highest.
+        let mut best = (f32::MIN, t2 + dir * range);
+        for (a, keep) in [(0.0f32, 2.0f32), (0.5, 0.0), (-0.5, 0.0)] {
+            let (sn, cs) = a.sin_cos();
+            let dd = Vec2::new(dir.x * cs - dir.y * sn, dir.x * sn + dir.y * cs);
+            let pt = t2 + dd * range;
+            if sim.nav.is_blocked(pt) {
+                continue;
+            }
+            let sc = sim.map.height_at(pt.x, pt.y) * bt.high_ground_weight + keep - pt.distance(here) * 0.05;
+            if sc > best.0 {
+                best = (sc, pt);
+            }
+        }
+        return best.1;
+    }
     t2 + dir * range
 }

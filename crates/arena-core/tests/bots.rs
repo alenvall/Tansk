@@ -315,3 +315,21 @@ fn team_bots_focus_fire() {
     }
     assert!(shared > 10, "teammates never share a target ({shared})");
 }
+
+/// Bot names carry the personality, and each block of four seats (and either
+/// team of an alternately filled 4v4) gets one of each.
+#[test]
+fn bot_names_give_a_mix_of_personalities() {
+    use arena_core::bots::Style;
+    use std::collections::BTreeSet;
+    let n = bots::BOT_NAMES.len();
+    for start in (0..n).step_by(4) {
+        let run: BTreeSet<String> = (0..4).map(|k| format!("{:?}", Style::of_name(bots::BOT_NAMES[(start + k) % n]).unwrap())).collect();
+        assert_eq!(run.len(), 4, "seats {start}..: {run:?}");
+    }
+    for team in 0..2 {
+        let side: BTreeSet<String> = (0..4).map(|k| format!("{:?}", Style::of_name(bots::BOT_NAMES[team + 2 * k]).unwrap())).collect();
+        assert_eq!(side.len(), 4, "team {team}: {side:?}");
+    }
+    assert_eq!(Style::of_name("Somebody"), None);
+}
