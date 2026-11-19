@@ -29,6 +29,7 @@ pub mod convoy;
 pub mod events;
 pub mod garage;
 pub mod landship;
+pub mod lastcrew;
 pub mod map;
 pub mod net;
 pub mod parts;
@@ -43,6 +44,7 @@ pub mod storm;
 pub mod specials;
 pub mod tank;
 pub mod tuning;
+pub mod wellhead;
 
 pub use events::{Event, HitLocation, PickupKind, RepairKind, Weapon};
 pub use glam::{Quat, Vec3};
@@ -51,6 +53,8 @@ pub use parts::{part_def, VehicleKind, AltKind, Frame, GunKind, HitBox, Part, Pa
 pub use sim::{Phase, PlayerInfo, PropKind, Sim};
 pub use raid::{BossKind, ModeKind, RaidPhase};
 pub use convoy::{ConvoyPhase, ConvoySnap};
+pub use lastcrew::StormCircleSnap;
+pub use wellhead::{WellSnap, WellheadSnap};
 pub use garage::{ChassisClass, Loadout};
 pub use snapshot::Snapshot;
 pub use tuning::Tuning;

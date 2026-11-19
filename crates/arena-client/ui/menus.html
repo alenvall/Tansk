@@ -59,6 +59,11 @@
     <button class="t-btn" data-game="team"><span class="t-btn-label">Team</span><span class="t-btn-hint">Rustbacks vs Dust Saints</span></button>
     <button class="t-btn" data-game="raid"><span class="t-btn-label">Raid</span><span class="t-btn-hint">Co-op: hold the outpost</span></button>
     <button class="t-btn" data-game="convoy"><span class="t-btn-label">Convoy</span><span class="t-btn-hint">Escort the tanker</span></button>
+    <div class="t-more" role="group" aria-label="More modes">
+      <span class="t-more-label">More</span>
+      <button class="t-chip" data-game="wellhead" title="Hold the derricks, pump fuel, fill the tank first"><b>Wellhead</b><i>Hold the derricks</i></button>
+      <button class="t-chip" data-game="lastcrew" title="No respawns, a sandstorm wall closing in"><b>Last Crew</b><i>No respawns</i></button>
+    </div>
     <div class="t-seg t-pmap" role="radiogroup" aria-label="Practice map">
       <span class="t-pmap-label">Practice on</span>
       <label><input type="radio" name="pmap" value="sink" checked><span>The Sink</span></label>
@@ -89,7 +94,8 @@
           <label><input type="radio" name="mode" value="team_brawl"><span>Team Brawl</span></label>
           <label><input type="radio" name="mode" value="raider_waves"><span>Raid (co-op)</span></label>
           <label><input type="radio" name="mode" value="convoy"><span>Convoy</span></label>
-          <label class="t-locked"><input type="radio" name="mode" value="wellhead" disabled><span>Wellhead</span></label>
+          <label><input type="radio" name="mode" value="wellhead"><span>Wellhead</span></label>
+          <label><input type="radio" name="mode" value="last_crew"><span>Last Crew</span></label>
           <label class="t-locked"><input type="radio" name="mode" value="water_run" disabled><span>Water Run</span></label>
         </div>
       </div>

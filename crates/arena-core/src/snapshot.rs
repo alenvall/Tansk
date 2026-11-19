@@ -43,6 +43,11 @@ pub struct Snapshot {
     // --- Added in wave 7.
     /// Convoy: the truck, the round and the score line (None in other modes).
     pub convoy: Option<crate::convoy::ConvoySnap>,
+    // --- Added in wave 8.
+    /// Wellhead: the derricks and both fuel tanks (None in other modes).
+    pub wellhead: Option<crate::wellhead::WellheadSnap>,
+    /// Last Crew Rolling: the sandstorm wall (None in other modes).
+    pub storm_circle: Option<crate::lastcrew::StormCircleSnap>,
 }
 
 

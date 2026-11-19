@@ -59,7 +59,7 @@ const TRACK_PATCH: f32 = 1.5;
 pub struct DebugFlags {
     /// `?landship=1`: THE LAND-SHIP rolls in at once (raid practice).
     pub landship: bool,
-    /// `?matchtime=45`: Scrap Brawl length, seconds.
+    /// `?matchtime=45`: Scrap Brawl (and Wellhead) length, seconds.
     pub match_time: Option<f32>,
     /// `?raidfast=1`: waves at once, a boss every wave, a weak outpost.
     pub raid_fast: bool,
@@ -74,6 +74,8 @@ pub struct DebugFlags {
     /// `?boss=1`: the War Rig spawns at once; `?boss=weak` with its
     /// modules and hull nearly shot through (to see them come off).
     pub boss: Option<bool>,
+    /// `?wallfast=1`: Last Crew practice's wall starts closing at once, quickly.
+    pub wall_fast: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -129,6 +131,17 @@ struct Match {
     intensity: f32,
     /// The round-start stinger has played.
     started: bool,
+    /// Last Crew: where you finished once you're out, the order crews went
+    /// out (first out first), the "crews left" calls made, and the last
+    /// "you're in the storm" nag.
+    out_place: Option<u8>,
+    out_order: Vec<PlayerId>,
+    crews_called: Vec<u8>,
+    storm_nag: f32,
+    /// Wellhead: "nearly full" called per team.
+    fuel_called: [bool; 2],
+    /// The last snapshot showed a finished match (a new one resets the above).
+    was_over: bool,
 }
 
 pub struct Game {
@@ -295,6 +308,9 @@ impl Game {
                 mode: match mode.as_str() {
                     "TeamBrawl" => "Team Brawl",
                     "RaiderWaves" => "Raid",
+                    "Convoy" => "Convoy",
+                    "Wellhead" => "Wellhead",
+                    "LastCrew" => "Last Crew",
                     _ => "Scrap Brawl",
                 }
                 .into(),
@@ -325,6 +341,16 @@ impl Game {
     /// Offline Team Brawl: you and 3 bot allies against 4 bots.
     pub fn start_practice_team(&mut self) {
         self.start(Session::Practice { mode: ModeKind::TeamBrawl });
+    }
+
+    /// Offline Wellhead: you and 3 bot allies against 4 bots over the derricks.
+    pub fn start_practice_wellhead(&mut self) {
+        self.start(Session::Practice { mode: ModeKind::Wellhead });
+    }
+
+    /// Offline Last Crew Rolling: you and 7 bots, no respawns, the wall closing in.
+    pub fn start_practice_last_crew(&mut self) {
+        self.start(Session::Practice { mode: ModeKind::LastCrew });
     }
 
     pub fn start_online(&mut self, join: Join) {
@@ -366,6 +392,14 @@ impl Game {
                 self.ui.show_loading("Fuelling the tanker", "Get it down the road. Then stop theirs.", Some(0.6));
                 NetClient::practice_convoy(rand_seed(self.time), 4, PRACTICE_DIFFICULTY, self.practice_map)
             }
+            Session::Practice { mode: ModeKind::Wellhead } => {
+                self.ui.show_loading("Priming the pumps", "Three derricks. Hold them, fill the tank first.", Some(0.6));
+                NetClient::practice_wellhead(rand_seed(self.time), 4, PRACTICE_DIFFICULTY, self.practice_map)
+            }
+            Session::Practice { mode: ModeKind::LastCrew } => {
+                self.ui.show_loading("Watching the horizon", "Eight crews, no respawns, a storm wall closing in.", Some(0.6));
+                NetClient::practice_last_crew(rand_seed(self.time), PRACTICE_BOTS, PRACTICE_DIFFICULTY, self.practice_map)
+            }
 
             Session::Online(join) => {
                 let sub = match join {
@@ -373,6 +407,8 @@ impl Game {
                     Join::Host { mode: ModeKind::RaiderWaves, .. } => "Fortifying the outpost...".to_string(),
                     Join::Host { mode: ModeKind::TeamBrawl, .. } => "Painting the hulls...".to_string(),
                     Join::Host { mode: ModeKind::Convoy, .. } => "Fuelling the tanker...".to_string(),
+                    Join::Host { mode: ModeKind::Wellhead, .. } => "Priming the pumps...".to_string(),
+                    Join::Host { mode: ModeKind::LastCrew, .. } => "Watching the horizon...".to_string(),
                     Join::Host { .. } => "Opening the gates...".to_string(),
                     _ => "Looking for a crew to fight...".to_string(),
                 };
@@ -427,6 +463,7 @@ impl Game {
         let Some(sim) = self.net.as_mut().and_then(|n| n.practice_sim()) else { return };
         if let Some(t) = d.match_time {
             sim.tuning.mode.time_limit = t;
+            sim.tuning.wellhead.time_limit = t;
             sim.time_left = t;
         }
         if d.raid_fast {
@@ -443,6 +480,13 @@ impl Game {
         }
         if d.landship {
             sim.debug_spawn_landship();
+        }
+        if d.wall_fast {
+            sim.tuning.last_crew.hold = vec![2.0, 6.0, 6.0, 6.0, 6.0];
+            sim.tuning.last_crew.shrink = vec![12.0, 10.0, 10.0, 10.0, 15.0];
+            if let Some(lc) = &mut sim.last_crew {
+                lc.timer = lc.timer.min(2.0);
+            }
         }
         if let Some(weak) = d.boss {
             if let Some(id) = sim.debug_spawn_boss() {
@@ -532,6 +576,8 @@ impl Game {
                         "raider_waves" => ModeKind::RaiderWaves,
                         "team_brawl" => ModeKind::TeamBrawl,
                         "convoy" => ModeKind::Convoy,
+                        "wellhead" => ModeKind::Wellhead,
+                        "last_crew" => ModeKind::LastCrew,
                         _ => ModeKind::ScrapBrawl,
                     };
                     let map = MapId::from_key(&cfg.map).unwrap_or_default();
@@ -754,6 +800,10 @@ impl Game {
                     let mode = match (&self.session, &code) {
                         (Some(Session::Practice { mode: ModeKind::TeamBrawl }), _) => format!("Team Practice \u{b7} {map_name}"),
                         (Some(Session::Practice { mode: ModeKind::Convoy }), _) => format!("Convoy Practice \u{b7} {map_name}"),
+                        (Some(Session::Practice { mode: m @ (ModeKind::Wellhead | ModeKind::LastCrew) }), _) => format!("{} Practice \u{b7} {map_name}", m.name()),
+                        (Some(Session::Online(Join::Host { mode: m @ (ModeKind::Wellhead | ModeKind::LastCrew), .. })), Some(code)) => {
+                            format!("{} \u{b7} {map_name} \u{b7} {code}", m.name())
+                        }
                         (Some(Session::Online(Join::Host { mode: ModeKind::Convoy, .. })), Some(code)) => format!("Convoy \u{b7} {map_name} \u{b7} {code}"),
                         (Some(Session::Practice { .. }), _) | (_, None) => format!("Practice \u{b7} {map_name}"),
                         (Some(Session::Online(Join::Host { mode: ModeKind::TeamBrawl, .. })), Some(code)) => format!("Team Brawl \u{b7} {map_name} \u{b7} {code}"),
@@ -878,7 +928,8 @@ impl Game {
         }
         world.time = self.time;
         world.dt = dt * self.juice.time_scale(dt);
-        wr.renderer.set_storm(snap.storm);
+        let storm = self.storm_level(&snap, you, &world);
+        wr.renderer.set_storm(storm);
         let me = you.and_then(|y| snap.tank(y)).cloned();
         let my_view = you.and_then(|y| world.tanks.iter().find(|t| t.player == y)).cloned();
 
@@ -906,6 +957,12 @@ impl Game {
         }
         self.m.alive = alive;
         let killer_view = self.m.killer.and_then(|k| world.tanks.iter().find(|t| t.player == k && t.alive)).cloned();
+        // Last Crew: out for good. After the kill-cam, ride along with the leader.
+        let killer_view = if !alive && snap.storm_circle.is_some() && (self.m.dead_for >= KILLCAM_SECS || killer_view.is_none()) {
+            self.leader(&snap, you).and_then(|l| world.tanks.iter().find(|t| t.player == l && t.alive)).cloned().or(killer_view)
+        } else {
+            killer_view
+        };
         let pivot = match (&my_view, alive, &killer_view) {
             (_, false, Some(k)) => {
                 // Spectate the killer: drift round to look where it looks.
@@ -988,7 +1045,7 @@ impl Game {
         // The wind: a steady desert breeze, stronger up high and at speed.
         let (speed, high) = my_view.as_ref().map_or((0.0, 0.0), |v| (v.speed, v.pos.y - self.map.height_at(0.0, 0.0)));
         let wind = 0.35 + (speed / 14.0).min(1.0) * 0.25 + (high / 6.0).clamp(0.0, 1.0) * 0.15;
-        self.sound.ambience(wind, snap.storm);
+        self.sound.ambience(wind, storm);
         self.music_frame(dt, &snap, &world, you);
 
         // ---- HUD.
@@ -1006,6 +1063,8 @@ impl Game {
             }
         }
         self.raid_hud(&snap);
+        self.wellhead_hud(&snap, &world, you, wr);
+        self.last_crew_hud(&snap, &world, you);
         self.convoy_hud(&snap, &mut world, you, wr);
         self.onboarding(me.as_ref(), &snap, &world, dt);
         if let Some(left) = &mut self.m.branch {
@@ -1016,7 +1075,16 @@ impl Game {
                 self.ui.hide_branch();
             }
         }
-        if let Some(t) = &me {
+        if let Some(t) = me.as_ref().filter(|t| !t.alive && snap.storm_circle.is_some()) {
+            // Last Crew: no countdown, just where you finished and who you're watching.
+            let by = self.m.killed_by.clone();
+            let place = self.m.out_place.unwrap_or_else(|| snap.storm_circle.as_ref().map_or(0, |c| c.alive.saturating_add(1)));
+            let watching = self.leader(&snap, you).map(|l| self.name_of(l));
+            let _ = t;
+            if !self.m.ended {
+                self.ui.show_out(place, by.as_ref().map(|(n, w)| (n.as_str(), Team::Ffa, w.as_str())), watching.as_deref());
+            }
+        } else if let Some(t) = &me {
             if !t.alive {
                 let by = self.m.killed_by.clone();
                 self.ui.show_respawn(
@@ -1043,6 +1111,16 @@ impl Game {
             self.bounty_watch(&world, dt);
             self.crowd_watch(&snap, dt);
         }
+        let over = !matches!(snap.mode.phase, Phase::Playing);
+        if self.m.was_over && !over {
+            // The server rolled the next match: per-match calls start over.
+            self.m.out_place = None;
+            self.m.out_order.clear();
+            self.m.crews_called.clear();
+            self.m.fuel_called = [false; 2];
+            self.m.first_blood = false;
+        }
+        self.m.was_over = over;
         match snap.mode.phase {
             Phase::Defeated { waves } if !self.m.ended => {
                 let fell = snap.raid.as_ref().is_some_and(|r| r.health == 0);
@@ -1059,6 +1137,10 @@ impl Game {
                 .map(|s| (s.player, s.kills))
                 .collect();
             ids.sort_by(|a, b| b.1.cmp(&a.1));
+            if snap.storm_circle.is_some() {
+                // Last Crew: by where they finished, the last one rolling first.
+                ids.sort_by_key(|(id, _)| self.finish_rank(*id, &snap));
+            }
             let top: Vec<TankView> =
                 ids.iter().filter_map(|(id, _)| world.tanks.iter().find(|t| t.player == *id).cloned()).take(3).collect();
             if !top.is_empty() {
@@ -1182,7 +1264,10 @@ impl Game {
         parts[1] = names::part_name(names::gun_part(t.gun));
         ui.set_part_names(parts);
         ui.set_reticle(t.bloom as f32 / 255.0, 1.0 - t.reload as f32 / 255.0);
-        ui.set_timer(snap.mode.ticks_left as f32 / 60.0);
+        if snap.storm_circle.is_none() {
+            // (Last Crew's clock is the wall's: `last_crew_hud`.)
+            ui.set_timer(snap.mode.ticks_left as f32 / 60.0);
+        }
         if snap.teams.is_empty() {
             // Free-for-all: plates hidden; your kills against the leader's.
             ui.set_ffa(true);
@@ -1192,8 +1277,11 @@ impl Game {
             ui.set_scores(u32::from(mine), u32::from(best));
         } else {
             ui.set_ffa(false);
-            let k = |team: u8| snap.teams.iter().find(|s| s.team == team).map_or(0, |s| u32::from(s.kills));
-            ui.set_scores(k(0), k(1));
+            if snap.wellhead.is_none() {
+                // (Wellhead's plates show fuel: `wellhead_hud`.)
+                let k = |team: u8| snap.teams.iter().find(|s| s.team == team).map_or(0, |s| u32::from(s.kills));
+                ui.set_scores(k(0), k(1));
+            }
         }
     }
 
@@ -1298,7 +1386,11 @@ impl Game {
         let alive = me.is_some_and(|t| t.alive);
         if let (Some(t), true) = (me, alive) {
             // Mode first, then the controls, as you roll out.
-            if snap.convoy.is_some() {
+            if snap.wellhead.is_some() {
+                self.hints.want(hints::WELLHEAD);
+            } else if snap.storm_circle.is_some() {
+                self.hints.want(hints::LAST_CREW);
+            } else if snap.convoy.is_some() {
                 self.hints.want(hints::CONVOY);
             } else if self.snap_is_raid(snap) {
                 self.hints.want(hints::RAID);
@@ -1484,6 +1576,43 @@ impl Game {
             Event::ConvoyHalfway { .. } => self.radio.say(&radio::convoy_halfway(), true),
             Event::ConvoyDestroyed { .. } => self.radio.say(&radio::convoy_destroyed(), true),
             Event::ConvoyDelivered { .. } => self.radio.say(&radio::convoy_delivered(), true),
+            Event::WellCaptured { well, team } => {
+                let place = self.well_name(*well);
+                let ours = self.my_team() == Some(*team);
+                self.radio.say(&radio::well_captured(&place, ours), true);
+            }
+            Event::WellLost { well, team } => {
+                let place = self.well_name(*well);
+                let ours = self.my_team() == Some(*team);
+                self.radio.say(&radio::well_lost(&place, ours), ours);
+            }
+            Event::WellContested { well } => {
+                let place = self.well_name(*well);
+                self.radio.say(&radio::well_contested(&place), false);
+            }
+            Event::AllWellsHeld { team } => {
+                let ours = self.my_team() == Some(*team);
+                self.radio.say(&radio::all_wells(ours), true);
+            }
+            Event::CircleShrinking { phase, seconds, .. } => {
+                let last = self.net.as_ref().and_then(|n| n.state().world.as_ref()).and_then(|w| w.storm_circle.as_ref()).is_some_and(|c| *phase >= c.phases);
+                self.radio.say(&radio::wall_moving(*seconds, last), true);
+            }
+            Event::CircleClosed { .. } => self.radio.say(&radio::wall_closed(), false),
+            Event::Eliminated { player, place } => {
+                self.m.out_order.push(*player);
+                if is_you(*player) {
+                    self.m.out_place = Some(*place);
+                    let storm = self.m.killer.is_none();
+                    self.radio.say(&radio::out_of_it(*place, storm), true);
+                } else {
+                    let left = place.saturating_sub(1);
+                    if matches!(left, 2 | 3 | 5) && !self.m.crews_called.contains(&left) {
+                        self.m.crews_called.push(left);
+                        self.radio.say(&radio::crews_left(left), left <= 3);
+                    }
+                }
+            }
             Event::MatchEnded { winner } => self.end_match(*winner),
             Event::TeamMatchEnded { team } => self.end_team(*team),
             _ => {}
@@ -1498,18 +1627,30 @@ impl Game {
         let you_won = winner.is_some() && winner == you;
         let wname = winner.map(|w| self.name_of(w));
         let place = self.place();
-        let title = match (&wname, you_won) {
-            (_, true) => format!("You take {place}"),
-            (Some(n), _) => format!("{n} takes {place}"),
-            (None, _) => format!("{} takes everyone", self.map.name),
+        let last_crew = self.net.as_ref().and_then(|n| n.state().world.as_ref()).is_some_and(|w| w.storm_circle.is_some());
+        let title = match (&wname, you_won, last_crew) {
+            (_, true, true) => "Last crew rolling: you".to_string(),
+            (Some(n), _, true) => format!("Last crew rolling: {n}"),
+            (_, true, _) => format!("You take {place}"),
+            (Some(n), _, _) => format!("{n} takes {place}"),
+            (None, _, _) => format!("{} takes everyone", self.map.name),
         };
         let note = match self.session {
             Some(Session::Online(_)) => "Next round rolls out in a few seconds",
             _ => "Again for another round",
         };
-        self.show_end(&title, note);
+        let note = match (last_crew, you_won, self.m.out_place) {
+            (true, false, Some(p)) => format!("You finished {}  \u{b7}  {note}", crate::ui::ordinal(p)),
+            (true, true, _) => format!("Last of eight  \u{b7}  {note}"),
+            _ => note.to_string(),
+        };
+        self.show_end(&title, &note);
         self.sound.stinger(if you_won { Stinger::Victory } else { Stinger::Defeat });
-        self.radio.say(&radio::match_over(wname.as_deref(), you_won), true);
+        if last_crew {
+            self.radio.say(&radio::last_crew(wname.as_deref().unwrap_or("Nobody"), you_won), true);
+        } else {
+            self.radio.say(&radio::match_over(wname.as_deref(), you_won), true);
+        }
     }
 
     fn end_team(&mut self, team: Option<u8>) {
@@ -1527,9 +1668,9 @@ impl Game {
             Some(Session::Online(_)) => "Next round rolls out in a few seconds",
             _ => "Again for another round",
         };
-        let note = match self.convoy_results() {
-            Some(r) => format!("{r}  \u{b7}  {note}"),
-            None => note.to_string(),
+        let note = match (self.convoy_results(), self.wellhead_results()) {
+            (Some(r), _) | (None, Some(r)) => format!("{r}  \u{b7}  {note}"),
+            (None, None) => note.to_string(),
         };
         self.show_end_team(&title, &note, winner);
         let won = winner.map(|w| Some(w) == mine);
@@ -1566,6 +1707,12 @@ impl Game {
         self.ui.show_respawn(None, None);
         let snap = self.net.as_ref().and_then(|n| n.state().world.clone());
         let mut rows = snap.as_ref().map(|s| self.score_rows(s, 0.0)).unwrap_or_default();
+        if let Some(s) = snap.as_ref().filter(|s| s.storm_circle.is_some()) {
+            // Last Crew: the table reads in finishing order.
+            let players = self.net.as_ref().map(|n| n.state().players.clone()).unwrap_or_default();
+            let rank = |name: &str| players.iter().find(|p| self.name_of(p.id) == name).map_or(u32::MAX, |p| self.finish_rank(p.id, s));
+            rows.sort_by_key(|r| rank(&r.name));
+        }
         rows.truncate(8);
         let size = |r: &ScoreRow| r.tiers.iter().map(|t| u32::from(*t)).sum::<u32>();
         let mut biggest = None;
@@ -1576,6 +1723,7 @@ impl Game {
                 biggest = Some(i);
             }
         }
+        let last_crew = snap.as_ref().is_some_and(|s| s.storm_circle.is_some());
         let end: Vec<EndRow> = rows
             .iter()
             .enumerate()
@@ -1584,7 +1732,9 @@ impl Game {
                 team: r.team,
                 kills: r.kills,
                 deaths: r.deaths,
-                tag: if i == 0 {
+                tag: if i == 0 && last_crew {
+                    Some("Last one rolling".into())
+                } else if i == 0 {
                     Some("Top gun".into())
                 } else if Some(i) == biggest {
                     Some("Biggest build".into())
@@ -1804,6 +1954,192 @@ impl Game {
 
     fn snap_is_raid(&self, snap: &Snapshot) -> bool {
         snap.raid.is_some()
+    }
+
+    /// Your team (Wellhead, Convoy, Team Brawl), if you're on one.
+    fn my_team(&self) -> Option<u8> {
+        let snap = self.net.as_ref()?.state().world.as_ref()?;
+        self.you().and_then(|y| snap.tank(y)).map(|t| t.team).filter(|t| *t < 2)
+    }
+
+    /// "the gas station" for Wellhead's derrick `k`.
+    fn well_name(&self, k: u8) -> String {
+        self.map.wells.get(k as usize).map_or_else(|| format!("well {}", (b'A' + k) as char), |w| w.name.clone())
+    }
+
+    /// Last Crew: where a crew stands in the finishing order (0 = still
+    /// rolling with the most kills; the first out ranks last).
+    fn finish_rank(&self, id: PlayerId, snap: &Snapshot) -> u32 {
+        let alive = snap.tank(id).is_some_and(|t| t.alive);
+        let kills = snap.scores.iter().find(|s| s.player == id).map_or(0, |s| u32::from(s.kills));
+        match self.m.out_order.iter().position(|p| *p == id) {
+            _ if alive => 100 - kills.min(99),
+            Some(i) => 1000 - i as u32,
+            None => 2000,
+        }
+    }
+
+    /// Last Crew: who an eliminated crew watches (the living tank with the
+    /// most kills, then the biggest build).
+    fn leader(&self, snap: &Snapshot, you: Option<PlayerId>) -> Option<PlayerId> {
+        snap.tanks
+            .iter()
+            .filter(|t| t.alive && Some(t.player) != you)
+            .max_by_key(|t| {
+                let kills = snap.scores.iter().find(|s| s.player == t.player).map_or(0, |s| s.kills);
+                (kills, t.tiers.iter().map(|x| u32::from(*x)).sum::<u32>(), t.player)
+            })
+            .map(|t| t.player)
+    }
+
+    /// The sandstorm the renderer and the wind should show: the brawl storm,
+    /// or in Last Crew how close you are to the wall (blinding outside it).
+    fn storm_level(&self, snap: &Snapshot, you: Option<PlayerId>, world: &RenderWorld) -> f32 {
+        let Some(c) = &snap.storm_circle else { return snap.storm };
+        let at = you
+            .and_then(|y| world.tanks.iter().find(|t| t.player == y && t.alive))
+            .map(|t| t.pos)
+            .or(self.camera.map(|c| c.eye))
+            .unwrap_or(Vec3::ZERO);
+        let inside = c.radius - glam::Vec2::new(at.x - c.center[0], at.z - c.center[1]).length();
+        let level = if inside < 0.0 { 0.7 + (-inside / 40.0).min(0.3) } else { (1.0 - inside / 35.0).clamp(0.0, 1.0) * 0.4 };
+        level.max(snap.storm)
+    }
+
+    /// Screen position (0..1 from top left, clamped to the edges) and
+    /// distance of a world point, or `None` behind the camera.
+    fn project(&self, wr: &WorldRenderer, cam: Camera, p: Vec3) -> Option<(f32, f32, f32)> {
+        let (w, h) = wr.renderer.size();
+        let aspect = w as f32 / h.max(1) as f32;
+        let vp = glam::camera::rh::proj::directx::perspective(cam.fov_y, aspect, 0.1, 3000.0) * glam::camera::rh::view::look_at_mat4(cam.eye, cam.target, Vec3::Y);
+        let clip = vp * p.extend(1.0);
+        if clip.w <= 0.1 {
+            return None;
+        }
+        let ndc = clip.truncate() / clip.w;
+        Some(((ndc.x * 0.5 + 0.5).clamp(0.03, 0.97), (0.5 - ndc.y * 0.5).clamp(0.08, 0.95), p.distance(cam.eye)))
+    }
+
+    /// Wellhead: the fuel tanks and derricks under the clock, the score
+    /// plates show fuel, and a marker over each derrick (seen through walls).
+    fn wellhead_hud(&mut self, snap: &Snapshot, world: &RenderWorld, you: Option<PlayerId>, wr: &WorldRenderer) {
+        let Some(w) = snap.wellhead.clone() else {
+            self.ui.set_wellhead(None);
+            return;
+        };
+        let mine = you.and_then(|y| snap.tank(y)).map(|t| t.team).filter(|t| *t < 2);
+        let team = |t: u8| if t == 0 { Team::Rustbacks } else { Team::DustSaints };
+        let wells: Vec<crate::ui::WellHud> = w
+            .wells
+            .iter()
+            .map(|x| crate::ui::WellHud {
+                owner: x.owner.map(team),
+                fill: (x.progress.abs() * 40.0).round() / 40.0,
+                side: if x.progress < -0.01 {
+                    Some(Team::Rustbacks)
+                } else if x.progress > 0.01 {
+                    Some(Team::DustSaints)
+                } else {
+                    None
+                },
+                contested: x.contested,
+            })
+            .collect();
+        let held = |t: u8| w.wells.iter().filter(|x| x.owner == Some(t)).count();
+        let (state, alarm) = match (w.all_held, mine) {
+            (Some(t), Some(m)) if t == m => ("All three ours \u{b7} double pumping".to_string(), false),
+            (Some(_), _) => ("They hold all three \u{b7} break one!".to_string(), true),
+            _ => match w.wells.iter().position(|x| x.contested) {
+                Some(k) => (format!("Fight at {}", self.well_name(k as u8)), false),
+                None => (format!("Pumping {} : {}", held(0), held(1)), false),
+            },
+        };
+        self.ui.set_wellhead(Some(&crate::ui::WellheadHud { wells, fuel: w.fuel, target: w.target, state, alarm }));
+        self.ui.set_scores(w.fuel[0], w.fuel[1]);
+        let label = format!("Wellhead \u{b7} first to {} \u{b7} {}", w.target, self.map.name);
+        if label != self.m.raid_label {
+            self.ui.set_mode_label(&label);
+            self.m.raid_label = label;
+        }
+        for t in 0..2u8 {
+            if !self.m.fuel_called[t as usize] && w.fuel[t as usize] as f32 >= w.target as f32 * 0.85 {
+                self.m.fuel_called[t as usize] = true;
+                self.radio.say(&radio::fuel_nearly(mine == Some(t)), true);
+            }
+        }
+        let marks: Vec<Option<(f32, f32, f32, Option<Team>, bool)>> = match world.camera.filter(|_| self.screen == Screen::InGame) {
+            Some(cam) => w
+                .wells
+                .iter()
+                .map(|x| self.project(wr, cam, Vec3::from(x.pos) + Vec3::Y * 12.5).map(|(sx, sy, d)| (sx, sy, d, x.owner.map(team), x.contested)))
+                .collect(),
+            None => Vec::new(),
+        };
+        self.ui.set_well_marks(&marks);
+    }
+
+    /// Last Crew Rolling: the compass to safe ground, the wall's clock, crews
+    /// left, the storm nag when you're outside.
+    fn last_crew_hud(&mut self, snap: &Snapshot, world: &RenderWorld, you: Option<PlayerId>) {
+        let Some(c) = snap.storm_circle.clone() else {
+            self.ui.set_last_crew(None);
+            return;
+        };
+        let flat = |v: Vec3| glam::Vec2::new(v.x, v.z);
+        let me = you.and_then(|y| world.tanks.iter().find(|t| t.player == y && t.alive)).map(|t| t.pos);
+        let cam = self.camera;
+        let at = me.or(cam.map(|c| c.target)).unwrap_or(Vec3::ZERO);
+        let closing = c.shrinking || c.ticks_left < 15 * 60;
+        let (sc, sr) = if closing { (glam::Vec2::from(c.next_center), c.next_radius) } else { (glam::Vec2::from(c.center), c.radius) };
+        let wall = c.radius - flat(at).distance(glam::Vec2::from(c.center));
+        let to_safe = flat(at).distance(sc) - sr;
+        let state = if wall < 0.0 {
+            "storm"
+        } else if to_safe > 0.0 {
+            "move"
+        } else {
+            "safe"
+        };
+        let dist = match state {
+            "storm" => format!("{} m to the wall", (-wall).ceil() as i32),
+            "move" => format!("{} m to safety", to_safe.ceil() as i32),
+            _ => "Inside".to_string(),
+        };
+        let arrow = cam.map_or(0.0, |cam| {
+            let fwd = flat(cam.target - cam.eye).normalize_or(glam::Vec2::X);
+            let right = glam::Vec2::new(-fwd.y, fwd.x);
+            let to = (sc - flat(at)).normalize_or(fwd);
+            to.dot(right).atan2(to.dot(fwd)).to_degrees()
+        });
+        let secs = (c.ticks_left as f32 / 60.0).ceil() as i32;
+        let line = if c.phase > c.phases {
+            format!("Wall closed \u{b7} {:.0} hp/s outside", c.dps)
+        } else if c.shrinking {
+            format!("Wall moving \u{b7} {}", crate::ui::clock(secs))
+        } else {
+            format!("Wall moves in {}", crate::ui::clock(secs))
+        };
+        if !(me.is_none() && self.m.ended) {
+            self.ui.set_last_crew(Some(&crate::ui::LastCrewHud { arrow_deg: (arrow / 3.0).round() * 3.0, dist, line, crews: c.alive, state }));
+        }
+        self.ui.set_timer(if c.phase > c.phases { 0.0 } else { c.ticks_left as f32 / 60.0 });
+        // FFA plates: your kills against the leader's are in `hud`; the label carries the phase.
+        let label = format!("Last Crew \u{b7} wall {}/{} \u{b7} {}", c.phase.min(c.phases), c.phases, self.map.name);
+        if label != self.m.raid_label {
+            self.ui.set_mode_label(&label);
+            self.m.raid_label = label;
+        }
+        self.m.storm_nag -= 1.0 / 60.0;
+        if me.is_some() && wall < 0.0 && self.m.storm_nag <= 0.0 {
+            self.m.storm_nag = 9.0;
+            self.radio.say(&radio::outside_wall(), true);
+        }
+    }
+
+    /// Wellhead: the final tanks for the end screen ("Rustbacks 500 · Dust Saints 214 fuel").
+    fn wellhead_results(&self) -> Option<String> {
+        let w = self.net.as_ref()?.state().world.as_ref()?.wellhead.as_ref()?;
+        Some(format!("Rustbacks {} \u{b7} Dust Saints {} fuel", w.fuel[0], w.fuel[1]))
     }
 
     /// Raid: wave, raiders left, outpost health and the boss bar, in the

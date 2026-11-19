@@ -99,6 +99,7 @@ pub fn weapon_name(w: Weapon) -> &'static str {
         Weapon::AirStrike => "air strike",
         Weapon::Hazard => "fuel blast",
         Weapon::Burn => "fire",
+        Weapon::Storm => "the storm",
     }
 }
 

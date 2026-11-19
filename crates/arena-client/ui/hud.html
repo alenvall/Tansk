@@ -35,6 +35,17 @@
       <path d="M13.5 15 L27.5 31 M27.5 15 L13.5 31" stroke="#b5860f" stroke-width="2.6"/>
       <path d="M12.5 12 V33" stroke="#fff1b0" stroke-width="1.4" opacity=".8"/>
     </symbol>
+    <!-- Wellhead: a pumpjack on its derrick pad -->
+    <symbol id="i-well" viewBox="0 0 40 40">
+      <path d="M8 36 L14 14 L20 36" fill="none" stroke="#24211f" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M8 36 L14 14 L20 36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M3 14 Q4 10 8 10 L33 15 L33 18 L8 14 Q5 14 5 17 Z" fill="currentColor" stroke="#24211f" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M5 17 V30" stroke="#24211f" stroke-width="2"/>
+      <rect x="25" y="22" width="11" height="14" rx="1" fill="#6f767c" stroke="#24211f" stroke-width="2"/>
+      <circle cx="30.5" cy="25" r="3" fill="#3d3a37" stroke="#24211f" stroke-width="1.4"/>
+      <path d="M30 18 V24" stroke="#24211f" stroke-width="2.2"/>
+      <rect x="2" y="35" width="36" height="3" rx="1" fill="#3d3a37" stroke="#24211f" stroke-width="1.4"/>
+    </symbol>
     <!-- One track tread, for the dash -->
     <symbol id="i-tread" viewBox="0 0 14 60">
       <rect x="1" y="1" width="12" height="58" rx="5" fill="currentColor" stroke="#1a1715" stroke-width="2"/>
@@ -95,6 +106,29 @@
   <div id="t-convoy-mark" class="t-convoy-mark" data-role="escort" style="--x:50%;--y:40%" hidden aria-hidden="true">
     <svg viewBox="0 0 40 40"><path d="M6 8 L20 30 L34 8 L20 16 Z" /></svg>
     <b id="t-convoy-dist">0 m</b>
+  </div>
+
+  <!-- Wellhead: the Rustbacks' tank, the three derricks, the Dust Saints' tank -->
+  <div id="t-wells" class="t-wells plate" hidden>
+    <div class="t-fuel t-fuel-a"><span class="t-fuel-l">Fuel</span><div class="t-fuel-tank"><i id="t-fuel-a" style="--v:0"></i></div><b id="t-fuel-a-n">0</b></div>
+    <div class="t-wells-row">
+      <div class="t-well" id="t-well-0" data-owner="none" data-side="none" data-contested="0" style="--p:0"><i class="t-well-ring"></i><svg><use href="#i-well"/></svg><span class="t-well-k">A</span></div>
+      <div class="t-well" id="t-well-1" data-owner="none" data-side="none" data-contested="0" style="--p:0"><i class="t-well-ring"></i><svg><use href="#i-well"/></svg><span class="t-well-k">B</span></div>
+      <div class="t-well" id="t-well-2" data-owner="none" data-side="none" data-contested="0" style="--p:0"><i class="t-well-ring"></i><svg><use href="#i-well"/></svg><span class="t-well-k">C</span></div>
+    </div>
+    <div class="t-fuel t-fuel-b"><b id="t-fuel-b-n">0</b><div class="t-fuel-tank"><i id="t-fuel-b" style="--v:0"></i></div><span class="t-fuel-l">Fuel</span></div>
+    <div class="t-wells-state" id="t-wells-state" data-x="0"></div>
+  </div>
+  <!-- Wellhead: each derrick on screen (seen through walls: they're the objectives) -->
+  <div id="t-wellmark-0" class="t-wellmark" data-owner="none" data-contested="0" style="--x:50%;--y:40%" hidden aria-hidden="true"><svg viewBox="0 0 40 40"><use href="#i-well"/></svg><b><span>A</span> <em id="t-wellmark-0-d">0 m</em></b></div>
+  <div id="t-wellmark-1" class="t-wellmark" data-owner="none" data-contested="0" style="--x:50%;--y:40%" hidden aria-hidden="true"><svg viewBox="0 0 40 40"><use href="#i-well"/></svg><b><span>B</span> <em id="t-wellmark-1-d">0 m</em></b></div>
+  <div id="t-wellmark-2" class="t-wellmark" data-owner="none" data-contested="0" style="--x:50%;--y:40%" hidden aria-hidden="true"><svg viewBox="0 0 40 40"><use href="#i-well"/></svg><b><span>C</span> <em id="t-wellmark-2-d">0 m</em></b></div>
+
+  <!-- Last Crew Rolling: a compass to the safe ground, the wall's clock, crews left -->
+  <div id="t-lastcrew" class="t-lastcrew plate" data-state="safe" hidden>
+    <div class="t-lc-compass" id="t-lc-compass" style="--a:0deg"><svg viewBox="-20 -20 40 40"><circle r="18" class="t-lc-dial"/><path d="M0 -16 V-13 M16 0 H13 M0 16 V13 M-16 0 H-13" class="t-lc-ticks"/><g id="t-lc-arrow"><path d="M0 -14 L7 8 L0 4 L-7 8 Z" class="t-lc-arrow"/></g></svg></div>
+    <div class="t-lc-info"><div class="t-lc-dist" id="t-lc-dist">Inside</div><div class="t-lc-state" id="t-lc-state">Wall holds</div></div>
+    <div class="t-lc-crews"><b id="t-lc-crews">8</b><span>crews<br>left</span></div>
   </div>
 
   <div id="t-feed" class="t-feed"></div>
@@ -181,10 +215,11 @@
 
   <!-- respawn -->
   <div id="t-respawn" class="t-respawn" hidden>
-    <div class="t-stamp">Wrecked</div>
+    <div class="t-stamp" id="t-respawn-stamp">Wrecked</div>
     <div class="t-respawn-by" id="t-respawn-by"></div>
-    <div class="t-respawn-count plate">Back on the line in <b id="t-respawn-secs">5</b></div>
-    <div class="t-respawn-note">You keep your first tier in every track.</div>
+    <div class="t-respawn-count plate" id="t-respawn-count">Back on the line in <b id="t-respawn-secs">5</b></div>
+    <div class="t-respawn-count plate" id="t-out-count" hidden>Finished <b id="t-out-place">8th</b></div>
+    <div class="t-respawn-note" id="t-respawn-note">You keep your first tier in every track.</div>
   </div>
 
   <!-- end of match -->

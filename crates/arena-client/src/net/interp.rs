@@ -159,6 +159,13 @@ pub fn lerp_snapshot(a: &Snapshot, b: &Snapshot, t: f32) -> Snapshot {
             None => pb.clone(),
         })
         .collect();
+    // The storm wall slides smoothly between snapshots.
+    if let (Some(ca), Some(cb)) = (&a.storm_circle, &mut out.storm_circle) {
+        cb.radius = ca.radius + (cb.radius - ca.radius) * t;
+        for k in 0..2 {
+            cb.center[k] = ca.center[k] + (cb.center[k] - ca.center[k]) * t;
+        }
+    }
     out
 }
 

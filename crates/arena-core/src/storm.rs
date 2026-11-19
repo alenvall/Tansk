@@ -35,7 +35,8 @@ impl Sim {
     pub(crate) fn schedule_storm(&mut self) {
         let t = self.tuning.storm.clone();
         self.storm = StormState::default();
-        if t.latest <= 0.0 {
+        // Last Crew Rolling has its own storm (the closing wall).
+        if t.latest <= 0.0 || self.last_crew.is_some() {
             self.storm.phase = StormPhase::Over;
             return;
         }

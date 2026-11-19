@@ -229,11 +229,15 @@ impl ArenaRoom {
             .rev()
             .filter(|p| p.brain.is_some() && !(raid && p.team == Some(TEAM_RAIDERS)) && !self.humans.iter().any(|h| h.player == p.id))
             .collect();
-        let bot = candidates
-            .iter()
-            .find(|p| bigger.is_none() || p.team.is_none() || p.team == bigger)
-            .or(candidates.first())
-            .map(|p| p.id);
+        // Last Crew Rolling: a bot that's already out makes way first.
+        let out = candidates.iter().find(|p| self.sim.last_crew.is_some() && !p.tank.alive).map(|p| p.id);
+        let bot = out.or_else(|| {
+            candidates
+                .iter()
+                .find(|p| bigger.is_none() || p.team.is_none() || p.team == bigger)
+                .or(candidates.first())
+                .map(|p| p.id)
+        });
 
         let victim = bot.or_else(|| {
             let i = self.humans.iter().enumerate().filter(|(_, h)| h.conn.is_none()).max_by_key(|(_, h)| h.away)?.0;
@@ -516,6 +520,84 @@ mod tests {
         }
         let snap = r.sim.snapshot();
         assert!(snap.convoy.is_some());
+    }
+
+    fn mode_room(code: &str, mode: ModeKind, map: MapId) -> ArenaRoom {
+        let info = Arc::new(Mutex::new(ArenaInfo {
+            code: code.into(),
+            public: false,
+            humans: 0,
+            max_humans: ROOM_SEATS,
+            ended: false,
+            mode,
+            map,
+        }));
+        ArenaRoom::new(code.into(), false, 13, info, mode, map)
+    }
+
+    /// A Wellhead room seats 4 v 4; joining humans keep the sides even; the
+    /// snapshot carries the wells and the tanks.
+    #[test]
+    fn wellhead_room_seats_four_a_side_and_pumps() {
+        for map in MapId::ALL {
+            let mut r = mode_room("WELL", ModeKind::Wellhead, map);
+            let crews = |r: &ArenaRoom, t: u8| r.sim.players.iter().filter(|p| p.team == Some(t)).count();
+            assert_eq!(r.sim.players.len(), ROOM_SEATS);
+            assert_eq!((crews(&r, 0), crews(&r, 1)), (4, 4));
+            let mut keep = Vec::new();
+            for conn in 1..4u64 {
+                let (out, rx) = mpsc::channel(4096);
+                keep.push(rx);
+                r.handle(ArenaCmd::Join { conn, name: format!("P{conn}"), rejoin: None, out });
+                assert!(crews(&r, 0).abs_diff(crews(&r, 1)) <= 1);
+            }
+            assert_eq!(r.sim.players.len(), ROOM_SEATS);
+            for _ in 0..90 * TICK_HZ {
+                r.tick();
+            }
+            let snap = r.sim.snapshot();
+            let w = snap.wellhead.expect("wellhead snapshot");
+            assert_eq!(w.wells.len(), 3);
+            assert!(w.wells.iter().any(|x| x.owner.is_some()), "{map:?}: bots took no well in 90 s: {w:?}");
+            assert!(!snap.teams.is_empty(), "team scores for the HUD");
+        }
+    }
+
+    /// A Last Crew room: nobody respawns, the room ends with a winner and the
+    /// next match starts with everyone rolling again.
+    #[test]
+    fn last_crew_room_ends_and_restarts() {
+        let mut r = mode_room("LAST", ModeKind::LastCrew, MapId::Sink);
+        assert_eq!(r.sim.players.len(), ROOM_SEATS);
+        // Speed it up: short phases, a hard storm.
+        r.sim.tuning.last_crew.hold = vec![3.0, 3.0];
+        r.sim.tuning.last_crew.shrink = vec![5.0, 5.0];
+        r.sim.tuning.last_crew.factor = vec![0.3, 0.0];
+        r.sim.tuning.last_crew.damage_base = 200.0;
+        let mut ended = false;
+        for _ in 0..120 * TICK_HZ {
+            r.tick();
+            if let Phase::Ended { winner } = r.sim.phase {
+                assert!(winner.is_some());
+                ended = true;
+                break;
+            }
+            // Nobody comes back mid-match.
+            for p in &r.sim.players {
+                assert!(p.tank.alive || p.tank.respawn_in.is_infinite());
+            }
+        }
+        assert!(ended, "the storm ends it");
+        // A late human waits for the next match; then everyone rolls.
+        let (out, _rx) = mpsc::channel(4096);
+        r.handle(ArenaCmd::Join { conn: 1, name: "Late".into(), rejoin: None, out });
+        assert_eq!(r.sim.players.len(), ROOM_SEATS);
+        for _ in 0..(END_TICKS + 2) {
+            r.tick();
+        }
+        assert_eq!(r.sim.phase, Phase::Playing);
+        assert!(r.sim.players.iter().all(|p| p.tank.alive), "everyone rolls in the new match");
+        assert!(r.sim.snapshot().storm_circle.is_some());
     }
 
     /// A room of 8 bots runs a minute of play.

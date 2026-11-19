@@ -243,6 +243,9 @@ pub struct Brain {
     noise_t: f32,
     chose: bool,
     style: Style,
+    /// Wellhead: the derrick this crew is working on, and when to rethink it.
+    well: Option<usize>,
+    well_t: f32,
 }
 
 impl Brain {
@@ -266,6 +269,8 @@ impl Brain {
             noise_t: 0.0,
             chose: false,
             style: Style::ALL[(seed % 4) as usize],
+            well: None,
+            well_t: 0.0,
         }
     }
 
@@ -363,6 +368,12 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
     // Convoy: escort the truck, or hunt it.
     let convoy = sim.convoy_info().filter(|c| c.alive && p.id != c.truck);
     let escort = convoy.is_some_and(|c| p.team == Some(c.escort_team));
+    // Wellhead: the derricks. Last Crew: the wall and the circle to make for.
+    let wells = sim.well_info();
+    let ring = t.wellhead.radius;
+    let zone = sim.storm_zone();
+    // Last Crew: scavenge first, fight what comes close.
+    let looting = zone.is_some() && (sim.match_ticks as f32) < t.last_crew.loot_time * crate::TICK_HZ as f32;
 
     // Branch pick: bots choose at random after a short "thinking" pause.
     if let Some(c) = &tank.choice {
@@ -501,6 +512,70 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             }
 
         }
+        // Wellhead: pick a derrick (contested and enemy ones first, ours when
+        // they're under attack or thinly held), then stand in its ring.
+        let mut well_post: Option<(Vec2, Vec2)> = None;
+        if !wells.is_empty() {
+            let mine = p.team.unwrap_or(0).min(1) as usize;
+            let theirs = 1 - mine;
+            b.well_t -= 0.2;
+            let here = flat(pos);
+            let score = |k: usize, w: &crate::wellhead::WellInfo| -> f32 {
+                let d = flat(w.pos).distance(here);
+                let mut s = d;
+                match w.owner {
+                    Some(o) if o as usize == mine => {
+                        if w.crews[theirs] > 0 {
+                            s -= 90.0;
+                        } else if w.crews[mine] >= 2 {
+                            s += 170.0;
+                        } else {
+                            s += 80.0;
+                        }
+                    }
+                    Some(_) => s -= 40.0,
+                    None => s -= 55.0,
+                }
+                if w.contested {
+                    s -= 70.0;
+                }
+                // A stable per-crew lean, so the team spreads over the wells.
+                let lean = ((p.id as u32 * 2654435761u32).wrapping_add(k as u32 * 40503) >> 16) as f32 / 65536.0;
+                s + lean * 90.0
+            };
+            let current = b.well.filter(|k| *k < wells.len());
+            let held_safe = current.is_some_and(|k| {
+                let w = &wells[k];
+                w.owner == Some(mine as u8) && w.crews[theirs] == 0 && w.crews[mine] >= 2 && !w.contested
+            });
+            if current.is_none() || b.well_t <= 0.0 || held_safe {
+                let pick = (0..wells.len()).min_by(|a, c| score(*a, &wells[*a]).total_cmp(&score(*c, &wells[*c])));
+                if pick != b.well {
+                    b.goal_age = 0.0;
+                }
+                b.well = pick;
+                b.well_t = b.rng.range(4.0, 7.0);
+            }
+            if let Some(k) = b.well {
+                let c = flat(wells[k].pos);
+                let a = p.id as f32 * 2.39996 + b.goal_age * 0.05;
+                let post = c + Vec2::new(a.cos(), a.sin()) * ring * 0.5;
+                well_post = Some((c, post));
+                let inside = here.distance(c) < ring * 1.2;
+                let threat = b.last_seen.filter(|(tp, _, age)| *age < 0.5 && flat(*tp).distance(c) < 70.0);
+                goal = match (inside, threat) {
+                    // In the ring with a target: work round it without leaving the ring.
+                    (true, Some((tp, _, _))) => {
+                        let away = (here - flat(tp)).normalize_or(Vec2::X);
+                        let side = Vec2::new(-away.y, away.x) * b.strafe;
+                        let want = here + side * 10.0;
+                        let off = want - c;
+                        Some(if off.length() > ring * 0.75 { c + off.normalize_or_zero() * ring * 0.75 } else { want })
+                    }
+                    _ => Some(post),
+                };
+            }
+        }
         if health_frac < bt.repair_threshold || tank.tracks.iter().any(|s| s.blown > 0.0) {
             goal = sim
                 .pickups
@@ -527,6 +602,18 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             if let Some(c) = convoy {
                 // Convoy crews don't wander off for scrap.
                 if flat(k.pos).distance(flat(c.pos)) > 50.0 {
+                    continue;
+                }
+            }
+            if let Some((c, _)) = well_post {
+                // Nor do Wellhead crews: only what's near their derrick.
+                if flat(k.pos).distance(c) > 45.0 {
+                    continue;
+                }
+            }
+            if let Some((_, (sc, sr))) = zone {
+                // Last Crew: nothing outside the circle is worth the storm.
+                if flat(k.pos).distance(sc) > sr * 0.85 {
                     continue;
                 }
             }
@@ -563,14 +650,15 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         }
         if goal.is_none() {
             // Grab scrap close by even mid-fight.
-            let grab = if b.style == Style::Scavenger { 80.0 } else { 50.0 };
+            let grab = if b.style == Style::Scavenger || looting { 80.0 } else { 50.0 };
             goal = scrap.filter(|s| s.2 < grab).map(|s| s.1);
         }
         if goal.is_none() {
             if let Some((tp, _, age)) = b.last_seen {
                 let d = tp.distance(pos);
                 let leash = outpost.is_none_or(|o| flat(tp).distance(flat(o)) < 110.0)
-                    && convoy.is_none_or(|c| flat(tp).distance(flat(c.pos)) < 140.0);
+                    && convoy.is_none_or(|c| flat(tp).distance(flat(c.pos)) < 140.0)
+                    && (!looting || d < 55.0);
                 let reach = if b.style == Style::Sniper { bt.engage_range + 40.0 } else { bt.engage_range };
                 if age < 0.5 && d < reach && leash {
                     // Orbit at the preferred range, swapping sides now and then.
@@ -611,6 +699,21 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
                 let s = &sim.map.scrap_sites[b.rng.below(sim.map.scrap_sites.len().max(1))];
                 Some(flat(s.pos))
             });
+        }
+        // Last Crew: stay inside the circle (the one it's closing to, once
+        // that's called); outside it, run for the middle.
+        if let Some((_, (sc, sr))) = zone {
+            let here = flat(pos);
+            let keep = (sr * 0.7).max(3.0);
+            if here.distance(sc) > sr * 0.85 {
+                goal = Some(sc + (here - sc).normalize_or_zero() * sr * 0.35);
+            } else if let Some(g) = goal {
+                if g.distance(sc) > keep {
+                    goal = Some(sc + (g - sc).normalize_or_zero() * keep);
+                }
+            } else {
+                goal = Some(sc);
+            }
         }
         let changed = match (b.goal, goal) {
             (Some(a), Some(c)) => a.distance(c) > 10.0,
@@ -668,6 +771,12 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         // Boost on long straight runs.
         let thirst = if b.style == Style::Speedster { 0.3 } else { 0.6 };
         input.boost = (b.last_seen.is_none() || b.style == Style::Speedster) && err.abs() < 0.2 && dist > 50.0 && tank.fuel > tank.stats.fuel_max * thirst;
+        // Caught outside the wall: burn everything to get back in.
+        if let Some(((wc, wr), _)) = zone {
+            if flat(pos).distance(wc) > wr - 5.0 && err.abs() < 0.4 {
+                input.boost = tank.fuel > 0.0;
+            }
+        }
         if raider && tank.vehicle == VehicleKind::Buggy {
             input.throttle = input.throttle.max(0.6);
         }
@@ -762,10 +871,12 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         let in_range = d < g.shell_speed * g.lifetime * 0.85;
         let visible = age < 0.3;
         let muzzle = tank.muzzle(&hp, t, 0.0);
-        if can_gun && aligned && in_range && visible && sim.sight_clear(muzzle, tp + Vec3::Y * 0.5) {
+        // Last Crew, early: hold fire on far crews that leave you alone (scavenging).
+        let truce = looting && d > 30.0 && tank.last_attacker != b.target;
+        if can_gun && aligned && in_range && visible && !truce && sim.sight_clear(muzzle, tp + Vec3::Y * 0.5) {
             input.fire = true;
         }
-        if visible {
+        if visible && !truce {
             match tank.stats.alt {
                 AltKind::Mg => input.alt_fire = d < 110.0 && wrap(wy - tank.turret_yaw).abs() < 0.15,
                 AltKind::Coilgun => input.alt_fire = !(tank.charge >= 1.0 && aligned),

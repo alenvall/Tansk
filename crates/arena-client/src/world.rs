@@ -141,6 +141,12 @@ pub struct RenderWorld {
     pub route: Vec<(Vec3, f32, f32)>,
     /// Boss turrets aimed on their own: (boss, part, yaw, pitch) relative to its hull.
     pub turrets: Vec<(PlayerId, PartKind, f32, f32)>,
+    /// Wellhead: the derricks (ground point, holder 0/1 or 255, ring -1 Rustbacks
+    /// ..= 1 Dust Saints, contested) and the ring radius.
+    pub wells: Vec<(Vec3, u8, f32, bool)>,
+    pub well_radius: f32,
+    /// Last Crew Rolling: the sandstorm wall (centre x/z, radius).
+    pub storm_wall: Option<(Vec2, f32)>,
 }
 
 fn gun_part(g: GunKind) -> PartKind {
@@ -244,6 +250,13 @@ impl RenderWorld {
             flaming: snap.tanks.iter().filter(|t| t.alive && t.flaming).map(|t| t.player).collect(),
             route: Vec::new(),
             turrets: snap.bosses.iter().flat_map(|b| b.turrets.iter().map(move |t| (b.player, t.part, t.yaw, t.pitch))).collect(),
+            wells: snap
+                .wellhead
+                .as_ref()
+                .map(|w| w.wells.iter().map(|x| (Vec3::from(x.pos), x.owner.unwrap_or(255), x.progress, x.contested)).collect())
+                .unwrap_or_default(),
+            well_radius: snap.wellhead.as_ref().map_or(0.0, |w| w.radius),
+            storm_wall: snap.storm_circle.as_ref().map(|c| (Vec2::from(c.center), c.radius)),
         }
     }
 }
@@ -1155,6 +1168,68 @@ impl WorldRenderer {
             let id = lib.get(r, &key, || props::raid_zone(radius, tank::RUSTBACK, &ground));
             instances.push(Instance::new(id, Mat4::from_translation(Vec3::new(centre.x, 0.0, centre.z))));
         }
+        // Wellhead: each derrick's pad, pumpjack (it pumps while held), the
+        // holder's flag on the mast and the capture ring of painted plates.
+        for (k, &(pos, owner, fill, contested)) in world.wells.iter().enumerate() {
+            let map = self.map.as_ref();
+            let frame = Mat4::from_rotation_translation(Quat::from_rotation_y(0.6 + k as f32 * 2.1), pos);
+            let pad = lib.get(r, "well:pad", crate::objectives::well_pad);
+            instances.push(Instance::new(pad, frame));
+            let jack = frame * Mat4::from_translation(Vec3::new(-0.8, 0.12, 0.0));
+            let base = lib.get(r, "well:pumpjack", refinery::pumpjack_base);
+            instances.push(Instance::new(base, jack));
+            let a = if owner < 2 { world.time * 1.1 + k as f32 } else { 0.4 };
+            let beam = lib.get(r, "pumpjack:beam", refinery::pumpjack_beam);
+            instances.push(Instance::new(beam, jack * Mat4::from_rotation_translation(Quat::from_rotation_z(a.sin() * 0.26), refinery::PUMPJACK_PIVOT)));
+            let crank = lib.get(r, "pumpjack:crank", refinery::pumpjack_crank);
+            instances.push(Instance::new(crank, jack * Mat4::from_rotation_translation(Quat::from_rotation_z(-a), refinery::PUMPJACK_CRANK)));
+            let team = |t: u8| match t {
+                0 => tank::RUSTBACK,
+                1 => tank::DUST_SAINT,
+                _ => 0xd8ccb0,
+            };
+            let tint = |c: u32| crate::meshkit::srgb_hex(c).extend(1.0);
+            // The flag: the holder's colours (a pale rag when nobody holds it), stirring.
+            let flag = lib.get(r, "well:flag", crate::objectives::well_flag);
+            let stir = Quat::from_rotation_y((world.time * 1.7 + k as f32).sin() * 0.18 - 0.3);
+            let lift = if owner < 2 { 0.0 } else { -1.8 };
+            let fx = frame * Mat4::from_rotation_translation(stir, crate::objectives::FLAG_AT + Vec3::Y * lift);
+            instances.push(Instance::tinted(flag, fx, Vec4::ZERO, tint(team(owner))));
+            // The ring: plates fill round from north in the capturing crew's paint.
+            let radius = world.well_radius.max(4.0);
+            let n = crate::objectives::RING_PLATES;
+            let len = radius * std::f32::consts::TAU / n as f32 * 0.7;
+            let plate = lib.get(r, &format!("well:plate:{len:.2}"), || crate::objectives::ring_plate(len));
+            let stake = lib.get(r, "well:stake", crate::objectives::ring_stake);
+            let side = if fill < 0.0 { 0 } else { 1 };
+            let lit = (fill.abs() * n as f32).round() as usize;
+            let blink = contested && (world.time * 4.0).fract() < 0.5;
+            for i in 0..n {
+                let ang = (i as f32 + 0.5) / n as f32 * std::f32::consts::TAU;
+                let (x, z) = (pos.x + ang.sin() * radius, pos.z - ang.cos() * radius);
+                let y = map.map_or(pos.y, |m| m.height_at(x, z));
+                let rot = Quat::from_rotation_y(-ang);
+                let colour = if i < lit {
+                    team(side)
+                } else if blink {
+                    0xe8b419
+                } else {
+                    0x4a423a
+                };
+                instances.push(Instance::tinted(plate, Mat4::from_rotation_translation(rot, Vec3::new(x, y, z)), Vec4::ZERO, tint(colour)));
+                if i % 5 == 0 {
+                    let (sx, sz) = (pos.x + ang.sin() * (radius + 0.6), pos.z - ang.cos() * (radius + 0.6));
+                    let sy = map.map_or(pos.y, |m| m.height_at(sx, sz));
+                    instances.push(Instance::new(stake, Mat4::from_translation(Vec3::new(sx, sy, sz))));
+                }
+            }
+        }
+        // Last Crew: the dust curtain along the wall (drawn by the effects pass).
+        self.fx.curtain = match (world.storm_wall, self.map.as_ref()) {
+            (Some((c, rad)), Some(m)) => crate::objectives::curtain_points(c, rad, camera.eye, world.time, &|x, z| m.height_at(x, z)),
+            (Some((c, rad)), None) => crate::objectives::curtain_points(c, rad, camera.eye, world.time, &|_, _| 0.0),
+            _ => Vec::new(),
+        };
         // Wrecking balls hang from the nearest crane jib tip.
         let mut ropes: Vec<(Vec3, Vec3)> = world.tethers.clone();
         for p in world.props.iter().filter(|p| matches!(p.kind, PropKind::WreckingBall)) {
@@ -1698,6 +1773,122 @@ mod shots {
         println!("meshes: {first} first, {again} after 6 maps and podiums, {} pinned", wr.lib.pinned());
         assert_eq!(first, again, "GPU meshes leaked across map rebuilds");
         assert_eq!(wr.lib.pinned(), 0, "map pieces were pinned");
+    }
+
+    /// Wellhead's derricks and Last Crew's wall reach the render world.
+    #[test]
+    fn wells_and_the_storm_wall_reach_the_render_world() {
+        let (mut sim, _) = arena_core::Sim::practice_wellhead_on(arena_core::MapId::Refinery, 3, 4, 0.5);
+        sim.wellhead.as_mut().unwrap().wells[2].owner = Some(1);
+        sim.wellhead.as_mut().unwrap().wells[2].control = 1.0;
+        sim.step();
+        let world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+        assert_eq!(world.wells.len(), 3);
+        assert!(world.well_radius > 5.0);
+        assert_eq!(world.wells[2].1, 1);
+        assert!(world.wells.iter().take(2).all(|w| w.1 == 255));
+        assert!(world.storm_wall.is_none());
+        let (mut sim, _) = arena_core::Sim::practice_last_crew_on(arena_core::MapId::Sink, 3, 7, 0.5);
+        sim.step();
+        let snap = sim.snapshot();
+        let world = RenderWorld::from_snapshot(&snap, &paint_for);
+        let (c, r) = world.storm_wall.expect("the wall");
+        assert!(r > 300.0 && c.length() < 1.0);
+        assert!(world.wells.is_empty());
+        // Every crew paints its own colour (free-for-all).
+        assert!(snap.tanks.iter().all(|t| t.team == 255));
+    }
+
+    /// The dust curtain hugs the wall, dense near the eye, and goes away
+    /// when the wall has closed to nothing.
+    #[test]
+    fn the_dust_curtain_stands_on_the_wall() {
+        let c = Vec2::new(20.0, -10.0);
+        let eye = Vec3::new(20.0 + 90.0, 5.0, -10.0);
+        let pts = crate::objectives::curtain_points(c, 100.0, eye, 1.0, &|_, _| 2.0);
+        assert!(pts.len() > 100, "{} puffs", pts.len());
+        for (p, size, alpha, _) in &pts {
+            let d = Vec2::new(p.x, p.z).distance(c);
+            assert!((d - 100.0).abs() < 1.0, "puff {d} m from the centre");
+            assert!(p.y >= 2.0 && *size > 1.0 && *alpha > 0.0 && *alpha <= 1.0);
+        }
+        let near = pts.iter().filter(|(p, ..)| p.distance(eye) < 60.0).count();
+        assert!(near >= 20, "{near} puffs near the eye");
+        assert!(crate::objectives::curtain_points(c, 0.0, eye, 1.0, &|_, _| 0.0).is_empty());
+        // A huge circle far away still shows on the horizon, sparsely.
+        let far = crate::objectives::curtain_points(Vec2::ZERO, 900.0, Vec3::ZERO, 0.0, &|_, _| 0.0);
+        assert!(!far.is_empty() && far.len() < 600, "{}", far.len());
+    }
+
+    /// Wellhead's derricks and the capture rings, close up (`wellhead.png`).
+    #[test]
+    #[ignore]
+    fn shots_wellhead() {
+        render("wellhead", |wr| {
+            let seed = 7;
+            let (mut sim, _) = arena_core::Sim::practice_wellhead_on(arena_core::MapId::Sink, seed, 4, 0.7);
+            wr.set_map(&arena_core::Map::the_sink(seed));
+            let mut world = RenderWorld::default();
+            // The middle well half taken by the Dust Saints, before the crews arrive.
+            if let Some(w) = sim.wellhead.as_mut() {
+                w.wells[0].owner = Some(0);
+                w.wells[0].control = -1.0;
+                w.wells[1].control = 0.55;
+            }
+            for tick in 0..(60 * 6) {
+                sim.step();
+                let ev = sim.drain_events();
+                if tick > 60 * 2 {
+                    world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                    world.time = tick as f32 * arena_core::DT;
+                    for e in &ev {
+                        wr.event(e, Vec3::ZERO);
+                    }
+                    wr.fx.update(arena_core::DT, &world);
+                }
+            }
+            let w = world.wells[1].0;
+            world.camera = Some(Camera::look(w + Vec3::new(-19.0, 9.0, 15.0), w + Vec3::Y * 2.5, 55.0));
+            eprintln!("wellhead: {:?}", sim.snapshot().wellhead);
+            world.dt = 0.0;
+            world
+        });
+    }
+
+    /// Last Crew's sandstorm wall from inside the circle (`lastcrew.png`).
+    #[test]
+    #[ignore]
+    fn shots_lastcrew() {
+        render("lastcrew", |wr| {
+            let seed = 7;
+            let (mut sim, _) = arena_core::Sim::practice_last_crew_on(arena_core::MapId::Sink, seed, 7, 0.7);
+            wr.set_map(&arena_core::Map::the_sink(seed));
+            {
+                let lc = sim.last_crew.as_mut().unwrap();
+                lc.center = Vec2::new(0.0, 0.0);
+                lc.radius = 120.0;
+                lc.from = (lc.center, lc.radius);
+                lc.to = lc.from;
+            }
+            let mut world = RenderWorld::default();
+            for tick in 0..(60 * 6) {
+                sim.step();
+                let ev = sim.drain_events();
+                world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                world.time = tick as f32 * arena_core::DT;
+                for e in &ev {
+                    wr.event(e, Vec3::ZERO);
+                }
+                wr.fx.update(arena_core::DT, &world);
+            }
+            let eye = Vec3::new(60.0, 7.0, 30.0);
+            world.camera = Some(Camera::look(eye, Vec3::new(150.0, 12.0, 60.0), 60.0));
+            let cam = world.camera.unwrap();
+            let map = arena_core::Map::the_sink(seed);
+            wr.fx.curtain = crate::objectives::curtain_points(Vec2::ZERO, 120.0, cam.eye, world.time, &|x, z| map.height_at(x, z));
+            world.dt = 0.0;
+            world
+        });
     }
 
     /// Team Brawl's team 1 is Dust Saint teal; only raiders wear the raider scheme.

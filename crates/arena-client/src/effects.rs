@@ -113,6 +113,8 @@ pub struct Fx {
     pub storm: f32,
     /// Burning flare tips (the Refinery's flare stack): fire and smoke.
     pub flares: Vec<Vec3>,
+    /// Last Crew's dust curtain this frame: (base point, size, opacity, seed).
+    pub curtain: Vec<(Vec3, f32, f32, f32)>,
 }
 
 const MAX_PARTICLES: usize = 5000;
@@ -143,6 +145,7 @@ impl Fx {
             last_pos: HashMap::new(),
             storm: 0.0,
             flares: Vec::new(),
+            curtain: Vec::new(),
         }
     }
 
@@ -785,6 +788,19 @@ impl Fx {
                     pos_size: c.extend(4.3).to_array(),
                     color: [0.6, 1.4, 2.6, (0.35 + 0.65 * shield) * flicker],
                     params: [Kind::Bubble as u32 as f32, 0.0, t.player as f32 * 0.37, 0.0],
+                    axis: [0.0; 4],
+                },
+            ));
+        }
+        // The sandstorm wall: a towering curtain of dust, churning in place.
+        for &(p, size, alpha, seed) in &self.curtain {
+            let c = Vec3::new(0.60, 0.41, 0.26) * (0.85 + 0.25 * seed);
+            out.push((
+                p.distance_squared(eye),
+                Sprite {
+                    pos_size: p.extend(size).to_array(),
+                    color: c.extend(alpha).to_array(),
+                    params: [Kind::Puff as u32 as f32, world.time * (0.05 + 0.1 * seed) + seed * 6.28, seed * 13.0, 0.0],
                     axis: [0.0; 4],
                 },
             ));

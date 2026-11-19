@@ -1,9 +1,12 @@
 //! Headless balance / fun harness: N seeded 8-bot Scrap Brawl matches, Raider
-//! Waves runs (with per-boss trials), or 4v4 Convoy matches.
+//! Waves runs (with per-boss trials), 4v4 Convoy or Wellhead matches, or
+//! 8-crew Last Crew Rolling matches.
 //!
 //!     cargo run --release -p arena-core --example harness -- [matches] [threads] [--map sink|refinery]
 //!     cargo run --release -p arena-core --example harness -- raid [matches] [--map refinery]
 //!     cargo run --release -p arena-core --example harness -- convoy [matches] [--map refinery]
+//!     cargo run --release -p arena-core --example harness -- wellhead [matches] [--map refinery]
+//!     cargo run --release -p arena-core --example harness -- lastcrew [matches] [--map refinery]
 //!
 //! Prints fun metrics and flags "not fun" signals. Native only (uses threads).
 
@@ -141,6 +144,16 @@ fn main() {
     if args.get(1).map(|s| s.as_str()) == Some("raid") {
         let n: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(40);
         raid_main(n);
+        return;
+    }
+    if args.get(1).map(|s| s.as_str()) == Some("wellhead") {
+        let n: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(40);
+        wellhead_main(n);
+        return;
+    }
+    if args.get(1).map(|s| s.as_str()) == Some("lastcrew") {
+        let n: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(40);
+        last_crew_main(n);
         return;
     }
     if args.get(1).map(|s| s.as_str()) == Some("convoy") {
@@ -687,4 +700,296 @@ fn tuning() -> Tuning {
         Ok(s) if !s.trim().is_empty() => Tuning::from_ron(&s).expect("TANSK_TUNING is RON for Tuning"),
         _ => Tuning::default(),
     }
+}
+
+/// Run `n` seeded matches of `run` on every core.
+fn parallel<T: Send + 'static>(n: usize, base: u64, run: fn(u64) -> T) -> (Vec<T>, f32) {
+    let threads = std::thread::available_parallelism().map(|x| x.get()).unwrap_or(4);
+    let next = Arc::new(AtomicUsize::new(0));
+    let results = Arc::new(Mutex::new(Vec::new()));
+    let start = std::time::Instant::now();
+    let handles: Vec<_> = (0..threads)
+        .map(|_| {
+            let next = next.clone();
+            let results = results.clone();
+            std::thread::spawn(move || loop {
+                let k = next.fetch_add(1, Ordering::SeqCst);
+                if k >= n {
+                    break;
+                }
+                let r = run(base + k as u64);
+                results.lock().unwrap().push(r);
+            })
+        })
+        .collect();
+    for h in handles {
+        h.join().unwrap();
+    }
+    let r = std::mem::take(&mut *results.lock().unwrap());
+    (r, start.elapsed().as_secs_f32())
+}
+
+// ------------------------------------------------------------------ Wellhead
+
+#[derive(Default, Clone)]
+struct WellheadRun {
+    minutes: f32,
+    winner: Option<Option<u8>>,
+    fuel: [u32; 2],
+    /// The winner was behind by `COMEBACK` fuel or more at some point.
+    comeback: bool,
+    /// Biggest deficit the winner came back from.
+    deficit: f32,
+    all_holds: u32,
+    captures: u32,
+    lost: u32,
+    contested: u32,
+    kills: u32,
+    /// Seconds into the match of the first capture.
+    first_capture: Option<f32>,
+    /// Seconds each well spent held by anyone (sum over wells / 3).
+    held_frac: f32,
+    by_target: bool,
+    throttling: u64,
+    stuck: u64,
+}
+
+const COMEBACK: f32 = 50.0;
+
+fn run_wellhead(seed: u64) -> WellheadRun {
+    let mut sim = Sim::new_wellhead(seed, Map::by_id(map_id(), seed), tuning());
+    for k in 0..8 {
+        sim.add_bot(arena_core::bots::BOT_NAMES[k], 0.4 + 0.1 * ((k / 2) % 4) as f32);
+    }
+    let mut r = WellheadRun::default();
+    let cap = (sim.tuning.wellhead.time_limit * 60.0) as u32 + 600;
+    let mut worst = [0.0f32; 2];
+    let mut held_ticks = 0u64;
+    for tick in 0..cap {
+        sim.step();
+        for e in sim.drain_events() {
+            match e {
+                Event::WellCaptured { .. } => {
+                    r.captures += 1;
+                    r.first_capture.get_or_insert(tick as f32 / 60.0);
+                }
+                Event::WellLost { .. } => r.lost += 1,
+                Event::WellContested { .. } => r.contested += 1,
+                Event::AllWellsHeld { .. } => r.all_holds += 1,
+                Event::Destroyed { .. } => r.kills += 1,
+                Event::TeamMatchEnded { team } => r.winner = Some(team),
+                _ => {}
+            }
+        }
+        let w = sim.wellhead.as_ref().unwrap();
+        for t in 0..2 {
+            worst[t] = worst[t].max(w.fuel[1 - t] - w.fuel[t]);
+        }
+        held_ticks += w.wells.iter().filter(|x| x.owner.is_some()).count() as u64;
+        if tick % 6 == 0 {
+            stuck_sample(&sim, &mut r.throttling, &mut r.stuck);
+        }
+        if r.winner.is_some() {
+            r.minutes = tick as f32 / 3600.0;
+            let f = sim.wellhead.as_ref().unwrap().fuel;
+            r.fuel = [f[0] as u32, f[1] as u32];
+            r.by_target = f.iter().any(|x| *x >= sim.tuning.wellhead.target);
+            r.held_frac = held_ticks as f32 / (tick.max(1) as f32 * 3.0);
+            if let Some(Some(t)) = r.winner {
+                r.deficit = worst[t as usize];
+                r.comeback = r.deficit >= COMEBACK;
+            }
+            break;
+        }
+    }
+    r
+}
+
+fn wellhead_main(n: usize) {
+    let (r, wall) = parallel(n, 8000, run_wellhead);
+    let m = r.len().max(1) as f32;
+    println!("== Wellhead: {} matches, 4v4 bots, {wall:.0} s wall ==", r.len());
+    let avg = |f: &dyn Fn(&WellheadRun) -> f32| r.iter().map(f).sum::<f32>() / m;
+    println!("match length: {:.1} min on average (limit {:.0} min)", avg(&|x| x.minutes), tuning().wellhead.time_limit / 60.0);
+    let mut lens = BTreeMap::new();
+    for x in &r {
+        *lens.entry(x.minutes as u32).or_insert(0) += 1;
+    }
+    println!("  minutes histogram: {lens:?}");
+    println!("ended by a full tank: {:.0}%  (else the clock)", 100.0 * r.iter().filter(|x| x.by_target).count() as f32 / m);
+    let mut winners = BTreeMap::new();
+    for x in &r {
+        *winners.entry(format!("{:?}", x.winner.flatten())).or_insert(0) += 1;
+    }
+    println!("winners (side fairness): {winners:?}");
+    println!(
+        "COMEBACKS: {:.0}% of matches won by a team that was {COMEBACK:.0}+ fuel behind (deepest {:.0})",
+        100.0 * r.iter().filter(|x| x.comeback).count() as f32 / m,
+        r.iter().map(|x| x.deficit).fold(0.0, f32::max)
+    );
+    println!(
+        "ALL-WELLS HOLDS: {:.1} per match ({:.0}% of matches have one)",
+        avg(&|x| x.all_holds as f32),
+        100.0 * r.iter().filter(|x| x.all_holds > 0).count() as f32 / m
+    );
+    println!(
+        "per match: {:.1} captures, {:.1} wells lost, {:.1} contested calls, {:.1} kills; first capture at {:.0} s; wells held {:.0}% of the time",
+        avg(&|x| x.captures as f32),
+        avg(&|x| x.lost as f32),
+        avg(&|x| x.contested as f32),
+        avg(&|x| x.kills as f32),
+        avg(&|x| x.first_capture.unwrap_or(0.0)),
+        100.0 * avg(&|x| x.held_frac)
+    );
+    println!("final tanks (winner-loser): {:.0} - {:.0}", avg(&|x| x.fuel[0].max(x.fuel[1]) as f32), avg(&|x| x.fuel[0].min(x.fuel[1]) as f32));
+    let (th, stk): (u64, u64) = (r.iter().map(|s| s.throttling).sum(), r.iter().map(|s| s.stuck).sum());
+    println!("stuck: {:.1}% of throttling time under 0.5 m/s", 100.0 * stk as f64 / th.max(1) as f64);
+    let mut flags = Vec::new();
+    let len = avg(&|x| x.minutes);
+    if !(3.0..=8.5).contains(&len) {
+        flags.push(format!("matches run {len:.1} min (aim 3-8)"));
+    }
+    if avg(&|x| x.captures as f32) < 6.0 {
+        flags.push("wells rarely change hands".into());
+    }
+    let sides = r.iter().filter(|x| x.winner == Some(Some(0))).count() as f32 / m;
+    if !(0.3..=0.7).contains(&sides) {
+        flags.push(format!("Rustbacks win {:.0}% (side bias)", 100.0 * sides));
+    }
+    println!("NOT-FUN FLAGS: {}", if flags.is_empty() { "none".to_string() } else { flags.join("; ") });
+}
+
+// --------------------------------------------------------- Last Crew Rolling
+
+#[derive(Default, Clone)]
+struct LastCrewRun {
+    minutes: f32,
+    winner_tiers: u32,
+    winner_kills: u32,
+    /// (seconds in, metres inside the wall; negative = outside).
+    kills: Vec<(f32, f32)>,
+    storm_deaths: u32,
+    /// Seconds into the match each crew went out.
+    outs: Vec<f32>,
+    first_tier2: Option<f32>,
+    final_alive_at_close: u32,
+    weapons: BTreeMap<String, u32>,
+    throttling: u64,
+    stuck: u64,
+}
+
+fn run_last_crew(seed: u64) -> LastCrewRun {
+    let mut sim = Sim::new_last_crew(seed, Map::by_id(map_id(), seed), tuning());
+    for k in 0..8 {
+        sim.add_bot(arena_core::bots::BOT_NAMES[k], 0.4 + 0.1 * (k % 4) as f32);
+    }
+    let mut r = LastCrewRun::default();
+    let cap = 12 * 60 * 60;
+    let mut ended = None;
+    for tick in 0..cap {
+        sim.step();
+        let s = tick as f32 / 60.0;
+        for e in sim.drain_events() {
+            match e {
+                Event::Eliminated { .. } => r.outs.push(s),
+                Event::Destroyed { weapon, .. } => *r.weapons.entry(format!("{weapon:?}")).or_default() += 1,
+                Event::UpgradeApplied { tier, .. } if tier >= 2 => {
+                    r.first_tier2.get_or_insert(s);
+                }
+                Event::CircleClosed { phase } if phase as usize == sim.tuning.last_crew.factor.len() - 1 => {
+                    r.final_alive_at_close = sim.players.iter().filter(|p| p.tank.alive).count() as u32;
+                }
+                Event::MatchEnded { winner } => ended = Some(winner),
+                _ => {}
+            }
+        }
+        if tick % 6 == 0 {
+            stuck_sample(&sim, &mut r.throttling, &mut r.stuck);
+        }
+        if let Some(w) = ended {
+            r.minutes = s / 60.0;
+            if let Some(p) = w.and_then(|w| sim.players.iter().find(|p| p.id == w)) {
+                r.winner_tiers = p.tank.tiers.iter().map(|t| *t as u32).sum();
+                r.winner_kills = p.kills;
+            }
+            break;
+        }
+    }
+    let lc = sim.last_crew.as_ref().unwrap();
+    r.kills = lc.kills.clone();
+    r.storm_deaths = lc.storm_deaths;
+    r
+}
+
+fn last_crew_main(n: usize) {
+    let (r, wall) = parallel(n, 9000, run_last_crew);
+    let m = r.len().max(1) as f32;
+    let avg = |f: &dyn Fn(&LastCrewRun) -> f32| r.iter().map(f).sum::<f32>() / m;
+    println!("== Last Crew Rolling: {} matches, 8 bots, {wall:.0} s wall ==", r.len());
+    let len = avg(&|x| x.minutes);
+    println!("AVERAGE MATCH LENGTH: {len:.1} min");
+    let mut lens = BTreeMap::new();
+    for x in &r {
+        *lens.entry((x.minutes * 2.0) as u32).or_insert(0) += 1;
+    }
+    println!("  half-minute histogram (bucket = minutes*2): {lens:?}");
+    let kills: Vec<(f32, f32)> = r.iter().flat_map(|x| x.kills.iter().copied()).collect();
+    let nk = kills.len().max(1) as f32;
+    let bucket = |d: f32| -> &'static str {
+        if d < 0.0 {
+            "a) outside the wall"
+        } else if d < 15.0 {
+            "b) 0-15 m inside"
+        } else if d < 40.0 {
+            "c) 15-40 m inside"
+        } else if d < 100.0 {
+            "d) 40-100 m inside"
+        } else {
+            "e) 100+ m inside"
+        }
+    };
+    let mut near = BTreeMap::new();
+    for (_, d) in &kills {
+        *near.entry(bucket(*d)).or_insert(0u32) += 1;
+    }
+    println!("WHERE KILLS HAPPEN relative to the wall ({} kills):", kills.len());
+    for (k, v) in &near {
+        println!("  {k}: {:.0}%", 100.0 * *v as f32 / nk);
+    }
+    let mut when = BTreeMap::new();
+    for (s, _) in &kills {
+        *when.entry((s / 60.0) as u32).or_insert(0u32) += 1;
+    }
+    println!("kills per minute of the match (minute: kills): {when:?}");
+    println!(
+        "per match: {:.1} gun kills, {:.1} storm deaths, {:.1} alive when the last close ends; first tier 2 at {:.0} s",
+        avg(&|x| x.kills.len() as f32),
+        avg(&|x| x.storm_deaths as f32),
+        avg(&|x| x.final_alive_at_close as f32),
+        avg(&|x| x.first_tier2.unwrap_or(0.0))
+    );
+    println!("winner: {:.1} tiers, {:.1} kills on average", avg(&|x| x.winner_tiers as f32), avg(&|x| x.winner_kills as f32));
+    let mut weapons: BTreeMap<String, u32> = BTreeMap::new();
+    for x in &r {
+        for (k, v) in &x.weapons {
+            *weapons.entry(k.clone()).or_default() += v;
+        }
+    }
+    println!("what wrecked them: {weapons:?}");
+    let firsts: Vec<f32> = r.iter().filter_map(|x| x.outs.first().copied()).collect();
+    println!("first crew out at {:.0} s on average", firsts.iter().sum::<f32>() / firsts.len().max(1) as f32);
+    let (th, stk): (u64, u64) = (r.iter().map(|s| s.throttling).sum(), r.iter().map(|s| s.stuck).sum());
+    println!("stuck: {:.1}% of throttling time under 0.5 m/s", 100.0 * stk as f64 / th.max(1) as f64);
+    let mut flags = Vec::new();
+    if !(3.5..=6.5).contains(&len) {
+        flags.push(format!("matches run {len:.1} min (aim about 5)"));
+    }
+    let storm_share = avg(&|x| x.storm_deaths as f32) / 7.0;
+    if storm_share > 0.4 {
+        flags.push(format!("the wall takes {:.0}% of the crews (they should die to guns)", 100.0 * storm_share));
+    }
+    if avg(&|x| x.winner_tiers as f32) < 6.0 {
+        flags.push("winners stay small (scrap too thin)".into());
+    }
+    println!("NOT-FUN FLAGS: {}", if flags.is_empty() { "none".to_string() } else { flags.join("; ") });
 }

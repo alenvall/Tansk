@@ -219,6 +219,21 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-title[data-panel]:not([data-panel="none"]) .t-menu .t-btn { opacity: .82; }
 .t-menu .t-btn:not(.t-btn-play) { padding-top: .55rem; padding-bottom: .5rem; }
 .t-pmap { align-items: center; pointer-events: auto; }
+.t-more { display: flex; align-items: stretch; gap: .38rem; pointer-events: auto; }
+.t-more-label { align-self: center; width: 3.2rem; font-size: .95rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #4a2410; }
+.t-chip {
+  position: relative; flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: .1rem;
+  padding: .42rem .8rem .38rem 1.1rem; border: 0; border-radius: .3rem; cursor: pointer; text-align: left; font: inherit;
+  background: var(--scratch), var(--grain), linear-gradient(90deg, var(--fuel) 0 .4rem, rgba(0,0,0,.45) .4rem .52rem, transparent .52rem), linear-gradient(180deg, #4d4640 0%, #3a342f 60%, #2d2824 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 236, 206, .3), inset 0 -2px 0 rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(0, 0, 0, .45), 0 .25rem 0 #1c140e, 0 .6rem 1.2rem rgba(40, 22, 8, .35);
+  transition: transform .12s cubic-bezier(.3, 1.8, .5, 1);
+}
+.t-chip b { font-family: 'Black Ops One', sans-serif; font-weight: 400; font-size: 1.3rem; line-height: 1; letter-spacing: .05em; text-transform: uppercase; color: var(--cream); text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+.t-chip i { font-style: normal; font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--cream-dim); opacity: .85; }
+.t-chip:hover, .t-chip:focus-visible { transform: translateX(.3rem); background: var(--scratch), var(--grain), linear-gradient(180deg, #f2c230, #d89a18); outline: none; }
+.t-chip:hover b, .t-chip:focus-visible b { color: #2a160a; text-shadow: 0 1px 0 rgba(255, 210, 160, .55); }
+.t-chip:hover i, .t-chip:focus-visible i { color: #3b1b08; opacity: 1; }
+.t-chip:active { transform: translateY(.18rem) scale(.98); }
 .t-pmap .t-pmap-label { padding: 0 .4rem 0 0; font-size: .95rem; letter-spacing: .16em; color: #4a2410; background: none; box-shadow: none; }
 .t-pmap label span { padding: .35rem .8rem .3rem; font-size: 1rem; background: rgba(28, 20, 14, .55); }
 
@@ -573,6 +588,61 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-convoy-mark svg { width: 1.9rem; height: 1.9rem; fill: #ffd24a; stroke: #1c140e; stroke-width: 2.5; animation: t-mark-bob 1.2s ease-in-out infinite; }
 .t-convoy-mark[data-role="attack"] svg { fill: #ff6a4a; }
 .t-convoy-mark b { font-family: 'Black Ops One', sans-serif; font-weight: 400; font-size: .9rem; letter-spacing: .06em; color: #fff6d8; text-shadow: 0 1px 0 #000; }
+
+/* wellhead: two fuel tanks either side of the three derricks */
+.t-wells { position: absolute; top: 6.2rem; left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .1rem 1rem; padding: .3rem 1rem .25rem; min-width: 30rem; }
+/* The onboarding tip sits under the mode plates when they're up. */
+.t-hud:has(#t-wells:not([hidden])) .t-hint, .t-hud:has(#t-lastcrew:not([hidden])) .t-hint, .t-hud:has(#t-convoy:not([hidden])) .t-hint { top: 11.6rem; }
+.t-fuel { display: flex; align-items: center; gap: .45rem; }
+.t-fuel-a { justify-content: flex-end; }
+.t-fuel-l { font-size: .72rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--cream-dim); }
+.t-fuel-tank { position: relative; width: 7rem; height: 1.05rem; border-radius: .5rem; background: #1a140f; box-shadow: inset 0 1px 3px #000, 0 0 0 .12rem #4d4640; overflow: hidden; }
+.t-fuel-tank::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(0,0,0,.45) calc(10% - 1px) 10%); pointer-events: none; }
+.t-fuel-tank i { position: absolute; top: 0; bottom: 0; width: calc(var(--v) * 100%); transition: width .3s; }
+.t-fuel-a .t-fuel-tank i { right: 0; background: linear-gradient(180deg, #ffb07a, #e2581e 55%, #a93f0f); }
+.t-fuel-b .t-fuel-tank i { left: 0; background: linear-gradient(180deg, #8ae6de, #2fa39b 55%, #1d746e); }
+.t-fuel b { min-width: 2.4rem; font-family: 'Black Ops One', sans-serif; font-weight: 400; font-size: 1.2rem; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 1px 0 #000; }
+.t-fuel-a b { text-align: right; color: var(--rust-hi); }
+.t-fuel-b b { color: var(--teal-hi); }
+.t-wells-row { display: flex; gap: .55rem; }
+.t-well { --tc: #8a8178; position: relative; width: 2.7rem; height: 2.7rem; display: grid; place-items: center; color: #8a8178; }
+.t-well[data-owner="a"] { color: var(--rust-hi); }
+.t-well[data-owner="b"] { color: var(--teal-hi); }
+.t-well[data-side="a"] { --tc: var(--rust); }
+.t-well[data-side="b"] { --tc: var(--teal); }
+.t-well-ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--tc) calc(var(--p) * 360deg), #2a231e 0); box-shadow: inset 0 0 0 .16rem #1c140e, 0 .12rem 0 #1c140e; }
+.t-well-ring::after { content: ""; position: absolute; inset: .28rem; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #4d4640, #2d2824); }
+.t-well svg { position: relative; width: 1.75rem; height: 1.75rem; filter: drop-shadow(0 1px 0 #000); }
+.t-well-k { position: absolute; right: -.25rem; bottom: -.25rem; min-width: 1rem; padding: 0 .2rem; border-radius: .2rem; font-family: 'Black Ops One', sans-serif; font-size: .8rem; line-height: 1.05rem; text-align: center; color: #22140b; background: var(--cream-dim); box-shadow: 0 .1rem 0 #1c140e; }
+.t-well[data-contested="1"] .t-well-ring { box-shadow: inset 0 0 0 .16rem #1c140e, 0 0 0 .14rem #ff6a4a; animation: t-blink .6s steps(1) infinite; }
+.t-wells-state { grid-column: 1 / -1; text-align: center; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--fuel); min-height: .9rem; }
+.t-wells-state[data-x="1"] { color: #ff6a4a; animation: t-blink 1s steps(1) infinite; }
+.t-wellmark { --mk: #d8c8a8; position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: .15rem; pointer-events: none; filter: drop-shadow(0 2px 0 #000); }
+.t-wellmark[data-owner="a"] { --mk: #f07a3e; }
+.t-wellmark[data-owner="b"] { --mk: #4fbcb3; }
+.t-wellmark svg { width: 2.1rem; height: 2.1rem; padding: .22rem; box-sizing: border-box; border-radius: 50%; color: #f6ead2; background: radial-gradient(circle at 40% 35%, #4d4640, #241f1b); box-shadow: inset 0 0 0 .2rem var(--mk), 0 0 0 .12rem #1c140e; animation: t-mark-bob 1.6s ease-in-out infinite; }
+.t-wellmark[data-contested="1"] svg { box-shadow: inset 0 0 0 .2rem #ff6a4a, 0 0 0 .12rem #1c140e; animation: t-blink .6s steps(1) infinite; }
+.t-wellmark b { font-family: 'Black Ops One', sans-serif; font-weight: 400; font-size: .85rem; letter-spacing: .06em; color: #fff6d8; text-shadow: 0 1px 0 #000; white-space: nowrap; }
+.t-wellmark b span { padding: 0 .28rem; border-radius: .15rem; color: #22140b; text-shadow: none; background: var(--mk); }
+.t-wellmark b em { font-style: normal; }
+
+/* last crew rolling: compass to the safe ground, the wall's clock, crews left */
+.t-lastcrew { position: absolute; top: 6.2rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .9rem; padding: .35rem 1rem .35rem .5rem; min-width: 22rem; }
+.t-lc-compass svg { display: block; width: 3.2rem; height: 3.2rem; }
+.t-lc-dial { fill: #1f1b18; stroke: #4d4640; stroke-width: 2; }
+.t-lc-ticks { stroke: var(--cream-dim); stroke-width: 1.6; }
+#t-lc-arrow { transform: rotate(var(--a)); transition: transform .12s linear; }
+.t-lc-arrow { fill: #7fe08a; stroke: #1c140e; stroke-width: 1.6; stroke-linejoin: round; }
+.t-lastcrew[data-state="move"] .t-lc-arrow { fill: var(--fuel); }
+.t-lastcrew[data-state="storm"] .t-lc-arrow { fill: #ff6a4a; }
+.t-lc-info { flex: 1; }
+.t-lc-dist { font-family: 'Black Ops One', sans-serif; font-weight: 400; font-size: 1.35rem; line-height: 1.05; letter-spacing: .04em; color: #7fe08a; text-shadow: 0 1px 0 #000; white-space: nowrap; }
+.t-lastcrew[data-state="move"] .t-lc-dist { color: var(--fuel); }
+.t-lastcrew[data-state="storm"] .t-lc-dist { color: #ff6a4a; animation: t-blink 1s steps(1) infinite; }
+.t-lc-state { font-size: .8rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--cream-dim); white-space: nowrap; }
+.t-lc-crews { display: flex; align-items: center; gap: .4rem; padding-left: .8rem; border-left: .12rem solid rgba(0,0,0,.4); }
+.t-lc-crews b { font-family: 'Black Ops One', sans-serif; font-weight: 400; font-size: 2rem; line-height: 1; color: var(--cream); text-shadow: 0 2px 0 #000; font-variant-numeric: tabular-nums; }
+.t-lc-crews span { font-size: .72rem; font-weight: 800; letter-spacing: .14em; line-height: 1.1; text-transform: uppercase; color: var(--cream-dim); }
 @keyframes t-mark-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-.25rem); } }
 
 /* kill feed */

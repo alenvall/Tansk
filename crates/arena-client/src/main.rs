@@ -19,6 +19,7 @@ mod demo;
 mod effects;
 mod game;
 mod meshkit;
+mod objectives;
 // Wired into the game loop next; until then not every export is used.
 #[allow(unused_imports)]
 mod net;

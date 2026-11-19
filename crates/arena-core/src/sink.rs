@@ -451,6 +451,7 @@ impl Map {
             outpost: Vec3::ZERO,
             regions: Vec::new(),
             convoy_route: Vec::new(),
+            wells: Vec::new(),
         };
         let mut rng = b.rng;
         for i in 0..map.obstacles.len() {
@@ -537,6 +538,12 @@ impl Map {
         }
         let p = free(&map, Vec2::new(205.0, 105.0), 4.0);
         map.strike_sites.push(at3(&map, p));
+        // Wellhead derricks: the gas station forecourt (north), the outpost
+        // courtyard (the middle) and the beach dunes (east).
+        for (x, z, name) in [(80.0, -128.0, "the gas station"), (0.0, -4.0, "the outpost"), (190.0, 92.0, "the beach")] {
+            let p = free(&map, Vec2::new(x, z), 5.0);
+            map.wells.push(WellSite { pos: at3(&map, p), name: name.into() });
+        }
         for (i, o) in map.obstacles.iter().enumerate() {
             if o.kind == ObstacleKind::Crane {
                 let anchor = o.pos + o.rot * Vec3::new(15.0, 23.0, 0.0);

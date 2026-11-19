@@ -252,3 +252,84 @@ pub fn convoy_destroyed() -> Vec<String> {
 pub fn convoy_delivered() -> Vec<String> {
     vec!["Delivered.".into(), "Delivered. Somebody sign for it.".into()]
 }
+
+// ── Wellhead ─────────────────────────────────────────────────────────────
+
+pub fn well_captured(place: &str, ours: bool) -> Vec<String> {
+    if ours {
+        vec![format!("We've got {place} well."), format!("{} well's ours. Start pumping.", cap(place)), format!("Flag's up at {place}. Hold it.")]
+    } else {
+        vec![format!("They took {place} well."), format!("{} well's gone to them. Take it back.", cap(place))]
+    }
+}
+
+pub fn well_lost(place: &str, ours: bool) -> Vec<String> {
+    if ours {
+        vec![format!("Losing {place}. Pump's dry."), format!("{} well's slipping. Get back there.", cap(place))]
+    } else {
+        vec![format!("Their flag's down at {place}. Finish it."), format!("{} well's loose. Grab it.", cap(place))]
+    }
+}
+
+pub fn well_contested(place: &str) -> Vec<String> {
+    vec![format!("Fight at {place} well."), format!("Both crews on {place}. Whoever's left gets the pump.")]
+}
+
+pub fn all_wells(ours: bool) -> Vec<String> {
+    if ours {
+        vec!["All three are ours. Double pumping. Don't get cocky.".into(), "We hold every well. Tank's filling twice as fast.".into()]
+    } else {
+        vec!["They hold all three. Move!".into(), "All three wells are theirs. Break one, now.".into()]
+    }
+}
+
+pub fn fuel_nearly(ours: bool) -> Vec<String> {
+    if ours {
+        vec!["Our tank's nearly full. Hang on.".into()]
+    } else {
+        vec!["Their tank's nearly full. Hit a well or it's over.".into()]
+    }
+}
+
+// ── Last Crew Rolling ────────────────────────────────────────────────────
+
+pub fn wall_moving(secs: f32, last: bool) -> Vec<String> {
+    if last {
+        return vec!["Wall's closing all the way. Last one rolling takes it.".into()];
+    }
+    let n = number(secs.round().max(1.0) as u16);
+    vec!["Wall's moving. Get inside.".into(), format!("Storm wall's on the move. {} seconds to get in.", cap(&n))]
+}
+
+pub fn wall_closed() -> Vec<String> {
+    vec!["Wall's stopped. For now.".into(), "Storm's holding. Catch your breath.".into()]
+}
+
+pub fn crews_left(n: u8) -> Vec<String> {
+    match n {
+        2 => vec!["Two crews left. One of you goes home.".into()],
+        _ => vec![format!("{} crews left.", cap(&number(u16::from(n))))],
+    }
+}
+
+pub fn out_of_it(place: u8, storm: bool) -> Vec<String> {
+    let p = crate::ui::ordinal(place);
+    if storm {
+        vec![format!("The storm had you. {p} place.")]
+    } else {
+        vec![format!("You're out. {p} place. Watch and learn.")]
+    }
+}
+
+pub fn last_crew(name: &str, you: bool) -> Vec<String> {
+    if you {
+        vec!["Last crew rolling. That's you. Go home rich.".into()]
+    } else {
+        vec![format!("{name}'s the last crew rolling.")]
+    }
+}
+
+pub fn outside_wall() -> Vec<String> {
+    vec!["You're in the storm. Get inside the wall.".into(), "Hull's sanding down. Inside, now.".into()]
+}
+

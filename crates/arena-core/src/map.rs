@@ -275,6 +275,18 @@ pub struct Map {
     /// along the road where there is one). The sim joins them on the nav grid.
     #[serde(default)]
     pub convoy_route: Vec<Vec3>,
+    /// Wellhead: the three derricks, in order (team 0's side, the middle, team
+    /// 1's side). Team spawns split across the line between the two sides.
+    #[serde(default)]
+    pub wells: Vec<WellSite>,
+}
+
+/// A Wellhead derrick: where it stands and what the radio calls it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct WellSite {
+    pub pos: Vec3,
+    /// "the gas station", "the beach" (lower case, with the article).
+    pub name: String,
 }
 
 

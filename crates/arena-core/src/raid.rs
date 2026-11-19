@@ -32,6 +32,31 @@ pub enum ModeKind {
     /// Team PvP over a fuel tanker: one team escorts it along the map's route,
     /// the other stops it; sides swap for round 2. See [`crate::convoy`].
     Convoy,
+    /// Team PvP over three derricks: held ones pump fuel; first to fill the
+    /// tank wins. See [`crate::wellhead`].
+    Wellhead,
+    /// Free-for-all, no respawns, a sandstorm wall closing in; the last tank
+    /// rolling wins. See [`crate::lastcrew`].
+    LastCrew,
+}
+
+impl ModeKind {
+    /// Rustbacks against Dust Saints (team spawns, no friendly fire).
+    pub fn is_team(self) -> bool {
+        matches!(self, ModeKind::TeamBrawl | ModeKind::Convoy | ModeKind::Wellhead)
+    }
+
+    /// The name on menus and HUD labels.
+    pub fn name(self) -> &'static str {
+        match self {
+            ModeKind::ScrapBrawl => "Scrap Brawl",
+            ModeKind::RaiderWaves => "Raider Waves",
+            ModeKind::TeamBrawl => "Team Brawl",
+            ModeKind::Convoy => "Convoy",
+            ModeKind::Wellhead => "Wellhead",
+            ModeKind::LastCrew => "Last Crew Rolling",
+        }
+    }
 }
 
 pub const TEAM_DEFENDERS: u8 = 0;

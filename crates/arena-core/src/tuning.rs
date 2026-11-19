@@ -44,6 +44,10 @@ pub struct Tuning {
     pub fuel_tanker: TankTuning,
     /// Convoy mode.
     pub convoy: ConvoyTuning,
+    /// Wellhead: hold the derricks, pump fuel.
+    pub wellhead: WellheadTuning,
+    /// Last Crew Rolling: no respawns, the sandstorm wall closes in.
+    pub last_crew: LastCrewTuning,
 }
 
 impl Tuning {
@@ -978,6 +982,8 @@ impl Default for Tuning {
             land_ship: TankTuning::land_ship(),
             fuel_tanker: TankTuning::fuel_tanker(),
             convoy: ConvoyTuning::default(),
+            wellhead: WellheadTuning::default(),
+            last_crew: LastCrewTuning::default(),
         }
     }
 }
@@ -1421,6 +1427,100 @@ impl Default for StormTuning {
             sight_mult: 0.25,
             spread_deg: 1.2,
             scrap_respawn_mult: 3.0,
+        }
+    }
+}
+
+/// Wellhead: three derricks; a held one pumps fuel into its team's tank.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct WellheadTuning {
+    /// The capture ring around each derrick, m.
+    pub radius: f32,
+    /// Seconds for one tank to take a neutral well (and as long again to
+    /// flip an enemy one: neutralise, then take).
+    pub capture_time: f32,
+    /// Each extra tank over the other side speeds it up by this fraction (capped at `max_crowd`).
+    pub crowd_bonus: f32,
+    pub max_crowd: u32,
+    /// With nobody on it, a part-taken well drifts back this fast (fraction/s).
+    pub decay: f32,
+    /// Fuel per second per held well, and the multiplier for holding all three.
+    pub pump_rate: f32,
+    pub all_wells_mult: f32,
+    /// First team to this much fuel wins.
+    pub target: f32,
+    /// Or the most fuel when the clock runs out, s.
+    pub time_limit: f32,
+    /// A well's "contested" radio call repeats no sooner than this, s.
+    pub contested_call: f32,
+}
+
+impl Default for WellheadTuning {
+    fn default() -> Self {
+        Self {
+            radius: 13.0,
+            capture_time: 7.0,
+            crowd_bonus: 0.35,
+            max_crowd: 3,
+            decay: 0.06,
+            pump_rate: 1.0,
+            all_wells_mult: 2.0,
+            target: 500.0,
+            time_limit: 8.0 * 60.0,
+            contested_call: 15.0,
+        }
+    }
+}
+
+/// Last Crew Rolling: free-for-all, no respawns, a closing sandstorm wall.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct LastCrewTuning {
+    /// Per phase: seconds the circle holds, then seconds it takes to close in.
+    pub hold: Vec<f32>,
+    pub shrink: Vec<f32>,
+    /// Per phase: the next circle's radius as a fraction of the current one
+    /// (the last phase is the squeeze: 0 closes it completely).
+    pub factor: Vec<f32>,
+    /// The first circle's radius as a fraction of the map's half width (1.42 covers the corners).
+    pub start_radius: f32,
+    /// Damage per second outside the wall: `damage_base + damage_per_minute * minutes played`.
+    pub damage_base: f32,
+    pub damage_per_minute: f32,
+    /// Scrap sites respawn this many times faster at the start, easing to
+    /// normal between `scrap_boost_full` and `scrap_boost_end` seconds.
+    pub scrap_boost: f32,
+    pub scrap_boost_full: f32,
+    pub scrap_boost_end: f32,
+    /// Extra scrap a wrecked crew spills (no respawn: the spoils go to the living).
+    pub death_bonus_scrap: u32,
+    /// Crews who join after this many seconds wait for the next match.
+    pub late_join: f32,
+    /// Hulls are tougher with no respawns: damage taken is multiplied by this
+    /// (not the storm's).
+    pub damage_taken: f32,
+    /// Bots scavenge first for this long (fight only what comes close), s.
+    pub loot_time: f32,
+}
+
+impl Default for LastCrewTuning {
+    fn default() -> Self {
+        Self {
+            // Four closes, then the last squeeze to nothing.
+            hold: vec![70.0, 55.0, 40.0, 30.0, 20.0],
+            shrink: vec![40.0, 35.0, 30.0, 25.0, 40.0],
+            factor: vec![0.6, 0.55, 0.5, 0.35, 0.0],
+            start_radius: 1.42,
+            damage_base: 6.0,
+            damage_per_minute: 7.0,
+            scrap_boost: 6.0,
+            scrap_boost_full: 75.0,
+            scrap_boost_end: 160.0,
+            death_bonus_scrap: 4,
+            late_join: 25.0,
+            damage_taken: 0.35,
+            loot_time: 170.0,
         }
     }
 }

@@ -222,6 +222,18 @@ impl NetClient {
         Self::offline(sim, me, seed)
     }
 
+    /// Offline Wellhead: you and `per_team - 1` bot allies against `per_team` bots.
+    pub fn practice_wellhead(seed: u64, per_team: usize, difficulty: f32, map: MapId) -> NetClient {
+        let (sim, me) = Sim::practice_wellhead_on(map, seed, per_team, difficulty);
+        Self::offline(sim, me, seed)
+    }
+
+    /// Offline Last Crew Rolling: you and `bots` bots, no respawns.
+    pub fn practice_last_crew(seed: u64, bots: usize, difficulty: f32, map: MapId) -> NetClient {
+        let (sim, me) = Sim::practice_last_crew_on(map, seed, bots, difficulty);
+        Self::offline(sim, me, seed)
+    }
+
     fn offline(mut sim: Sim, me: PlayerId, seed: u64) -> NetClient {
 
         let events = sim.drain_events();

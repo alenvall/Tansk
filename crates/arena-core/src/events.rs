@@ -32,6 +32,8 @@ pub enum Weapon {
     Hazard,
     /// Burning after a flamethrower hit.
     Burn,
+    /// Last Crew Rolling: caught outside the sandstorm wall.
+    Storm,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -161,5 +163,23 @@ pub enum Event {
     ConvoyDelivered { truck: PlayerId, escort_team: u8, seconds: f32 },
     /// A round's score line (also sent when the round clock runs out).
     ConvoyRoundEnded { round: u8, escort_team: u8, delivered: bool, distance: f32, seconds: f32 },
+    // --- Wave 8: Wellhead and Last Crew Rolling. Appended (bincode order).
+    /// `team` took derrick `well` (an index into `Map::wells` / `WellheadSnap::wells`).
+    WellCaptured { well: u8, team: u8 },
+    /// `team` lost its hold on `well` (the other side neutralised it).
+    WellLost { well: u8, team: u8 },
+    /// Crews of both sides are in `well`'s ring (rate-limited per well).
+    WellContested { well: u8 },
+    /// One team holds all three derricks: double pumping.
+    AllWellsHeld { team: u8 },
+    /// The sandstorm wall starts closing in: phase `phase` (1-based), done in
+    /// `seconds`, on the circle at `center` with `radius`.
+    CircleShrinking { phase: u8, seconds: f32, center: Vec3, radius: f32 },
+    /// The wall has stopped at its new circle.
+    CircleClosed { phase: u8 },
+    /// A crew is out for good: `place` is where they finished (8 = first out).
+    Eliminated { player: PlayerId, place: u8 },
+    /// The last tank rolling.
+    LastCrew { player: PlayerId },
 }
 

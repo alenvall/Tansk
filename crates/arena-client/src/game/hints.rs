@@ -54,6 +54,16 @@ pub const CONVOY: Tip = Tip {
     keys: "Convoy: escorts keep the tanker rolling to the depot, the other crew stops it. Then you swap.",
     pad: "Convoy: escorts keep the tanker rolling to the depot, the other crew stops it. Then you swap.",
 };
+pub const WELLHEAD: Tip = Tip {
+    key: "wellhead",
+    keys: "Wellhead: park inside a derrick's ring to take it. Held wells pump fuel. Fill the tank first.",
+    pad: "Wellhead: park inside a derrick's ring to take it. Held wells pump fuel. Fill the tank first.",
+};
+pub const LAST_CREW: Tip = Tip {
+    key: "lastcrew",
+    keys: "Last Crew Rolling: no respawns. Grab scrap early, stay inside the storm wall, be the last one rolling.",
+    pad: "Last Crew Rolling: no respawns. Grab scrap early, stay inside the storm wall, be the last one rolling.",
+};
 pub const RAID: Tip = Tip {
     key: "raid",
     keys: "Raid: hold the outpost against the waves. Stay close and stick together.",

@@ -145,6 +145,44 @@ pub struct ConvoyHud {
     pub state: String,
 }
 
+/// One derrick on the Wellhead HUD.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WellHud {
+    /// Who holds it.
+    pub owner: Option<Team>,
+    /// How full its ring is (0..1) and for whom.
+    pub fill: f32,
+    pub side: Option<Team>,
+    pub contested: bool,
+}
+
+/// The Wellhead plate under the clock: both fuel tanks and the derricks.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WellheadHud {
+    pub wells: Vec<WellHud>,
+    /// Rustbacks, Dust Saints.
+    pub fuel: [u32; 2],
+    pub target: u32,
+    /// A line under the wells ("All three: double pumping").
+    pub state: String,
+    /// The line is bad news (flash it).
+    pub alarm: bool,
+}
+
+/// The Last Crew plate under the clock.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LastCrewHud {
+    /// Where the safe ground is, relative to the view (0 = straight ahead, clockwise).
+    pub arrow_deg: f32,
+    /// "Inside", "142 m to safety"...
+    pub dist: String,
+    /// "Wall moves in 0:45"...
+    pub line: String,
+    pub crews: u8,
+    /// safe | move | storm.
+    pub state: &'static str,
+}
+
 #[derive(Clone, Debug)]
 pub struct OpenGame {
     pub host: String,
@@ -298,6 +336,10 @@ const CHAT_MAX: usize = 7;
 
 #[derive(Default)]
 struct Cache {
+    wells: Option<WellheadHud>,
+    well_marks: [Option<(i32, i32, i32, u8, bool)>; 3],
+    last_crew: Option<LastCrewHud>,
+    out: Option<(u8, String)>,
     convoy: Option<(bool, i32, i32, String)>,
     mark: Option<(i32, i32, i32, bool)>,
     health: Option<i32>,
@@ -346,6 +388,17 @@ fn roman(tier: u8) -> &'static str {
     }
 }
 
+/// 1st, 2nd, 3rd, 4th...
+pub fn ordinal(n: u8) -> String {
+    let s = match n % 10 {
+        1 if n % 100 != 11 => "st",
+        2 if n % 100 != 12 => "nd",
+        3 if n % 100 != 13 => "rd",
+        _ => "th",
+    };
+    format!("{n}{s}")
+}
+
 fn esc(s: &str) -> String {
     let mut o = String::with_capacity(s.len());
     for c in s.chars() {
@@ -375,7 +428,7 @@ fn keycaps(text: &str) -> String {
     out
 }
 
-fn clock(secs: i32) -> String {
+pub(crate) fn clock(secs: i32) -> String {
     let s = secs.max(0);
     format!("{:02}:{:02}", s / 60, s % 60)
 }
@@ -876,6 +929,16 @@ impl Ui {
     /// The respawn overlay with a countdown; `None` hides it.
     /// `killed_by`: who and with what, shown under the stamp.
     pub fn show_respawn(&mut self, secs: Option<f32>, killed_by: Option<(&str, Team, &str)>) {
+        if self.cache.out.take().is_some() {
+            // Back from Last Crew's "out" card.
+            self.dom.text("t-respawn-stamp", "Wrecked");
+            self.dom.text("t-respawn-note", "You keep your first tier in every track.");
+            self.dom.hidden("t-respawn-count", false);
+            self.dom.hidden("t-out-count", true);
+            self.cache.respawn = None;
+            self.dom.hidden("t-respawn", true);
+            self.dom.hidden("t-reticle", false);
+        }
         let Some(secs) = secs else {
             if self.cache.respawn.take().is_some() {
                 self.dom.hidden("t-respawn", true);
@@ -901,6 +964,144 @@ impl Ui {
         if self.cache.respawn.replace(s) != Some(s) {
             self.dom.text("t-respawn-secs", &s.to_string());
         }
+    }
+
+    /// Last Crew Rolling: you're out for good. `place` is where you
+    /// finished; `watching` names the crew the camera follows.
+    pub fn show_out(&mut self, place: u8, killed_by: Option<(&str, Team, &str)>, watching: Option<&str>) {
+        let key = (place, watching.unwrap_or("").to_string());
+        if self.cache.out.as_ref() == Some(&key) {
+            return;
+        }
+        let first = self.cache.out.is_none();
+        self.cache.out = Some(key);
+        if first {
+            let by = match killed_by {
+                Some((name, team, weapon)) => format!(
+                    "Opened up by <span class=\"t-name-{}\">{}</span>&rsquo;s {}",
+                    team.css(),
+                    esc(name),
+                    esc(weapon)
+                ),
+                None => "The storm took you".to_string(),
+            };
+            self.dom.html("t-respawn-by", &by);
+            self.dom.text("t-respawn-stamp", "Out");
+            self.dom.hidden("t-respawn-count", true);
+            self.dom.hidden("t-out-count", false);
+            self.dom.hidden("t-respawn", false);
+            self.dom.hidden("t-reticle", true);
+            self.cache.respawn = Some(-1);
+        }
+        self.dom.text("t-out-place", &ordinal(place));
+        let note = match watching {
+            Some(n) => format!("No respawns. Watching {n}."),
+            None => "No respawns. Watching the last crews.".to_string(),
+        };
+        self.dom.text("t-respawn-note", &note);
+    }
+
+    /// Wellhead: the fuel tanks and the derricks under the clock, or `None` to hide it.
+    pub fn set_wellhead(&mut self, hud: Option<&WellheadHud>) {
+        if self.cache.wells.as_ref() == hud {
+            return;
+        }
+        let Some(h) = hud else {
+            self.cache.wells = None;
+            self.dom.hidden("t-wells", true);
+            for k in 0..3 {
+                self.dom.hidden(&format!("t-wellmark-{k}"), true);
+            }
+            self.cache.well_marks = [None; 3];
+            return;
+        };
+        if self.cache.wells.is_none() {
+            self.dom.hidden("t-wells", false);
+        }
+        let team = |t: Option<Team>| match t {
+            Some(Team::Rustbacks) => "a",
+            Some(Team::DustSaints) => "b",
+            _ => "none",
+        };
+        for (k, w) in h.wells.iter().take(3).enumerate() {
+            let id = format!("t-well-{k}");
+            self.dom.attr(&id, "data-owner", team(w.owner));
+            self.dom.attr(&id, "data-side", team(w.side));
+            self.dom.attr(&id, "data-contested", if w.contested { "1" } else { "0" });
+            self.dom.var(&id, "--p", &format!("{:.3}", w.fill.clamp(0.0, 1.0)));
+        }
+        let t = h.target.max(1) as f32;
+        self.dom.var("t-fuel-a", "--v", &format!("{:.3}", (h.fuel[0] as f32 / t).min(1.0)));
+        self.dom.var("t-fuel-b", "--v", &format!("{:.3}", (h.fuel[1] as f32 / t).min(1.0)));
+        self.dom.text("t-fuel-a-n", &h.fuel[0].to_string());
+        self.dom.text("t-fuel-b-n", &h.fuel[1].to_string());
+        self.dom.text("t-wells-state", &h.state);
+        self.dom.attr("t-wells-state", "data-x", if h.alarm { "1" } else { "0" });
+        self.cache.wells = Some(h.clone());
+    }
+
+    /// Wellhead: each derrick's marker (screen x, y in 0..1, distance m, owner,
+    /// contested), `None` when it's behind you.
+    pub fn set_well_marks(&mut self, marks: &[Option<(f32, f32, f32, Option<Team>, bool)>]) {
+        let owner = |t: Option<Team>| match t {
+            Some(Team::Rustbacks) => 1u8,
+            Some(Team::DustSaints) => 2,
+            _ => 0,
+        };
+        for k in 0..3 {
+            let m = marks.get(k).copied().flatten();
+            let key = m.map(|(x, y, d, o, c)| (q(x), q(y), d as i32, owner(o), c));
+            if self.cache.well_marks[k] == key {
+                continue;
+            }
+            let id = format!("t-wellmark-{k}");
+            match m {
+                None => self.dom.hidden(&id, true),
+                Some((x, y, d, o, c)) => {
+                    if self.cache.well_marks[k].is_none() {
+                        self.dom.hidden(&id, false);
+                    }
+                    self.dom.var(&id, "--x", &format!("{:.2}%", x * 100.0));
+                    self.dom.var(&id, "--y", &format!("{:.2}%", y * 100.0));
+                    self.dom.attr(&id, "data-owner", ["none", "a", "b"][owner(o) as usize]);
+                    self.dom.attr(&id, "data-contested", if c { "1" } else { "0" });
+                    self.dom.text(&format!("{id}-d"), &format!("{} m", d.round() as i32));
+                }
+            }
+            self.cache.well_marks[k] = key;
+        }
+    }
+
+    /// Last Crew Rolling: the compass, the wall's clock and the crews left, or `None` to hide it.
+    pub fn set_last_crew(&mut self, hud: Option<&LastCrewHud>) {
+        if self.cache.last_crew.as_ref() == hud {
+            return;
+        }
+        let Some(h) = hud else {
+            self.cache.last_crew = None;
+            self.dom.hidden("t-lastcrew", true);
+            return;
+        };
+        let was = self.cache.last_crew.clone();
+        if was.is_none() {
+            self.dom.hidden("t-lastcrew", false);
+        }
+        if was.as_ref().is_none_or(|w| w.arrow_deg != h.arrow_deg) {
+            self.dom.var("t-lc-compass", "--a", &format!("{:.0}deg", h.arrow_deg));
+        }
+        if was.as_ref().is_none_or(|w| w.dist != h.dist) {
+            self.dom.text("t-lc-dist", &h.dist);
+        }
+        if was.as_ref().is_none_or(|w| w.line != h.line) {
+            self.dom.text("t-lc-state", &h.line);
+        }
+        if was.as_ref().is_none_or(|w| w.crews != h.crews) {
+            self.dom.text("t-lc-crews", &h.crews.to_string());
+        }
+        if was.as_ref().is_none_or(|w| w.state != h.state) {
+            self.dom.attr("t-lastcrew", "data-state", h.state);
+        }
+        self.cache.last_crew = Some(h.clone());
     }
 
     /// The end of match line-up. The 3D line-up renders behind the gap in
@@ -957,5 +1158,46 @@ mod tests {
         ui.show_scoreboard(true, &[]);
         ui.tick(10.0);
         assert!(ui.poll_actions().is_empty());
+    }
+}
+
+#[cfg(test)]
+mod mode_tests {
+    use super::*;
+
+    #[test]
+    fn ordinals_read_right() {
+        let got: Vec<String> = [1u8, 2, 3, 4, 8, 11, 12, 13, 21, 22].iter().map(|n| ordinal(*n)).collect();
+        assert_eq!(got, ["1st", "2nd", "3rd", "4th", "8th", "11th", "12th", "13th", "21st", "22nd"]);
+    }
+
+    /// The HUD setters for the new modes run (native: a no-op DOM) and cache.
+    #[test]
+    fn wellhead_and_last_crew_huds_take_their_state() {
+        let mut ui = Ui::mount();
+        let hud = WellheadHud {
+            wells: vec![
+                WellHud { owner: Some(Team::Rustbacks), fill: 1.0, side: Some(Team::Rustbacks), contested: false },
+                WellHud { owner: None, fill: 0.4, side: Some(Team::DustSaints), contested: true },
+                WellHud { owner: Some(Team::DustSaints), fill: 1.0, side: Some(Team::DustSaints), contested: false },
+            ],
+            fuel: [120, 98],
+            target: 300,
+            state: "Fight at the outpost".into(),
+            alarm: false,
+        };
+        ui.set_wellhead(Some(&hud));
+        assert_eq!(ui.cache.wells.as_ref(), Some(&hud));
+        ui.set_well_marks(&[Some((0.5, 0.4, 80.0, Some(Team::Rustbacks), false)), None, Some((0.9, 0.3, 200.0, None, true))]);
+        assert!(ui.cache.well_marks[0].is_some() && ui.cache.well_marks[1].is_none());
+        ui.set_wellhead(None);
+        assert!(ui.cache.wells.is_none() && ui.cache.well_marks.iter().all(|m| m.is_none()));
+        let lc = LastCrewHud { arrow_deg: 45.0, dist: "120 m to safety".into(), line: "Wall moves in 0:30".into(), crews: 5, state: "move" };
+        ui.set_last_crew(Some(&lc));
+        assert_eq!(ui.cache.last_crew.as_ref(), Some(&lc));
+        ui.show_out(6, None, Some("Rusty"));
+        assert_eq!(ui.cache.out, Some((6, "Rusty".to_string())));
+        ui.show_respawn(None, None);
+        assert!(ui.cache.out.is_none());
     }
 }

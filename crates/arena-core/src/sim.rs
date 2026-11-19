@@ -166,6 +166,11 @@ pub struct Sim {
     // --- Wave 7.
     /// Convoy: the route, the truck and the rounds (None in other modes).
     pub convoy: Option<crate::convoy::ConvoyState>,
+    // --- Wave 8.
+    /// Wellhead: the derricks and the fuel tanks (None in other modes).
+    pub wellhead: Option<crate::wellhead::WellheadState>,
+    /// Last Crew Rolling: the sandstorm wall and who's out (None in other modes).
+    pub last_crew: Option<crate::lastcrew::LastCrewState>,
 }
 
 fn yaw_of(rot: Quat) -> f32 {
@@ -211,6 +216,8 @@ impl Sim {
             pending_team: None,
             storm: crate::storm::StormState::default(),
             convoy: None,
+            wellhead: None,
+            last_crew: None,
         };
         for s in sim.map.scrap_sites.clone() {
             sim.sites.push(Site { pos: s.pos, kind: PickupKind::Scrap(s.kind), timer: 0.0, live: None });
@@ -240,6 +247,12 @@ impl Sim {
         }
         if mode == crate::raid::ModeKind::Convoy {
             sim.init_convoy();
+        }
+        if mode == crate::raid::ModeKind::Wellhead {
+            sim.init_wellhead();
+        }
+        if mode == crate::raid::ModeKind::LastCrew {
+            sim.init_last_crew();
         }
         sim.update_sites(0.0);
         sim
@@ -302,7 +315,7 @@ impl Sim {
     fn add(&mut self, name: &str, brain: Option<Brain>, loadout: crate::garage::Loadout) -> PlayerId {
         let team = if self.raid.is_some() {
             Some(crate::raid::TEAM_DEFENDERS)
-        } else if matches!(self.mode, crate::raid::ModeKind::TeamBrawl | crate::raid::ModeKind::Convoy) {
+        } else if self.mode.is_team() {
             // Fill the smaller team (ties go to the Rustbacks). The Convoy truck isn't a crew.
             let crew = |p: &&Player| p.tank.vehicle != crate::parts::VehicleKind::FuelTanker;
             let n0 = self.players.iter().filter(crew).filter(|p| p.team == Some(0)).count();
@@ -332,6 +345,8 @@ impl Sim {
             loadout,
         });
         self.events.push(Event::Respawned { player: id, pos });
+        let j = self.players.len() - 1;
+        self.last_crew_late_join(j);
         id
     }
 
@@ -399,6 +414,8 @@ impl Sim {
         if self.convoy.is_some() {
             self.reset_convoy();
         }
+        self.reset_wellhead();
+        self.reset_last_crew();
         let ids: Vec<PlayerId> = self.players.iter().map(|p| p.id).collect();
         for id in ids {
             let i = self.idx(id).unwrap();
@@ -469,6 +486,8 @@ impl Sim {
         self.step_convoy(dt);
         self.step_storm(dt);
         self.step_mode(dt);
+        self.step_wellhead(dt);
+        self.step_last_crew(dt);
         self.cull_raiders();
     }
 
@@ -1001,6 +1020,7 @@ impl Sim {
         }
         let loc = self.ship_location(j, loc);
         let amount = amount * self.truck_armour(j, w);
+        let amount = if self.last_crew.is_some() { amount * self.tuning.last_crew.damage_taken } else { amount };
 
         let Some(amount) = self.absorb(j, amount, pos, w) else { return };
         let t = self.tuning.clone();
@@ -1105,7 +1125,7 @@ impl Sim {
         self.on_part_lost(j, kind, wpos);
     }
 
-    fn kill(&mut self, j: usize, killer: Option<PlayerId>, w: Weapon) {
+    pub(crate) fn kill(&mut self, j: usize, killer: Option<PlayerId>, w: Weapon) {
         let t = self.tuning.clone();
         let victim = self.players[j].id;
         let body = self.players[j].tank.body;
@@ -1140,7 +1160,8 @@ impl Sim {
             tank.alive = false;
             tank.respawn_in = t.mode.respawn_delay;
         }
-        for _ in 0..t.upgrades.death_bonus_scrap {
+        let bonus = t.upgrades.death_bonus_scrap + if self.last_crew.is_some() { t.last_crew.death_bonus_scrap } else { 0 };
+        for _ in 0..bonus {
             spills.push(ScrapKind::from_index(self.rng.below(4)));
         }
         for k in spills {
@@ -1149,6 +1170,7 @@ impl Sim {
         self.death_specials(j, hp.pos, vel);
         self.on_raid_death(j, killer, hp.pos, vel);
         self.on_convoy_death(j, killer, hp.pos);
+        self.on_last_crew_death(j, killer, hp.pos);
         for k in ScrapKind::ALL {
             self.players[j].tank.rebuild_track(&mut self.phys, &t, k);
         }
@@ -1185,12 +1207,18 @@ impl Sim {
             Some(j) => self.players[j].team,
             None => self.pending_team,
         };
-        let team_side = if matches!(self.mode, crate::raid::ModeKind::TeamBrawl | crate::raid::ModeKind::Convoy) { team } else { None };
+        let team_side = if self.mode.is_team() { team } else { None };
+        let split = self.wellhead_split();
         let mut best = (f32::MIN, 0usize);
         for (si, s) in self.map.spawns.iter().enumerate() {
-            // Team Brawl: Rustbacks spawn on the west half, Dust Saints on the east.
+            // Team Brawl: Rustbacks spawn on the west half, Dust Saints on the
+            // east. Wellhead: each team on the side of its own derrick.
             if let Some(t) = team_side {
-                if (s.pos.x < 0.0) != (t == 0) {
+                let west = match split {
+                    Some((o, axis)) => (Vec2::new(s.pos.x, s.pos.z) - o).dot(axis) < 0.0,
+                    None => s.pos.x < 0.0,
+                };
+                if west != (t == 0) {
                     continue;
                 }
             }
@@ -1337,7 +1365,7 @@ impl Sim {
                 continue;
             }
             let storm = if matches!(self.sites[si].kind, PickupKind::Scrap(_)) {
-                1.0 + (self.tuning.storm.scrap_respawn_mult - 1.0) * self.storm.intensity
+                (1.0 + (self.tuning.storm.scrap_respawn_mult - 1.0) * self.storm.intensity) * self.scrap_boost()
             } else {
                 1.0
             };
@@ -1543,6 +1571,17 @@ impl Sim {
         }
     }
 
+    /// Last Crew Rolling: scrap respawns faster early so tanks grow fast.
+    fn scrap_boost(&self) -> f32 {
+        if self.last_crew.is_none() {
+            return 1.0;
+        }
+        let t = &self.tuning.last_crew;
+        let s = self.match_ticks as f32 / crate::TICK_HZ as f32;
+        let f = ((s - t.scrap_boost_full) / (t.scrap_boost_end - t.scrap_boost_full).max(1.0)).clamp(0.0, 1.0);
+        t.scrap_boost + (1.0 - t.scrap_boost) * f
+    }
+
     fn step_mode(&mut self, dt: f32) {
         // Raider Waves and Convoy run their own clocks.
         if self.raid.is_some() || self.convoy.is_some() {
@@ -1553,6 +1592,10 @@ impl Sim {
         }
         let _ = dt;
         self.match_ticks += 1;
+        // Wellhead and Last Crew judge the end themselves (`step_wellhead`, `step_last_crew`).
+        if self.wellhead.is_some() || self.last_crew.is_some() {
+            return;
+        }
         self.time_left = self.tuning.mode.time_limit - self.match_ticks as f32 / crate::TICK_HZ as f32;
         if self.mode == crate::raid::ModeKind::TeamBrawl {
             self.step_team_mode();
@@ -1688,6 +1731,8 @@ impl Sim {
             teams: self.team_scores(),
             storm: self.storm.intensity,
             convoy: self.convoy_snap(),
+            wellhead: self.wellhead_snap(),
+            storm_circle: self.last_crew_snap(),
         }
     }
 
@@ -1755,7 +1800,7 @@ impl Sim {
 
     /// Kills per team (Team Brawl and Convoy; empty otherwise).
     pub fn team_scores(&self) -> Vec<TeamScoreSnap> {
-        if !matches!(self.mode, crate::raid::ModeKind::TeamBrawl | crate::raid::ModeKind::Convoy) {
+        if !self.mode.is_team() {
             return Vec::new();
         }
 

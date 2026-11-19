@@ -5,7 +5,9 @@
 //! skips the pointer lock (the mouse always turns the camera; Esc pauses),
 //! `&name=X` sets the crew name. Practice test hooks: `&matchtime=45`,
 //! `&raidfast=1`, `&scrap=1` (Powder until a branch offer), `&flare=1`,
-//! `&wave=N`, `&boss=1|weak`, `&landship=1`; `autoplay=team|convoy|host-convoy` for Team Brawl / Convoy.
+//! `&wave=N`, `&boss=1|weak`, `&landship=1`; `autoplay=team|convoy|host-convoy` for Team Brawl / Convoy,
+//! `autoplay=wellhead|host-wellhead` and `autoplay=lastcrew|host-lastcrew` for Wellhead / Last Crew Rolling
+//! (`&wallfast=1` makes Last Crew practice's wall close at once and fast).
 //! `&quality=low|medium|high|ultra` forces a preset (profiling); `&hints=reset`
 //! shows the onboarding tips again. The canvas
 //! carries `data-cpu`: mean/max CPU ms per frame (game, draw) over 60 frames.
@@ -182,6 +184,7 @@ async fn run() -> Result<()> {
     game.debug.fragile = query_flag("fragile").is_some();
     game.debug.boss = query_flag("boss").map(|v| v == "weak");
     game.debug.landship = query_flag("landship").is_some();
+    game.debug.wall_fast = query_flag("wallfast").is_some();
     if let Some(m) = query_flag("map").and_then(|m| arena_core::MapId::from_key(&m)) {
         game.practice_map = m;
         // Show it on the title's map switch too.
@@ -197,6 +200,10 @@ async fn run() -> Result<()> {
         Some("convoy") => game.start_practice_convoy(),
         Some("host-convoy") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::Convoy, map: game.practice_map }),
         Some("host-raid") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::RaiderWaves, map: game.practice_map }),
+        Some("wellhead") => game.start_practice_wellhead(),
+        Some("host-wellhead") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::Wellhead, map: game.practice_map }),
+        Some("lastcrew") => game.start_practice_last_crew(),
+        Some("host-lastcrew") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::LastCrew, map: game.practice_map }),
         _ => {}
     }
     let pause = mount_pause(&document);
@@ -353,6 +360,8 @@ fn install_input(state: &Shared) -> Result<()> {
                 Some("raid") => st.game.start_practice_raid(),
                 Some("team") => st.game.start_practice_team(),
                 Some("convoy") => st.game.start_practice_convoy(),
+                Some("wellhead") => st.game.start_practice_wellhead(),
+                Some("lastcrew") => st.game.start_practice_last_crew(),
                 _ => {}
             }
         })?;
