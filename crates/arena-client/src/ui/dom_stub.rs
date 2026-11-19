@@ -28,6 +28,7 @@ impl Dom {
     pub fn set_checked(&mut self, _selector: &str, _on: bool) {}
     pub fn set_hud_visible(&mut self, _visible: bool) {}
     pub fn set_branch(&mut self, _count: usize) {}
+    pub fn open_chat(&mut self) {}
     pub fn chat_open(&self) -> bool {
         false
     }

@@ -167,7 +167,11 @@
         <label class="t-slider"><span>Music</span><input type="range" min="0" max="100" value="50" data-setting="vol_music"><output>50</output></label>
         <label class="t-slider"><span>Radio</span><input type="range" min="0" max="100" value="100" data-setting="vol_radio"><output>100</output></label>
         <label class="t-slider"><span>Wind</span><input type="range" min="0" max="100" value="70" data-setting="vol_ambience"><output>70</output></label>
-        <label class="t-slider"><span>Mouse</span><input type="range" min="10" max="300" value="100" data-setting="mouse_sens"><output>1.00</output></label>
+        <label class="t-slider"><span><span class="t-off-touch">Mouse</span><span class="t-on-touch">Aim</span></span><input type="range" min="10" max="300" value="100" data-setting="mouse_sens"><output>1.00</output></label>
+      </div>
+      <div class="t-field t-on-touch">
+        <div class="t-field-label">Thumbs</div>
+        <label class="t-toggle"><input type="checkbox" id="t-set-swap" data-setting="touch_swap"><span class="t-toggle-sw"></span><span>Swap sides: drive with the right thumb</span></label>
       </div>
       <div class="t-field">
         <div class="t-field-label">Quality</div>
@@ -216,7 +220,7 @@
           <li><svg><use href="#i-volts"/></svg><b>Volts</b> gadgets</li>
           <li><svg><use href="#i-fuel"/></svg><b>Fuel</b> speed &amp; boost</li>
         </ul>
-        <p>At tier 2 you pick one of three: <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>.</p>
+        <p>At tier 2 you pick one of three: <span class="t-off-touch"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>.</span><span class="t-on-touch">tap a card.</span></p>
       </section>
       <section class="t-howto-card">
         <div class="t-howto-art" aria-hidden="true">
@@ -225,7 +229,7 @@
         <h3><b>2</b>Shoot it apart</h3>
         <p>Every part on a tank can be shot off, and what falls off is scrap: grab it, theirs or yours.</p>
         <p>Side and rear plates are thinner, so flank. A blown track leaves you limping until the crew patches it.</p>
-        <p>Golden crates hold rare parts and air strikes: <kbd>F</kbd> to use.</p>
+        <p>Golden crates hold rare parts and air strikes: <span class="t-off-touch"><kbd>F</kbd></span><span class="t-on-touch"><kbd>Special</kbd></span> to use.</p>
       </section>
       <section class="t-howto-card">
         <div class="t-howto-art t-howto-modes-art" aria-hidden="true">
@@ -243,7 +247,7 @@
       </section>
     </div>
     <div class="t-panel-foot">
-      <span class="t-howto-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive &middot; <kbd>Mouse</kbd> aim &middot; <kbd>Click</kbd> fire</span>
+      <span class="t-howto-keys"><span class="t-off-touch"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive &middot; <kbd>Mouse</kbd> aim &middot; <kbd>Click</kbd> fire</span><span class="t-on-touch">Left thumb drives &middot; drag right to aim &middot; <kbd>Fire</kbd> fires</span></span>
       <button class="t-btn t-btn-small" data-goto="controls"><span class="t-btn-label">All controls</span></button>
       <button class="t-btn t-btn-go" data-action="practice"><span class="t-btn-label">Try it: practice</span></button>
     </div>
@@ -291,7 +295,7 @@
         </div>
       </div>
       <div class="t-field">
-        <div class="t-field-label">Horn <span class="t-note">press H on the move</span></div>
+        <div class="t-field-label">Horn <span class="t-note t-off-touch">press H on the move</span></div>
         <div class="t-seg t-seg-sm" role="radiogroup">
           <label><input type="radio" name="horn" value="0" checked><span>Trucker</span></label>
           <label><input type="radio" name="horn" value="1"><span>Cucaracha</span></label>

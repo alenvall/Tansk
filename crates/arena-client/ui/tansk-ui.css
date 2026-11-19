@@ -1005,7 +1005,7 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 /* ------------------------------------------------------------ party lobby */
 /* The yard: the world keeps running on the left (crews drive about), the
    lobby plate bolted to the right, the vote slammed over the left. */
-.t-hud[data-lobby="1"] > :not(#t-lobby):not(#t-chat):not(#t-feed):not(#t-radio):not(#t-hint) { visibility: hidden; }
+.t-hud[data-lobby="1"] > :not(#t-lobby):not(#t-chat):not(#t-feed):not(#t-radio):not(#t-hint):not(#t-touch) { visibility: hidden; }
 .t-hud[data-lobby="1"] .t-chat { bottom: 4.6rem; }
 .t-lobby { position: absolute; inset: 0; pointer-events: none; }
 .t-lobby-card {
@@ -1128,3 +1128,296 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-vote-pips { display: flex; gap: .3rem; min-height: 1rem; margin-top: .3rem; }
 .t-vote-pips i { width: 1rem; height: 1rem; border-radius: 50%; background: var(--rivet); background-color: var(--fuel); box-shadow: 0 1px 0 rgba(0,0,0,.6); animation: t-stamp .2s ease-out; }
 .t-vote-note { font-size: 1.05rem; color: var(--cream); text-shadow: 0 1px 3px #000; }
+
+/* ======================================================= phones & tablets */
+/* Touch: html[data-touch="1"] (web.rs sets it for a coarse pointer, or on
+   the first touch). The thumb pad lives in #t-touch (hud.html) and is fed
+   by web.rs; sizes there are in px/vmin (thumbs don't scale with rem). */
+html:not([data-touch="1"]) .t-on-touch { display: none !important; }
+html[data-touch="1"] .t-off-touch { display: none !important; }
+html[data-touch="1"] #tansk-ui { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; touch-action: manipulation; }
+
+.t-touch { display: none; }
+html[data-touch="1"] .t-touch {
+  --tb-fire: clamp(80px, 16vmin, 120px);
+  --tb: clamp(54px, 11vmin, 82px);
+  --gap: clamp(8px, 1.6vmin, 14px);
+  --edge-l: max(14px, env(safe-area-inset-left));
+  --edge-r: max(14px, env(safe-area-inset-right));
+  --edge-t: max(10px, env(safe-area-inset-top));
+  --edge-b: max(12px, env(safe-area-inset-bottom));
+  display: block; position: absolute; inset: 0; pointer-events: none; touch-action: none;
+}
+.t-hud[data-paused="1"] .t-touch { visibility: hidden; }
+.t-tz { position: absolute; top: 0; bottom: 0; pointer-events: auto; touch-action: none; }
+.t-tz-stick { left: 0; width: 42%; }
+.t-tz-look { right: 0; width: 58%; }
+.t-touch[data-swap="1"] .t-tz-stick { left: auto; right: 0; }
+.t-touch[data-swap="1"] .t-tz-look { right: auto; left: 0; }
+
+/* the floating stick: rests faintly bottom-left, jumps under the thumb */
+.t-stick {
+  position: absolute; width: 128px; height: 128px; margin: -64px 0 0 -64px; border-radius: 50%; pointer-events: none;
+  left: calc(var(--edge-l) + 82px); top: calc(100% - var(--edge-b) - 82px);
+  background: var(--grain), radial-gradient(circle, rgba(36, 31, 27, .18) 0 52%, rgba(36, 31, 27, .42) 53% 64%, rgba(246, 234, 210, .22) 65% 67%, transparent 68%);
+  box-shadow: 0 0 0 2px rgba(20, 14, 10, .35);
+  opacity: .55; transition: opacity .2s;
+}
+.t-touch[data-swap="1"] .t-stick:not([data-on="1"]) { left: calc(100% - var(--edge-r) - 82px); }
+.t-stick[data-on="1"] { left: var(--sx); top: var(--sy); opacity: 1; transition: none; }
+.t-stick-knob {
+  position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
+  background: var(--rivet) center / 14px 14px no-repeat, var(--grain), linear-gradient(180deg, rgba(240, 122, 62, .92), rgba(185, 68, 15, .92));
+  box-shadow: inset 0 1px 0 rgba(255, 220, 180, .5), inset 0 -2px 0 rgba(0,0,0,.4), 0 3px 0 rgba(28, 20, 14, .7), 0 6px 14px rgba(0,0,0,.35);
+}
+.t-stick[data-on="1"] .t-stick-knob { transform: translate(var(--kx), var(--ky)); }
+.t-stick span {
+  position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; text-align: center;
+  font: 800 11px/1 'Barlow Condensed', sans-serif; letter-spacing: .22em; text-transform: uppercase; color: var(--cream); text-shadow: 0 1px 2px #000;
+}
+.t-stick[data-on="1"] span { visibility: hidden; }
+
+/* thumb buttons: riveted, half see-through, a stencil each */
+.t-tpad { position: absolute; inset: 0; pointer-events: none; }
+.t-touch[data-swap="1"] .t-tpad { transform: scaleX(-1); }
+.t-touch[data-swap="1"] .t-tb > * { transform: scaleX(-1); }
+.t-tb {
+  position: absolute; display: grid; place-items: center; pointer-events: auto; touch-action: none;
+  width: var(--tb); height: var(--tb); border-radius: 50%;
+  font: 400 clamp(11px, 2.3vmin, 15px)/1 'Black Ops One', sans-serif; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--cream); text-shadow: 0 1px 0 rgba(0,0,0,.7);
+  background: var(--scratch), var(--grain), radial-gradient(circle at 50% 35%, rgba(92, 84, 76, .62), rgba(46, 41, 37, .62) 70%);
+  box-shadow: inset 0 1px 0 rgba(255, 236, 206, .3), inset 0 -2px 0 rgba(0,0,0,.45), inset 0 0 0 2px rgba(20, 14, 10, .5), 0 3px 0 rgba(28, 20, 14, .55);
+  transition: scale .08s, filter .08s;
+}
+.t-tb::after { /* rivets at 10 and 2 o'clock */
+  content: ""; position: absolute; inset: 9%; border-radius: 50%; pointer-events: none;
+  background: var(--rivet) 14% 18% / 8px 8px no-repeat, var(--rivet) 86% 18% / 8px 8px no-repeat;
+}
+.t-tb[data-held="1"] { scale: .92; filter: brightness(1.35); }
+.t-tb-fire {
+  right: calc(var(--edge-r) + 4px); bottom: calc(var(--edge-b) + 6px); width: var(--tb-fire); height: var(--tb-fire);
+  font-size: clamp(14px, 3vmin, 20px); color: #2a160a; text-shadow: 0 1px 0 rgba(255, 210, 160, .5);
+  background: var(--scratch), var(--grain), radial-gradient(circle at 50% 35%, rgba(240, 122, 62, .78), rgba(185, 68, 15, .78) 72%);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 180, .45), inset 0 -3px 0 rgba(0,0,0,.35), inset 0 0 0 3px rgba(28, 20, 14, .55), 0 0 0 4px rgba(242, 194, 48, .28), 0 4px 0 rgba(28, 20, 14, .6);
+}
+.t-tb-fire svg { position: absolute; inset: 18%; width: 64%; height: 64%; fill: none; stroke: rgba(42, 22, 10, .55); stroke-width: 2.4; }
+.t-tb-fire span { position: relative; }
+.t-tb-alt { right: calc(var(--edge-r) + 4px + (var(--tb-fire) - var(--tb)) / 2); bottom: calc(var(--edge-b) + 6px + var(--tb-fire) + var(--gap)); }
+.t-tb-boost { right: calc(var(--edge-r) + 4px + var(--tb-fire) + var(--gap)); bottom: calc(var(--edge-b) + 2px); }
+.t-tb-special { right: calc(var(--edge-r) + var(--tb-fire) + var(--gap) * .6); bottom: calc(var(--edge-b) + var(--tb) + var(--gap) * 1.6); font-size: clamp(9px, 1.9vmin, 13px); }
+.t-tb-boost { background: var(--scratch), var(--grain), radial-gradient(circle at 50% 35%, rgba(242, 194, 48, .55), rgba(150, 110, 20, .6) 72%); color: #2a1d08; text-shadow: 0 1px 0 rgba(255, 240, 190, .5); }
+
+/* pause / scores / talk: small plates top-left */
+.t-tsys { position: absolute; z-index: 6; left: var(--edge-l); top: var(--edge-t); display: flex; gap: 8px; pointer-events: none; }
+/* the board drops in under the plates (one tap on the scores plate shuts it) */
+html[data-touch="1"] .t-board { top: calc(max(10px, env(safe-area-inset-top)) + 54px); max-height: calc(100% - max(10px, env(safe-area-inset-top)) - 62px); overflow: auto; }
+.t-tb.t-tb-sys { position: relative; width: 44px; height: 44px; border-radius: 8px; }
+.t-tb-sys::after { inset: 4px; border-radius: 6px; background: var(--rivet) left top / 6px 6px no-repeat, var(--rivet) right bottom / 6px 6px no-repeat; }
+.t-tb-sys svg { width: 22px; height: 22px; fill: none; stroke: var(--cream); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 0 #000); }
+.t-tb-sys[data-on="1"] { background: var(--grain), linear-gradient(180deg, rgba(240, 122, 62, .85), rgba(185, 68, 15, .85)); }
+.t-hud[data-lobby="1"] .t-tsys { z-index: auto; }
+.t-hud[data-lobby="1"] .t-tsys [data-touch="pause"], .t-hud[data-lobby="1"] .t-tsys [data-touch="board"] { display: none; }
+
+/* the HUD steps aside for the thumbs: dash top-left under the plates,
+   scrap as a strip between the thumbs, the caller above it */
+html[data-touch="1"] .t-hud { --hud-k: .8; }
+html[data-touch="1"] .t-dash { left: max(14px, env(safe-area-inset-left)); top: calc(max(10px, env(safe-area-inset-top)) + 54px); bottom: auto; transform: scale(var(--hud-k)); transform-origin: left top; }
+html[data-touch="1"] .t-scrap {
+  left: 50%; right: auto; bottom: max(8px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  flex-direction: row; gap: .2rem; padding: .35rem .8rem .3rem;
+}
+html[data-touch="1"] .t-scrap-row { position: relative; display: flex; flex-direction: column; align-items: center; gap: .15rem; height: auto; padding: 0 .35rem; }
+html[data-touch="1"] .t-scrap-row + .t-scrap-row { border-top: 0; box-shadow: none; border-left: 1px solid rgba(0,0,0,.35); }
+html[data-touch="1"] .t-scrap-name, html[data-touch="1"] .t-scrap-part { display: none; }
+html[data-touch="1"] .t-scrap-ic { width: 1.9rem; height: 1.9rem; }
+html[data-touch="1"] .t-pips { gap: .15rem; }
+html[data-touch="1"] .t-pips i { width: .95rem; height: .95rem; }
+html[data-touch="1"] .t-tier { position: absolute; top: -.2rem; right: -.1rem; height: 1.2rem; min-width: 1.4rem; padding: 0 .2rem; font-size: .8rem; }
+html[data-touch="1"] .t-radio { bottom: 6.6rem; max-width: min(52rem, calc(100vw - 2 * (clamp(80px, 16vmin, 120px) + 150px))); }
+html[data-touch="1"] .t-radio-text { font-size: 1.15rem; }
+html[data-touch="1"] .t-chat { left: max(14px, env(safe-area-inset-left)); bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 54px + 14.5rem * var(--hud-k)); width: min(27rem, 38vw); }
+html[data-touch="1"] .t-hud[data-lobby="1"] .t-chat { top: auto; bottom: 4.6rem; }
+html[data-touch="1"] .t-chat-line { font-size: 1.05rem; }
+/* typing: the line goes to the top centre, clear of the on-screen keyboard */
+html[data-touch="1"] .t-chat[data-open="1"] { position: fixed; z-index: 60; top: max(8px, env(safe-area-inset-top)); left: 50%; bottom: auto; width: min(36rem, calc(100vw - 24px)); transform: translateX(-50%); padding: .4rem; border-radius: .3rem; background: rgba(30, 25, 22, .9); pointer-events: auto; visibility: visible; }
+html[data-touch="1"] .t-chat[data-open="1"] .t-chat-log { max-height: 6.5rem; overflow: hidden; justify-content: flex-end; }
+html[data-touch="1"] .t-chat-in input { font-size: 16px; min-height: 36px; }
+.t-chat-send {
+  flex: none; min-width: 64px; min-height: 40px; padding: 0 .8rem; border-radius: .25rem;
+  font: 400 1.1rem/1 'Black Ops One', sans-serif !important; letter-spacing: .06em; text-transform: uppercase; pointer-events: auto;
+  color: #2a160a !important; background: var(--grain), linear-gradient(180deg, #f07a3e, #c94c13) !important; box-shadow: 0 .12rem 0 #1c140e;
+}
+html[data-touch="1"] .t-hint { max-width: min(46rem, 56vw); }
+html[data-touch="1"] .t-hint-text { font-size: 1.2rem; }
+html[data-touch="1"] .t-hint kbd { white-space: nowrap; }
+html[data-touch="1"] .t-feed { top: max(10px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); max-width: 34vw; }
+html[data-touch="1"] .t-branch-card { min-height: 44px; }
+html[data-touch="1"] .t-bc-key { display: none; }
+html[data-touch="1"] .t-pause-ctl .t-ctl-col:not(.t-ctl-touch) { display: none; }
+html:not([data-touch="1"]) .t-ctl-touch { display: none; }
+html[data-touch="1"] .t-controls { grid-template-columns: 1fr; }
+html[data-touch="1"] #tansk-ui [data-for="controls"] .t-controls { grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+
+/* thumb-sized targets in the menus */
+html[data-touch="1"] .t-btn { min-height: 44px; align-items: center; }
+html[data-touch="1"] .t-seg span { min-height: 40px; display: flex; align-items: center; justify-content: center; }
+html[data-touch="1"] .t-x { width: 40px; height: 40px; font-size: 18px; }
+html[data-touch="1"] .t-toggle { min-height: 40px; }
+html[data-touch="1"] .t-chip { min-height: 44px; justify-content: center; }
+html[data-touch="1"] .t-game { min-height: 44px; align-items: center; }
+html[data-touch="1"] .t-slider input[type=range] { height: 40px; }
+html[data-touch="1"] .t-slider input[type=range]::-webkit-slider-thumb { width: 22px; height: 30px; margin-top: -12px; }
+html[data-touch="1"] .t-swatches span { width: 40px; height: 40px; }
+html[data-touch="1"] .t-emblems svg { width: 44px; height: 44px; }
+html[data-touch="1"] .t-vote-card, html[data-touch="1"] .t-crew-ready { min-height: 44px; }
+.t-lobby-fold { flex: none; transition: transform .15s; }
+.t-lobby[data-fold="1"] .t-lobby-fold { transform: rotate(180deg); }
+
+/* phones held upright mid-match: turn it sideways */
+.t-rotate { display: none; }
+@media (orientation: portrait) {
+  html[data-touch="1"] .t-rotate {
+    display: grid; place-items: center; position: absolute; inset: 0; z-index: 45; pointer-events: auto; padding: 24px;
+    background: var(--grain), radial-gradient(ellipse at 50% 45%, rgba(60, 34, 16, .82), rgba(24, 14, 8, .95));
+  }
+  html[data-touch="1"] .t-hud[data-lobby="1"] .t-rotate, html[data-touch="1"] .t-hud[data-end="1"] .t-rotate { display: none; }
+}
+.t-rotate-card { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 22px 26px 24px; max-width: 300px; text-align: center; }
+.t-rotate-card svg { width: 84px; height: 84px; animation: t-rot 2.4s ease-in-out infinite; }
+.t-rot-phone { fill: rgba(0,0,0,.3); stroke: var(--fuel); stroke-width: 3; }
+.t-rot-arrow { fill: none; stroke: var(--cream); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes t-rot { 0%, 30% { transform: rotate(0) } 60%, 100% { transform: rotate(-90deg) } }
+.t-rotate-card b { font: 400 24px/1.1 'Black Ops One', sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--cream); text-shadow: 0 2px 0 #000; }
+.t-rotate-card span { font-size: 17px; font-weight: 600; line-height: 1.3; color: var(--cream-dim); }
+
+/* ---------------------------------------------- small screens (any input) */
+/* Narrow (phones and tablets upright, small windows): the menus' panels
+   take the width instead of sitting beside the button stack. */
+@media (max-width: 900px) {
+  .t-panel, .t-panel.t-howto, .t-panel-wide { left: 1rem; right: 1rem; width: auto; }
+  .t-howto-keys { white-space: normal; }
+  .t-board { width: calc(100vw - 2rem); }
+  .t-vote { left: 1rem; right: 1rem; top: 1rem; z-index: 3; padding: 1rem; border-radius: .4rem; background: rgba(30, 20, 12, .78); }
+}
+
+/* Short (phones on their side): everything tighter, scrolling where it must. */
+@media (max-height: 500px) {
+  .t-wordmark { left: max(1.5rem, env(safe-area-inset-left)); top: 1rem; }
+  .t-logo { font-size: 6.4rem; }
+  .t-logo-bar { width: 20rem; margin-top: .5rem; }
+  .t-year { font-size: 1.2rem; padding: .25rem 1rem .2rem; }
+  .t-tagline { margin-top: .5rem; font-size: 1.15rem; }
+  .t-menu {
+    left: auto; right: max(1.2rem, env(safe-area-inset-right)); top: .8rem; bottom: 4rem; width: min(25rem, 48vw);
+    overflow-y: auto; overscroll-behavior: contain; padding: .2rem .6rem 2rem 0; gap: .32rem;
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 2.4rem), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 2.4rem), transparent);
+  }
+  .t-menu > * { flex: none; }
+  .t-btn-play { padding: .5rem 1.4rem .45rem 1.8rem; }
+  .t-btn-play .t-btn-label { font-size: 2rem; }
+  .t-menu .t-btn:not(.t-btn-play) { padding-top: .3rem; padding-bottom: .26rem; }
+  .t-menu .t-btn:not(.t-btn-play) .t-btn-label { font-size: 1.45rem; }
+  .t-menu .t-btn-hint { font-size: .8rem; }
+  .t-crewtag { top: auto; right: auto; left: max(1.5rem, env(safe-area-inset-left)); bottom: 4rem; padding: .4rem 1.2rem .4rem .7rem; }
+  .t-howto-btn { top: auto; right: auto; left: max(1.5rem, env(safe-area-inset-left)); bottom: 8.6rem; }
+  .t-title:not([data-panel="none"]) .t-crewtag, .t-title:not([data-panel="none"]) .t-howto-btn { visibility: hidden; }
+  .t-panel, .t-panel.t-howto, .t-panel-wide { left: max(1rem, env(safe-area-inset-left)); right: max(1rem, env(safe-area-inset-right)); top: .8rem; bottom: 3.6rem; width: auto; max-height: none; }
+  .t-panel-head { padding: .5rem 1rem .4rem 1.2rem; }
+  .t-panel-head h2 { font-size: 1.5rem; }
+  .t-panel-body { flex: 1; min-height: 0; padding: .7rem 1.2rem; gap: .8rem; }
+  .t-panel-foot { padding: .5rem 1.2rem .6rem; }
+  .t-howto-cols { flex: 1; min-height: 0; }
+  .t-howto-art { height: 4rem; }
+  .t-ticker { height: 2.6rem; }
+
+  .t-loading-card { width: auto; max-width: calc(100vw - 2rem); padding: 1rem 1.4rem; gap: 1.2rem; }
+  .t-loading-gauge { width: 5rem; height: 5rem; }
+  .t-loading-tip { bottom: 1rem; padding: 0 1rem; }
+
+  /* HUD: smaller plates, the view stays clear */
+  .t-top { top: .5rem; transform: translateX(-50%) scale(.8); transform-origin: center top; }
+  .t-convoy, .t-wells, .t-lastcrew { top: 4.4rem; transform: translateX(-50%) scale(.78); transform-origin: center top; }
+  .t-feed { transform: scale(.8); transform-origin: right top; }
+  .t-reticle { width: 9rem; height: 9rem; }
+  html[data-touch="1"] .t-hud { --hud-k: .52; }
+  .t-hint { top: 4.6rem; }
+  .t-hud:has(#t-wells:not([hidden])) .t-hint, .t-hud:has(#t-lastcrew:not([hidden])) .t-hint, .t-hud:has(#t-convoy:not([hidden])) .t-hint { top: 8.6rem; }
+  .t-radio { bottom: 6rem; }
+  .t-branch { top: 50%; transform: translate(-50%, -50%); }
+  .t-branch-card { width: 12.4rem; padding: .7rem .8rem .8rem; }
+  .t-board { top: .6rem; max-height: calc(100% - 1.2rem); overflow: auto; }
+  .t-board-cols { padding: .6rem .8rem .8rem; gap: .8rem; }
+  .t-stamp { font-size: 4.6rem; }
+  .t-respawn { gap: .5rem; }
+  .t-end-head { padding: 1rem 0 0; }
+  .t-end-title { font-size: 3rem; }
+  .t-end-stage { min-height: 2rem; }
+  .t-end-rows { gap: .6rem; }
+  .t-ec { width: 10.5rem; min-height: 6.6rem; padding: .5rem .7rem .7rem; }
+  .t-ec:first-child { min-height: 7.6rem; padding-top: .8rem; }
+  .t-end-foot { padding: .7rem 0 .9rem; }
+  #tansk-pause .t-pause-ctl { display: none; }
+  #tansk-pause .plate { padding: 1rem 1.4rem !important; }
+
+  /* the yard: the plate takes the right, the vote the whole screen */
+  .t-lobby-card { right: max(1rem, env(safe-area-inset-right)); top: .6rem; bottom: .6rem; width: min(40rem, 58vw); }
+  .t-lobby-body { padding: .6rem 1rem; gap: .6rem; }
+  .t-lobby-code-wrap .t-code { font-size: 2rem; }
+  .t-lobby-copy .t-btn-label { font-size: 1.3rem; }
+  .t-lobby-foot { flex-wrap: wrap; }
+  .t-lobby-status { flex-basis: 100%; }
+  .t-lobby-help { display: none; }
+  .t-vote { left: 1rem; right: 1rem; top: .6rem; bottom: .6rem; justify-content: center; z-index: 3; padding: .8rem; border-radius: .4rem; background: rgba(30, 20, 12, .8); }
+  .t-vote-title { font-size: 1.9rem; }
+  .t-vote-card { min-height: 8.4rem; }
+}
+
+/* Upright phones: the title stacks, the yard takes the width. */
+@media (max-width: 640px) {
+  .t-wordmark { left: 50%; top: max(1.4rem, env(safe-area-inset-top)); transform: translateX(-50%); }
+  .t-logo { font-size: 7.6rem; }
+  .t-logo-bar { width: 24rem; }
+  .t-tagline { font-size: 1.2rem; white-space: nowrap; }
+  .t-menu { left: 1.6rem; right: 1.6rem; width: auto; top: 15.5rem; bottom: calc(4rem + 48px); overflow-y: auto; overscroll-behavior: contain; padding: .2rem .4rem .6rem 0; }
+  .t-menu > * { flex: none; }
+  .t-crewtag { display: none; }
+  .t-howto-btn { top: auto; bottom: 3.6rem; left: 1.6rem; right: 1.6rem; width: auto; justify-content: center; }
+  .t-title:not([data-panel="none"]) .t-howto-btn { visibility: hidden; }
+  .t-panel, .t-panel.t-howto, .t-panel-wide { left: .8rem; right: .8rem; top: max(.8rem, env(safe-area-inset-top)); bottom: 3.6rem; width: auto; max-height: none; }
+  .t-panel-body { flex: 1; min-height: 0; }
+  .t-howto-cols { grid-template-columns: 1fr; flex: 1; min-height: 0; }
+  .t-howto .t-panel-foot { flex-wrap: wrap; }
+  .t-howto-keys { flex-basis: 100%; }
+  .t-maps, .t-chassis { grid-template-columns: 1fr; }
+  .t-row2, .t-sliders { grid-template-columns: 1fr; }
+  .t-games-head, .t-game { grid-template-columns: 1.3fr 1.2fr 1fr .7fr; }
+  .t-games-head span:nth-child(5), .t-game span:nth-child(5) { display: none; }
+  .t-panel-foot { flex-wrap: wrap; }
+  .t-loading-card { flex-wrap: wrap; justify-content: center; }
+
+  .t-lobby-card { left: .8rem; right: .8rem; top: max(.8rem, env(safe-area-inset-top)); bottom: .8rem; width: auto; }
+  .t-lobby-invite { flex-direction: column; align-items: stretch; }
+  .t-lobby-foot { flex-wrap: wrap; }
+  .t-lobby-status { flex-basis: 100%; }
+  .t-lobby-help { display: none; }
+  .t-vote { left: .8rem; right: .8rem; top: .8rem; bottom: .8rem; justify-content: center; }
+  .t-vote-head { gap: .5rem; }
+  .t-vote-title { font-size: 1.8rem; }
+  .t-vote-cards { grid-template-columns: 1fr; }
+  .t-vote-card { min-height: 6rem; }
+  .t-end-title { font-size: 2.8rem; padding: 0 1rem; }
+  .t-end-rows { flex-wrap: wrap; gap: .5rem; padding: 0 .8rem; }
+  .t-ec, .t-ec:first-child { width: calc(33.3% - .34rem); min-height: 0; padding: .5rem .4rem .6rem; }
+  .t-ec-stat { gap: .5rem; font-size: .95rem; }
+  .t-end-foot { flex-wrap: wrap; }
+  .t-board-cols { grid-template-columns: 1fr; }
+  .t-br { grid-template-columns: 1fr 2.4rem 2.4rem 6.5rem 2.6rem; padding: .28rem .6rem; }
+  #tansk-pause .t-pause-ctl { display: none; }
+  #tansk-pause .t-pause-wrap { max-width: calc(100vw - 2rem); }
+}
+
+/* Touch, folded yard plate: just the head and the buttons (room to drive). */
+.t-lobby[data-fold="1"] .t-lobby-body { display: none; }
+.t-lobby[data-fold="1"] .t-lobby-card { top: auto; bottom: max(.6rem, env(safe-area-inset-bottom)); }
+html[data-touch="1"] .t-hud[data-lobby="1"] .t-tz-stick { width: 36%; }

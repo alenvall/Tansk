@@ -70,6 +70,16 @@ pub const RAID: Tip = Tip {
     pad: "Raid: hold the outpost against the waves. Stay close and stick together.",
 };
 
+/// The on-screen controls' wording, where it differs from the keyboard's.
+pub fn touch_wording(tip: Tip) -> &'static str {
+    match tip.key {
+        "drive" => "Left thumb drives \u{b7} drag on the right to aim \u{b7} hold [FIRE]",
+        "branch" => "Tap a card before the timer runs out",
+        "special" => "Something special aboard: tap [SPECIAL] to use it",
+        _ => tip.keys,
+    }
+}
+
 /// How long a tip stays up, seconds.
 const SHOW_SECS: f32 = 6.5;
 /// A breather between tips.
@@ -145,8 +155,9 @@ impl Hints {
     }
 
     /// Shows the next tip when `can_show` (alive, not paused, not at the
-    /// end screen); `pad` picks the gamepad wording.
-    pub fn tick(&mut self, dt: f32, can_show: bool, pad: bool, ui: &mut Ui) {
+    /// end screen); `pad` picks the gamepad wording, `touch` the on-screen
+    /// controls' (phones and tablets).
+    pub fn tick(&mut self, dt: f32, can_show: bool, pad: bool, touch: bool, ui: &mut Ui) {
         if let Some((_, left)) = &mut self.showing {
             *left -= dt;
             if *left <= 0.0 || !can_show {
@@ -161,7 +172,14 @@ impl Hints {
             return;
         }
         if let Some(tip) = self.queue.pop_front() {
-            ui.show_hint(if pad { tip.pad } else { tip.keys });
+            let text = if pad {
+                tip.pad
+            } else if touch {
+                touch_wording(tip)
+            } else {
+                tip.keys
+            };
+            ui.show_hint(text);
             self.seen.insert(tip.key.to_string());
             self.dirty = true;
             self.showing = Some((tip, SHOW_SECS));

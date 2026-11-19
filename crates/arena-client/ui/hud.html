@@ -55,6 +55,25 @@
 </svg>
 
 <section id="t-hud" class="t-screen t-hud" hidden>
+  <!-- phones and tablets (html[data-touch]): the thumb pad; web.rs feeds the
+       touches (data-touch names the control), game/touch.rs reads them -->
+  <div id="t-touch" class="t-touch" data-swap="0" aria-hidden="true">
+    <div class="t-tz t-tz-stick" data-touch="stick"></div>
+    <div class="t-tz t-tz-look" data-touch="look"></div>
+    <div id="t-stick" class="t-stick" data-on="0"><i class="t-stick-knob"></i><span>Drive</span></div>
+    <div class="t-tpad">
+      <div class="t-tb t-tb-fire" data-touch="fire" data-held="0"><svg viewBox="-20 -20 40 40"><circle r="11"/><path d="M0 -17 V-6 M0 6 V17 M-17 0 H-6 M6 0 H17"/></svg><span>Fire</span></div>
+      <div class="t-tb t-tb-alt" data-touch="alt" data-held="0"><span>Alt</span></div>
+      <div class="t-tb t-tb-boost" data-touch="boost" data-held="0"><span>Boost</span></div>
+      <div class="t-tb t-tb-special" data-touch="special" data-held="0"><span>Special</span></div>
+    </div>
+    <div class="t-tsys">
+      <div class="t-tb t-tb-sys" data-touch="pause" data-held="0" aria-label="Pause"><svg viewBox="0 0 20 20"><path d="M6 4 V16 M14 4 V16"/></svg></div>
+      <div class="t-tb t-tb-sys" id="t-touch-board" data-touch="board" data-held="0" data-on="0" aria-label="Scores"><svg viewBox="0 0 20 20"><path d="M4 5 H16 M4 10 H16 M4 15 H16"/></svg></div>
+      <div class="t-tb t-tb-sys" data-touch="chat" data-held="0" aria-label="Talk"><svg viewBox="0 0 20 20"><path d="M3 4 H17 V13 H9 L5 17 V13 H3 Z"/></svg></div>
+    </div>
+  </div>
+
   <!-- full-screen effects -->
   <div id="t-vignette" class="t-vignette" style="--low:0" aria-hidden="true"></div>
 
@@ -141,7 +160,7 @@
   <!-- left: chat -->
   <div id="t-chat" class="t-chat" data-open="0">
     <div id="t-chat-log" class="t-chat-log"></div>
-    <div class="t-chat-in"><span class="t-chat-ch">ALL</span><input id="t-chat-input" maxlength="120" spellcheck="false" autocomplete="off" placeholder="Say it on the band&hellip;"></div>
+    <div class="t-chat-in"><span class="t-chat-ch">ALL</span><input id="t-chat-input" maxlength="120" spellcheck="false" autocomplete="off" enterkeyhint="send" placeholder="Say it on the band&hellip;"><button class="t-chat-send t-on-touch" data-action="chat-send">Send</button></div>
   </div>
 
   <!-- bottom centre: radio caller -->
@@ -237,7 +256,7 @@
   <!-- party lobby: the crews warm up in the yard; the host's rules, ready ticks, the map vote -->
   <div id="t-lobby" class="t-lobby" data-host="0" data-team="0" data-ready="0" data-drive="0" hidden>
     <div class="t-lobby-card plate">
-      <div class="t-panel-head"><span class="t-hazard"></span><h2>Crew yard</h2><span class="t-lobby-phase" id="t-lobby-phase">Warming up</span></div>
+      <div class="t-panel-head"><span class="t-hazard"></span><h2>Crew yard</h2><span class="t-lobby-phase" id="t-lobby-phase">Warming up</span><button class="t-x t-lobby-fold t-on-touch" data-action="lobby-fold" aria-label="Fold the plate">&#9662;</button></div>
       <div class="t-lobby-body">
         <div class="t-lobby-invite">
           <div class="t-lobby-code-wrap">
@@ -318,12 +337,21 @@
       </div>
     </div>
 
-    <div class="t-lobby-help plate"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive about &middot; click the ground to take the wheel &middot; <kbd>Esc</kbd> back to the yard &middot; <kbd>Enter</kbd> talk</div>
+    <div class="t-lobby-help plate"><span class="t-off-touch"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive about &middot; click the ground to take the wheel &middot; <kbd>Esc</kbd> back to the yard &middot; <kbd>Enter</kbd> talk</span><span class="t-on-touch">Left thumb drives about the yard &middot; drag right to look &middot; fold the plate for room</span></div>
 
     <div id="t-vote" class="t-vote" hidden>
       <div class="t-vote-head"><span class="t-hazard"></span><span class="t-vote-title">Next up? Vote</span><span class="t-vote-secs" id="t-vote-secs">15</span><span class="t-hazard"></span></div>
       <div class="t-vote-cards" id="t-vote-cards"></div>
       <div class="t-vote-note">Most votes wins. A tie goes to the host.</div>
+    </div>
+  </div>
+
+  <!-- phones held upright mid-match -->
+  <div class="t-rotate" aria-live="polite">
+    <div class="t-rotate-card plate">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="42" rx="4" class="t-rot-phone"/><path d="M12 52 Q32 64 52 52" class="t-rot-arrow"/><path d="M47 47 L52 52 L46 56" class="t-rot-arrow"/></svg>
+      <b>Turn it sideways</b>
+      <span>The tank wants a wide windscreen. Rotate to landscape.</span>
     </div>
   </div>
 </section>

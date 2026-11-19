@@ -35,6 +35,7 @@ pub(super) struct Dom {
     listeners: Vec<(EventTarget, &'static str, Listener)>,
     /// Attributes taken off by `retrigger`, put back on the next frame.
     pending: Vec<(String, String, String)>,
+    ctx: Option<Ctx>,
 }
 
 fn prop(v: &JsValue, name: &str) -> JsValue {
@@ -93,6 +94,7 @@ impl Ctx {
             vol_ambience: pct("vol_ambience"),
             mouse_sens: pct("mouse_sens"),
             quality: Quality::parse(&self.value("input[name=quality]:checked")),
+            touch_swap: self.checked("#t-set-swap"),
         }
     }
 
@@ -202,6 +204,30 @@ impl Ctx {
         }
     }
 
+    /// Sends what is in the chat line (Enter, or the touch Send button).
+    fn send_chat(&self) {
+        let text = self.value("#t-chat-input").trim().to_string();
+        if !text.is_empty() {
+            self.push(UiAction::Chat(text));
+        }
+        self.set_chat(false);
+    }
+
+    /// The chat line lost the focus (touch: the keyboard went away, or a
+    /// tap elsewhere): close it, so the thumbs drive again.
+    fn on_focus_out(&self, ev: JsValue) {
+        let is_chat = target(&ev).is_some_and(|t| t.id() == "t-chat-input");
+        let touch = self.doc.document_element().is_some_and(|e| e.get_attribute("data-touch").as_deref() == Some("1"));
+        if is_chat && touch && self.shared.borrow().chat_open {
+            // A tap on Send blurs first: let its click land before closing.
+            let related = prop(&ev, "relatedTarget").dyn_into::<Element>().ok();
+            if related.is_some_and(|r| r.closest("[data-action=chat-send]").ok().flatten().is_some()) {
+                return;
+            }
+            self.set_chat(false);
+        }
+    }
+
     fn on_click(&self, ev: JsValue) {
         let Some(t) = target(&ev) else { return };
         if let Ok(Some(g)) = t.closest("[data-goto]") {
@@ -231,6 +257,15 @@ impl Ctx {
             "lobby-ready" => UiAction::LobbyReady,
             "lobby-start" => UiAction::LobbyStart,
             "copy-invite" => return self.copy_invite(),
+            "chat-send" => return self.send_chat(),
+            "lobby-fold" => {
+                // Touch: the yard plate folds down to its head and buttons.
+                if let Some(l) = self.q("#t-lobby") {
+                    let folded = l.get_attribute("data-fold").as_deref() == Some("1");
+                    let _ = l.set_attribute("data-fold", if folded { "0" } else { "1" });
+                }
+                UiAction::Click
+            }
             "vote" => match el.get_attribute("data-i").and_then(|s| s.parse().ok()) {
                 Some(i) => UiAction::LobbyVote(i),
                 None => return,
@@ -286,11 +321,7 @@ impl Ctx {
         if chat_open {
             match key.as_str() {
                 "Enter" => {
-                    let text = self.value("#t-chat-input").trim().to_string();
-                    if !text.is_empty() {
-                        self.push(UiAction::Chat(text));
-                    }
-                    self.set_chat(false);
+                    self.send_chat();
                     call0(&ev, "preventDefault");
                 }
                 "Escape" => self.set_chat(false),
@@ -352,16 +383,18 @@ impl Dom {
 
         let shared = Rc::new(RefCell::new(Shared::default()));
         let ctx = Ctx { doc: doc.clone(), root: root.clone().into(), shared: shared.clone() };
-        let mut dom = Dom { doc, root: root.clone(), els: HashMap::new(), shared, listeners: Vec::new(), pending: Vec::new() };
+        let mut dom = Dom { doc, root: root.clone(), els: HashMap::new(), shared, listeners: Vec::new(), pending: Vec::new(), ctx: None };
 
         let root_t: EventTarget = root.into();
         let win_t: EventTarget = window.into();
-        let handlers: [(&EventTarget, &'static str, Handler); 4] = [
+        let handlers: [(&EventTarget, &'static str, Handler); 5] = [
             (&root_t, "click", Ctx::on_click),
             (&root_t, "input", Ctx::on_input),
             (&root_t, "change", Ctx::on_change),
+            (&root_t, "focusout", Ctx::on_focus_out),
             (&win_t, "keydown", Ctx::on_key),
         ];
+        dom.ctx = Some(ctx.clone());
         for (t, kind, f) in handlers {
             let c = ctx.clone();
             let cl: Listener = Closure::wrap(Box::new(move |ev: JsValue| f(&c, ev)));
@@ -475,6 +508,11 @@ impl Dom {
     }
     pub fn chat_open(&self) -> bool {
         self.shared.borrow().chat_open
+    }
+    pub fn open_chat(&mut self) {
+        if let Some(c) = &self.ctx {
+            c.set_chat(true);
+        }
     }
 }
 

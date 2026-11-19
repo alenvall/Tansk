@@ -57,25 +57,125 @@ pub fn main() {
     wasm_bindgen_futures::spawn_local(async {
         if let Err(e) = run().await {
             log::error!("{e:#}");
-            show_message(&format!("{e:#}"));
+            let text = format!("{e:#}");
+            if text.contains("WebGPU") {
+                show_message("This browser can't drive TANSK yet", NEEDS_WEBGPU, &text);
+            } else {
+                show_message("TANSK could not start", "Something broke on the way in. Reload to try again.", &text);
+            }
         }
     });
 }
 
-/// Replaces the canvas with a visible explanation.
-fn show_message(text: &str) {
+/// What to get, in the no-WebGPU card (index.html carries the same words
+/// for when the wasm never loads).
+const NEEDS_WEBGPU: &str = "TANSK draws with WebGPU. On a phone or tablet that means a recent \
+    <b>Chrome</b> (Android 12 or newer) or <b>Safari</b> (iOS / iPadOS 26 or newer); on a computer, \
+    a current Chrome, Edge, Safari or Firefox. Update the browser, or open the link in one of those.";
+
+/// Replaces the canvas with a riveted card explaining what went wrong
+/// (`body` is trusted HTML, `detail` plain text).
+fn show_message(title: &str, body: &str, detail: &str) {
     let Some(document) = web_sys::window().and_then(|w| w.document()) else { return };
     if let Some(el) = document.get_element_by_id("tansk-message") {
-        let escaped = text.replace('&', "&amp;").replace('<', "&lt;");
-        el.set_inner_html(&format!("<div><strong>TANSK could not start</strong>{escaped}</div>"));
+        let escaped = detail.replace('&', "&amp;").replace('<', "&lt;");
+        el.set_inner_html(&format!(
+            "<div class=\"tm-card\"><div class=\"tm-hazard\"></div><strong>{title}</strong><p>{body}</p><p class=\"tm-detail\">{escaped}</p></div>"
+        ));
         if let Ok(html) = el.dyn_into::<web_sys::HtmlElement>() {
             let _ = html.style().set_property("display", "flex");
         }
     }
 }
 
-fn canvas_size(canvas: &web_sys::HtmlCanvasElement) -> (u32, u32) {
+thread_local! {
+    /// A phone or tablet (a coarse pointer, or a small screen): the canvas
+    /// renders at no more than 1.5 device pixels per CSS pixel.
+    static MOBILE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Fullscreen was asked for (once, on the first tap).
+    static FULLSCREEN_ASKED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The device-pixel ratio the canvas renders at.
+fn pixel_ratio() -> f64 {
     let dpr = web_sys::window().map(|w| w.device_pixel_ratio()).unwrap_or(1.0);
+    if MOBILE.with(std::cell::Cell::get) {
+        dpr.min(1.5)
+    } else {
+        dpr
+    }
+}
+
+/// Calls `obj.name(args...)` if it is a function; the result or undefined.
+fn call(obj: &JsValue, name: &str, args: &[JsValue]) -> JsValue {
+    let Ok(f) = prop(obj, name).dyn_into::<js_sys::Function>() else { return JsValue::UNDEFINED };
+    let arr: js_sys::Array = args.iter().cloned().collect();
+    f.apply(obj, &arr).unwrap_or(JsValue::UNDEFINED)
+}
+
+/// A primary coarse pointer (a finger): phones and tablets.
+fn coarse_pointer(window: &web_sys::Window) -> bool {
+    let mq = call(window.as_ref(), "matchMedia", &[JsValue::from_str("(pointer: coarse)")]);
+    prop(&mq, "matches").is_truthy()
+}
+
+/// The page's CSS size.
+fn viewport() -> (f32, f32) {
+    let Some(w) = web_sys::window() else { return (0.0, 0.0) };
+    let f = |v: Result<JsValue, JsValue>| v.ok().and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+    (f(w.inner_width()), f(w.inner_height()))
+}
+
+/// Turns the touch scheme's page styles on (`html[data-touch]`).
+fn mark_touch() {
+    if let Some(el) = web_sys::window().and_then(|w| w.document()).and_then(|d| d.document_element()) {
+        let _ = el.set_attribute("data-touch", "1");
+    }
+}
+
+/// Fullscreen (and landscape, where the browser allows it) on a tap.
+/// Swallows the promise rejections (iPhone Safari has no element
+/// fullscreen at all; the page just stays as it is).
+fn go_fullscreen() {
+    let Some(doc) = web_sys::window().and_then(|w| w.document()) else { return };
+    let docv: JsValue = doc.clone().into();
+    let set = |v: JsValue| !(v.is_null() || v.is_undefined());
+    if set(prop(&docv, "fullscreenElement")) || set(prop(&docv, "webkitFullscreenElement")) {
+        return;
+    }
+    let Some(el) = doc.document_element() else { return };
+    let el: JsValue = el.into();
+    let opts = js_sys::Object::new();
+    let _ = js_sys::Reflect::set(&opts, &JsValue::from_str("navigationUI"), &JsValue::from_str("hide"));
+    let p = if prop(&el, "requestFullscreen").is_function() {
+        call(&el, "requestFullscreen", &[opts.into()])
+    } else {
+        call(&el, "webkitRequestFullscreen", &[])
+    };
+    thread_local! {
+        static NOOP: Closure<dyn FnMut(JsValue)> = Closure::new(|_: JsValue| {});
+    }
+    if let Ok(p) = p.dyn_into::<js_sys::Promise>() {
+        // Once fullscreen, hold landscape where the platform lets a page.
+        let then: Closure<dyn FnMut(JsValue)> = Closure::new(|_: JsValue| {
+            let Some(w) = web_sys::window() else { return };
+            let orient = prop(&prop(w.as_ref(), "screen"), "orientation");
+            let lock = call(&orient, "lock", &[JsValue::from_str("landscape")]);
+            if let Ok(lock) = lock.dyn_into::<js_sys::Promise>() {
+                NOOP.with(|n| {
+                    let _ = lock.catch(n);
+                });
+            }
+        });
+        NOOP.with(|n| {
+            let _ = p.then(&then).catch(n);
+        });
+        then.forget();
+    }
+}
+
+fn canvas_size(canvas: &web_sys::HtmlCanvasElement) -> (u32, u32) {
+    let dpr = pixel_ratio();
     let w = (f64::from(canvas.client_width()) * dpr).round().max(1.0) as u32;
     let h = (f64::from(canvas.client_height()) * dpr).round().max(1.0) as u32;
     // WebGPU's guaranteed texture limit.
@@ -120,6 +220,15 @@ async fn run() -> Result<()> {
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .map_err(|_| anyhow!("#tansk-canvas is not a canvas"))?;
 
+    // Phones and tablets: the touch scheme, and lighter rendering.
+    let coarse = coarse_pointer(&window);
+    let (vw, vh) = viewport();
+    let small = vw.min(vh) > 0.0 && vw.min(vh) <= 540.0;
+    MOBILE.with(|m| m.set(coarse || small));
+    if coarse {
+        mark_touch();
+    }
+
     let gpu = js_sys::Reflect::get(&window.navigator(), &JsValue::from_str("gpu")).unwrap_or(JsValue::UNDEFINED);
     if gpu.is_undefined() || gpu.is_null() {
         return Err(anyhow!(
@@ -159,10 +268,15 @@ async fn run() -> Result<()> {
 
     let wr = WorldRenderer::new(Renderer::new(device, queue, config.format, width, height));
     let mut game = Game::new();
+    game.touch.enabled = coarse;
+    game.touch.viewport = (vw, vh);
     let saved = load_settings();
-    // First visit: Medium, and Low if the first seconds turn out slow.
-    game.quality_auto = saved.is_none();
-    let mut settings = saved.unwrap_or_else(|| Settings { quality: Quality::Medium, ..Settings::default() });
+    // First visit: Medium, and Low if the first seconds turn out slow;
+    // phones and tablets start on Low.
+    let mobile = MOBILE.with(std::cell::Cell::get);
+    game.quality_auto = saved.is_none() && !mobile;
+    let first = if mobile { Quality::Low } else { Quality::Medium };
+    let mut settings = saved.unwrap_or_else(|| Settings { quality: first, ..Settings::default() });
     if let Some(name) = query_flag("name").filter(|n| !n.is_empty()) {
         settings.name = name;
     }
@@ -328,6 +442,10 @@ fn install_input(state: &Shared) -> Result<()> {
         st.game.gesture();
         let on_canvas = prop(&ev, "target").dyn_into::<web_sys::Element>().is_ok_and(|t| t.id() == "tansk-canvas");
         let button = prop(&ev, "button").as_f64().unwrap_or(0.0) as usize;
+        if st.game.touch.enabled && prop(&prop(&ev, "sourceCapabilities"), "firesTouchEvents").is_truthy() {
+            // A tap's compatibility mouse event: the touch layer has it.
+            return;
+        }
         if st.game.screen() == Screen::Lobby && on_canvas && !pointer_locked() && !st.game.wants_pointer() {
             // The yard: a click on the world takes the wheel (Esc gives it back).
             st.game.lobby_take_wheel();
@@ -369,8 +487,10 @@ fn install_input(state: &Shared) -> Result<()> {
     listen(&win, "blur", move |_| {
         if let Ok(mut st) = s.try_borrow_mut() {
             st.game.controls.release_all();
+            st.game.touch.release_all();
         }
     })?;
+    install_touch(state)?;
     let s = state.clone();
     listen(&win, "contextmenu", move |ev| {
         if let Ok(st) = s.try_borrow() {
@@ -417,7 +537,9 @@ fn install_input(state: &Shared) -> Result<()> {
                 Some("resume") => {
                     st.game.ui_click();
                     st.game.resume();
-                    if !st.game.free_mouse {
+                    if st.game.touch.enabled {
+                        go_fullscreen();
+                    } else if !st.game.free_mouse {
                         st.canvas.request_pointer_lock();
                     }
                 }
@@ -429,6 +551,150 @@ fn install_input(state: &Shared) -> Result<()> {
             }
         })?;
     }
+    Ok(())
+}
+
+// ------------------------------------------------------------------ touch
+
+/// `addEventListener` with `{ passive: false }`, so the handler may
+/// `preventDefault` (no scrolling, zooming or pull-to-refresh under a thumb).
+fn listen_active(target: &web_sys::EventTarget, kind: &str, f: impl FnMut(web_sys::Event) + 'static) -> Result<()> {
+    let cl: Closure<dyn FnMut(web_sys::Event)> = Closure::new(f);
+    let opts = js_sys::Object::new();
+    let _ = js_sys::Reflect::set(&opts, &JsValue::from_str("passive"), &JsValue::FALSE);
+    let add = prop(target, "addEventListener").dyn_into::<js_sys::Function>().map_err(|_| anyhow!("no addEventListener"))?;
+    add.call3(target, &JsValue::from_str(kind), cl.as_ref(), &opts).map_err(|_| anyhow!("adding a {kind} listener"))?;
+    cl.forget();
+    Ok(())
+}
+
+/// One changed touch: identifier, client x / y, the element it started on.
+fn changed_touches(ev: &JsValue) -> Vec<(i32, f32, f32, Option<web_sys::Element>)> {
+    let list = prop(ev, "changedTouches");
+    let n = prop(&list, "length").as_f64().unwrap_or(0.0) as u32;
+    (0..n)
+        .filter_map(|i| {
+            let t = js_sys::Reflect::get_u32(&list, i).ok()?;
+            let id = prop(&t, "identifier").as_f64()? as i32;
+            let x = prop(&t, "clientX").as_f64().unwrap_or(0.0) as f32;
+            let y = prop(&t, "clientY").as_f64().unwrap_or(0.0) as f32;
+            Some((id, x, y, prop(&t, "target").dyn_into::<web_sys::Element>().ok()))
+        })
+        .collect()
+}
+
+/// The stick and the held buttons, drawn from the touch state.
+fn draw_touch(t: &crate::game::Touch, held_too: bool) {
+    use crate::game::touch::Control;
+    let Some(doc) = web_sys::window().and_then(|w| w.document()) else { return };
+    if let Some(stick) = doc.get_element_by_id("t-stick").and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok()) {
+        match t.stick_view() {
+            Some(((bx, by), (kx, ky))) => {
+                let st = stick.style();
+                let _ = st.set_property("--sx", &format!("{bx:.0}px"));
+                let _ = st.set_property("--sy", &format!("{by:.0}px"));
+                let _ = st.set_property("--kx", &format!("{kx:.0}px"));
+                let _ = st.set_property("--ky", &format!("{ky:.0}px"));
+                let _ = stick.set_attribute("data-on", "1");
+            }
+            None => {
+                let _ = stick.set_attribute("data-on", "0");
+            }
+        }
+    }
+    if !held_too {
+        return;
+    }
+    for (name, c) in [
+        ("fire", Control::Fire),
+        ("alt", Control::Alt),
+        ("boost", Control::Boost),
+        ("special", Control::Special),
+        ("pause", Control::Pause),
+        ("board", Control::Board),
+        ("chat", Control::Chat),
+    ] {
+        if let Ok(Some(el)) = doc.query_selector(&format!("#t-touch [data-touch={name}]")) {
+            let _ = el.set_attribute("data-held", if t.held(c) { "1" } else { "0" });
+        }
+    }
+    if let Some(b) = doc.get_element_by_id("t-touch-board") {
+        let _ = b.set_attribute("data-on", if t.board { "1" } else { "0" });
+    }
+}
+
+/// Touch events into [`crate::game::Touch`]: each finger keeps the control
+/// it landed on (`data-touch`) until it lifts.
+fn install_touch(state: &Shared) -> Result<()> {
+    use crate::game::touch::Control;
+    let window = web_sys::window().ok_or_else(|| anyhow!("no window"))?;
+    let win: web_sys::EventTarget = window.clone().into();
+
+    let s = state.clone();
+    listen_active(&win, "touchstart", move |ev| {
+        let Ok(mut st) = s.try_borrow_mut() else { return };
+        st.game.gesture();
+        if !st.game.touch.enabled {
+            st.game.touch.enabled = true;
+            mark_touch();
+        }
+        let mut ours = false;
+        for (id, x, y, target) in changed_touches(&ev) {
+            let Some(t) = target else { continue };
+            let control = t
+                .closest("[data-touch]")
+                .ok()
+                .flatten()
+                .and_then(|e| e.get_attribute("data-touch"))
+                .and_then(|c| Control::parse(&c));
+            if let Some(c) = control {
+                st.game.touch.start(id, c, x, y);
+                ours = true;
+            } else if t.id() == "tansk-canvas" {
+                // The bare canvas (menus' backdrop): no zoom, no scroll.
+                ours = true;
+            }
+        }
+        if ours && ev.cancelable() {
+            ev.prevent_default();
+        }
+        draw_touch(&st.game.touch, true);
+    })?;
+    let s = state.clone();
+    listen_active(&win, "touchmove", move |ev| {
+        let Ok(mut st) = s.try_borrow_mut() else { return };
+        let mut ours = false;
+        for (id, x, y, target) in changed_touches(&ev) {
+            st.game.touch.moved(id, x, y);
+            ours |= target.is_some_and(|t| t.id() == "tansk-canvas" || t.closest("#t-touch").ok().flatten().is_some());
+        }
+        if ours && ev.cancelable() {
+            ev.prevent_default();
+        }
+        draw_touch(&st.game.touch, false);
+    })?;
+    for (kind, cancelled) in [("touchend", false), ("touchcancel", true)] {
+        let s = state.clone();
+        listen_active(&win, kind, move |ev| {
+            let Ok(mut st) = s.try_borrow_mut() else { return };
+            let mut ours = false;
+            for (id, _, _, target) in changed_touches(&ev) {
+                st.game.touch.end(id, cancelled);
+                ours |= target.is_some_and(|t| t.closest("#t-touch").ok().flatten().is_some());
+            }
+            if ours && ev.cancelable() {
+                // No compatibility mouse events or clicks off the thumb pad.
+                ev.prevent_default();
+            }
+            draw_touch(&st.game.touch, true);
+            // The first tap (a user gesture) takes the whole screen.
+            if !cancelled && st.game.touch.enabled && !FULLSCREEN_ASKED.with(|f| f.replace(true)) {
+                go_fullscreen();
+            }
+        })?;
+    }
+    // iOS Safari's pinch gesture (it ignores user-scalable=no).
+    listen_active(&win, "gesturestart", |ev| ev.prevent_default())?;
     Ok(())
 }
 
@@ -446,7 +712,7 @@ fn mount_pause(document: &web_sys::Document) -> Option<web_sys::Element> {
     el.set_inner_html(&format!(
         "<div class=\"t-pause-wrap\"><div class=\"plate\" style=\"padding:1.4rem 1.8rem;display:flex;flex-direction:column;gap:.8rem;min-width:18rem\">\
          <h2 style=\"margin:0 0 .3rem;font-family:'Black Ops One',sans-serif;letter-spacing:.08em;color:var(--cream)\">Engine idling</h2>\
-         <button class=\"t-btn\" data-pause=\"resume\"><span class=\"t-btn-label\">Back in</span><span class=\"t-btn-hint\">Grabs the mouse</span></button>\
+         <button class=\"t-btn\" data-pause=\"resume\"><span class=\"t-btn-label\">Back in</span><span class=\"t-btn-hint t-off-touch\">Grabs the mouse</span></button>\
          <button class=\"t-btn\" data-pause=\"leave\"><span class=\"t-btn-label\">Leave</span><span class=\"t-btn-hint\">Back to the title</span></button>\
          <div class=\"t-pause-where\" id=\"t-pause-where\"></div>\
          <div class=\"t-pause-tip\">The match keeps rolling while you're in here: your crew sits tight, the others don't. Settings live on the title screen.</div>\
@@ -524,6 +790,7 @@ fn load_settings() -> Option<Settings> {
         vol_radio: num(4, d.vol_radio),
         mouse_sens: num(5, d.mouse_sens),
         vol_ambience: f.get(7).and_then(|v| v.parse().ok()).unwrap_or(d.vol_ambience),
+        touch_swap: f.get(8).is_some_and(|v| *v == "1"),
         quality: match f[6] {
             "low" => Quality::Low,
             "medium" => Quality::Medium,
@@ -541,7 +808,7 @@ fn save_settings(s: &Settings) {
         Quality::Ultra => "ultra",
     };
     let raw = format!(
-        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
         s.name.replace('\t', " "),
         s.vol_master,
         s.vol_sfx,
@@ -549,7 +816,8 @@ fn save_settings(s: &Settings) {
         s.vol_radio,
         s.mouse_sens,
         q,
-        s.vol_ambience
+        s.vol_ambience,
+        if s.touch_swap { "1" } else { "0" }
     );
     if let Some(st) = storage() {
         let _ = st.set_item(SETTINGS_KEY, &raw);
@@ -652,6 +920,7 @@ fn frame(s: &mut State) {
     }
 
     s.game.pad = read_pad();
+    s.game.touch.viewport = viewport();
     // Platform requests from the game.
     if let Some(rooms) = s.rooms.borrow_mut().take() {
         s.game.set_rooms(&rooms);

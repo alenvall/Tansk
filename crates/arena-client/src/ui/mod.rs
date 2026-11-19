@@ -263,6 +263,8 @@ pub struct Settings {
     /// Multiplier, 0.1..=3.0.
     pub mouse_sens: f32,
     pub quality: Quality,
+    /// Touch: the stick on the right, the guns on the left.
+    pub touch_swap: bool,
 }
 
 impl Default for Settings {
@@ -276,6 +278,7 @@ impl Default for Settings {
             vol_ambience: 0.7,
             mouse_sens: 1.0,
             quality: Quality::High,
+            touch_swap: false,
         }
     }
 }
@@ -760,6 +763,8 @@ impl Ui {
         self.dom
             .set_range("mouse_sens", &sens.to_string(), &format!("{:.2}", sens as f32 / 100.0));
         self.dom.check(&format!("input[name=quality][value={}]", s.quality.css()));
+        self.dom.set_checked("#t-set-swap", s.touch_swap);
+        self.dom.attr("t-touch", "data-swap", if s.touch_swap { "1" } else { "0" });
     }
 
     // ------------------------------------------------------------- gauges
@@ -942,6 +947,12 @@ impl Ui {
             self.chat_lines -= 1;
             self.dom.remove_first_child("t-chat-log");
         }
+    }
+
+    /// Opens the chat line (the touch chat button; the on-screen keyboard
+    /// comes up with the focus).
+    pub fn open_chat(&mut self) {
+        self.dom.open_chat();
     }
 
     /// True while the chat input has the keyboard: don't drive the tank.

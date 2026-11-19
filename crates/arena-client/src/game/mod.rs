@@ -18,6 +18,7 @@ pub mod names;
 pub mod party;
 pub mod radio;
 pub mod sound;
+pub mod touch;
 
 use std::collections::HashMap;
 
@@ -38,6 +39,7 @@ use crate::ui::{BranchOption, EndRow, HitKind, OpenGame, ScoreRow, Settings, Tea
 use crate::world::{paint_for, RenderWorld, TankView, WorldRenderer};
 
 pub use controls::{Controls, Pad};
+pub use touch::Touch;
 use controls::pad;
 use juice::Juice;
 use radio::Radio;
@@ -181,6 +183,8 @@ pub struct Game {
     garage: Option<crate::ui::Garage>,
     /// The newest gamepad state (web: Gamepad API), `None` without one.
     pub pad: Option<Pad>,
+    /// Phones and tablets: the on-screen stick and buttons (web.rs feeds it).
+    pub touch: Touch,
     prev_pad: Pad,
     /// Seconds since the pad was last touched (it takes over from the mouse).
     pad_idle: f32,
@@ -286,6 +290,7 @@ impl Game {
             practice_map: MapId::Sink,
             garage: None,
             pad: None,
+            touch: Touch::default(),
             prev_pad: Pad::default(),
             pad_idle: 1e9,
             quality_auto: false,
@@ -359,6 +364,15 @@ impl Game {
 
     pub fn resume(&mut self) {
         self.paused = false;
+    }
+
+    /// The touch pause button: the pause card, fingers let go.
+    pub fn touch_pause(&mut self) {
+        self.touch.release_all();
+        self.controls.release_all();
+        if self.screen == Screen::InGame {
+            self.paused = true;
+        }
     }
 
     /// The platform should fetch `/api/arena/rooms` and call [`Game::set_rooms`].
@@ -637,6 +651,8 @@ impl Game {
         self.want_look = Some(TimeOfDay::GoldenHour);
         self.screen = Screen::Title;
         self.lobby_drive = false;
+        self.touch.release_all();
+        self.touch.board = false;
         self.ui.show_lobby(None);
         self.sound.clear_engines();
         self.hints.clear_queue(&mut self.ui);
@@ -987,11 +1003,22 @@ impl Game {
     fn game_frame(&mut self, now: f64, dt: f32, wr: &mut WorldRenderer) -> RenderWorld {
         let you = self.you();
         // ---- Input, from last frame's camera.
-        let typing = self.ui.chat_open();
         let pad_live = self.pad_live();
+        let touch = self.touch.enabled;
+        for tap in self.touch.take_taps() {
+            match tap {
+                touch::Tap::Pause => self.touch_pause(),
+                touch::Tap::Chat => {
+                    self.touch.release_all();
+                    self.ui.open_chat();
+                }
+                touch::Tap::Board => self.sound.ui_click(),
+            }
+        }
+        let typing = self.ui.chat_open();
         // The lobby: the keys drive about at once; the guns only with the wheel taken.
         let lobby = self.screen == Screen::Lobby;
-        let live = ((self.screen == Screen::InGame && !self.paused && (self.controls.captured || pad_live)) || lobby) && !typing;
+        let live = ((self.screen == Screen::InGame && !self.paused && (self.controls.captured || pad_live || touch)) || lobby) && !typing;
         let sens = self.settings.mouse_sens.clamp(0.1, 3.0);
         let fov_k = self.camera.map_or(1.0, |c| c.fov_y / 62f32.to_radians());
         if self.screen != self.last_screen {
@@ -1021,8 +1048,18 @@ impl Game {
             self.chase.yaw -= rx * rx.abs() * rate * dt;
             self.chase.pitch = (self.chase.pitch - ry * ry.abs() * 1.6 * sens * fov_k * assist * dt).clamp(PITCH_MIN, PITCH_MAX);
         }
-        // Left alone, the view drifts back to the resting pitch.
-        if (self.chase.pitch - pitch0).abs() > 1e-4 {
+        let (lx, ly) = self.touch.take_look();
+        if touch && live && (lx != 0.0 || ly != 0.0) {
+            // The aim drag: a screen height of drag turns about 140 degrees;
+            // near a visible enemy it slows (a gentler version of the pad's).
+            let assist = 1.0 - (1.0 - self.aim_assist()) * 0.7;
+            let per_px = sens * fov_k * assist / self.touch.viewport.1.max(200.0);
+            self.chase.yaw -= lx * 2.4 * per_px;
+            self.chase.pitch = (self.chase.pitch - ly * 1.3 * per_px).clamp(PITCH_MIN, PITCH_MAX);
+        }
+        // Left alone, the view drifts back to the resting pitch (not under
+        // a finger that is holding the aim still).
+        if (self.chase.pitch - pitch0).abs() > 1e-4 || self.touch.aiming() {
             self.pitch_idle = 0.0;
         } else {
             self.pitch_idle += dt;
@@ -1035,7 +1072,7 @@ impl Game {
         if live {
             input.throttle = c.axis(&["KeyS"], &["KeyW"]);
             input.steer = c.axis(&["KeyA"], &["KeyD"]);
-            let guns = !lobby || self.lobby_drive || self.free_mouse;
+            let guns = !lobby || self.lobby_drive || self.free_mouse || touch;
             input.fire = c.buttons[0] && guns;
             input.alt_fire = c.buttons[2] && guns;
             input.boost = c.any(&["ShiftLeft", "ShiftRight"]);
@@ -1053,6 +1090,21 @@ impl Game {
                 input.alt_fire |= p.down(pad::RB);
                 input.boost |= p.down(pad::LB);
                 input.special |= p.down(pad::A) || p.down(pad::Y);
+            }
+            if touch {
+                use touch::Control;
+                let t = &self.touch;
+                let (sx, sy) = t.stick();
+                if input.throttle == 0.0 {
+                    input.throttle = sy;
+                }
+                if input.steer == 0.0 {
+                    input.steer = sx;
+                }
+                input.fire |= t.held(Control::Fire) && guns;
+                input.alt_fire |= t.held(Control::Alt) && guns;
+                input.boost |= t.held(Control::Boost);
+                input.special |= t.held(Control::Special);
             }
         }
         let zoom = live && (c.any(&["ControlLeft", "ControlRight", "KeyZ"]) || pad.is_some_and(|p| p.buttons[pad::LT] > 0.4));
@@ -1315,7 +1367,7 @@ impl Game {
         }
         let board = self.screen == Screen::InGame
             && !typing
-            && (self.controls.held("Tab") || self.pad.is_some_and(|p| p.down(pad::BACK)));
+            && (self.controls.held("Tab") || self.pad.is_some_and(|p| p.down(pad::BACK)) || (touch && self.touch.board));
         self.m.board_refresh -= dt;
         if board && self.m.board_refresh <= 0.0 {
             let rows = self.score_rows(&snap, rtt);
@@ -1634,7 +1686,7 @@ impl Game {
         }
         let can_show = alive && self.screen == Screen::InGame && !self.paused && !self.m.ended;
         let pad = self.pad_live();
-        self.hints.tick(dt, can_show, pad, &mut self.ui);
+        self.hints.tick(dt, can_show, pad, self.touch.enabled, &mut self.ui);
     }
 
     fn on_event(&mut self, e: &Event, you: Option<PlayerId>, world: &RenderWorld, cam: Camera) {
