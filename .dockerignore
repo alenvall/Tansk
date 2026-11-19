@@ -1,4 +1,6 @@
 target
 dist
+dist-arena
 java
 .git
+docs/shots

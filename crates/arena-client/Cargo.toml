@@ -1,0 +1,39 @@
+[package]
+name = "arena-client"
+description = "TANSK 2026 client: wgpu renderer on WebGPU (browser) and Vulkan (native), headless --shot"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+# Versions pinned to match brick-racers, whose renderer this borrows from.
+[dependencies]
+anyhow = "1.0.104"
+bytemuck = { version = "1.25.2", features = ["derive"] }
+glam = { version = "0.33.8", features = ["bytemuck"] }
+log = "0.4.34"
+wgpu = "30.0.1"
+arena-core = { path = "../arena-core" }
+arena-audio = { path = "../arena-audio" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.11.11"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+pollster = "1.0.1"
+winit = "0.30.13"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
+version = "0.3"
+features = [
+  "Window", "Document", "Element", "HtmlElement", "HtmlCanvasElement",
+  "Navigator", "Performance", "console", "CssStyleDeclaration",
+  # net/: the arena WebSocket.
+  "WebSocket", "MessageEvent", "CloseEvent", "BinaryType", "Location",
+  # game/: input, pointer lock, settings, the rooms list.
+  "Event", "EventTarget", "KeyboardEvent", "MouseEvent", "Storage", "Response",
+]

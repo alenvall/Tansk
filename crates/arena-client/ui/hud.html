@@ -1,0 +1,183 @@
+<!-- TANSK 2026 HUD partial. Inserted into #tansk-ui by src/ui/mod.rs.
+     Values are driven through CSS custom properties (--v, --n, --spread...)
+     and data-* attributes, so the Rust side only touches a few attributes per
+     frame and CSS does the drawing. -->
+<svg class="t-sprite" aria-hidden="true" width="0" height="0">
+  <defs>
+    <!-- Steel: two stacked riveted plates -->
+    <symbol id="i-steel" viewBox="0 0 40 40">
+      <path d="M6 15 L30 9 L35 22 L11 28 Z" fill="#6f767c" stroke="#24211f" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M4 22 L29 18 L33 31 L8 35 Z" fill="#b8bec2" stroke="#24211f" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="10" cy="25" r="1.4" fill="#3d3a37"/><circle cx="27" cy="22" r="1.4" fill="#3d3a37"/><circle cx="12" cy="31" r="1.4" fill="#3d3a37"/><circle cx="29" cy="28" r="1.4" fill="#3d3a37"/>
+      <path d="M8 23.5 L28 20" stroke="#eef1f2" stroke-width="1.2" opacity=".8"/>
+    </symbol>
+    <!-- Powder: a red shell -->
+    <symbol id="i-powder" viewBox="0 0 40 40">
+      <path d="M14 14 Q14 4 20 2 Q26 4 26 14 Z" fill="#e9a23a" stroke="#24211f" stroke-width="2" stroke-linejoin="round"/>
+      <rect x="13" y="14" width="14" height="19" fill="#d8352a" stroke="#24211f" stroke-width="2"/>
+      <rect x="11" y="32" width="18" height="5" rx="1" fill="#c08a3a" stroke="#24211f" stroke-width="2"/>
+      <rect x="13" y="20" width="14" height="3" fill="#2a1d18"/>
+      <path d="M16 15 V31" stroke="#ff8b6e" stroke-width="1.6" opacity=".8"/>
+    </symbol>
+    <!-- Volts: a blue coil -->
+    <symbol id="i-volts" viewBox="0 0 40 40">
+      <rect x="9" y="6" width="22" height="4" rx="1" fill="#6f767c" stroke="#24211f" stroke-width="2"/>
+      <rect x="9" y="30" width="22" height="4" rx="1" fill="#6f767c" stroke="#24211f" stroke-width="2"/>
+      <rect x="12" y="10" width="16" height="20" fill="#2f7fd6" stroke="#24211f" stroke-width="2"/>
+      <path d="M12 14 H28 M12 18 H28 M12 22 H28 M12 26 H28" stroke="#8fc6ff" stroke-width="1.6"/>
+      <path d="M22 11 L16 21 H21 L18 29 L25 18 H20 Z" fill="#fff2a8" stroke="#24211f" stroke-width="1.2" stroke-linejoin="round"/>
+    </symbol>
+    <!-- Fuel: a yellow jerrycan -->
+    <symbol id="i-fuel" viewBox="0 0 40 40">
+      <path d="M10 8 H24 L31 14 V35 H10 Z" fill="#f0bd27" stroke="#24211f" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M13 4 H22 V9 H13 Z" fill="none" stroke="#24211f" stroke-width="2"/>
+      <path d="M26 8 L30 4 L33 7 L29 11" fill="#6f767c" stroke="#24211f" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M13.5 15 L27.5 31 M27.5 15 L13.5 31" stroke="#b5860f" stroke-width="2.6"/>
+      <path d="M12.5 12 V33" stroke="#fff1b0" stroke-width="1.4" opacity=".8"/>
+    </symbol>
+    <!-- One track tread, for the dash -->
+    <symbol id="i-tread" viewBox="0 0 14 60">
+      <rect x="1" y="1" width="12" height="58" rx="5" fill="currentColor" stroke="#1a1715" stroke-width="2"/>
+      <path d="M2 7h10M2 12h10M2 17h10M2 22h10M2 27h10M2 32h10M2 37h10M2 42h10M2 47h10M2 52h10" stroke="#1a1715" stroke-width="1.6"/>
+    </symbol>
+  </defs>
+</svg>
+
+<section id="t-hud" class="t-screen t-hud" hidden>
+  <!-- full-screen effects -->
+  <div id="t-vignette" class="t-vignette" style="--low:0" aria-hidden="true"></div>
+
+  <div id="t-dmg" class="t-dmg" aria-hidden="true">
+    <div class="t-dmg-w" id="t-dmg-0" style="--a:0deg"><svg viewBox="0 0 200 40"><path d="M20 38 Q100 -6 180 38" /></svg></div>
+    <div class="t-dmg-w" id="t-dmg-1" style="--a:0deg"><svg viewBox="0 0 200 40"><path d="M20 38 Q100 -6 180 38" /></svg></div>
+    <div class="t-dmg-w" id="t-dmg-2" style="--a:0deg"><svg viewBox="0 0 200 40"><path d="M20 38 Q100 -6 180 38" /></svg></div>
+    <div class="t-dmg-w" id="t-dmg-3" style="--a:0deg"><svg viewBox="0 0 200 40"><path d="M20 38 Q100 -6 180 38" /></svg></div>
+  </div>
+
+  <!-- gunsight -->
+  <div id="t-reticle" class="t-reticle" style="--spread:.3;--reload:1" data-ready="1" aria-hidden="true">
+    <svg viewBox="-100 -100 200 200">
+      <g class="t-ret-bloom">
+        <circle r="44" class="t-ret-ring" />
+        <path d="M0 -44 V-56 M44 0 H56 M0 44 V56 M-44 0 H-56" class="t-ret-ticks"/>
+      </g>
+      <circle r="17" class="t-ret-reload-bg"/>
+      <circle r="17" class="t-ret-reload" pathLength="100"/>
+      <path d="M-7 4 L0 -3 L7 4" class="t-ret-chev"/>
+      <circle r="1.8" class="t-ret-dot"/>
+      <g id="t-hit" class="t-hit">
+        <path d="M-11 -11 L-22 -22 M11 -11 L22 -22 M-11 11 L-22 22 M11 11 L22 22"/>
+        <circle r="30" class="t-hit-ring"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- top centre: score and clock -->
+  <div class="t-top" id="t-top">
+    <div class="t-score t-team-a plate"><span class="t-score-name">Rustbacks</span><span class="t-score-n" id="t-score-a">0</span></div>
+    <div class="t-clock plate" id="t-clock">
+      <div class="t-clock-time" id="t-timer">10:00</div>
+      <div class="t-clock-mode" id="t-mode">Team Brawl &middot; The Sink</div>
+    </div>
+    <div class="t-score t-team-b plate"><span class="t-score-n" id="t-score-b">0</span><span class="t-score-name">Dust Saints</span></div>
+  </div>
+
+  <!-- top right: kill feed -->
+  <div id="t-feed" class="t-feed"></div>
+
+  <!-- left: chat -->
+  <div id="t-chat" class="t-chat" data-open="0">
+    <div id="t-chat-log" class="t-chat-log"></div>
+    <div class="t-chat-in"><span class="t-chat-ch">ALL</span><input id="t-chat-input" maxlength="120" spellcheck="false" autocomplete="off" placeholder="Say it on the band&hellip;"></div>
+  </div>
+
+  <!-- bottom centre: radio caller -->
+  <div id="t-radio" class="t-radio" data-on="0">
+    <div class="t-radio-plate plate">
+      <span class="t-radio-tag"><i class="t-led"></i>CALLER</span>
+      <span class="t-radio-squelch" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="t-radio-text" id="t-radio-text"></span>
+    </div>
+  </div>
+
+  <!-- bottom left: the dashboard -->
+  <div class="t-dash plate">
+    <div class="t-gauge t-gauge-hull" id="t-hp" style="--v:1">
+      <svg viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="56" class="t-g-bezel"/>
+        <circle cx="60" cy="60" r="50" class="t-g-face"/>
+        <path d="M20.16 83 A46 46 0 1 1 99.84 83" class="t-g-red" pathLength="100"/>
+        <path d="M20.16 83 A46 46 0 1 1 99.84 83" class="t-g-val" pathLength="100"/>
+        <path d="M15.8 85.5 A51 51 0 1 1 104.2 85.5" class="t-g-ticks" pathLength="100"/>
+        <g class="t-g-needle"><path d="M57.5 62 L60 20 L62.5 62 Z"/><circle cx="60" cy="60" r="7"/><circle cx="60" cy="60" r="2.4" class="t-g-cap"/></g>
+        <text x="60" y="88" class="t-g-num" id="t-hp-num">100</text>
+        <text x="60" y="104" class="t-g-label">HULL</text>
+      </svg>
+    </div>
+    <div class="t-dash-right">
+      <div class="t-armour" id="t-armour" style="--v:1">
+        <div class="t-mini-label">Armour</div>
+        <div class="t-armour-bar"><i></i></div>
+      </div>
+      <div class="t-dash-row">
+        <div class="t-gauge t-gauge-fuel" id="t-boost" style="--v:1">
+          <svg viewBox="0 0 100 64">
+            <path d="M18.8 32 A36 36 0 0 1 81.2 32" class="t-g-fuel-arc" pathLength="100"/>
+            <path d="M15.4 30 A40 40 0 0 1 84.6 30" class="t-g-ticks" pathLength="100"/>
+            <text x="14" y="46" class="t-g-ef">E</text><text x="86" y="46" class="t-g-ef">F</text>
+            <g class="t-g-needle"><path d="M48.5 51 L50 18 L51.5 51 Z"/><circle cx="50" cy="50" r="5"/></g>
+            <text x="50" y="62" class="t-g-label">BOOST</text>
+          </svg>
+        </div>
+        <div class="t-tracks">
+          <div class="t-track" id="t-track-l" data-state="ok"><svg><use href="#i-tread"/></svg><span class="t-track-t" id="t-track-l-t"></span></div>
+          <div class="t-track-hull"><span>L</span><i></i><span>R</span></div>
+          <div class="t-track" id="t-track-r" data-state="ok"><svg><use href="#i-tread"/></svg><span class="t-track-t" id="t-track-r-t"></span></div>
+          <div class="t-mini-label t-tracks-label">Tracks</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- bottom right: scrap -->
+  <div class="t-scrap plate">
+    <div class="t-scrap-row" id="t-scrap-0" data-kind="steel" style="--n:0" data-tier="1"><svg class="t-scrap-ic"><use href="#i-steel"/></svg><span class="t-scrap-name">Steel</span><span class="t-pips"><i></i><i></i><i></i></span><span class="t-tier" id="t-tier-0">I</span><span class="t-scrap-part" id="t-part-0">Flank plates</span></div>
+    <div class="t-scrap-row" id="t-scrap-1" data-kind="powder" style="--n:0" data-tier="1"><svg class="t-scrap-ic"><use href="#i-powder"/></svg><span class="t-scrap-name">Powder</span><span class="t-pips"><i></i><i></i><i></i></span><span class="t-tier" id="t-tier-1">I</span><span class="t-scrap-part" id="t-part-1">Stub gun</span></div>
+    <div class="t-scrap-row" id="t-scrap-2" data-kind="volts" style="--n:0" data-tier="1"><svg class="t-scrap-ic"><use href="#i-volts"/></svg><span class="t-scrap-name">Volts</span><span class="t-pips"><i></i><i></i><i></i></span><span class="t-tier" id="t-tier-2">I</span><span class="t-scrap-part" id="t-part-2">Sensor mast</span></div>
+    <div class="t-scrap-row" id="t-scrap-3" data-kind="fuel" style="--n:0" data-tier="1"><svg class="t-scrap-ic"><use href="#i-fuel"/></svg><span class="t-scrap-name">Fuel</span><span class="t-pips"><i></i><i></i><i></i></span><span class="t-tier" id="t-tier-3">I</span><span class="t-scrap-part" id="t-part-3">Nitro tank</span></div>
+  </div>
+
+  <!-- the branch pick -->
+  <div id="t-branch" class="t-branch" data-on="0" style="--dur:4s">
+    <div class="t-branch-head"><span class="t-hazard"></span><span id="t-branch-title">Powder tier 2 &middot; pick one</span><span class="t-hazard"></span></div>
+    <div class="t-branch-cards" id="t-branch-cards"></div>
+    <div class="t-branch-timer"><i></i></div>
+  </div>
+
+  <!-- Tab scoreboard -->
+  <div id="t-board" class="t-board plate" hidden>
+    <div class="t-panel-head"><span class="t-hazard"></span><h2 id="t-board-title">Scoreboard</h2><span class="t-board-sub" id="t-board-sub"></span></div>
+    <div class="t-board-cols" id="t-board-body"></div>
+  </div>
+
+  <!-- respawn -->
+  <div id="t-respawn" class="t-respawn" hidden>
+    <div class="t-stamp">Wrecked</div>
+    <div class="t-respawn-by" id="t-respawn-by"></div>
+    <div class="t-respawn-count plate">Back on the line in <b id="t-respawn-secs">5</b></div>
+    <div class="t-respawn-note">You keep your first tier in every track.</div>
+  </div>
+
+  <!-- end of match -->
+  <div id="t-end" class="t-end" hidden>
+    <div class="t-end-head">
+      <div class="t-end-kicker">Match over &middot; The Sink</div>
+      <div class="t-end-title" id="t-end-title">Rustbacks take the Sink</div>
+    </div>
+    <div class="t-end-stage" id="t-end-stage" aria-hidden="true"><!-- the 3D line-up renders behind this gap --></div>
+    <div class="t-end-rows" id="t-end-rows"></div>
+    <div class="t-end-foot"><span class="t-note" id="t-end-note">Next vote in 15</span>
+      <button class="t-btn t-btn-small" data-action="leave"><span class="t-btn-label">Leave</span></button>
+      <button class="t-btn t-btn-go t-btn-small" data-action="again"><span class="t-btn-label">Again</span></button></div>
+  </div>
+</section>

@@ -8,9 +8,13 @@ license.workspace = true
 [dependencies]
 tansk-sim = { path = "../tansk-sim" }
 tansk3d-sim = { path = "../tansk3d-sim" }
+arena-core = { path = "../arena-core" }
 axum = { version = "0.8", features = ["ws"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "signal"] }
-tower-http = { version = "0.6", features = ["fs", "compression-gzip", "compression-br", "set-header"] }
+tower-http = { version = "0.6", features = ["fs", "compression-gzip", "compression-br"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 serde.workspace = true
 serde_json = "1"
+
+[dev-dependencies]
+tokio-tungstenite = "0.29"

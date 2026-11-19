@@ -1,0 +1,14 @@
+[package]
+name = "arena-core"
+description = "TANSK 2026 shared simulation: rapier world, tanks, parts, weapons, pickups, Scrap Brawl, bots, snapshots"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+# Versions pinned to match brick-racers (rapier 0.35 speaks glam 0.33).
+[dependencies]
+rapier3d = "0.35.3"
+glam = { version = "0.33.8", features = ["serde"] }
+serde.workspace = true
+bincode.workspace = true
+ron = "0.12.2"

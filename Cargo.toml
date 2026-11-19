@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/tansk-sim", "crates/tansk3d-sim", "crates/tansk-server", "crates/tansk-web"]
+members = ["crates/tansk-sim", "crates/tansk3d-sim", "crates/tansk-server", "crates/tansk-web", "crates/arena-client", "crates/arena-audio", "crates/arena-core"]
 
 [workspace.package]
 edition = "2021"
@@ -19,3 +19,4 @@ codegen-units = 1
 # The WASM client: small and fast.
 [profile.release.package.tansk-web]
 opt-level = "s"
+

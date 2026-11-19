@@ -1,0 +1,24 @@
+[package]
+name = "arena-audio"
+description = "TANSK 2026 audio: procedural synthesis of every sound (no audio files), a real-time tank engine voice, and Web Audio playback in the browser"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+# The synthesis is pure Rust with no dependencies; only the browser playback
+# layer pulls in wasm-bindgen and web-sys.
+[dependencies]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
+version = "0.3"
+features = [
+  "Window", "Performance", "console",
+  "AudioContext", "BaseAudioContext", "AudioContextState", "AudioBuffer",
+  "AudioBufferSourceNode", "AudioScheduledSourceNode", "AudioNode", "AudioParam",
+  "AudioDestinationNode", "GainNode", "StereoPannerNode", "BiquadFilterNode",
+  "BiquadFilterType", "ScriptProcessorNode", "AudioProcessingEvent",
+]

@@ -1,0 +1,220 @@
+<!-- TANSK 2026 menus partial. Inserted into #tansk-ui by src/ui/mod.rs
+     (include_str!). IDs prefixed t- are the contract with the Rust bridge.
+     Buttons carry data-action (reported to the game) or data-goto (a panel
+     switch handled inside the UI). -->
+<svg class="t-sprite" aria-hidden="true" width="0" height="0">
+  <defs>
+    <symbol id="e-wrench" viewBox="0 0 32 32"><path d="M22.5 3.5a7 7 0 0 0-8.3 9.1L3.8 23a2.6 2.6 0 0 0 0 3.7l1.5 1.5a2.6 2.6 0 0 0 3.7 0l10.4-10.4a7 7 0 0 0 9.1-8.3l-4.3 4.3-4.2-1.2-1.2-4.2z" fill="currentColor"/></symbol>
+    <symbol id="e-cog" viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="6" stroke-dasharray="4.2 3.65"/><circle cx="16" cy="16" r="8.4" fill="currentColor"/><circle cx="16" cy="16" r="3.4" fill="var(--hole, #2b2622)"/></symbol>
+    <symbol id="e-skull" viewBox="0 0 32 32"><path d="M16 3C9 3 5 7.6 5 13.6c0 3.6 1.6 6 4 7.4V26h3v-3h2.5v3h3v-3H20v3h3v-5c2.4-1.4 4-3.8 4-7.4C27 7.6 23 3 16 3zm-5 14.5a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm10 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6zM16 18l1.8 3h-3.6z" fill="currentColor"/></symbol>
+    <symbol id="e-flame" viewBox="0 0 32 32"><path d="M16 2c1 5.5 7.5 8 7.5 16A7.5 7.5 0 0 1 16 29a7.5 7.5 0 0 1-7.5-7.5c0-4 2-6.5 3.6-8.4.4 2.4 1.4 4 3 4.6C14.6 12.5 16.4 7.6 16 2z" fill="currentColor"/></symbol>
+    <symbol id="e-star" viewBox="0 0 32 32"><path d="M16 2.5l3.9 8.6 9.4 1-7 6.4 2 9.2L16 23l-8.3 4.7 2-9.2-7-6.4 9.4-1z" fill="currentColor"/></symbol>
+    <symbol id="e-drop" viewBox="0 0 32 32"><path d="M16 2.5S6.5 13.5 6.5 20a9.5 9.5 0 0 0 19 0C25.5 13.5 16 2.5 16 2.5zm-4.5 17.8c0 2.6 1.6 4.5 4 5" fill="currentColor" stroke="var(--hole, #2b2622)" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="e-radio" viewBox="0 0 32 32"><rect x="4" y="11" width="24" height="17" rx="2" fill="currentColor"/><path d="M9 11 23 3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="19.5" r="4.2" fill="var(--hole, #2b2622)"/><rect x="19" y="15" width="6" height="2.2" fill="var(--hole, #2b2622)"/><rect x="19" y="19" width="6" height="2.2" fill="var(--hole, #2b2622)"/><rect x="19" y="23" width="6" height="2.2" fill="var(--hole, #2b2622)"/></symbol>
+  </defs>
+</svg>
+
+<!-- ============================== TITLE ============================== -->
+<section id="t-title" class="t-screen t-title" data-panel="none">
+  <div class="t-title-haze" aria-hidden="true"></div>
+
+  <header class="t-wordmark">
+    <div class="t-logo-wrap">
+      <h1 class="t-logo" data-text="TANSK">TANSK</h1>
+    </div>
+    <div class="t-logo-bar">
+      <span class="t-hazard"></span>
+      <span class="t-year plate">2026</span>
+      <span class="t-hazard"></span>
+    </div>
+    <p class="t-tagline">Build it on the move. <b>Shoot it apart.</b></p>
+  </header>
+
+  <nav class="t-menu" aria-label="Main menu">
+    <button class="t-btn t-btn-play" data-action="play"><span class="t-btn-label">Play</span><span class="t-btn-hint">Quick match</span></button>
+    <button class="t-btn" data-goto="host"><span class="t-btn-label">Host</span><span class="t-btn-hint">Your rules</span></button>
+    <button class="t-btn" data-goto="join"><span class="t-btn-label">Join</span><span class="t-btn-hint">Code or open games</span></button>
+    <button class="t-btn" data-action="practice"><span class="t-btn-label">Practice</span><span class="t-btn-hint">You and the bots</span></button>
+    <button class="t-btn" data-game="raid"><span class="t-btn-label">Raid</span><span class="t-btn-hint">Co-op: hold the outpost</span></button>
+    <button class="t-btn" data-goto="garage"><span class="t-btn-label">Garage</span><span class="t-btn-hint">Chassis &amp; paint</span></button>
+    <button class="t-btn" data-goto="settings"><span class="t-btn-label">Settings</span><span class="t-btn-hint">Ears, eyes, hands</span></button>
+  </nav>
+
+  <aside class="t-crewtag plate">
+    <svg class="t-crewtag-emblem" id="t-crew-emblem"><use href="#e-wrench"/></svg>
+    <div>
+      <div class="t-crewtag-label">Crew</div>
+      <div class="t-crewtag-name" id="t-crew-name">Scrapper</div>
+    </div>
+  </aside>
+
+  <!-- ------------------------------ HOST ------------------------------ -->
+  <div class="t-panel plate" data-for="host">
+    <div class="t-panel-head"><span class="t-hazard"></span><h2>Host a match</h2><button class="t-x" data-goto="none" aria-label="Back">&#x2715;</button></div>
+    <div class="t-panel-body">
+      <div class="t-field">
+        <div class="t-field-label">Mode</div>
+        <div class="t-seg" role="radiogroup">
+          <label><input type="radio" name="mode" value="scrap_brawl" checked><span>Scrap Brawl</span></label>
+          <label><input type="radio" name="mode" value="team_brawl"><span>Team Brawl</span></label>
+          <label><input type="radio" name="mode" value="raider_waves"><span>Raid (co-op)</span></label>
+          <label class="t-locked"><input type="radio" name="mode" value="wellhead" disabled><span>Wellhead</span></label>
+          <label class="t-locked"><input type="radio" name="mode" value="water_run" disabled><span>Water Run</span></label>
+        </div>
+      </div>
+      <div class="t-field">
+        <div class="t-field-label">Map</div>
+        <div class="t-maps" role="radiogroup">
+          <label class="t-map"><input type="radio" name="map" value="the_sink" checked><span class="t-map-card"><b>The Sink</b><i>Dry lake bed, beached ships</i></span></label>
+          <label class="t-map t-locked"><input type="radio" name="map" value="rust_belt" disabled><span class="t-map-card"><b>Rust Belt</b><i>Scrapyard maze</i></span></label>
+          <label class="t-map t-locked"><input type="radio" name="map" value="refinery" disabled><span class="t-map-card"><b>Refinery</b><i>Things that go boom</i></span></label>
+        </div>
+      </div>
+      <div class="t-row2">
+        <label class="t-toggle"><input type="checkbox" id="t-host-bots" checked><span class="t-toggle-sw"></span><span>Bots fill empty seats</span></label>
+        <label class="t-toggle"><input type="checkbox" id="t-host-private"><span class="t-toggle-sw"></span><span>Private (code only)</span></label>
+      </div>
+      <div class="t-field t-code-field">
+        <div class="t-field-label">Crew code</div>
+        <div class="t-code" id="t-host-code">SINK-4821</div>
+        <div class="t-note">Read it out over the radio. Friends punch it into Join.</div>
+      </div>
+    </div>
+    <div class="t-panel-foot">
+      <button class="t-btn t-btn-small" data-goto="none"><span class="t-btn-label">Back</span></button>
+      <button class="t-btn t-btn-go" data-action="host"><span class="t-btn-label">Open the gates</span></button>
+    </div>
+  </div>
+
+  <!-- ------------------------------ JOIN ------------------------------ -->
+  <div class="t-panel plate" data-for="join">
+    <div class="t-panel-head"><span class="t-hazard"></span><h2>Join a crew</h2><button class="t-x" data-goto="none" aria-label="Back">&#x2715;</button></div>
+    <div class="t-panel-body">
+      <div class="t-field">
+        <div class="t-field-label">Crew code</div>
+        <div class="t-joinrow">
+          <input class="t-codein" id="t-join-code" maxlength="9" placeholder="SINK-0000" spellcheck="false" autocomplete="off">
+          <button class="t-btn t-btn-go t-btn-small" data-action="join"><span class="t-btn-label">Join</span></button>
+        </div>
+      </div>
+      <div class="t-field">
+        <div class="t-field-label">Open games <span class="t-note" id="t-games-note">scanning the band&hellip;</span></div>
+        <div class="t-games">
+          <div class="t-games-head"><span>Host</span><span>Mode</span><span>Map</span><span>Crews</span><span>Ping</span></div>
+          <div class="t-games-body" id="t-games-body">
+            <button class="t-game" data-action="join-row" data-code="SINK-1187"><span>Old Mags</span><span>Scrap Brawl</span><span>The Sink</span><span>5/8</span><span>38</span></button>
+            <button class="t-game" data-action="join-row" data-code="SINK-3302"><span>Dustwife</span><span>Team Brawl</span><span>The Sink</span><span>7/8</span><span>52</span></button>
+            <button class="t-game" data-action="join-row" data-code="SINK-9054"><span>Rivet</span><span>Scrap Brawl</span><span>The Sink</span><span>2/8</span><span>91</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="t-panel-foot">
+      <button class="t-btn t-btn-small" data-goto="none"><span class="t-btn-label">Back</span></button>
+      <button class="t-btn t-btn-small" data-action="refresh-games"><span class="t-btn-label">Rescan</span></button>
+    </div>
+  </div>
+
+  <!-- ---------------------------- SETTINGS ---------------------------- -->
+  <div class="t-panel plate" data-for="settings">
+    <div class="t-panel-head"><span class="t-hazard"></span><h2>Settings</h2><button class="t-x" data-goto="none" aria-label="Back">&#x2715;</button></div>
+    <div class="t-panel-body">
+      <div class="t-field">
+        <div class="t-field-label">Name on the hull</div>
+        <input class="t-textin" id="t-set-name" data-setting="name" maxlength="16" value="Scrapper" spellcheck="false" autocomplete="off">
+      </div>
+      <div class="t-sliders">
+        <label class="t-slider"><span>Master</span><input type="range" min="0" max="100" value="80" data-setting="vol_master"><output>80</output></label>
+        <label class="t-slider"><span>Effects</span><input type="range" min="0" max="100" value="90" data-setting="vol_sfx"><output>90</output></label>
+        <label class="t-slider"><span>Music</span><input type="range" min="0" max="100" value="50" data-setting="vol_music"><output>50</output></label>
+        <label class="t-slider"><span>Radio</span><input type="range" min="0" max="100" value="100" data-setting="vol_radio"><output>100</output></label>
+        <label class="t-slider"><span>Mouse</span><input type="range" min="10" max="300" value="100" data-setting="mouse_sens"><output>1.00</output></label>
+      </div>
+      <div class="t-field">
+        <div class="t-field-label">Quality</div>
+        <div class="t-seg" role="radiogroup">
+          <label><input type="radio" name="quality" value="low" data-setting="quality"><span>Low</span></label>
+          <label><input type="radio" name="quality" value="medium" data-setting="quality"><span>Medium</span></label>
+          <label><input type="radio" name="quality" value="high" data-setting="quality" checked><span>High</span></label>
+          <label><input type="radio" name="quality" value="ultra" data-setting="quality"><span>Ultra</span></label>
+        </div>
+      </div>
+    </div>
+    <div class="t-panel-foot">
+      <button class="t-btn t-btn-small" data-goto="none"><span class="t-btn-label">Back</span></button>
+      <button class="t-btn t-btn-go" data-action="settings-apply"><span class="t-btn-label">Bolt it down</span></button>
+    </div>
+  </div>
+
+  <!-- ----------------------------- GARAGE ----------------------------- -->
+  <div class="t-panel t-panel-wide plate" data-for="garage">
+    <div class="t-panel-head"><span class="t-hazard"></span><h2>Garage</h2><button class="t-x" data-goto="none" aria-label="Back">&#x2715;</button></div>
+    <div class="t-panel-body">
+      <div class="t-field">
+        <div class="t-field-label">Chassis</div>
+        <div class="t-chassis" role="radiogroup">
+          <label><input type="radio" name="chassis" value="scout"><span class="t-ch-card"><b>Scout</b><i>Light, quick, thin skin</i>
+            <span class="t-stat" style="--s:.9"><em>Speed</em></span><span class="t-stat" style="--s:.35"><em>Armour</em></span><span class="t-stat" style="--s:.5"><em>Slots</em></span></span></label>
+          <label><input type="radio" name="chassis" value="brawler" checked><span class="t-ch-card"><b>Brawler</b><i>The all-rounder</i>
+            <span class="t-stat" style="--s:.6"><em>Speed</em></span><span class="t-stat" style="--s:.65"><em>Armour</em></span><span class="t-stat" style="--s:.65"><em>Slots</em></span></span></label>
+          <label><input type="radio" name="chassis" value="hauler"><span class="t-ch-card"><b>Hauler</b><i>Slow, carries the most</i>
+            <span class="t-stat" style="--s:.3"><em>Speed</em></span><span class="t-stat" style="--s:.85"><em>Armour</em></span><span class="t-stat" style="--s:1"><em>Slots</em></span></span></label>
+        </div>
+      </div>
+      <div class="t-row2">
+        <div class="t-field">
+          <div class="t-field-label">Paint</div>
+          <div class="t-swatches" role="radiogroup">
+            <label style="--c:#e2581e" title="Rustback oxide"><input type="radio" name="paint" value="#e2581e" checked><span></span></label>
+            <label style="--c:#2fa39b" title="Saint teal"><input type="radio" name="paint" value="#2fa39b"><span></span></label>
+            <label style="--c:#7d8a3a" title="Olive drab"><input type="radio" name="paint" value="#7d8a3a"><span></span></label>
+            <label style="--c:#d9b77a" title="Sand"><input type="radio" name="paint" value="#d9b77a"><span></span></label>
+            <label style="--c:#c8322b" title="Container red"><input type="radio" name="paint" value="#c8322b"><span></span></label>
+            <label style="--c:#2f6fb5" title="Tarp blue"><input type="radio" name="paint" value="#2f6fb5"><span></span></label>
+            <label style="--c:#efb92a" title="Silo yellow"><input type="radio" name="paint" value="#efb92a"><span></span></label>
+            <label class="t-swatch-custom" title="Mix your own"><input type="color" id="t-paint-custom" value="#9a5ad0"><span>+</span></label>
+          </div>
+        </div>
+        <div class="t-field">
+          <div class="t-field-label">Crew emblem</div>
+          <div class="t-emblems" role="radiogroup">
+            <label><input type="radio" name="emblem" value="wrench" checked><svg><use href="#e-wrench"/></svg></label>
+            <label><input type="radio" name="emblem" value="cog"><svg><use href="#e-cog"/></svg></label>
+            <label><input type="radio" name="emblem" value="skull"><svg><use href="#e-skull"/></svg></label>
+            <label><input type="radio" name="emblem" value="flame"><svg><use href="#e-flame"/></svg></label>
+            <label><input type="radio" name="emblem" value="star"><svg><use href="#e-star"/></svg></label>
+            <label><input type="radio" name="emblem" value="drop"><svg><use href="#e-drop"/></svg></label>
+          </div>
+        </div>
+      </div>
+      <div class="t-note">Hood ornaments and horns: the welder's still on lunch.</div>
+    </div>
+    <div class="t-panel-foot">
+      <button class="t-btn t-btn-small" data-goto="none"><span class="t-btn-label">Back</span></button>
+      <button class="t-btn t-btn-go" data-action="garage-save"><span class="t-btn-label">Roll it out</span></button>
+    </div>
+  </div>
+
+  <footer class="t-ticker">
+    <span class="t-ticker-ch"><i class="t-led"></i><svg><use href="#e-radio"/></svg>CH&nbsp;9</span>
+    <div class="t-ticker-track"><div class="t-ticker-text" id="t-ticker-text">Caller here. Wind's up past the old pier. &nbsp;&#9670;&nbsp; Two Saints kicking dust off Highway 9, heading for the wellhead. &nbsp;&#9670;&nbsp; Bring your scrap home, or be scrap. &nbsp;&#9670;&nbsp; Somebody's welded a mast to a Hauler again. Shoot the mast. &nbsp;&#9670;&nbsp; Water's at forty a can. Fuel's at your life. &nbsp;&#9670;&nbsp;</div></div>
+  </footer>
+</section>
+
+<!-- ========================= LOADING / CONNECTING ========================= -->
+<section id="t-loading" class="t-screen t-loading" hidden>
+  <div class="t-loading-card plate">
+    <svg class="t-loading-gauge" viewBox="0 0 120 120" aria-hidden="true">
+      <circle cx="60" cy="60" r="52" class="t-lg-face"/>
+      <path d="M22 85 A44 44 0 1 1 98 85" class="t-lg-arc" pathLength="100"/>
+      <g class="t-lg-needle"><path d="M58 60 L60 22 L62 60 Z"/><circle cx="60" cy="60" r="6"/></g>
+    </svg>
+    <div class="t-loading-text">
+      <div class="t-loading-title" id="t-loading-title">Connecting</div>
+      <div class="t-loading-sub" id="t-loading-sub">Tuning the radio to SINK-4821&hellip;</div>
+      <div class="t-progress"><i id="t-loading-bar"></i></div>
+    </div>
+    <button class="t-btn t-btn-small" data-action="cancel"><span class="t-btn-label">Cancel</span></button>
+  </div>
+  <div class="t-loading-tip" id="t-loading-tip">Tip: side and rear plates are thinner. Flanking pays.</div>
+</section>
