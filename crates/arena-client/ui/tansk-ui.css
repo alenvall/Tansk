@@ -990,3 +990,129 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
   .t-howto-card p { font-size: 1rem; }
   .t-howto-btn { top: 6.4rem; }
 }
+
+/* ------------------------------------------------------------ party lobby */
+/* The yard: the world keeps running on the left (crews drive about), the
+   lobby plate bolted to the right, the vote slammed over the left. */
+.t-hud[data-lobby="1"] > :not(#t-lobby):not(#t-chat):not(#t-feed):not(#t-radio):not(#t-hint) { visibility: hidden; }
+.t-hud[data-lobby="1"] .t-chat { bottom: 4.6rem; }
+.t-lobby { position: absolute; inset: 0; pointer-events: none; }
+.t-lobby-card {
+  position: absolute; right: 1.5rem; top: 1.5rem; bottom: 1.5rem; width: 40rem;
+  display: flex; flex-direction: column; pointer-events: auto;
+  animation: t-slam .32s cubic-bezier(.2, 1.6, .4, 1);
+  transition: opacity .2s, transform .2s;
+}
+.t-lobby[data-drive="1"] .t-lobby-card { opacity: .35; transform: translateX(1rem); pointer-events: none; }
+.t-lobby-phase {
+  padding: .15rem .6rem 0; font-size: .95rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink); background: var(--fuel); border-radius: 2px;
+}
+.t-lobby-body { flex: 1; min-height: 0; overflow: auto; padding: .9rem 1.4rem; display: flex; flex-direction: column; gap: .9rem; }
+.t-lobby-invite { display: flex; gap: 1rem; align-items: flex-end; }
+.t-lobby-code-wrap { display: flex; flex-direction: column; gap: .35rem; }
+.t-lobby-code-wrap .t-code { font-size: 2.6rem; padding: .35rem 1rem .25rem; }
+.t-lobby-copy { flex: 1; flex-direction: column; gap: .25rem; padding: .8rem 1.4rem .75rem 1.6rem; }
+.t-lobby-copy .t-btn-label { font-size: 1.6rem; }
+.t-lobby-copy:hover, .t-lobby-copy:active { transform: translateY(-.1rem); }
+.t-lobby[data-copied="1"] .t-lobby-copy { filter: hue-rotate(60deg) saturate(.8) brightness(1.1); }
+.t-lobby-link {
+  margin-top: -.4rem; font-family: 'Special Elite', monospace; font-size: .95rem; color: var(--cream-dim);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis; user-select: text; pointer-events: auto;
+}
+
+.t-lobby-crew { display: flex; flex-direction: column; gap: .3rem; }
+.t-crew {
+  display: grid; grid-template-columns: 1.4rem 1fr auto auto 2.2rem; align-items: center; gap: .7rem;
+  padding: .4rem .6rem .35rem .5rem; border-radius: .2rem;
+  background: rgba(0,0,0,.28); box-shadow: inset 0 1px 3px rgba(0,0,0,.5), 0 1px 0 rgba(255,236,206,.07);
+  animation: t-card .35s cubic-bezier(.2, 1.5, .4, 1) backwards;
+}
+.t-crew[data-you="1"] { box-shadow: inset 0 0 0 1px rgba(242, 194, 48, .55), inset 0 1px 3px rgba(0,0,0,.5); }
+.t-crew[data-away="1"] { opacity: .45; }
+.t-crew-paint { width: 1.3rem; height: 1.3rem; border-radius: .15rem; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35); }
+.t-crew-name { font-size: 1.3rem; font-weight: 800; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.t-crew-name small { margin-left: .5rem; font-size: .85rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--cream-dim); }
+.t-crew-tag {
+  padding: .08rem .45rem 0; font-size: .82rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  border-radius: 2px; color: var(--ink); background: var(--cream-dim);
+}
+.t-crew-tag[data-k="host"] { background: var(--fuel); }
+.t-crew-tag[data-k="a"] { background: var(--rust); color: #2a160a; }
+.t-crew-tag[data-k="b"] { background: var(--teal); color: #0b2422; }
+.t-crew-tag[data-k="none"] { visibility: hidden; }
+.t-crew-chassis { font-size: .95rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--cream-dim); }
+.t-crew-ready {
+  justify-self: end; width: 2rem; height: 2rem; border-radius: .2rem; display: grid; place-items: center;
+  font-family: 'Black Ops One', sans-serif; font-size: 1.3rem; line-height: 1; color: rgba(246, 234, 210, .25);
+  background: rgba(0,0,0,.35); box-shadow: inset 0 1px 3px rgba(0,0,0,.6);
+}
+.t-crew-ready[data-on="1"] { color: #10260e; background: var(--grain), linear-gradient(180deg, #a6d66a, #5f9a2e); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 .12rem 0 #1c140e; animation: t-stamp .2s ease-out; }
+.t-crew-empty { font-size: 1.05rem; color: var(--cream-dim); padding: .2rem .5rem; font-style: italic; }
+
+.t-lobby-teams { display: none; }
+.t-lobby[data-team="1"] .t-lobby-teams { display: flex; }
+.t-lobby-teamseg label[data-side="a"] input:checked + span { background: var(--grain), linear-gradient(180deg, #f07a3e, #c94c13); }
+.t-lobby-teamseg label[data-side="b"] input:checked + span { color: #0b2422; background: var(--grain), linear-gradient(180deg, #5fd6cb, #23807a); }
+
+.t-lobby-settings { display: flex; flex-direction: column; gap: .55rem; padding: .7rem .8rem .8rem; border-radius: .25rem; background: rgba(0,0,0,.18); box-shadow: inset 0 1px 3px rgba(0,0,0,.45); }
+.t-lobby-sublabel { font-size: .9rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--cream-dim); min-width: 5.5rem; }
+.t-lobby-row { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; }
+.t-seg-sm span { padding: .32rem .7rem .28rem; font-size: 1rem; }
+.t-lobby[data-host="0"] .t-lobby-settings label { pointer-events: none; cursor: default; }
+.t-lobby[data-host="0"] .t-lobby-settings .t-seg input:not(:checked) + span { opacity: .45; }
+.t-lobby[data-host="0"] .t-lobby-settings .t-toggle { opacity: .8; }
+
+.t-lobby-foot { align-items: center; }
+.t-lobby-status { flex: 1; font-size: 1.1rem; }
+.t-lobby-ready .t-btn-label::before { content: ""; display: inline-block; width: .9rem; height: .9rem; margin-right: .55rem; vertical-align: .05rem; border-radius: .12rem; background: rgba(0,0,0,.45); box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
+.t-lobby[data-ready="1"] .t-lobby-ready .t-btn-label::before { background: linear-gradient(180deg, #a6d66a, #5f9a2e); box-shadow: 0 0 .4rem rgba(166, 214, 106, .8); }
+.t-lobby[data-host="1"] .t-lobby-ready { display: none; }
+.t-lobby[data-host="0"] .t-lobby-start { display: none; }
+.t-lobby-start { width: auto; padding-left: 2rem; padding-right: 2.4rem; }
+.t-lobby-start[data-on="0"] { filter: grayscale(.85) brightness(.7); cursor: not-allowed; }
+.t-lobby-start[data-on="0"]:hover { transform: none; animation: none; }
+
+.t-lobby-help {
+  position: absolute; left: 1.5rem; bottom: 1.5rem; padding: .45rem 1.2rem .4rem;
+  font-size: 1.05rem; font-weight: 600; color: var(--cream-dim);
+}
+.t-lobby[data-drive="1"] .t-lobby-help { opacity: .5; }
+
+/* the vote: three cards slammed over the yard */
+.t-vote {
+  position: absolute; left: 2rem; right: 44rem; top: 3rem;
+  display: flex; flex-direction: column; align-items: center; gap: 1rem; pointer-events: auto;
+  animation: t-slam .35s cubic-bezier(.2, 1.6, .4, 1);
+}
+.t-vote-head { display: flex; align-items: center; gap: 1rem; width: min(100%, 52rem); }
+.t-vote-title { font-family: 'Black Ops One', sans-serif; font-size: 2.6rem; letter-spacing: .05em; text-transform: uppercase; text-shadow: 0 .2rem 0 #2a1407, 0 .3rem 1rem rgba(0,0,0,.5); white-space: nowrap; }
+.t-vote-secs {
+  min-width: 3.4rem; padding: .2rem .5rem 0; text-align: center;
+  font-family: 'Black Ops One', sans-serif; font-size: 2rem; color: var(--ink);
+  background: var(--grain), linear-gradient(180deg, #f3e4c3, #d8c49c); border-radius: .2rem; box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), 0 .15rem 0 #1c140e;
+}
+.t-vote-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; width: min(100%, 52rem); }
+.t-vote-card {
+  position: relative; display: flex; flex-direction: column; justify-content: flex-end; gap: .2rem; min-height: 12rem; padding: .9rem 1rem;
+  text-align: left; border-radius: .3rem; overflow: hidden; pointer-events: auto;
+  background: linear-gradient(180deg, rgba(20,14,10,0) 25%, rgba(20,14,10,.85)), linear-gradient(180deg, #7fa9cf 0%, #e9d2a6 45%, #d9a66a 46%, #c98f52 100%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.5), 0 .25rem 0 #1c140e, 0 .6rem 1.2rem rgba(40,22,8,.4);
+  transition: transform .12s cubic-bezier(.3, 1.8, .5, 1);
+  animation: t-card .45s cubic-bezier(.2, 1.5, .4, 1) backwards;
+}
+.t-vote-card:nth-child(2) { animation-delay: .07s } .t-vote-card:nth-child(3) { animation-delay: .14s }
+.t-vote-card[data-map="refinery"] { background: linear-gradient(180deg, rgba(20,14,10,0) 25%, rgba(20,14,10,.85)), linear-gradient(180deg, #f0c48a 0%, #f4dfb8 42%, #b9b1a2 43%, #8a8276 70%, #6b5a4a 100%); }
+.t-vote-card[data-map="rustbelt"] { background: linear-gradient(180deg, rgba(20,14,10,0) 25%, rgba(20,14,10,.85)), linear-gradient(180deg, #9fb4c2 0%, #c8a27a 45%, #8b5a3a 46%, #6b4a35 100%); }
+.t-vote-card:hover { transform: translateY(-.3rem) rotate(-.6deg); }
+.t-vote-card[data-mine="1"] { box-shadow: inset 0 0 0 .25rem var(--fuel), 0 .25rem 0 #1c140e, 0 0 1.4rem rgba(242, 194, 48, .45); }
+.t-vote-card[data-lead="1"]::before {
+  content: "Leading"; position: absolute; top: .7rem; right: .7rem; padding: .08rem .45rem 0;
+  font-size: .82rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); background: var(--fuel); border-radius: 2px;
+}
+.t-vote-mode { font-size: 1rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--fuel); text-shadow: 0 1px 0 #000; }
+.t-vote-map { font-family: 'Black Ops One', sans-serif; font-size: 1.7rem; line-height: 1.05; letter-spacing: .03em; text-transform: uppercase; text-shadow: 0 2px 0 #000; }
+.t-vote-again { font-size: .9rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--cream-dim); }
+.t-vote-pips { display: flex; gap: .3rem; min-height: 1rem; margin-top: .3rem; }
+.t-vote-pips i { width: 1rem; height: 1rem; border-radius: 50%; background: var(--rivet); background-color: var(--fuel); box-shadow: 0 1px 0 rgba(0,0,0,.6); animation: t-stamp .2s ease-out; }
+.t-vote-note { font-size: 1.05rem; color: var(--cream); text-shadow: 0 1px 3px #000; }

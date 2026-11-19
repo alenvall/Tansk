@@ -67,7 +67,7 @@ impl FakeServer {
                     Self::send(link, &ServerMsg::Welcome { code: "TEST".into(), public: false, you, seed: 5, token: 1, map: arena_core::MapId::Sink });
                 }
                 ClientMsg::Input { seq, input } => self.queue.push_back((seq, input)),
-                ClientMsg::Chat(_) => {}
+                ClientMsg::Chat(_) | ClientMsg::Lobby(_) => {}
             }
         }
         let Some(me) = self.me else { return };

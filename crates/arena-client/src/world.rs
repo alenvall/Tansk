@@ -894,6 +894,7 @@ impl WorldRenderer {
             instances.push(Instance { params: Vec4::new(0.0, 0.0, 0.0, 1.0), ..Instance::new(turret, turret_pose) });
         }
 
+        self.fx.poses.clear();
         for t in &world.tanks {
             if !t.alive {
                 continue;
@@ -918,12 +919,22 @@ impl WorldRenderer {
                     VehicleKind::Buggy => (tank::buggy_mesh, "buggy"),
                     VehicleKind::Technical => (tank::technical_mesh, "technical"),
                     VehicleKind::LandShip => (crate::ships::land_ship, "landship"),
-                    VehicleKind::FuelTanker => (crate::ships::fuel_tanker, "tanker"),
+                    VehicleKind::FuelTanker => (crate::ships::tanker_cab, "tankercab"),
                     _ => (tank::war_rig_mesh, "warrig"),
                 };
                 let id = lib.get(r, &format!("{key}:{col:x}"), || hull_mesh(col));
-                instances.push(Instance::new(id, hull));
-                let turret = hull * Mat4::from_rotation_translation(Quat::from_rotation_y(t.turret_yaw), pivot);
+                // Cartoon juice: each kind bounces and sways its own way.
+                let comps = vehicle.map(|v| v.2.clone()).unwrap_or_default();
+                let mean_comp = comps.iter().sum::<f32>() / comps.len().max(1) as f32;
+                anim.juice.update(t, kind, mean_comp, dt);
+                let body = anim.juice.hull(hull);
+                instances.push(Instance::new(id, body));
+                if kind == VehicleKind::FuelTanker {
+                    let trailer = lib.get(r, "tanker:trailer", crate::ships::tanker_trailer);
+                    instances.push(Instance::new(trailer, anim.juice.trailer(body, crate::ships::TRAILER_ROLL_Y)));
+                }
+                let turret = body * Mat4::from_rotation_translation(Quat::from_rotation_y(t.turret_yaw), pivot);
+                self.fx.poses.insert(t.player, crate::anim::Pose { body, gun: turret, muzzle: turret.transform_point3(Vec3::X), muzzle_dir: turret.transform_vector3(Vec3::X).normalize_or(Vec3::X) });
                 match kind {
                     VehicleKind::Buggy => {
                         let id = lib.get(r, "buggy:mg", tank::buggy_turret);
@@ -939,7 +950,6 @@ impl WorldRenderer {
                 let wheel = lib.get(r, &format!("truckwheel:{radius:.2}"), || tank::truck_wheel(radius));
                 let n = chassis.wheels_per_side.max(1);
                 let ray_len = chassis.suspension_travel + chassis.wheel_radius;
-                let comps = vehicle.map(|v| v.2.clone()).unwrap_or_default();
                 // The Land-Ship rolls on its track modules, not wheels.
                 let wheels = if kind == VehicleKind::LandShip { 0 } else { 2 * n };
                 for i in 0..wheels {
@@ -962,26 +972,27 @@ impl WorldRenderer {
                         let rest = if p == PartKind::ShipGunAft { std::f32::consts::PI } else { 0.0 };
                         let (yaw, pitch) = world.turrets.iter().find(|x| x.0 == t.player && x.1 == p).map_or((rest, 0.0), |x| (x.2, x.3));
                         let house = lib.get(r, &format!("shipgun:{col:x}"), || crate::ships::ship_gun_house(col));
-                        let tf = hull * Mat4::from_rotation_translation(Quat::from_rotation_y(yaw), ring);
+                        let tf = body * Mat4::from_rotation_translation(Quat::from_rotation_y(yaw), ring);
                         instances.push(Instance::new(house, tf));
                         let barrel = lib.get(r, "shipgun:barrel", crate::ships::ship_gun_barrel);
-                        instances.push(Instance::new(barrel, tf * Mat4::from_rotation_translation(Quat::from_rotation_z(pitch), crate::ships::SHIP_TRUNNION)));
+                        let recoil = Mat4::from_translation(Vec3::X * -anim.juice.deck_recoil(p));
+                        instances.push(Instance::new(barrel, tf * Mat4::from_rotation_translation(Quat::from_rotation_z(pitch), crate::ships::SHIP_TRUNNION) * recoil));
                         continue;
                     }
                     if p == PartKind::ShipHangar {
                         let frame_id = lib.get(r, "shiphangar", crate::ships::ship_hangar_frame);
-                        instances.push(Instance::new(frame_id, hull));
+                        instances.push(Instance::new(frame_id, body));
                         let open = self.ramps.get(&t.player).map_or(0.0, |s| ramp_open(world.time - s));
                         let ramp = lib.get(r, "shipramp", crate::ships::ship_ramp);
-                        instances.push(Instance::new(ramp, hull * Mat4::from_rotation_translation(Quat::from_rotation_z(open * 1.25), crate::ships::SHIP_RAMP_HINGE)));
+                        instances.push(Instance::new(ramp, body * Mat4::from_rotation_translation(Quat::from_rotation_z(open * 1.25), crate::ships::SHIP_RAMP_HINGE)));
                         continue;
                     }
                     let id = lib.get(r, &format!("part:{p:?}:{col:x}"), || parts::part_mesh(p, col));
                     let frame = match arena_core::part_def(p).frame {
-                        arena_core::Frame::Hull => hull,
+                        arena_core::Frame::Hull => body,
                         _ => turret,
                     };
-                    instances.push(Instance::new(id, frame));
+                    instances.push(Instance::new(id, anim.juice.part(p, frame)));
                 }
                 let size = Vec3::from(chassis.hull_half);
                 occluders.push(hull.transform_point3(Vec3::new(0.0, -size.y, 0.0)).extend(size.x.max(size.z)));
@@ -992,10 +1003,13 @@ impl WorldRenderer {
             let tint = crate::meshkit::srgb_hex(col).extend(1.0);
             let class = t.class;
             // Cartoon juice: the body rocks over its raw (wheel) frame.
-            anim.juice.update(t, dt);
+            anim.juice.update(t, VehicleKind::Tank, t.wheels.iter().sum::<f32>() / t.wheels.len() as f32, dt);
             let body = anim.juice.hull(hull);
             let turret_xf = anim.juice.turret(body, t.turret_yaw);
             let gun_xf = anim.juice.gun(turret_xf, t.gun_pitch);
+            // The effects spawn muzzle flashes and exhaust from these.
+            let muzzle = gun_xf.transform_point3(Vec3::X * parts::muzzle_x(t.gun));
+            self.fx.poses.insert(t.player, crate::anim::Pose { body, gun: gun_xf, muzzle, muzzle_dir: gun_xf.transform_vector3(Vec3::X).normalize_or(Vec3::X) });
             let hull_id = lib.get(r, &format!("hull:{class:?}"), || tank::hull_mesh_class(class, TINTED));
             instances.push(Instance::tinted(hull_id, body, params, tint));
             let dmg = Vec4::new(0.0, 0.0, 0.0, damage);

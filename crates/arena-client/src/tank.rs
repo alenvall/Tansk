@@ -791,6 +791,111 @@ mod shots {
         }
     }
 
+    /// Frame strips of the other machines' springs (`docs/shots/juice-*.png`):
+    /// a buggy jumping into a turn, the fuel tanker's trailer swaying as it
+    /// swings into a bend, the Land-Ship heeling on a broadside with its
+    /// deck guns recoiling.
+    #[test]
+    #[ignore]
+    fn shots_juice_vehicles() {
+        use arena_core::parts::VehicleKind;
+        use arena_core::{Event, GunKind, Weapon};
+        let mut wr = renderer();
+        wr.begin_scene();
+        let floor = wr.renderer.add_mesh(&crate::terrain::flat(120.0));
+        wr.set_statics(vec![Instance::new(floor, Mat4::IDENTITY)]);
+        let tuning = arena_core::tuning::Tuning::default();
+        let dt = 1.0 / 30.0;
+        let tile = (480u32, 270u32);
+        // (name, kind, camera eye, target, frames)
+        let runs: [(&str, VehicleKind, Vec3, Vec3, &[u32]); 3] = [
+            ("juice-buggy", VehicleKind::Buggy, Vec3::new(0.0, 6.0, 15.0), Vec3::new(0.0, 0.8, 0.0), &[2, 9, 11, 13, 15, 18, 22, 28]),
+            ("juice-tanker", VehicleKind::FuelTanker, Vec3::new(-2.0, 7.0, 20.0), Vec3::new(0.0, 1.0, 0.0), &[2, 8, 12, 16, 20, 25, 30, 38]),
+            ("juice-ship", VehicleKind::LandShip, Vec3::new(-28.0, 12.0, 38.0), Vec3::new(0.0, 2.5, 0.0), &[1, 3, 6, 10, 15, 21, 28, 38]),
+        ];
+        for (i, (name, kind, eye, target, frames)) in runs.into_iter().enumerate() {
+            let c = arena_core::tank::chassis_of(&tuning, kind);
+            let ray_len = c.suspension_travel + c.wheel_radius;
+            let rest = ray_len * 0.7 - c.ray_origin_y;
+            let mut t = crate::world::parked_tank(30 + i as arena_core::PlayerId, 0xc8322a, Vec3::ZERO, 0.0, PartKind::StubGun, vec![]);
+            t.colour = if kind == VehicleKind::FuelTanker { 0x2f6ad0 } else { 0xc8322a };
+            t.pos = Vec3::new(0.0, rest, 0.0);
+            t.throttle = 0.6;
+            if kind == VehicleKind::LandShip {
+                t.parts = arena_core::parts::SHIP_MODULES.to_vec();
+            }
+            let mut world = RenderWorld::default();
+            world.camera = Some(crate::camera::Camera::look(eye, target, 42.0));
+            let (mut yaw, mut vy, mut x, mut z) = (0.0f32, 0.0f32, -6.0f32, 0.0f32);
+            if kind == VehicleKind::Buggy {
+                t.pos.y += 2.0;
+            }
+            let mut strip = image::RgbaImage::new(tile.0 * 4, tile.1 * 2);
+            let mut shot = 0;
+            for f in 0..=*frames.last().unwrap() {
+                world.dt = dt;
+                world.time += dt;
+                let mut comp = ray_len * 0.3;
+                match kind {
+                    VehicleKind::Buggy => {
+                        // Rolling forward off a ledge, then a hard left turn.
+                        let speed = 9.0;
+                        if f > 10 {
+                            yaw += 1.6 * dt;
+                        }
+                        x += yaw.cos() * speed * dt;
+                        z -= yaw.sin() * speed * dt;
+                        vy -= 9.8 * dt;
+                        t.pos.y += vy * dt;
+                        if t.pos.y <= rest {
+                            t.pos.y = rest;
+                            vy = 0.0;
+                        } else {
+                            comp = 0.0;
+                        }
+                        t.speed = speed;
+                    }
+                    VehicleKind::FuelTanker => {
+                        // Straight, then swinging hard into a bend.
+                        let speed = 8.0;
+                        if f > 6 {
+                            yaw += 0.9 * dt;
+                        }
+                        x += yaw.cos() * speed * dt;
+                        z -= yaw.sin() * speed * dt;
+                        t.speed = speed;
+                    }
+                    _ => {
+                        x = 0.0;
+                        if f == 2 {
+                            // Both deck guns fire to starboard.
+                            for g in arena_core::parts::SHIP_GUNS {
+                                let pos = t.hull_transform().transform_point3(g.1 + Vec3::new(0.0, 0.3, 6.0));
+                                wr.event(&Event::Fired { player: t.player, weapon: Weapon::Gun(GunKind::DeckGun), pos, dir: Vec3::Z }, Vec3::ZERO);
+                            }
+                        }
+                    }
+                }
+                if kind != VehicleKind::LandShip {
+                    t.pos.x = x;
+                    t.pos.z = z;
+                    t.rot = Quat::from_rotation_y(yaw);
+                }
+                let n = c.wheels_per_side.max(1);
+                world.vehicles = vec![(t.player, kind, vec![comp; 2 * n])];
+                world.turrets = arena_core::parts::SHIP_GUNS.iter().map(|g| (t.player, g.0, std::f32::consts::FRAC_PI_2 * -1.0, 0.1)).collect();
+                world.tanks = vec![t.clone()];
+                let img = capture(&mut wr, &world);
+                if frames.contains(&f) {
+                    let small = image::imageops::resize(&img, tile.0, tile.1, image::imageops::FilterType::Triangle);
+                    image::imageops::replace(&mut strip, &small, ((shot % 4) * tile.0) as i64, ((shot / 4) * tile.1) as i64);
+                    shot += 1;
+                }
+            }
+            strip.save(shot_path(name)).expect("save");
+        }
+    }
+
     /// A light vehicle on its truck wheels, as one mesh in its hull frame
     /// standing on the ground (wheels at rest).
     fn whole_vehicle(kind: arena_core::VehicleKind, mut hull: MeshBuilder, turret: Option<MeshBuilder>) -> MeshBuilder {

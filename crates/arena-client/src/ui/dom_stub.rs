@@ -25,6 +25,7 @@ impl Dom {
     pub fn set_value(&mut self, _id: &str, _value: &str) {}
     pub fn set_range(&mut self, _setting: &str, _value: &str, _shown: &str) {}
     pub fn check(&mut self, _selector: &str) {}
+    pub fn set_checked(&mut self, _selector: &str, _on: bool) {}
     pub fn set_hud_visible(&mut self, _visible: bool) {}
     pub fn set_branch(&mut self, _count: usize) {}
     pub fn chat_open(&self) -> bool {

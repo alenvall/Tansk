@@ -234,4 +234,96 @@
       <button class="t-btn t-btn-small" data-action="leave"><span class="t-btn-label">Leave</span></button>
       <button class="t-btn t-btn-go t-btn-small" data-action="again"><span class="t-btn-label">Again</span></button></div>
   </div>
+  <!-- party lobby: the crews warm up in the yard; the host's rules, ready ticks, the map vote -->
+  <div id="t-lobby" class="t-lobby" data-host="0" data-team="0" data-ready="0" data-drive="0" hidden>
+    <div class="t-lobby-card plate">
+      <div class="t-panel-head"><span class="t-hazard"></span><h2>Crew yard</h2><span class="t-lobby-phase" id="t-lobby-phase">Warming up</span></div>
+      <div class="t-lobby-body">
+        <div class="t-lobby-invite">
+          <div class="t-lobby-code-wrap">
+            <div class="t-field-label">Room code</div>
+            <div class="t-code" id="t-lobby-code">----</div>
+          </div>
+          <button class="t-btn t-btn-go t-lobby-copy" data-action="copy-invite"><span class="t-btn-label" id="t-lobby-copy">Copy invite link</span><span class="t-btn-hint">Friends click it, they're in</span></button>
+        </div>
+        <div class="t-lobby-link" id="t-lobby-link"></div>
+
+        <div class="t-field">
+          <div class="t-field-label">Crews <span class="t-note" id="t-lobby-count">1 / 8</span></div>
+          <div class="t-lobby-crew" id="t-lobby-crew"></div>
+        </div>
+
+        <div class="t-field t-lobby-teams">
+          <div class="t-field-label">Your side</div>
+          <div class="t-seg t-lobby-teamseg" role="radiogroup">
+            <label data-side="a"><input type="radio" name="lteam" value="a"><span>Rustbacks</span></label>
+            <label><input type="radio" name="lteam" value="auto" checked><span>Auto-balance</span></label>
+            <label data-side="b"><input type="radio" name="lteam" value="b"><span>Dust Saints</span></label>
+          </div>
+        </div>
+
+        <div class="t-lobby-settings">
+          <div class="t-field-label">The host's rules <span class="t-note" id="t-lobby-hostnote">Ann calls it</span></div>
+          <div class="t-field">
+            <div class="t-lobby-sublabel">Mode</div>
+            <div class="t-seg t-seg-sm" role="radiogroup">
+              <label><input type="radio" name="lmode" value="scrap_brawl" checked><span>Scrap Brawl</span></label>
+              <label><input type="radio" name="lmode" value="team_brawl"><span>Team Brawl</span></label>
+              <label><input type="radio" name="lmode" value="raider_waves"><span>Raid</span></label>
+              <label><input type="radio" name="lmode" value="convoy"><span>Convoy</span></label>
+              <label><input type="radio" name="lmode" value="wellhead"><span>Wellhead</span></label>
+              <label><input type="radio" name="lmode" value="last_crew"><span>Last Crew</span></label>
+            </div>
+          </div>
+          <div class="t-field">
+            <div class="t-lobby-sublabel">Map</div>
+            <div class="t-seg t-seg-sm" role="radiogroup">
+              <label><input type="radio" name="lmap" value="sink" checked><span>The Sink</span></label>
+              <label><input type="radio" name="lmap" value="refinery"><span>The Refinery</span></label>
+              <label><input type="radio" name="lmap" value="rustbelt"><span>The Rust Belt</span></label>
+            </div>
+          </div>
+          <div class="t-lobby-row">
+            <label class="t-toggle"><input type="checkbox" id="t-lobby-bots" checked><span class="t-toggle-sw"></span><span>Bots</span></label>
+            <div class="t-seg t-seg-sm" role="radiogroup">
+              <label><input type="radio" name="lskill" value="easy"><span>Easy</span></label>
+              <label><input type="radio" name="lskill" value="normal" checked><span>Normal</span></label>
+              <label><input type="radio" name="lskill" value="hard"><span>Hard</span></label>
+            </div>
+          </div>
+          <div class="t-lobby-row">
+            <div class="t-lobby-sublabel">Length</div>
+            <div class="t-seg t-seg-sm" role="radiogroup">
+              <label><input type="radio" name="llen" value="180"><span>3 min</span></label>
+              <label><input type="radio" name="llen" value="300"><span>5 min</span></label>
+              <label><input type="radio" name="llen" value="420" checked><span>7 min</span></label>
+              <label><input type="radio" name="llen" value="600"><span>10 min</span></label>
+              <label id="t-lobby-len-custom" hidden><input type="radio" name="llen" value="custom" id="t-lobby-len-custom-in"><span id="t-lobby-len-custom-txt">0:30</span></label>
+            </div>
+          </div>
+          <div class="t-lobby-row">
+            <div class="t-lobby-sublabel">Next-up vote</div>
+            <div class="t-seg t-seg-sm" role="radiogroup">
+              <label><input type="radio" name="lvote" value="maps" checked><span>Maps</span></label>
+              <label><input type="radio" name="lvote" value="mixed"><span>Modes + maps</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="t-panel-foot t-lobby-foot">
+        <span class="t-note t-lobby-status" id="t-lobby-status">Waiting for crews</span>
+        <button class="t-btn t-btn-small" data-action="leave"><span class="t-btn-label">Leave</span></button>
+        <button class="t-btn t-btn-small t-lobby-ready" data-action="lobby-ready"><span class="t-btn-label" id="t-lobby-ready">Ready</span></button>
+        <button class="t-btn t-btn-go t-lobby-start" id="t-lobby-start" data-action="lobby-start" data-on="0"><span class="t-btn-label" id="t-lobby-start-label">Start</span></button>
+      </div>
+    </div>
+
+    <div class="t-lobby-help plate"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive about &middot; click the ground to take the wheel &middot; <kbd>Esc</kbd> back to the yard &middot; <kbd>Enter</kbd> talk</div>
+
+    <div id="t-vote" class="t-vote" hidden>
+      <div class="t-vote-head"><span class="t-hazard"></span><span class="t-vote-title">Next up? Vote</span><span class="t-vote-secs" id="t-vote-secs">15</span><span class="t-hazard"></span></div>
+      <div class="t-vote-cards" id="t-vote-cards"></div>
+      <div class="t-vote-note">Most votes wins. A tie goes to the host.</div>
+    </div>
+  </div>
 </section>

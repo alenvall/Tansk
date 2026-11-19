@@ -23,6 +23,7 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use arena::{ArenaCmd, ArenaInfo, ArenaRoom, ArenaRooms, Frame};
+use arena_core::net::RoomSettings;
 use arena_core::raid::ModeKind;
 use arena_core::MapId;
 use axum::{Json, Router};
@@ -273,6 +274,22 @@ async fn ws_arena(ws: WebSocketUpgrade, State(app): State<Arc<App>>) -> impl Int
 /// A new arena room, registered and running; returns its command channel.
 /// `reserve` counts the joining player in its info right away (quick match).
 fn create_arena(app: &Arc<App>, public: bool, reserve: bool, mode: ModeKind, map: MapId) -> mpsc::UnboundedSender<ArenaCmd> {
+    create_room(app, public, reserve, mode, map, None)
+}
+
+/// A new party room (a lobby before each match), registered and running.
+fn create_party(app: &Arc<App>, public: bool, settings: RoomSettings) -> mpsc::UnboundedSender<ArenaCmd> {
+    create_room(app, public, false, settings.mode, settings.map, Some(settings))
+}
+
+fn create_room(
+    app: &Arc<App>,
+    public: bool,
+    reserve: bool,
+    mode: ModeKind,
+    map: MapId,
+    party: Option<RoomSettings>,
+) -> mpsc::UnboundedSender<ArenaCmd> {
     let mut rooms = app.arena.rooms.lock().unwrap();
     let code = app.new_code(|c| rooms.contains_key(c));
     let (tx, rx) = mpsc::unbounded_channel();
@@ -284,10 +301,14 @@ fn create_arena(app: &Arc<App>, public: bool, reserve: bool, mode: ModeKind, map
         ended: false,
         mode,
         map,
+        party: party.is_some(),
     }));
     rooms.insert(code.clone(), (tx.clone(), info.clone()));
     drop(rooms);
-    let room = ArenaRoom::new(code.clone(), public, app.random(), info, mode, map);
+    let room = match party {
+        Some(settings) => ArenaRoom::new_party(code.clone(), public, app.random(), info, settings),
+        None => ArenaRoom::new(code.clone(), public, app.random(), info, mode, map),
+    };
     let app2 = app.clone();
     tokio::spawn(async move {
         room.run(rx).await;
@@ -326,6 +347,7 @@ async fn arena_connection(socket: WebSocket, app: Arc<App>) {
         let cmd = match msg {
             ClientMsg::Input { seq, input } => ArenaCmd::Input { conn, seq, input },
             ClientMsg::Chat(text) => ArenaCmd::Chat { conn, text },
+            ClientMsg::Lobby(cmd) => ArenaCmd::Lobby { conn, cmd },
             ClientMsg::Hello { .. } if room_tx.is_some() => continue,
             ClientMsg::Hello { name, join } => {
                 let lookup = |code: &str| {
@@ -346,6 +368,11 @@ async fn arena_connection(socket: WebSocket, app: Arc<App>) {
                             break;
                         }
                     Join::Host { public, mode, map } => (create_arena(&app, public, false, mode, map), None),
+                    Join::Party { .. } if busy => {
+                        reject(BUSY.into());
+                        break;
+                    }
+                    Join::Party { public, settings } => (create_party(&app, public, settings), None),
                     Join::Code(code) => {
                         let code = code.trim().to_uppercase();
                         match lookup(&code) {

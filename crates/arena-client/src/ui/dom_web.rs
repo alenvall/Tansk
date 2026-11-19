@@ -13,7 +13,7 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{Document, Element, EventTarget, HtmlElement};
 
-use super::{Chassis, Garage, HostConfig, Quality, Settings, UiAction, CONTROLS_HTML, CSS, HUD_HTML, MENUS_HTML};
+use super::{Chassis, Garage, HostConfig, LobbyConfig, Quality, Settings, UiAction, CONTROLS_HTML, CSS, HUD_HTML, MENUS_HTML};
 
 #[derive(Default)]
 struct Shared {
@@ -120,6 +120,46 @@ impl Ctx {
         }
     }
 
+    fn read_lobby(&self) -> LobbyConfig {
+        LobbyConfig {
+            mode: self.value("input[name=lmode]:checked"),
+            map: self.value("input[name=lmap]:checked"),
+            bots: self.checked("#t-lobby-bots"),
+            skill: self.value("input[name=lskill]:checked"),
+            secs: self.value("input[name=llen]:checked").parse().ok(),
+            vote: self.value("input[name=lvote]:checked"),
+        }
+    }
+
+    /// The invite link onto the clipboard (and selected, for a manual copy
+    /// where the clipboard is off limits).
+    fn copy_invite(&self) {
+        let link = self.q("#t-lobby-link").and_then(|e| e.text_content()).unwrap_or_default();
+        if link.is_empty() {
+            return self.push(UiAction::Refused);
+        }
+        let nav = web_sys::window().map(|w| JsValue::from(w.navigator())).unwrap_or(JsValue::UNDEFINED);
+        let clip = prop(&nav, "clipboard");
+        if let Ok(f) = prop(&clip, "writeText").dyn_into::<js_sys::Function>() {
+            let _ = f.call1(&clip, &JsValue::from_str(&link));
+        }
+        if let (Some(el), Some(win)) = (self.q("#t-lobby-link"), web_sys::window()) {
+            let call = |obj: &JsValue, name: &str, args: &[&JsValue]| -> JsValue {
+                let Ok(f) = prop(obj, name).dyn_into::<js_sys::Function>() else { return JsValue::UNDEFINED };
+                let arr: js_sys::Array = args.iter().map(|a| (*a).clone()).collect();
+                f.apply(obj, &arr).unwrap_or(JsValue::UNDEFINED)
+            };
+            let range = call(&JsValue::from(self.doc.clone()), "createRange", &[]);
+            let sel = call(&JsValue::from(win), "getSelection", &[]);
+            if !range.is_undefined() && !sel.is_null() && !sel.is_undefined() {
+                call(&range, "selectNodeContents", &[&JsValue::from(el)]);
+                call(&sel, "removeAllRanges", &[]);
+                call(&sel, "addRange", &[&range]);
+            }
+        }
+        self.push(UiAction::InviteCopied);
+    }
+
     fn join_code(&self) {
         let code = self.value("#t-join-code").trim().to_uppercase();
         if code.is_empty() {
@@ -187,6 +227,13 @@ impl Ctx {
             }
             "again" => UiAction::Again,
             "leave" => UiAction::Leave,
+            "lobby-ready" => UiAction::LobbyReady,
+            "lobby-start" => UiAction::LobbyStart,
+            "copy-invite" => return self.copy_invite(),
+            "vote" => match el.get_attribute("data-i").and_then(|s| s.parse().ok()) {
+                Some(i) => UiAction::LobbyVote(i),
+                None => return,
+            },
             _ => return,
         };
         self.push(a);
@@ -219,6 +266,13 @@ impl Ctx {
         }
         if t.get_attribute("name").as_deref() == Some("pmap") {
             self.push(UiAction::PracticeMap(prop_str(&t, "value")));
+        }
+        let name = t.get_attribute("name").unwrap_or_default();
+        if matches!(name.as_str(), "lmode" | "lmap" | "lskill" | "llen" | "lvote") || t.id() == "t-lobby-bots" {
+            self.push(UiAction::LobbySettings(self.read_lobby()));
+        }
+        if name == "lteam" {
+            self.push(UiAction::LobbyTeam(prop_str(&t, "value")));
         }
     }
 
@@ -405,6 +459,11 @@ impl Dom {
     pub fn check(&mut self, selector: &str) {
         if let Some(e) = self.root.query_selector(selector).ok().flatten() {
             set_prop(&e, "checked", &JsValue::TRUE);
+        }
+    }
+    pub fn set_checked(&mut self, selector: &str, on: bool) {
+        if let Some(e) = self.root.query_selector(selector).ok().flatten() {
+            set_prop(&e, "checked", &JsValue::from_bool(on));
         }
     }
     pub fn set_hud_visible(&mut self, visible: bool) {

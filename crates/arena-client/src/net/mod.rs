@@ -27,7 +27,7 @@ pub mod transport;
 use std::collections::VecDeque;
 
 pub use arena_core::net::Join;
-use arena_core::net::{decode, encode, ClientMsg, ServerMsg};
+use arena_core::net::{decode, encode, ClientMsg, LobbyCmd, LobbyState, ServerMsg};
 use arena_core::snapshot::{Snapshot, TankSnap};
 use arena_core::{Event, Input, MapId, PlayerId, PlayerInfo, Sim, DT};
 
@@ -81,6 +81,11 @@ pub struct NetState {
     pub rtt_ms: f32,
     /// Inputs sent but not yet applied by the server.
     pub unacked: usize,
+    /// A party room's lobby (None elsewhere).
+    pub lobby: Option<LobbyState>,
+    /// Welcomes so far: a party room sends a new one each time it rebuilds
+    /// its world (the match starts, back to the lobby, a new map).
+    pub welcomes: u32,
 }
 
 impl NetState {
@@ -97,6 +102,8 @@ impl NetState {
             chat: Vec::new(),
             rtt_ms: 0.0,
             unacked: 0,
+            lobby: None,
+            welcomes: 0,
         }
     }
 
@@ -280,6 +287,15 @@ impl NetClient {
         }
     }
 
+    /// A lobby move (party rooms; `Loadout` in any room). Offline: ignored.
+    pub fn lobby(&mut self, cmd: LobbyCmd) {
+        if let Mode::Online(o) = &mut self.mode {
+            if let Some(t) = &mut o.transport {
+                t.send(encode(&ClientMsg::Lobby(cmd)));
+            }
+        }
+    }
+
     /// Leave the room (drops the socket).
     pub fn close(&mut self) {
         if let Mode::Online(o) = &mut self.mode {
@@ -445,6 +461,7 @@ impl Online {
                         state.public = public;
                         state.you = Some(you);
                         state.seed = Some(seed);
+                        state.welcomes += 1;
                     }
                     ServerMsg::Rejected(why) => {
                         self.resume = None;
@@ -476,6 +493,7 @@ impl Online {
                     }
                     ServerMsg::Chat { from, text } => state.push_chat(Some(from), text),
                     ServerMsg::Info(text) => state.push_chat(None, text),
+                    ServerMsg::Lobby(l) => state.lobby = Some(l),
                 }
             }
         }

@@ -308,6 +308,82 @@ pub struct HostConfig {
     pub code: String,
 }
 
+/// The host's lobby settings as the lobby plate reads them.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LobbyConfig {
+    /// scrap_brawl | team_brawl | raider_waves | convoy | wellhead | last_crew.
+    pub mode: String,
+    /// sink | refinery | rustbelt.
+    pub map: String,
+    pub bots: bool,
+    /// easy | normal | hard.
+    pub skill: String,
+    /// Match length in seconds; `None` keeps the current (a custom length).
+    pub secs: Option<u16>,
+    /// maps | mixed.
+    pub vote: String,
+}
+
+/// One crew on the lobby plate.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LobbyCrewRow {
+    pub name: String,
+    /// Paint, 0xrrggbb.
+    pub colour: u32,
+    /// Scout | Brawler | Hauler.
+    pub chassis: &'static str,
+    /// The side they picked (team modes; `Ffa` = auto).
+    pub team: Option<Team>,
+    pub host: bool,
+    pub ready: bool,
+    pub away: bool,
+    pub you: bool,
+}
+
+/// One card of the map vote.
+#[derive(Clone, Debug, PartialEq)]
+pub struct VoteCardView {
+    pub mode: String,
+    pub map: String,
+    /// `MapId::key`, for the card's colours.
+    pub map_key: &'static str,
+    pub votes: u8,
+    /// The rematch card (this mode and map).
+    pub again: bool,
+}
+
+/// Everything the lobby plate shows.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LobbyView {
+    pub code: String,
+    /// The invite link (opens the game straight into the room).
+    pub link: String,
+    pub you_host: bool,
+    pub host_name: String,
+    pub phase: String,
+    pub crew: Vec<LobbyCrewRow>,
+    pub seats: u8,
+    /// Team modes show the side pick.
+    pub team_mode: bool,
+    /// a | b | auto.
+    pub my_team: &'static str,
+    /// The host's settings: mode, map keys, bots, skill, length (s), vote pool.
+    pub mode: &'static str,
+    pub map: &'static str,
+    pub bots: bool,
+    pub skill: &'static str,
+    pub secs: u16,
+    pub vote_pool: &'static str,
+    pub ready: bool,
+    /// The host's Start is live, and its label.
+    pub can_start: bool,
+    pub start_label: String,
+    /// The line by the buttons ("Waiting on 2 crews").
+    pub status: String,
+    /// The map vote: cards, seconds left, your pick.
+    pub vote: Option<(Vec<VoteCardView>, u8, Option<u8>)>,
+}
+
 /// What the player asked for. Drained with [`Ui::poll_actions`].
 #[derive(Clone, Debug, PartialEq)]
 pub enum UiAction {
@@ -329,6 +405,14 @@ pub enum UiAction {
     /// End screen buttons.
     Again,
     Leave,
+    /// Party lobby: the ready tick (toggles), the host's Start, the host's
+    /// settings, your side, a vote card, the invite link copied.
+    LobbyReady,
+    LobbyStart,
+    LobbySettings(LobbyConfig),
+    LobbyTeam(String),
+    LobbyVote(u8),
+    InviteCopied,
     /// A button that only moves between title panels (for its click sound).
     Click,
     /// A press that can't go through (Join with no code): the error sound.
@@ -373,6 +457,8 @@ pub struct Ui {
     radio_left: f32,
     dmg_slot: usize,
     board_title: (String, String),
+    lobby: Option<LobbyView>,
+    copied_left: f32,
 }
 
 /// Quantise a 0..1 value so tiny float jitter doesn't touch the DOM.
@@ -499,6 +585,8 @@ impl Ui {
             radio_left: 0.0,
             dmg_slot: 0,
             board_title: ("Scoreboard".into(), String::new()),
+            lobby: None,
+            copied_left: 0.0,
         };
         ui.show_title();
         ui
@@ -511,6 +599,11 @@ impl Ui {
             if let UiAction::SettingsChanged(s) = a {
                 self.local_name = s.name.clone();
                 self.dom.text("t-crew-name", &s.name);
+            }
+            if let UiAction::InviteCopied = a {
+                self.copied_left = 2.0;
+                self.dom.attr("t-lobby", "data-copied", "1");
+                self.dom.text("t-lobby-copy", "Link copied!");
             }
             if let UiAction::GarageChanged(g) = a {
                 self.dom
@@ -529,6 +622,13 @@ impl Ui {
         while self.feed_ages.front().is_some_and(|a| *a > FEED_LIFE) {
             self.feed_ages.pop_front();
             self.dom.remove_first_child("t-feed");
+        }
+        if self.copied_left > 0.0 {
+            self.copied_left -= dt;
+            if self.copied_left <= 0.0 {
+                self.dom.attr("t-lobby", "data-copied", "0");
+                self.dom.text("t-lobby-copy", "Copy invite link");
+            }
         }
         if self.radio_left > 0.0 {
             self.radio_left -= dt;
@@ -1199,6 +1299,145 @@ impl Ui {
     pub fn hide_endscreen(&mut self) {
         self.dom.hidden("t-end", true);
         self.dom.attr("t-hud", "data-end", "0");
+    }
+
+    // ------------------------------------------------------------- lobby
+
+    /// The party lobby over the warm-up (None hides it). Only what changed
+    /// touches the DOM, and the host's settings controls are only set when
+    /// the settings themselves change (so a click isn't undone by a stale echo).
+    pub fn show_lobby(&mut self, view: Option<&LobbyView>) {
+        let Some(v) = view else {
+            if self.lobby.take().is_some() {
+                self.dom.hidden("t-lobby", true);
+                self.dom.attr("t-hud", "data-lobby", "0");
+            }
+            return;
+        };
+        let old = self.lobby.take();
+        if old.is_none() {
+            self.dom.hidden("t-lobby", false);
+            self.dom.attr("t-hud", "data-lobby", "1");
+        }
+        let o = old.as_ref();
+        if o.map(|o| (&o.code, &o.link)) != Some((&v.code, &v.link)) {
+            self.dom.text("t-lobby-code", &v.code);
+            self.dom.text("t-lobby-link", &v.link);
+        }
+        if o.map(|o| &o.phase) != Some(&v.phase) {
+            self.dom.text("t-lobby-phase", &v.phase);
+        }
+        if o.map(|o| (o.you_host, &o.host_name)) != Some((v.you_host, &v.host_name)) {
+            self.dom.attr("t-lobby", "data-host", if v.you_host { "1" } else { "0" });
+            let note = if v.you_host { "Your call".to_string() } else { format!("{} calls it", v.host_name) };
+            self.dom.text("t-lobby-hostnote", &note);
+        }
+        if o.map(|o| (&o.crew, o.seats)) != Some((&v.crew, v.seats)) {
+            let mut h = String::new();
+            for c in &v.crew {
+                let (tag_k, tag) = match (c.host, c.team) {
+                    (true, _) => ("host", "Host"),
+                    (_, Some(Team::Rustbacks)) => ("a", "Rustbacks"),
+                    (_, Some(Team::DustSaints)) => ("b", "Saints"),
+                    _ => ("none", "-"),
+                };
+                let side = match c.team {
+                    Some(Team::Rustbacks) if c.host => "<small>Rustbacks</small>",
+                    Some(Team::DustSaints) if c.host => "<small>Saints</small>",
+                    _ => "",
+                };
+                let _ = write!(
+                    h,
+                    "<div class=\"t-crew\" data-you=\"{}\" data-away=\"{}\"><i class=\"t-crew-paint\" style=\"--c:#{:06x}\"></i>\
+                     <span class=\"t-crew-name\">{}{}{}</span><span class=\"t-crew-chassis\">{}</span>\
+                     <span class=\"t-crew-tag\" data-k=\"{tag_k}\">{tag}</span><span class=\"t-crew-ready\" data-on=\"{}\">&#10003;</span></div>",
+                    u8::from(c.you),
+                    u8::from(c.away),
+                    c.colour & 0xff_ffff,
+                    esc(&c.name),
+                    if c.away { "<small>away</small>" } else if c.you { "<small>you</small>" } else { "" },
+                    side,
+                    c.chassis,
+                    u8::from(c.ready || c.host),
+                );
+            }
+            let free = (v.seats as usize).saturating_sub(v.crew.len());
+            if free > 0 {
+                let _ = write!(
+                    h,
+                    "<div class=\"t-crew-empty\">{free} seat{} open{}</div>",
+                    if free == 1 { "" } else { "s" },
+                    if v.bots { ": bots fill them at the start" } else { "" }
+                );
+            }
+            self.dom.html("t-lobby-crew", &h);
+            self.dom.text("t-lobby-count", &format!("{} / {}", v.crew.len(), v.seats));
+        }
+        if o.map(|o| (o.team_mode, o.my_team)) != Some((v.team_mode, v.my_team)) {
+            self.dom.attr("t-lobby", "data-team", if v.team_mode { "1" } else { "0" });
+            self.dom.check(&format!("input[name=lteam][value={}]", v.my_team));
+        }
+        let settings = |l: &LobbyView| (l.mode, l.map, l.bots, l.skill, l.secs, l.vote_pool);
+        if o.map(settings) != Some(settings(v)) {
+            self.dom.check(&format!("input[name=lmode][value={}]", v.mode));
+            self.dom.check(&format!("input[name=lmap][value={}]", v.map));
+            self.dom.set_checked("#t-lobby-bots", v.bots);
+            self.dom.check(&format!("input[name=lskill][value={}]", v.skill));
+            self.dom.check(&format!("input[name=lvote][value={}]", v.vote_pool));
+            let custom = ![180, 300, 420, 600].contains(&v.secs);
+            self.dom.hidden("t-lobby-len-custom", !custom);
+            if custom {
+                self.dom.text("t-lobby-len-custom-txt", &clock(i32::from(v.secs)).trim_start_matches('0').to_string());
+                self.dom.check("#t-lobby-len-custom-in");
+            } else {
+                self.dom.check(&format!("input[name=llen][value=\"{}\"]", v.secs));
+            }
+        }
+        if o.map(|o| o.ready) != Some(v.ready) {
+            self.dom.attr("t-lobby", "data-ready", if v.ready { "1" } else { "0" });
+            self.dom.text("t-lobby-ready", if v.ready { "Ready" } else { "Ready?" });
+        }
+        if o.map(|o| (o.can_start, &o.start_label, &o.status)) != Some((v.can_start, &v.start_label, &v.status)) {
+            self.dom.attr("t-lobby-start", "data-on", if v.can_start { "1" } else { "0" });
+            self.dom.text("t-lobby-start-label", &v.start_label);
+            self.dom.text("t-lobby-status", &v.status);
+        }
+        if o.map(|o| &o.vote) != Some(&v.vote) {
+            match &v.vote {
+                None => self.dom.hidden("t-vote", true),
+                Some((cards, secs, mine)) => {
+                    let old_cards = o.and_then(|o| o.vote.as_ref()).map(|(c, _, m)| (c, m));
+                    if old_cards != Some((cards, mine)) {
+                        let top = cards.iter().map(|c| c.votes).max().unwrap_or(0);
+                        let mut h = String::new();
+                        for (i, c) in cards.iter().enumerate() {
+                            let _ = write!(
+                                h,
+                                "<button class=\"t-vote-card\" data-action=\"vote\" data-i=\"{i}\" data-map=\"{}\" data-mine=\"{}\" data-lead=\"{}\">\
+                                 <span class=\"t-vote-again\">{}</span><span class=\"t-vote-mode\">{}</span><span class=\"t-vote-map\">{}</span>\
+                                 <span class=\"t-vote-pips\">{}</span></button>",
+                                c.map_key,
+                                u8::from(*mine == Some(i as u8)),
+                                u8::from(top > 0 && c.votes == top),
+                                if c.again { "Same again" } else { "" },
+                                esc(&c.mode),
+                                esc(&c.map),
+                                "<i></i>".repeat(c.votes as usize),
+                            );
+                        }
+                        self.dom.html("t-vote-cards", &h);
+                    }
+                    self.dom.text("t-vote-secs", &secs.to_string());
+                    self.dom.hidden("t-vote", false);
+                }
+            }
+        }
+        self.lobby = Some(v.clone());
+    }
+
+    /// Driving about in the yard (the plate steps back).
+    pub fn set_lobby_drive(&mut self, on: bool) {
+        self.dom.attr("t-lobby", "data-drive", if on { "1" } else { "0" });
     }
 }
 

@@ -38,6 +38,17 @@ fn glass() -> Paint {
 /// yellow and white fuel trailer with hazard stripes, rust and a
 /// FLAMMABLE placard.
 pub fn fuel_tanker(colour: u32) -> MeshBuilder {
+    let mut m = tanker_cab(colour);
+    append(&mut m, tanker_trailer());
+    m
+}
+
+/// Where the tanker's trailer sways from: its roll axis runs along the
+/// hull at this height (hull frame), so the barrel leans over its wheels.
+pub const TRAILER_ROLL_Y: f32 = -0.6;
+
+/// The tanker's tractor: chassis rails, the cab and the fifth wheel.
+pub fn tanker_cab(colour: u32) -> MeshBuilder {
     let mut m = MeshBuilder::new();
     let cab = Paint::painted(colour, 0.7);
     let trim = dark();
@@ -66,6 +77,13 @@ pub fn fuel_tanker(colour: u32) -> MeshBuilder {
     }
     // Fifth wheel, then the trailer barrel.
     m.cylinder(0.45, 0.08, 0.05, 2, 16, trim, at(Vec3::new(2.2, -0.2, 0.0)));
+    m
+}
+
+/// The tanker's fuel trailer (hull frame), drawn apart so it can sway.
+pub fn tanker_trailer() -> MeshBuilder {
+    let mut m = MeshBuilder::new();
+    let trim = dark();
     let n = |x: f32, y: f32| Vec2::new(x, y).normalize();
     let (r, h) = (1.12f32, 2.55f32);
     let profile = [

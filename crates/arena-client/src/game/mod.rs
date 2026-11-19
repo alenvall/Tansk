@@ -14,6 +14,7 @@ pub mod controls;
 pub mod hints;
 pub mod juice;
 pub mod names;
+pub mod party;
 pub mod radio;
 pub mod sound;
 
@@ -21,7 +22,7 @@ use std::collections::HashMap;
 
 use arena_core::events::{HitLocation, RepairKind};
 use arena_core::map::{Map, MapId};
-use arena_core::net::Join;
+use arena_core::net::{Join, LobbyCmd};
 use arena_core::snapshot::{Snapshot, TankSnap};
 use arena_core::raid::{ModeKind, RaidPhase, TEAM_RAIDERS};
 use arena_core::{Event, Input, Phase, PlayerId};
@@ -86,6 +87,8 @@ pub enum Screen {
     Loading,
     InGame,
     End,
+    /// A party room's lobby: the warm-up world under the lobby plate.
+    Lobby,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -203,6 +206,12 @@ pub struct Game {
     /// Convoy: the truck's road (as the sim joins it) for this map, and the
     /// distance along it at each point.
     convoy_route: Option<((u64, MapId), Vec<Vec3>, Vec<f32>)>,
+    /// The page's address without the query (web), for invite links.
+    pub invite_base: String,
+    /// The party room's Welcomes handled (a new one = a rebuilt world).
+    welcomes_seen: u32,
+    /// In the lobby, driving about with the pointer held.
+    lobby_drive: bool,
 }
 
 impl Game {
@@ -240,6 +249,9 @@ impl Game {
             title_follow: (None, 0.0),
             convoy_route: None,
             debug: DebugFlags::default(),
+            invite_base: String::new(),
+            welcomes_seen: 0,
+            lobby_drive: false,
             practice_map: MapId::Sink,
             garage: None,
             pad: None,
@@ -263,7 +275,16 @@ impl Game {
 
     /// The platform should hold the pointer lock now.
     pub fn wants_pointer(&self) -> bool {
-        self.screen == Screen::InGame && !self.paused
+        (self.screen == Screen::InGame && !self.paused) || (self.screen == Screen::Lobby && self.lobby_drive)
+    }
+
+    /// A click on the world in the lobby: take the wheel (the platform then
+    /// locks the pointer). Esc hands it back.
+    pub fn lobby_take_wheel(&mut self) {
+        if self.screen == Screen::Lobby {
+            self.lobby_drive = true;
+            self.ui.set_lobby_drive(true);
+        }
     }
 
     /// A user gesture happened (click / key): browsers only start audio then.
@@ -277,6 +298,10 @@ impl Game {
         self.controls.release_all();
         if self.screen == Screen::InGame {
             self.paused = true;
+        }
+        if self.lobby_drive {
+            self.lobby_drive = false;
+            self.ui.set_lobby_drive(false);
         }
     }
 
@@ -379,6 +404,9 @@ impl Game {
         self.close_podium();
         self.m = Match::default();
         self.paused = false;
+        self.welcomes_seen = 0;
+        self.lobby_drive = false;
+        self.ui.show_lobby(None);
         self.ui.hide_endscreen();
         self.ui.hide_branch();
         self.ui.show_respawn(None, None);
@@ -417,6 +445,7 @@ impl Game {
                     Join::Host { mode: ModeKind::Convoy, .. } => "Fuelling the tanker...".to_string(),
                     Join::Host { mode: ModeKind::Wellhead, .. } => "Priming the pumps...".to_string(),
                     Join::Host { mode: ModeKind::LastCrew, .. } => "Watching the horizon...".to_string(),
+                    Join::Party { .. } => "Opening the yard...".to_string(),
                     Join::Host { .. } => "Opening the gates...".to_string(),
                     _ => "Looking for a crew to fight...".to_string(),
                 };
@@ -559,6 +588,8 @@ impl Game {
         self.close_podium();
         self.want_look = Some(TimeOfDay::GoldenHour);
         self.screen = Screen::Title;
+        self.lobby_drive = false;
+        self.ui.show_lobby(None);
         self.sound.clear_engines();
         self.hints.clear_queue(&mut self.ui);
         self.ui.hide_endscreen();
@@ -609,7 +640,7 @@ impl Game {
                         _ => ModeKind::ScrapBrawl,
                     };
                     let map = MapId::from_key(&cfg.map).unwrap_or_default();
-                    self.start_online(Join::Host { public: !cfg.private, mode, map });
+                    self.host_party(!cfg.private, mode, map, cfg.bots);
                 }
                 UiAction::Join { code } => self.start_online(Join::Code(code)),
                 UiAction::RefreshGames => self.want_rooms = true,
@@ -622,7 +653,27 @@ impl Game {
                 UiAction::GarageChanged(g) => {
                     self.garage = Some(g);
                     self.apply_garage();
+                    self.send_loadout();
                 }
+                UiAction::LobbyReady => {
+                    let ready = self.my_crew().is_some_and(|c| c.ready);
+                    self.lobby_cmd(LobbyCmd::Ready(!ready));
+                }
+                UiAction::LobbyStart => {
+                    if self.net.as_ref().and_then(|n| n.state().lobby.as_ref()).is_some_and(|l| l.can_start()) {
+                        self.lobby_cmd(LobbyCmd::Start);
+                    } else {
+                        self.sound.ui_error();
+                    }
+                }
+                UiAction::LobbySettings(cfg) => {
+                    if let Some(s) = self.lobby_settings(&cfg) {
+                        self.lobby_cmd(LobbyCmd::Settings(s));
+                    }
+                }
+                UiAction::LobbyTeam(t) => self.lobby_cmd(LobbyCmd::Team(party::team_pick(&t))),
+                UiAction::LobbyVote(i) => self.lobby_cmd(LobbyCmd::Vote(i)),
+                UiAction::InviteCopied => {}
                 UiAction::BranchPicked(i) => self.pick_branch(i),
                 UiAction::Chat(text) => {
                     if let Some(n) = &mut self.net {
@@ -680,7 +731,7 @@ impl Game {
         let world = match self.screen {
             Screen::Title => self.title_frame(dt, wr),
             Screen::Loading => self.loading_frame(now, dt, wr),
-            Screen::InGame | Screen::End => self.game_frame(now, dt, wr),
+            Screen::InGame | Screen::End | Screen::Lobby => self.game_frame(now, dt, wr),
         };
         let t2 = crate::world::clock_ms();
         self.prof_game[5] = t2 - t1;
@@ -886,7 +937,9 @@ impl Game {
         // ---- Input, from last frame's camera.
         let typing = self.ui.chat_open();
         let pad_live = self.pad_live();
-        let live = self.screen == Screen::InGame && !self.paused && !typing && (self.controls.captured || pad_live);
+        // The lobby: the keys drive about at once; the guns only with the wheel taken.
+        let lobby = self.screen == Screen::Lobby;
+        let live = ((self.screen == Screen::InGame && !self.paused && (self.controls.captured || pad_live)) || lobby) && !typing;
         let sens = self.settings.mouse_sens.clamp(0.1, 3.0);
         let fov_k = self.camera.map_or(1.0, |c| c.fov_y / 62f32.to_radians());
         if self.controls.captured && !self.paused {
@@ -913,8 +966,9 @@ impl Game {
         if live {
             input.throttle = c.axis(&["KeyS"], &["KeyW"]);
             input.steer = c.axis(&["KeyA"], &["KeyD"]);
-            input.fire = c.buttons[0];
-            input.alt_fire = c.buttons[2];
+            let guns = !lobby || self.lobby_drive || self.free_mouse;
+            input.fire = c.buttons[0] && guns;
+            input.alt_fire = c.buttons[2] && guns;
             input.boost = c.any(&["ShiftLeft", "ShiftRight"]);
             input.special = c.any(&["KeyF", "KeyE"]);
             input.horn = c.held("KeyH");
@@ -964,6 +1018,21 @@ impl Game {
             self.status_note = why;
             return self.title_frame(dt, wr);
         }
+        let (welcomes, seed, map, party) = (st.welcomes, st.seed, st.map, st.lobby.is_some());
+        if welcomes != self.welcomes_seen {
+            // A party room rebuilt its world (match, lobby, a new map).
+            self.welcomes_seen = welcomes;
+            if let Some(seed) = seed {
+                self.use_map(seed, map, wr);
+            }
+            if party {
+                self.party_new_world();
+            }
+            self.send_loadout();
+        }
+        self.party_frame();
+        let Some(net) = &self.net else { return RenderWorld::default() };
+        let st = net.state();
         let Some(snap) = st.world.clone() else { return RenderWorld::default() };
         let rtt = st.rtt_ms;
         for p in &st.players {
@@ -987,6 +1056,8 @@ impl Game {
                     t.colour = crate::tank::DUST_SAINT;
                 }
             }
+        } else if snap.raid.is_none() {
+            self.paint_crews(&mut world, you);
         }
         world.time = self.time;
         world.dt = dt * self.juice.time_scale(dt);
@@ -1703,10 +1774,7 @@ impl Game {
             (Some(n), _, _) => format!("{n} takes {place}"),
             (None, _, _) => format!("{} takes everyone", self.map.name),
         };
-        let note = match self.session {
-            Some(Session::Online(_)) => "Next round rolls out in a few seconds",
-            _ => "Again for another round",
-        };
+        let note = self.next_round_note();
         let note = match (last_crew, you_won, self.m.out_place) {
             (true, false, Some(p)) => format!("You finished {}  \u{b7}  {note}", crate::ui::ordinal(p)),
             (true, true, _) => format!("Last of eight  \u{b7}  {note}"),
@@ -1732,10 +1800,7 @@ impl Game {
             Some(1) => (format!("Dust Saints take {place}"), Some(Team::DustSaints)),
             _ => ("Dead even".to_string(), None),
         };
-        let note = match self.session {
-            Some(Session::Online(_)) => "Next round rolls out in a few seconds",
-            _ => "Again for another round",
-        };
+        let note = self.next_round_note();
         let note = match (self.convoy_results(), self.wellhead_results()) {
             (Some(r), _) | (None, Some(r)) => format!("{r}  \u{b7}  {note}"),
             (None, None) => note.to_string(),

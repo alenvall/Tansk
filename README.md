@@ -14,6 +14,10 @@ reimagining is in `docs/DESIGN.md`, the plan in `docs/PLAN.md`.
   (no respawns, the storm wall closes in), Raid (co-op waves against
   raiders, the War Rig and the Land-Ship). Practice any of them offline.
 - **Maps:** The Sink, The Refinery.
+- **With friends:** Host opens a crew yard: share the invite link, warm up
+  together, tick Ready, the host sets the rules and starts; after each match
+  everyone is back in the yard to vote on the next map. Play is a quick
+  drop-in match.
 - **Upgrades:** three scrap of a kind bolts a part onto your tank; at tier
   2 you pick a branch; two tracks at tier 2 unlock a combo. Every part can
   be shot off.
@@ -43,6 +47,7 @@ cargo test -p arena-client --release -- --ignored shots   # native screenshots i
 
 Debug URL flags: `?autoplay=practice|raid|team|convoy|wellhead|lastcrew` (offline),
 `?autoplay=host-brawl|host-team|host-raid|host-convoy|host-wellhead|host-lastcrew` (a private online room),
+`?autoplay=party|party-team` (a private party room with the lobby), `?room=CODE` (an invite link: join that room),
 `&map=refinery`, `&mouse=free`, `&quality=low`, `&matchtime=45`, `&hints=reset`.
 
 ## Deploy

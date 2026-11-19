@@ -115,6 +115,9 @@ pub struct Fx {
     pub flares: Vec<Vec3>,
     /// Last Crew's dust curtain this frame: (base point, size, opacity, seed).
     pub curtain: Vec<(Vec3, f32, f32, f32)>,
+    /// Each machine's animated frames (set by the world renderer as it
+    /// builds the instances): flashes and puffs spawn from these.
+    pub poses: HashMap<PlayerId, crate::anim::Pose>,
 }
 
 const MAX_PARTICLES: usize = 5000;
@@ -146,6 +149,7 @@ impl Fx {
             storm: 0.0,
             flares: Vec::new(),
             curtain: Vec::new(),
+            poses: HashMap::new(),
         }
     }
 
@@ -253,7 +257,14 @@ impl Fx {
     pub fn event(&mut self, e: &Event, listener: Vec3) -> f32 {
         let near = |p: Vec3, r: f32| (1.0 - p.distance(listener) / r).max(0.0);
         match e {
-            Event::Fired { pos, dir, weapon, .. } => {
+            Event::Fired { player, pos, dir, weapon } => {
+                // A tank's main gun fires from its animated barrel tip.
+                let tank_gun = matches!(weapon, Weapon::Gun(g) if !matches!(g, arena_core::GunKind::DeckGun | arena_core::GunKind::RigCannons));
+                let (pos, dir) = match self.poses.get(player) {
+                    Some(p) if tank_gun && p.muzzle.distance(*pos) < 2.0 => (p.muzzle, p.muzzle_dir),
+                    _ => (*pos, *dir),
+                };
+                let (pos, dir) = (&pos, &dir);
                 let big = matches!(weapon, Weapon::Gun(arena_core::GunKind::BigBore));
                 let main = matches!(weapon, Weapon::Gun(_));
                 let s = if big { 1.6 } else if main { 1.0 } else { 0.35 };
@@ -456,7 +467,7 @@ impl Fx {
                 continue;
             }
             let own = chased == Some(t.player);
-            let hull = t.hull_transform();
+            let hull = self.poses.get(&t.player).map_or_else(|| t.hull_transform(), |p| p.body);
             let mut st = self.tanks.remove(&t.player).unwrap_or_default();
             // Exhaust: lazy puffs at idle, chugging under load, flame on boost.
             st.exhaust_t += dt * (2.5 + 9.0 * t.throttle + if t.boosting { 20.0 } else { 0.0 });
@@ -539,7 +550,7 @@ impl Fx {
 
         // Flamethrowers: a cone of fire from the nozzle.
         for t in world.tanks.iter().filter(|t| t.alive && world.flaming.contains(&t.player)) {
-            let g = t.gun_transform();
+            let g = self.poses.get(&t.player).map_or_else(|| t.gun_transform(), |p| p.gun);
             let nozzle = g.transform_point3(Vec3::new(2.05, -0.3, 0.32));
             let fwd = g.transform_vector3(Vec3::X).normalize();
             let n = self.every(7000 + t.player as u32, 0.012, dt);

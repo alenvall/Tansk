@@ -7,6 +7,8 @@
 //! `&raidfast=1`, `&scrap=1` (Powder until a branch offer), `&flare=1`,
 //! `&wave=N`, `&boss=1|weak`, `&landship=1`; `autoplay=team|host-team|convoy|host-convoy` for Team Brawl / Convoy,
 //! `autoplay=host-brawl` hosts a private Scrap Brawl,
+//! `autoplay=party|party-team` hosts a private party room (the lobby; `&matchtime=30` sets its length),
+//! `?room=CODE` (the lobby's invite link) joins that room,
 //! `autoplay=wellhead|host-wellhead` and `autoplay=lastcrew|host-lastcrew` for Wellhead / Last Crew Rolling
 //! (`&wallfast=1` makes Last Crew practice's wall close at once and fast).
 //! `&tod=golden|dusk|noon` fixes the time of day.
@@ -202,6 +204,15 @@ async fn run() -> Result<()> {
             let _ = js_sys::Reflect::set(&el, &JsValue::from_str("checked"), &JsValue::TRUE);
         }
     }
+    if let Ok(path) = window.location().pathname() {
+        let origin = window.location().origin().unwrap_or_default();
+        game.invite_base = format!("{origin}{path}");
+    }
+    // An invite link (`?room=CODE`): straight into that room.
+    let room = query_flag("room").map(|c| c.trim().to_uppercase()).filter(|c| !c.is_empty());
+    if let Some(code) = room {
+        game.start_online(Join::Code(code));
+    }
     match query_flag("autoplay").as_deref() {
         Some("practice") => game.start_practice(),
         Some("play") => game.start_online(Join::Play),
@@ -209,6 +220,8 @@ async fn run() -> Result<()> {
         Some("team") => game.start_practice_team(),
         Some("convoy") => game.start_practice_convoy(),
         Some("host-convoy") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::Convoy, map: game.practice_map }),
+        Some("party") => game.host_party(false, arena_core::raid::ModeKind::ScrapBrawl, game.practice_map, true),
+        Some("party-team") => game.host_party(false, arena_core::raid::ModeKind::TeamBrawl, game.practice_map, true),
         Some("host-brawl") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::ScrapBrawl, map: game.practice_map }),
         Some("host-team") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::TeamBrawl, map: game.practice_map }),
         Some("host-raid") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::RaiderWaves, map: game.practice_map }),
@@ -283,7 +296,7 @@ fn install_input(state: &Shared) -> Result<()> {
         let code = prop(&ev, "code").as_string().unwrap_or_default();
         let game = &mut st.game;
         game.gesture();
-        let in_game = matches!(game.screen(), Screen::InGame | Screen::End);
+        let in_game = matches!(game.screen(), Screen::InGame | Screen::End | Screen::Lobby);
         if !in_game || game.ui.chat_open() {
             return;
         }
@@ -312,6 +325,12 @@ fn install_input(state: &Shared) -> Result<()> {
         st.game.gesture();
         let on_canvas = prop(&ev, "target").dyn_into::<web_sys::Element>().is_ok_and(|t| t.id() == "tansk-canvas");
         let button = prop(&ev, "button").as_f64().unwrap_or(0.0) as usize;
+        if st.game.screen() == Screen::Lobby && on_canvas && !st.game.free_mouse && !pointer_locked() {
+            // The yard: a click on the world takes the wheel.
+            st.game.lobby_take_wheel();
+            st.canvas.request_pointer_lock();
+            return;
+        }
         if st.game.wants_pointer() && !st.game.free_mouse && !pointer_locked() {
             if on_canvas {
                 st.canvas.request_pointer_lock();
@@ -350,7 +369,7 @@ fn install_input(state: &Shared) -> Result<()> {
     let s = state.clone();
     listen(&win, "contextmenu", move |ev| {
         if let Ok(st) = s.try_borrow() {
-            if matches!(st.game.screen(), Screen::InGame) {
+            if matches!(st.game.screen(), Screen::InGame | Screen::Lobby) {
                 ev.prevent_default();
             }
         }
