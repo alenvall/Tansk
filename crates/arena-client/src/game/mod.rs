@@ -166,6 +166,8 @@ pub struct Game {
     status_note: String,
     /// The end-screen podium world (its statics replace the map's).
     podium: Option<RenderWorld>,
+    camera_title: Option<Vec3>,
+    title_follow: (Option<PlayerId>, f32),
 }
 
 impl Game {
@@ -199,6 +201,8 @@ impl Game {
             radio: Radio::default(),
             status_note: String::new(),
             podium: None,
+            camera_title: None,
+            title_follow: (None, 0.0),
             debug: DebugFlags::default(),
             garage: None,
             pad: None,
@@ -635,24 +639,28 @@ impl Game {
         self.use_map(HOME_SEED, wr);
         wr.renderer.set_storm(0.0);
         let mut world = self.backdrop.advance(dt, wr).clone();
-        // The fight: the closest pair of live bots (or one, if they're far apart).
-        let live: Vec<Vec3> = world.tanks.iter().filter(|t| t.alive).map(|t| t.pos).collect();
-        let mut subject = None;
-        let mut best = f32::MAX;
-        for (i, a) in live.iter().enumerate() {
-            for b in &live[i + 1..] {
-                let d = a.distance(*b);
-                if d < best {
-                    best = d;
-                    subject = Some(if d < 25.0 { (*a + *b) * 0.5 } else { *a });
-                }
+        // The fight: stick with the bot that has company (its nearest
+        // neighbour closest) for a while, then pick again.
+        let live: Vec<(PlayerId, Vec3)> = world.tanks.iter().filter(|t| t.alive).map(|t| (t.player, t.pos)).collect();
+        self.title_follow.1 -= dt;
+        let following = self.title_follow.0.filter(|id| live.iter().any(|(p, _)| p == id));
+        if following.is_none() || self.title_follow.1 <= 0.0 {
+            let lonely = |(id, pos): &(PlayerId, Vec3)| {
+                live.iter().filter(|(o, _)| o != id).map(|(_, q)| pos.distance(*q)).fold(f32::MAX, f32::min)
+            };
+            let pick = live.iter().min_by(|a, b| lonely(a).total_cmp(&lonely(b))).map(|(id, _)| *id);
+            if pick != following {
+                // A cut, not a slow pan across the map.
+                self.orbit_centre = Vec3::ZERO;
             }
+            self.title_follow = (pick, 15.0);
         }
-        if let Some(c) = subject.or_else(|| live.first().copied()) {
+        let subject = self.title_follow.0.and_then(|id| live.iter().find(|(p, _)| *p == id)).map(|(_, pos)| *pos);
+        if let Some(c) = subject {
             if self.orbit_centre == Vec3::ZERO {
                 self.orbit_centre = c;
             }
-            self.orbit_centre += (c - self.orbit_centre) * (1.0 - (-dt * 0.35).exp());
+            self.orbit_centre += (c - self.orbit_centre) * (1.0 - (-dt * 2.5).exp());
             let c = self.orbit_centre;
             // A slow circle; the action sits right of centre, clear of the
             // title's hazed left side.
@@ -662,6 +670,7 @@ impl Game {
             let fwd = (c - eye).normalize_or(Vec3::X);
             let right = fwd.cross(Vec3::Y).normalize_or(Vec3::Z);
             world.camera = Some(Camera::look(eye, c + Vec3::Y * 1.5 - right * 3.0, 46.0));
+            self.camera_title = Some(eye);
         }
         self.sound.frame(world.camera.map_or(Vec3::ZERO, |c| c.eye), Vec3::X, &[], None, 0.0);
         world
@@ -1130,7 +1139,7 @@ impl Game {
         let players = self.net.as_ref().map(|n| n.state().players.clone()).unwrap_or_default();
         let mut rows: Vec<ScoreRow> = players
             .iter()
-            .filter(|p| p.team != Some(TEAM_RAIDERS))
+            .filter(|p| snap.raid.is_none() || p.team != Some(TEAM_RAIDERS))
             .map(|p| {
                 let s = snap.scores.iter().find(|s| s.player == p.id);
                 let t = snap.tank(p.id);
@@ -1482,7 +1491,11 @@ impl Game {
     }
 
     fn is_raider(&self, id: PlayerId) -> bool {
-        self.net.as_ref().is_some_and(|n| n.state().players.iter().any(|p| p.id == id && p.team == Some(TEAM_RAIDERS)))
+        self.net.as_ref().is_some_and(|n| {
+            let st = n.state();
+            st.world.as_ref().is_some_and(|w| w.raid.is_some())
+                && st.players.iter().any(|p| p.id == id && p.team == Some(TEAM_RAIDERS))
+        })
     }
 
     fn snap_is_raid(&self, snap: &Snapshot) -> bool {
@@ -1522,6 +1535,11 @@ impl Game {
     pub fn debug_line(&self) -> String {
         let st = self.net.as_ref().map(|n| n.state());
         let me = st.and_then(|s| s.my_tank());
+        if self.screen == Screen::Title {
+            let tanks: Vec<[i32; 2]> =
+                self.backdrop.world.tanks.iter().filter(|t| t.alive).map(|t| [t.pos.x as i32, t.pos.z as i32]).collect();
+            return format!("screen=Title centre={:?} cam={:?} tanks={tanks:?}", self.orbit_centre, self.camera_title);
+        }
         format!(
             "screen={:?} status={:?} you={:?} code={:?} tanks={} alive={} hp={} pos={:?} paused={} captured={} rtt={:.0}",
             self.screen,
