@@ -142,7 +142,18 @@ impl Hints {
             self.showing = None;
             self.seen.remove(tip.key);
             self.dirty = true;
-            ui.hide_hint();
+            ui.hide_hint_now();
+        }
+    }
+
+    /// Takes `tip` off the screen and out of the queue (it stays seen if it
+    /// was shown): for a tip whose moment has passed.
+    pub fn hide_tip(&mut self, tip: Tip, ui: &mut Ui) {
+        self.queue.retain(|t| *t != tip);
+        if self.showing.is_some_and(|(t, _)| t == tip) {
+            self.showing = None;
+            self.gap = GAP_SECS;
+            ui.hide_hint_now();
         }
     }
 

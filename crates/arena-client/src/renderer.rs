@@ -635,6 +635,9 @@ pub struct Renderer {
     /// The map is a pale salt flat (the Refinery): a high sun gets a
     /// darker, warmer, more saturated grade so it does not wash to white.
     pub salt_flat: bool,
+    /// The map is a deep gorge (Canyon): walls and floor sit in the
+    /// shade much of the day, so the sky and bounce fill are lifted.
+    pub gorge: bool,
 }
 
 const INSTANCE_STRIDE: u64 = std::mem::size_of::<GpuInstance>() as u64;
@@ -1185,6 +1188,7 @@ impl Renderer {
             focus_strength: 0.0,
             see_through_on: true,
             salt_flat: false,
+            gorge: false,
         }
     }
 
@@ -1632,6 +1636,12 @@ impl Renderer {
             l.saturation = look.saturation * (1.0 + 0.22 * k);
             l.warmth = look.warmth * Vec3::new(1.0 + 0.04 * k, 1.0, 1.0 - 0.07 * k);
             l.sun_color = look.sun_color * Vec3::new(1.0, 1.0 - 0.03 * k, 1.0 - 0.1 * k);
+        }
+        if self.gorge {
+            // Shaded canyon walls read as rock, not as black: more sky and
+            // much more warm bounce (the sunlit walls light the gorge).
+            l.sky_color = l.sky_color * 1.35;
+            l.ground_color = l.ground_color * 1.6;
         }
         let look = &l;
         let globals = Globals {

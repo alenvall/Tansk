@@ -499,6 +499,7 @@ impl WorldRenderer {
         self.renderer.recorded = Some(HashMap::new());
         // The Refinery's pale salt flat gets its own high-sun grade.
         self.renderer.salt_flat = map.id == arena_core::MapId::Refinery;
+        self.renderer.gorge = map.id == arena_core::MapId::Canyon;
         self.map = Some(map.clone());
         self.statics.clear();
         self.blobs.clear();
@@ -1701,7 +1702,8 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
     let mut out: Vec<Dressing> = Vec::new();
     let mut keep_clear: Vec<(Vec2, f32)> = Vec::new();
     for s in &map.spawns {
-        keep_clear.push((Vec2::new(s.pos.x, s.pos.z), 7.0));
+        // (Wide: nothing a fresh crew's camera or hull can poke through.)
+        keep_clear.push((Vec2::new(s.pos.x, s.pos.z), 16.0));
     }
     for w in &map.wells {
         keep_clear.push((Vec2::new(w.pos.x, w.pos.z), 8.0));
@@ -1727,7 +1729,14 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
         })
     };
     let free = |p: Vec2, margin: f32| in_bounds(p) && !map.blocked_xz(p, margin) && clear_of_sites(p);
-    let push = |out: &mut Vec<Dressing>, kind: Clutter, v: u32, pos: Vec2, yaw: f32| out.push(Dressing { kind, v, pos, yaw });
+    // Cacti and bushes keep off cliff toes (they'd stand inside a tank pinned there).
+    let near_cliff = |p: Vec2| [(0.0, 0.0), (3.0, 0.0), (-3.0, 0.0), (0.0, 3.0), (0.0, -3.0)].iter().any(|(dx, dz)| map.normal_at(p.x + dx, p.y + dz).y < 0.85);
+    let push = |out: &mut Vec<Dressing>, kind: Clutter, v: u32, pos: Vec2, yaw: f32| {
+        if matches!(kind, Clutter::Cactus | Clutter::Shrub) && near_cliff(pos) {
+            return;
+        }
+        out.push(Dressing { kind, v, pos, yaw })
+    };
 
     // 1. Round the obstacles: the places' clutter.
     for (oi, o) in map.obstacles.iter().enumerate() {

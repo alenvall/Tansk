@@ -1540,7 +1540,6 @@ html[data-touch="1"] .t-hud[data-lobby="1"] .t-tz-stick { width: 36%; }
   .t-man-grid { grid-template-columns: minmax(0, 1fr); }
   .t-manual-body { padding: .3rem .9rem 2rem; overflow-x: hidden; }
   .t-manual-card { min-width: 0; max-width: 100vw; }
-  .t-manual-btn { display: none; }
 }
 .t-man-glow { --kc: linear-gradient(90deg, #5fd6cb, #f2c230, #ff8143); }
 .t-man-grid > .t-man-note { grid-column: 1 / -1; }
@@ -1588,13 +1587,43 @@ html[data-touch="1"] .t-hud[data-lobby="1"] .t-tz-stick { width: 36%; }
 /* Short or narrow screens: What's new folds to its header (tap to open). */
 @media (max-width: 1100px), (max-height: 620px) {
   .t-news { top: auto; bottom: 4.2rem; height: auto; width: min(24rem, calc(100vw - 3rem)); }
-  .t-news-head { cursor: pointer; border-bottom: 0; padding-bottom: .7rem; }
-  .t-news-chev { display: block; width: .7rem; height: .7rem; border-right: .2rem solid var(--fuel); border-bottom: .2rem solid var(--fuel); transform: rotate(-135deg); }
+  .t-news-head { border-bottom: 0; padding-bottom: .7rem; }
+  .t-news .t-news-chev { transform: rotate(-135deg); }
   .t-news[data-open="1"] .t-news-chev { transform: rotate(45deg); }
-  .t-news:not([data-open="1"]) .t-news-body { display: none; }
+  .t-news:not([data-open="1"]) .t-news-body, .t-news:not([data-open="1"]) .t-news-foot { display: none; }
   .t-news[data-open="1"] { top: 1rem; z-index: 5; }
+}
+/* Phones on their side: the left column under the wordmark. */
+@media (max-height: 500px) {
+  .t-manual-btn { top: auto; right: auto; left: max(1.5rem, env(safe-area-inset-left)); bottom: 12.2rem; }
+  .t-news { right: auto; left: max(1.5rem, env(safe-area-inset-left)); bottom: 15.8rem; width: min(22rem, 40vw); }
+  .t-title:not([data-panel="none"]) .t-manual-btn { visibility: hidden; }
 }
 @media (max-width: 640px) {
   .t-news { right: 1.6rem; left: 1.6rem; width: auto; bottom: calc(3.6rem + 48px + .6rem); }
-  .t-news:not([data-open="1"]) .t-news-foot { display: none; }
+  /* How to play and the manual share the bottom row. */
+  .t-howto-btn { right: calc(50% + .3rem) !important; }
+  .t-manual-btn { top: auto; bottom: 3.6rem; left: calc(50% + .3rem); right: 1.6rem; width: auto; justify-content: center; }
+  .t-manual-btn .t-btn-label { font-size: 1.05rem; }
+  .t-howto-btn .t-btn-label { font-size: 1.05rem; }
+  .t-title:not([data-panel="none"]) .t-manual-btn { visibility: hidden; }
 }
+
+/* What's new folds to its header on every screen (the header toggles). */
+.t-news-head { cursor: pointer; }
+.t-news-chev { display: block; flex: none; width: .7rem; height: .7rem; border-right: .2rem solid var(--fuel); border-bottom: .2rem solid var(--fuel); transform: rotate(-135deg); transition: transform .15s; }
+.t-news[data-open="0"] { bottom: auto; }
+.t-news[data-open="0"] .t-news-chev { transform: rotate(45deg); }
+.t-news[data-open="0"] .t-news-body, .t-news[data-open="0"] .t-news-foot { display: none; }
+.t-news[data-open="0"] .t-news-head { border-bottom: 0; padding-bottom: .7rem; }
+
+/* No tips over the kill-cam or the respawn card; a tip that no longer
+   applies goes at once. */
+.t-hud:has(#t-killcam:not([hidden])) .t-hint, .t-hud:has(#t-respawn:not([hidden])) .t-hint { display: none; }
+.t-hint[data-cut="1"][data-on="0"] { transition: none; }
+
+/* Your build: readable. */
+.t-build-row { font-size: 1.12rem; line-height: 1.3; }
+.t-build-row b { font-size: 1.12rem; }
+.t-build-row .t-man-ic { width: 1.8rem; height: 1.8rem; }
+#tansk-pause .t-pause-build { max-width: 28rem; gap: .45rem; }

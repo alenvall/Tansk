@@ -970,12 +970,19 @@ impl Ui {
 
     /// A crew-chief tip under the top plates; `[W]` marks become key caps.
     pub fn show_hint(&mut self, text: &str) {
+        self.dom.remove_attr("t-hint", "data-cut");
         self.dom.html("t-hint-text", &keycaps(text));
         self.dom.retrigger("t-hint", "data-on", "1");
     }
 
     pub fn hide_hint(&mut self) {
         self.dom.attr("t-hint", "data-on", "0");
+    }
+
+    /// The tip off at once (no fade): it no longer applies.
+    pub fn hide_hint_now(&mut self) {
+        self.dom.attr("t-hint", "data-on", "0");
+        self.dom.attr("t-hint", "data-cut", "1");
     }
 
     pub fn chat_line(&mut self, name: &str, team: Team, text: &str) {

@@ -7,6 +7,8 @@ use std::collections::HashSet;
 #[derive(Default)]
 pub struct Controls {
     held: HashSet<String>,
+    /// Keys pressed since the last frame: a tap shorter than a frame counts.
+    tapped: HashSet<String>,
     /// Left, right, middle.
     pub buttons: [bool; 3],
     /// Pressed since the last frame (a click shorter than a frame still counts).
@@ -20,6 +22,7 @@ pub struct Controls {
 impl Controls {
     pub fn key_down(&mut self, code: &str) {
         self.held.insert(code.to_string());
+        self.tapped.insert(code.to_string());
     }
 
     pub fn key_up(&mut self, code: &str) {
@@ -43,11 +46,13 @@ impl Controls {
     /// Focus lost: let go of everything.
     pub fn release_all(&mut self) {
         self.held.clear();
+        self.tapped.clear();
         self.buttons = [false; 3];
     }
 
+    /// Down now, or tapped since the last frame.
     pub fn held(&self, code: &str) -> bool {
-        self.held.contains(code)
+        self.held.contains(code) || self.tapped.contains(code)
     }
 
     pub fn any(&self, codes: &[&str]) -> bool {
@@ -61,6 +66,7 @@ impl Controls {
     pub fn end_frame(&mut self) {
         self.mouse = (0.0, 0.0);
         self.pressed = [false; 3];
+        self.tapped.clear();
     }
 }
 
@@ -107,5 +113,25 @@ impl Pad {
 
     pub fn active(&self) -> bool {
         self.axes.iter().any(|a| a.abs() > 0.3) || self.buttons.iter().any(|b| *b > 0.5)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_tap_inside_one_frame_counts_once() {
+        let mut c = Controls::default();
+        c.key_down("KeyF");
+        c.key_up("KeyF");
+        assert!(c.held("KeyF") && c.any(&["KeyE", "KeyF"]));
+        c.end_frame();
+        assert!(!c.held("KeyF"));
+        c.button(0, true);
+        c.button(0, false);
+        assert!(c.pressed[0] && !c.buttons[0]);
+        c.end_frame();
+        assert!(!c.pressed[0]);
     }
 }

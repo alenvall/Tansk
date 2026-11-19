@@ -213,3 +213,38 @@ fn the_gorge_runs_its_modes() {
         r.step();
     }
 }
+
+/// Driving into a canyon wall at an angle doesn't pin the tank: it slides
+/// along the wall the way it points.
+#[test]
+fn tanks_slide_along_canyon_walls() {
+    let (mut s, me) = Sim::practice_on(MapId::Canyon, 7, 0, 0.5);
+    let x = -215.0f32;
+    let wall = gorge_z(x) - gorge_half(x);
+    let start = Vec3::new(x, 0.0, wall + 14.0);
+    // Nearly head-on into the north wall, a touch eastwards.
+    let yaw = 75f32.to_radians();
+    s.teleport(me, start.x, start.z, yaw);
+    for _ in 0..(60 * 8) {
+        s.set_input(me, arena_core::Input { throttle: 1.0, aim_point: start + Vec3::new(40.0, 0.0, -30.0), ..Default::default() });
+        s.step();
+    }
+    let (end, _) = s.tank_pose(me).unwrap();
+    assert!(end.x - start.x > 20.0, "pinned against the wall: {start} -> {end}");
+}
+
+/// A flare called right in front of you still lands the bombs well clear.
+#[test]
+fn an_air_strike_called_close_lands_clear() {
+    let (mut s, me) = Sim::practice_on(MapId::Canyon, 7, 0, 0.5);
+    let j = s.players.iter().position(|p| p.id == me).unwrap();
+    s.players[j].tank.air_strike = true;
+    let (p, _) = s.tank_pose(me).unwrap();
+    s.set_input(me, arena_core::Input { aim_point: p + Vec3::new(12.0, 0.0, 0.0), special: true, ..Default::default() });
+    s.step();
+    let st = s.snapshot().strikes;
+    assert_eq!(st.len(), 1);
+    let t = Vec3::from(st[0].target);
+    let d = glam::Vec2::new(t.x - p.x, t.z - p.z).length();
+    assert!(d > 50.0, "the strike lands {d} m away");
+}

@@ -8,8 +8,9 @@
 //!   over (fences, stalls, tents), or the thing **toppled** over (towers,
 //!   poles), falling away from whoever brought it down. The old
 //!   destructibles (barriers, sandbags, crates, wrecks, pipes) dent too.
-//! - **Ramming**: fences, stalls and tents give way to a tank driving into
-//!   them fast; it ploughs on through (oil drums are loose props already).
+//! - **Ramming**: fences, stalls, tents, wind pumps and power poles give way
+//!   to a tank driving into them fast; it ploughs on through (oil drums are
+//!   loose props already).
 //! - **Craters**: big blasts on the ground (air-strike bombs, fuel trailers
 //!   and tanks, the mortar, the Big Bore) dig a real dent in the terrain:
 //!   the map's heights and the physics heightfield both change, capped so
@@ -112,8 +113,8 @@ fn staged(kind: ObstacleKind) -> Option<(f32, RubbleKind, bool)> {
         Tent => (150.0, RubbleKind::Flat, true),
         Tower => (220.0, RubbleKind::Topple, false),
         WaterTower => (380.0, RubbleKind::Topple, false),
-        Windmill => (150.0, RubbleKind::Topple, false),
-        PowerPole => (90.0, RubbleKind::Topple, false),
+        Windmill => (150.0, RubbleKind::Topple, true),
+        PowerPole => (90.0, RubbleKind::Topple, true),
         _ => return None,
     })
 }

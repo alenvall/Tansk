@@ -236,6 +236,17 @@ impl Fx {
         self.parts.push(Particle { pos, vel, age: 0.0, life, size0: size.0, size1: size.1, col0: col.0, col1: col.1, alpha, kind, rot, spin, drag, lift, seed, heat });
     }
 
+    /// A particle with exactly this life, no drag or lift (tracer bolts:
+    /// they must end on the hit).
+    #[allow(clippy::too_many_arguments)]
+    fn spawn_exact(&mut self, kind: Kind, pos: Vec3, vel: Vec3, life: f32, size: (f32, f32), col: (Vec3, Vec3), alpha: f32, heat: f32) {
+        let before = self.parts.len();
+        self.spawn(kind, pos, vel, life, size, col, alpha, 0.0, 0.0, heat);
+        if let Some(p) = self.parts.get_mut(before) {
+            p.life = life;
+        }
+    }
+
     fn smoke(&mut self, pos: Vec3, vel: Vec3, size: f32, dark: f32, life: f32) {
         self.smoke_a(pos, vel, size, dark, life, 0.85);
     }
@@ -353,8 +364,17 @@ impl Fx {
                 near(*pos, 25.0) * if main { 0.35 } else { 0.05 }
             }
             Event::Tracer { from, to, .. } => {
+                // A short bright bolt that flies the line (about 450 m/s),
+                // not the whole line at once: a full-length streak from a
+                // shot passing the camera crossed the entire screen.
                 let d = *to - *from;
-                self.spawn(Kind::Streak, *from + d * 0.5, d.normalize_or_zero() * 0.01, 0.06, (0.05, 0.05), (Vec3::new(8.0, 6.0, 2.0), Vec3::new(8.0, 6.0, 2.0)), 1.0, 0.0, 0.0, d.length());
+                let len = d.length();
+                let dir = d / len.max(1e-3);
+                let speed = 450.0;
+                let streak = 5.0f32.min(len * 0.5);
+                let start = *from + dir * streak * 0.5;
+                let life = ((len - streak) / speed).max(0.03);
+                self.spawn_exact(Kind::Streak, start, dir * speed, life, (0.06, 0.05), (Vec3::new(8.0, 6.0, 2.0), Vec3::new(8.0, 6.0, 2.0)), 1.0, streak.max(1.6));
                 self.sparks(*to, -d.normalize_or_zero(), 3, 6.0);
                 0.0
             }

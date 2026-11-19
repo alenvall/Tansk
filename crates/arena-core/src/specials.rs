@@ -611,6 +611,13 @@ impl Sim {
         if off.length() > s.strike_max_range {
             off = off.normalize() * s.strike_max_range;
         }
+        // Never on yourself: the run's near end lands well clear of the
+        // caller (the flare goes at least ~55 m out, along the aim or the hull).
+        let min = s.strike_length * 0.5 + 25.0;
+        if off.length() < min {
+            let ahead = if off.length() > 3.0 { off.normalize() } else { flat(hp.rot * Vec3::X).normalize_or(Vec2::X) };
+            off = ahead * min;
+        }
         let c = flat(hp.pos) + off;
         let ph = self.map.play_half - 5.0;
         let c = Vec2::new(c.x.clamp(-ph, ph), c.y.clamp(-ph, ph));

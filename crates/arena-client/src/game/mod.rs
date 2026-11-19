@@ -1763,9 +1763,6 @@ impl Game {
     /// Onboarding tips the situation calls for (each shows once per browser).
     fn onboarding(&mut self, me: Option<&TankSnap>, snap: &Snapshot, world: &RenderWorld, dt: f32) {
         let alive = me.is_some_and(|t| t.alive);
-        if !alive {
-            self.hints.drop_tip(hints::LOW_HEALTH, &mut self.ui);
-        }
         if let (Some(t), true) = (me, alive) {
             // Mode first, then the controls, as you roll out.
             if snap.wellhead.is_some() {
@@ -1786,16 +1783,23 @@ impl Game {
             }
             if t.rare_ammo > 0 || t.air_strike {
                 self.hints.want(hints::SPECIAL);
+            } else {
+                // Used it: the tip goes at once.
+                self.hints.hide_tip(hints::SPECIAL, &mut self.ui);
             }
             // Only for a hull failing now, not a fresh spawn.
-            let low = (t.health as f32) < 0.3 * f32::from(t.max_health.max(1));
+            let low = t.health > 0 && (t.health as f32) < 0.3 * f32::from(t.max_health.max(1));
             if low && self.m.alive_for > 2.0 {
                 self.hints.want(hints::LOW_HEALTH);
             } else {
                 self.hints.drop_tip(hints::LOW_HEALTH, &mut self.ui);
             }
         }
-        let can_show = alive && self.screen == Screen::InGame && !self.paused && !self.m.ended;
+        // No tips while wrecked, in the kill-cam or just back on the line.
+        let can_show = alive && self.m.alive_for > 1.5 && self.screen == Screen::InGame && !self.paused && !self.m.ended;
+        if !alive {
+            self.hints.hide_tip(hints::LOW_HEALTH, &mut self.ui);
+        }
         let pad = self.pad_live();
         self.hints.tick(dt, can_show, pad, self.touch.enabled, &mut self.ui);
     }

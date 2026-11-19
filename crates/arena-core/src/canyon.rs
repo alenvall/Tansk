@@ -219,11 +219,14 @@ impl Map {
         }
 
         // ---- THE GORGE floor: arches, boulder piles, a wrecked mine train -------
-        for (x, side, yaw) in [(-200.0f32, 1.0f32, 0.1f32), (195.0, -1.0, -0.15), (-58.0, -1.0, 0.0)] {
-            // An arch over the floor near one wall, its legs along the gorge.
-            let z = gorge_z(x) + side * (gorge_half(x) - 14.0);
+        for x in [-170.0f32, 195.0, 160.0] {
+            // An arch straddling the floor: its legs either side of the
+            // middle, a 13 m lane under the span, the walls well clear.
+            let z = gorge_z(x);
+            let slope = 40.0 / 95.0 * (x / 95.0).cos();
+            let flow = (-slope).atan2(1.0);
             let j = b.jit(0.05);
-            b.place(ObstacleKind::RockArch, x, z, yaw + j);
+            b.place(ObstacleKind::RockArch, x, z, flow + std::f32::consts::FRAC_PI_2 + j);
         }
         for (x, dz) in [(-140.0f32, 14.0f32), (-245.0, -22.0), (60.0, -40.0), (230.0, 25.0)] {
             let yaw = b.jit(3.0);

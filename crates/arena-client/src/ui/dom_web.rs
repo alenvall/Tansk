@@ -163,6 +163,13 @@ impl Ctx {
         self.push(UiAction::InviteCopied);
     }
 
+    /// The layout where What's new starts folded (see the CSS).
+    fn small_screen(&self) -> bool {
+        let Some(w) = web_sys::window() else { return false };
+        let Ok(f) = prop(&w, "matchMedia").dyn_into::<js_sys::Function>() else { return false };
+        f.call1(&w, &JsValue::from_str("(max-width: 1100px), (max-height: 620px)")).map(|m| prop(&m, "matches").is_truthy()).unwrap_or(false)
+    }
+
     /// Opens or closes the idea box (the name starts as your crew name).
     fn show_ideas(&self, open: bool) {
         let Some(b) = self.q("#t-ideabox") else { return };
@@ -258,7 +265,22 @@ impl Ctx {
                 }
             }
             if let Some(b) = &send {
-                let _ = b.remove_attribute("disabled");
+                // Sent: live again once the text changes, 3 s on at the earliest.
+                // Refused: try again after the same short wait.
+                let until = js_sys::Date::now() + 3000.0;
+                let _ = b.set_attribute("data-until", &until.to_string());
+                let _ = b.set_attribute("data-wait-edit", if ok { "1" } else { "0" });
+                if !ok {
+                    let b2 = b.clone();
+                    let cb = wasm_bindgen::closure::Closure::once_into_js(move || {
+                        let _ = b2.remove_attribute("disabled");
+                    });
+                    if let Some(w) = web_sys::window() {
+                        if let Ok(f) = prop(&w, "setTimeout").dyn_into::<js_sys::Function>() {
+                            let _ = f.call2(&w, &cb, &JsValue::from_f64(3000.0));
+                        }
+                    }
+                }
             }
         });
     }
@@ -364,7 +386,12 @@ impl Ctx {
             }
             "news-toggle" => {
                 if let Some(n) = self.q("#t-news") {
-                    let open = n.get_attribute("data-open").as_deref() == Some("1");
+                    // Unset: open on big screens, folded on small ones.
+                    let open = match n.get_attribute("data-open").as_deref() {
+                        Some("1") => true,
+                        Some("0") => false,
+                        _ => !self.small_screen(),
+                    };
                     let _ = n.set_attribute("data-open", if open { "0" } else { "1" });
                 }
                 UiAction::Click
@@ -424,6 +451,13 @@ impl Ctx {
             let n = prop_str(&t, "value").chars().count();
             if let Some(c) = self.q("#t-idea-count") {
                 c.set_text_content(Some(&format!("{n} / 400")));
+            }
+            // A new text after a send: the button comes back (after the cooldown).
+            if let Some(b) = self.q("#t-idea-send") {
+                let until: f64 = b.get_attribute("data-until").and_then(|u| u.parse().ok()).unwrap_or(0.0);
+                if b.has_attribute("disabled") && b.get_attribute("data-wait-edit").as_deref() == Some("1") && js_sys::Date::now() >= until {
+                    let _ = b.remove_attribute("disabled");
+                }
             }
         }
         if t.id() == "t-paint-custom" {

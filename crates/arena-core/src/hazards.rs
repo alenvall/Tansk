@@ -12,7 +12,8 @@
 //!   lights the other trailers nearby. It is towed back in after a while.
 //!
 //! - **Bank slides**: a tank wedged on ground too steep to drive (thrown onto
-//!   a river cliff by a blast or a bad jump) slides off it after a moment.
+//!   a river cliff by a blast or a bad jump) slides off it after a moment;
+//!   one driving into a cliff face slides along it instead of pinning.
 //!
 //! Hooks in `sim.rs`: [`Sim::init_spectacle`] after the world is built,
 //! [`Sim::reset_spectacle`] on a match reset, [`Sim::step_spectacle`] each
@@ -46,6 +47,11 @@ const SLIDE_NORMAL: f32 = 0.85;
 /// Wedged on a bank this long, a tank gets slid off it, at this speed.
 const SLIDE_AFTER: f32 = 1.5;
 const SLIDE_SPEED: f32 = 5.0;
+/// Ground ahead this steep (normal's up part) is a wall to slide along.
+const WALL_NORMAL: f32 = 0.82;
+/// Pressing into a wall this long, a tank slides along it, at this speed.
+const WALL_AFTER: f32 = 0.3;
+const WALL_SLIDE_SPEED: f32 = 6.0;
 
 /// A fuel trailer's health; it starts to leak and burn below this share of it.
 pub const TRAILER_HEALTH: f32 = 220.0;
@@ -150,7 +156,17 @@ impl Sim {
             let c = body.translation();
             let n = self.map.normal_at(c.x, c.z);
             let on_ground = c.y - self.map.height_at(c.x, c.z) < 3.0;
-            if n.y > SLIDE_NORMAL || !on_ground || body.linvel().length() > 1.0 {
+            let slow = body.linvel().length() < 1.2;
+            // Pressing into a wall: steep ground just ahead of the hull (or
+            // behind it, backing up) while the tracks push and nothing moves.
+            let throttle = p.input.throttle;
+            let fwd = body.rotation() * Vec3::X;
+            let fwd = Vec3::new(fwd.x, 0.0, fwd.z).normalize_or(Vec3::X) * throttle.signum();
+            let probe = c + fwd * 3.6;
+            let wall_n = self.map.normal_at(probe.x, probe.z);
+            let pressing = throttle.abs() > 0.3 && wall_n.y < WALL_NORMAL;
+            let on_bank = n.y < SLIDE_NORMAL;
+            if !on_ground || !slow || !(on_bank || pressing) {
                 if let Some(k) = k {
                     wedged.swap_remove(k);
                 }
@@ -166,10 +182,24 @@ impl Sim {
                     dt
                 }
             };
-            if t > SLIDE_AFTER {
-                let down = Vec3::new(n.x, 0.0, n.z).normalize_or(Vec3::X);
+            let fire = if on_bank { t > SLIDE_AFTER } else { t > WALL_AFTER };
+            if fire {
                 let b = self.phys.body_mut(self.players[j].tank.body);
-                b.set_linvel(down * SLIDE_SPEED + Vec3::Y * 1.5, true);
+                if on_bank {
+                    let down = Vec3::new(n.x, 0.0, n.z).normalize_or(Vec3::X);
+                    b.set_linvel(down * SLIDE_SPEED + Vec3::Y * 1.5, true);
+                } else {
+                    // Slide along the wall the way the hull points, eased off it.
+                    let away = Vec3::new(wall_n.x, 0.0, wall_n.z).normalize_or(-fwd);
+                    let mut along = Vec3::new(-away.z, 0.0, away.x);
+                    if along.dot(fwd) < 0.0 {
+                        along = -along;
+                    }
+                    b.set_linvel(along * WALL_SLIDE_SPEED + away * 1.5 + Vec3::Y * 0.3, true);
+                    // ...and swing the nose round to run along it.
+                    let turn = fwd.cross(along).y.signum();
+                    b.set_angvel(Vec3::Y * turn * 2.5, true);
+                }
                 if let Some(k) = wedged.iter().position(|w| w.0 == id) {
                     wedged[k].1 = 0.0;
                 }

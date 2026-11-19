@@ -13,6 +13,8 @@ use crate::camera::CameraCollider;
 const GROUND: f32 = 0.7;
 /// Every box is grown by this much (the near plane and a little air).
 const PAD: f32 = 0.55;
+/// The girder bridge's side trusses rise this high over the deck, m.
+const TRUSS_H: f32 = 3.4;
 
 pub struct SceneCollider<'a>(pub &'a Map);
 
@@ -24,6 +26,7 @@ fn dressing(kind: ObstacleKind) -> (f32, f32) {
         K::CarCube | K::CarTower | K::CarWreck => (0.5, 0.6),
         K::Pipe => (0.6, 0.8),
         K::ContainerStack | K::FuelTank => (0.3, 0.5),
+        K::GirderBridge => (0.0, 0.1),
         _ => (0.2, 0.3),
     }
 }
@@ -49,7 +52,17 @@ impl CameraCollider for SceneCollider<'_> {
                 continue;
             }
             let (side, top) = dressing(o.kind);
-            for (c, rot, half) in o.world_boxes() {
+            let mut boxes: Vec<(Vec3, glam::Quat, Vec3)> = o.world_boxes().collect();
+            if o.kind == ObstacleKind::GirderBridge {
+                // The drawn trusses stand on the deck's edges (the sim only
+                // has the deck): walls for the camera, not for driving.
+                if let Some(&(c, rot, h)) = boxes.first() {
+                    for s in [-1.0, 1.0] {
+                        boxes.push((c + rot * Vec3::new(s * (h.x - 0.35), h.y + TRUSS_H * 0.5, 0.0), rot, Vec3::new(0.35, TRUSS_H * 0.5, h.z)));
+                    }
+                }
+            }
+            for (c, rot, half) in boxes {
                 let inv = rot.inverse();
                 let ro = inv * (from - c);
                 let rd = inv * dir;
@@ -93,6 +106,21 @@ fn slab(ro: Vec3, rd: Vec3, half: Vec3, len: f32) -> Option<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// On the Gorge's bridge deck, a boom swung sideways meets the truss;
+    /// along the deck it stays free.
+    #[test]
+    fn the_bridge_trusses_stop_the_camera() {
+        let map = Map::by_id(arena_core::MapId::Canyon, 3);
+        let Some(b) = map.obstacles.iter().find(|o| o.kind == ObstacleKind::GirderBridge) else { return };
+        let (c, rot, h) = b.world_boxes().next().unwrap();
+        let on_deck = c + rot * Vec3::new(0.0, h.y + 2.4, 0.0);
+        let col = SceneCollider(&map);
+        let side = col.free_fraction(on_deck, on_deck + rot * Vec3::new(9.0, 1.5, 0.0));
+        let along = col.free_fraction(on_deck, on_deck + rot * Vec3::new(0.0, 1.5, 7.0));
+        assert!(side < 0.8, "sideways {side}");
+        assert!(along > 0.9, "along the deck {along}");
+    }
 
     #[test]
     fn a_box_behind_pulls_the_boom_in() {
