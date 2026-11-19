@@ -76,7 +76,8 @@ fn tri(m: &mut MeshBuilder, h: &dyn Fn(f32, f32) -> f32, e: f32, p: [Vec3; 3]) {
 }
 
 /// The map's terrain and its outer ring, as (mesh, transform) pieces.
-pub fn build(map: &Map) -> Vec<(MeshBuilder, Mat4)> {
+/// The map's ground style for the triangle painter (salt, tint, rock, mud).
+fn set_style(map: &Map) {
     SALT.with(|s| s.set(if map.id == arena_core::MapId::Refinery { 0.85 } else { 0.0 }));
     TINT.with(|t| {
         t.set(match map.id {
@@ -87,31 +88,55 @@ pub fn build(map: &Map) -> Vec<(MeshBuilder, Mat4)> {
     });
     CANYON.with(|c| c.set(matches!(map.id, arena_core::MapId::RustBelt | arena_core::MapId::Canyon)));
     MUD.with(|c| c.set(map.id == arena_core::MapId::RustBelt));
-    let res = map.resolution;
+}
+
+/// Cells per side of a terrain chunk.
+pub const CHUNK: usize = CHUNK_CELLS;
+
+/// One terrain chunk: the cells from (`cx`, `cz`) on (multiples of [`CHUNK`]).
+/// Rebuilt alone when a crater digs into it.
+pub fn chunk(map: &Map, cx: usize, cz: usize) -> MeshBuilder {
+    set_style(map);
     let sp = map.spacing();
     let half = map.size / 2.0;
     let h = |x: f32, z: f32| map.height_at(x, z);
+    let cells = map.resolution - 1;
+    let mut m = MeshBuilder::new();
+    for iz in cz..(cz + CHUNK_CELLS).min(cells) {
+        for ix in cx..(cx + CHUNK_CELLS).min(cells) {
+            let p = |i: usize, j: usize| Vec3::new(-half + i as f32 * sp, map.sample(i, j), -half + j as f32 * sp);
+            let (a, b, c, d) = (p(ix, iz), p(ix + 1, iz), p(ix + 1, iz + 1), p(ix, iz + 1));
+            // Split along (ix, iz+1)-(ix+1, iz), as the collider does.
+            tri(&mut m, &h, sp * 0.5, [a, b, d]);
+            tri(&mut m, &h, sp * 0.5, [b, c, d]);
+        }
+    }
+    m
+}
+
+/// The chunks (`cx`, `cz` in cells) in the order [`build`] returns them.
+pub fn chunk_keys(map: &Map) -> Vec<(usize, usize)> {
+    let cells = map.resolution - 1;
     let mut out = Vec::new();
-    let cells = res - 1;
     let mut cz = 0;
     while cz < cells {
         let mut cx = 0;
         while cx < cells {
-            let mut m = MeshBuilder::new();
-            for iz in cz..(cz + CHUNK_CELLS).min(cells) {
-                for ix in cx..(cx + CHUNK_CELLS).min(cells) {
-                    let p = |i: usize, j: usize| Vec3::new(-half + i as f32 * sp, map.sample(i, j), -half + j as f32 * sp);
-                    let (a, b, c, d) = (p(ix, iz), p(ix + 1, iz), p(ix + 1, iz + 1), p(ix, iz + 1));
-                    // Split along (ix, iz+1)-(ix+1, iz), as the collider does.
-                    tri(&mut m, &h, sp * 0.5, [a, b, d]);
-                    tri(&mut m, &h, sp * 0.5, [b, c, d]);
-                }
-            }
-            out.push((m, Mat4::IDENTITY));
+            out.push((cx, cz));
             cx += CHUNK_CELLS;
         }
         cz += CHUNK_CELLS;
     }
+    out
+}
+
+/// The map's terrain and its outer ring, as (mesh, transform) pieces: the
+/// chunks (in [`chunk_keys`] order), then the ring.
+pub fn build(map: &Map) -> Vec<(MeshBuilder, Mat4)> {
+    set_style(map);
+    let half = map.size / 2.0;
+    let mut out: Vec<(MeshBuilder, Mat4)> = chunk_keys(map).into_iter().map(|(cx, cz)| (chunk(map, cx, cz), Mat4::IDENTITY)).collect();
+    set_style(map);
 
     // Outer ring: coarse dunes rising past the rim, out to ~1.6 km.
     let border = |x: f32, z: f32| map.height_at(x.clamp(-half, half), z.clamp(-half, half));
@@ -347,6 +372,22 @@ pub fn marks(map: &Map) -> Vec<MeshBuilder> {
         }
     }
     out
+}
+
+/// A crater's scorch: a sooty ragged disc draped over the (dug) ground,
+/// a darker core and burnt streaks thrown out round it.
+pub fn scorch(map: &Map, c: Vec2, radius: f32, seed: u32) -> MeshBuilder {
+    let mut m = MeshBuilder::new();
+    let soot = mark_paint(Vec3::new(0.2, 0.13, 0.085), 0.95);
+    let core = mark_paint(Vec3::new(0.11, 0.075, 0.05), 0.95);
+    oil_blob(&mut m, map, c, radius * 0.95, soot, seed);
+    oil_blob(&mut m, map, c, radius * 0.45, core, seed + 3);
+    for k in 0..6u32 {
+        let a = hash(k, seed + 9) * std::f32::consts::TAU;
+        let d = radius * (0.9 + 0.4 * hash(k, seed + 11));
+        oil_blob(&mut m, map, c + Vec2::new(a.cos(), a.sin()) * d, radius * (0.08 + 0.1 * hash(k, seed + 13)), soot, seed + 17 + k);
+    }
+    m
 }
 
 /// A flat sand floor for lineups and tests.

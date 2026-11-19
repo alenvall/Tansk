@@ -30,6 +30,7 @@ mod props_refinery;
 mod props_rustbelt;
 mod props_hazards;
 mod props_canyon;
+mod props_destruct;
 mod renderer;
 mod shapes;
 mod ships;

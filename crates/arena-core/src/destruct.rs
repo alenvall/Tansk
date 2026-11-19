@@ -8,8 +8,8 @@
 //!   over (fences, stalls, tents), or the thing **toppled** over (towers,
 //!   poles), falling away from whoever brought it down. The old
 //!   destructibles (barriers, sandbags, crates, wrecks, pipes) dent too.
-//! - **Ramming**: fences, stalls, tents, crates and car wrecks give way to a
-//!   tank driving into them fast; it ploughs on through.
+//! - **Ramming**: fences, stalls and tents give way to a tank driving into
+//!   them fast; it ploughs on through (oil drums are loose props already).
 //! - **Craters**: big blasts on the ground (air-strike bombs, fuel trailers
 //!   and tanks, the mortar, the Big Bore) dig a real dent in the terrain:
 //!   the map's heights and the physics heightfield both change, capped so
@@ -118,9 +118,11 @@ fn staged(kind: ObstacleKind) -> Option<(f32, RubbleKind, bool)> {
     })
 }
 
-/// The old destructibles a fast tank also ploughs through.
+/// What a fast tank ploughs through: the light staged cover (fences,
+/// stalls, tents). Oil drums are loose props already; crates and wrecks
+/// hold (they are the low cover the fights lean on).
 fn rammable(kind: ObstacleKind) -> bool {
-    matches!(kind, ObstacleKind::Crates | ObstacleKind::CarWreck) || staged(kind).is_some_and(|s| s.2)
+    staged(kind).is_some_and(|s| s.2)
 }
 
 #[derive(Clone, Debug, Default)]
@@ -174,7 +176,7 @@ impl Sim {
         }
         let had_craters = !self.destruct.craters.is_empty();
         if had_craters && !self.destruct.base.is_empty() {
-            self.map.heights = self.destruct.base.clone();
+            std::sync::Arc::make_mut(&mut self.map).heights = self.destruct.base.clone();
             self.refresh_heightfield();
         }
         let rubble: Vec<u16> = self.destruct.rubble.iter().map(|r| r.obstacle).collect();
@@ -236,7 +238,7 @@ impl Sim {
                     let touching = o.world_boxes().any(|(bc, r, h)| {
                         let l = r.inverse() * (Vec3::new(c.x, bc.y, c.z) - bc);
                         let toward = flat_v.dot(Vec2::new(bc.x - c.x, bc.z - c.z)) > 0.0;
-                        toward && l.x.abs() < h.x + 2.4 && l.z.abs() < h.z + 2.4
+                        toward && l.x.abs() < h.x + 3.4 && l.z.abs() < h.z + 3.4
                     });
                     if touching {
                         hit = Some(oi);
@@ -290,7 +292,7 @@ impl Sim {
         let snap = RubbleSnap { obstacle: oi as u16, kind, dir: dir as u8 };
         let yaw = snap.yaw();
         let ground: Vec<(Vec3, Quat, Vec3)> = o.world_boxes().filter(|(c, _, h)| c.y - h.y < o.pos.y + 4.0).collect();
-        let mut add = |phys: &mut crate::physics::Physics, c: Vec3, r: Quat, h: Vec3| {
+        let add = |phys: &mut crate::physics::Physics, c: Vec3, r: Quat, h: Vec3| {
             phys.world.insert_collider(ColliderBuilder::cuboid(h.x, h.y, h.z).position(pose(c, r)).friction(0.7).collision_groups(static_groups()), None)
         };
         let mut handles = Vec::new();
@@ -380,8 +382,11 @@ impl Sim {
                 updates.push((z * n + x, self.blocked_now(p, 2.8)));
             }
         }
-        for (i, b) in updates {
-            self.nav.blocked[i] = b;
+        if updates.iter().any(|(i, b)| self.nav.blocked[*i] != *b) {
+            let nav = std::sync::Arc::make_mut(&mut self.nav);
+            for (i, b) in updates {
+                nav.blocked[i] = b;
+            }
         }
     }
 
@@ -454,18 +459,28 @@ impl Sim {
         if pos.y - ground > 3.5 || pos.x.abs() > self.map.play_half || pos.z.abs() > self.map.play_half {
             return;
         }
-        let radius = (r * 0.5).clamp(3.0, 8.0);
-        let depth = (radius * 0.16).min(1.1);
+        // A Big Bore shell scoops a small pit; bombs and fuel blow big holes.
+        let (radius, depth) = if matches!(w, Weapon::Gun(_)) {
+            (2.6, 0.3)
+        } else {
+            let radius = (r * 0.5).clamp(3.0, 8.0);
+            (radius, (radius * 0.16).min(1.1))
+        };
         let c = CraterSnap::new(Vec2::new(pos.x, pos.z), radius, depth);
         if self.destruct.base.is_empty() {
             self.destruct.base = self.map.heights.clone();
         }
         let base = std::mem::take(&mut self.destruct.base);
-        self.map.apply_crater(c.centre(), c.radius(), c.depth(), &base);
+        std::sync::Arc::make_mut(&mut self.map).apply_crater(c.centre(), c.radius(), c.depth(), &base);
         self.destruct.base = base;
         self.destruct.craters.push(c);
         self.refresh_heightfield();
         self.refresh_nav(c.centre(), c.radius() + 6.0);
+    }
+
+    /// Digs the crater a bomb of blast radius `r` would at `pos` (tests, debug).
+    pub fn dig_crater(&mut self, pos: Vec3, r: f32) {
+        self.crater_from_blast(pos, r, Weapon::AirStrike);
     }
 
     /// Hands the map's current heights to the physics terrain.

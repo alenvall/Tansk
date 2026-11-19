@@ -6,9 +6,16 @@ written for players. The `## Coming up` section is what's being built next.
 
 ## Coming up
 
-- Destructible cover on every map: walls, sheds and stacks that come down when you shoot them.
-- More bot personalities and smarter squads.
+- More height on the older maps.
+- Tuning from your idea box posts.
 - Your ideas from the idea box: we read everything.
+
+## 2026-11-19 Things break now
+
+- Shacks, fences, stalls, tents, towers and poles take damage, get holed, and come down. Water towers topple.
+- Drive fast through fences, stalls and tents to flatten them.
+- Bombs, mortars and fuel blasts dig real craters you can drive in and out of.
+- What's new, Coming up and an idea box on the title screen.
 
 ## 2026-11-19 The Gorge, power-ups and the Workshop manual
 

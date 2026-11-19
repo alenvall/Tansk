@@ -23,6 +23,7 @@ use crate::props_refinery as refinery;
 use crate::props_rustbelt as rustbelt;
 use crate::props_hazards as spectacle;
 use crate::props_canyon as gorge;
+use crate::props_destruct as wreckage;
 use crate::renderer::{Instance, Light, MeshId, Renderer};
 use crate::shapes::hash;
 use crate::tank;
@@ -124,6 +125,10 @@ pub struct RenderWorld {
     pub smokes: Vec<(u16, Vec3, f32, f32)>,
     /// Static map pieces to hide: (obstacle index, box index or 255 = all).
     pub removed: Vec<(u16, u8)>,
+    /// Dented cover, rubble and craters (`arena_core::destruct`).
+    pub dented: Vec<u16>,
+    pub rubble: Vec<arena_core::destruct::RubbleSnap>,
+    pub craters: Vec<arena_core::destruct::CraterSnap>,
     /// Mines: (id, position, armed).
     pub mines: Vec<(u16, Vec3, bool)>,
     pub strikes: Vec<StrikeView>,
@@ -230,6 +235,9 @@ impl RenderWorld {
                 .collect(),
             smokes: snap.smokes.iter().map(|s| (s.id, Vec3::from(s.pos), s.radius, s.life as f32 / 255.0)).collect(),
             removed: snap.removed.iter().map(|r| (r.obstacle, r.box_index)).collect(),
+            dented: snap.dented.clone(),
+            rubble: snap.rubble.clone(),
+            craters: snap.craters.clone(),
             mines: snap.mines.iter().map(|m| (m.id, Vec3::from(m.pos), m.armed)).collect(),
             strikes: snap
                 .strikes
@@ -414,6 +422,8 @@ pub struct WorldRenderer {
     statics_dirty: bool,
     /// The removed-pieces list the renderer's static scene was built with.
     statics_removed: Vec<(u16, u8)>,
+    /// Destruction on screen: dents, rubble, craters (`sync_destruction`).
+    destruct: DestructView,
     /// Merged one-off map pieces (see `chunk_statics`).
     chunks: Vec<Chunk>,
     /// CPU ms spent in the last `draw`: effects sim, instance build,
@@ -460,6 +470,7 @@ impl WorldRenderer {
             prof: [0.0; 4],
             statics_dirty: true,
             statics_removed: Vec::new(),
+            destruct: DestructView::default(),
             chunks: Vec::new(),
             dressed: 0,
         }
@@ -500,10 +511,16 @@ impl WorldRenderer {
         // ~2 ms hitch on top of the kill's other work.
         lib.get(r, "wreck:hull", || tank::hull_mesh(WRECK_CHARRED));
         lib.get(r, "wreck:turret", || tank::turret_mesh(WRECK_CHARRED));
-        for (mesh, transform) in crate::terrain::build(map) {
+        let chunk_keys = crate::terrain::chunk_keys(map);
+        let mut chunk_ids = Vec::new();
+        for (k, (mesh, transform)) in crate::terrain::build(map).into_iter().enumerate() {
             let id = r.add_mesh(&mesh);
+            if let Some(key) = chunk_keys.get(k) {
+                chunk_ids.push((*key, id));
+            }
             self.statics.push(StaticPiece { instance: Instance::new(id, transform), owner: None });
         }
+        self.destruct = DestructView { chunks: chunk_ids, base: map.heights.clone(), ..Default::default() };
         for (oi, o) in map.obstacles.iter().enumerate() {
             let seed = oi as u32 * 7919 + 3;
             let frame = Mat4::from_rotation_translation(o.rot, o.pos);
@@ -873,6 +890,7 @@ impl WorldRenderer {
 
         // The static scene goes to the renderer once, and again only when
         // it changes (a new scene, or map pieces shot away).
+        self.sync_destruction(world);
         if self.statics_dirty || self.statics_removed != world.removed {
             let removed = &world.removed;
             let kept: Vec<Instance> = self
@@ -1271,6 +1289,185 @@ impl WorldRenderer {
 
 /// How far a Land-Ship's stern ramp is open (0 shut .. 1 down), `t` seconds
 /// after a buggy launch: it drops fast, holds, then winches back up.
+/// What destruction the renderer has put on screen so far.
+#[derive(Default)]
+struct DestructView {
+    /// Terrain chunk meshes by chunk (cells), rebuilt under craters.
+    chunks: Vec<((usize, usize), MeshId)>,
+    /// The untouched ground (craters dig from it).
+    base: Vec<f32>,
+    craters: Vec<arena_core::destruct::CraterSnap>,
+    dented: Vec<u16>,
+    rubble: Vec<arena_core::destruct::RubbleSnap>,
+    /// The pieces added for it (to take away again on a reset).
+    pieces: Vec<(Piece, MeshId)>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Piece {
+    Dent(u16),
+    Rubble(u16),
+    Scorch(usize),
+}
+
+impl WorldRenderer {
+    /// Brings the screen up to the sim's destruction: digs new craters into
+    /// the local map and rebuilds just the terrain chunks they touch (with a
+    /// scorch decal each), puts dents on cover, heaps rubble or lays a
+    /// toppled tower where cover fell. A reset (the lists shrinking) puts it
+    /// all back. Cheap when nothing changed (three list compares).
+    fn sync_destruction(&mut self, world: &RenderWorld) {
+        let d = &self.destruct;
+        if self.map.is_none() || (world.craters == d.craters && world.dented == d.dented && world.rubble == d.rubble) {
+            return;
+        }
+        let t0 = clock_ms();
+        let mut map = self.map.take().expect("a map");
+        // Craters.
+        if world.craters != self.destruct.craters {
+            let mut dirty: Vec<(usize, usize)> = Vec::new();
+            let mark = |map: &Map, c: &arena_core::destruct::CraterSnap, dirty: &mut Vec<(usize, usize)>| {
+                let (x0, z0, x1, z1) = map.crater_cells(c.centre(), c.radius());
+                let k = crate::terrain::CHUNK;
+                let last = map.resolution - 2;
+                for z in (z0.saturating_sub(1) / k)..=(z1.min(last) / k) {
+                    for x in (x0.saturating_sub(1) / k)..=(x1.min(last) / k) {
+                        if !dirty.contains(&(x * k, z * k)) {
+                            dirty.push((x * k, z * k));
+                        }
+                    }
+                }
+            };
+            let start = if world.craters.starts_with(&self.destruct.craters) {
+                self.destruct.craters.len()
+            } else {
+                for c in &self.destruct.craters {
+                    mark(&map, c, &mut dirty);
+                }
+                map.heights = self.destruct.base.clone();
+                self.drop_pieces(|p| matches!(p, Piece::Scorch(_)));
+                0
+            };
+            for c in world.craters.iter().skip(start) {
+                map.apply_crater(c.centre(), c.radius(), c.depth(), &self.destruct.base);
+                mark(&map, c, &mut dirty);
+            }
+            for key in dirty {
+                let Some(k) = self.destruct.chunks.iter().position(|(c, _)| *c == key) else { continue };
+                let old = self.destruct.chunks[k].1;
+                let new = self.renderer.add_mesh(&crate::terrain::chunk(&map, key.0, key.1));
+                self.destruct.chunks[k].1 = new;
+                for s in self.statics.iter_mut().filter(|s| s.instance.mesh == old) {
+                    s.instance.mesh = new;
+                }
+                self.renderer.free_mesh(old);
+                self.scene_meshes.retain(|m| *m != old);
+                self.scene_meshes.push(new);
+            }
+            for (i, c) in world.craters.iter().enumerate().skip(start) {
+                let m = crate::terrain::scorch(&map, c.centre(), c.radius(), i as u32 * 977 + 5);
+                self.add_piece(Piece::Scorch(i), &m, Mat4::IDENTITY);
+            }
+            self.destruct.craters = world.craters.clone();
+        }
+        // Rubble first (it takes the place of any dents).
+        let fresh: Vec<_> = world.rubble.iter().filter(|r| !self.destruct.rubble.contains(r)).copied().collect();
+        for r in fresh {
+            let oi = r.obstacle;
+            self.drop_pieces(|p| p == Piece::Dent(oi));
+            let Some(o) = map.obstacles.get(oi as usize) else { continue };
+            let frame = Mat4::from_rotation_translation(o.rot, o.pos);
+            match r.kind {
+                arena_core::destruct::RubbleKind::Topple => {
+                    if let Some((m, lift)) = standing_mesh(o) {
+                        let model = Mat4::from_translation(o.pos + Vec3::Y * lift) * Mat4::from_rotation_y(r.yaw()) * Mat4::from_rotation_z(-std::f32::consts::FRAC_PI_2);
+                        self.add_piece(Piece::Rubble(oi), &m, model);
+                    }
+                }
+                kind => {
+                    let debris = if matches!(o.kind, ObstacleKind::Tent | ObstacleKind::Stall) { wreckage::Debris::Canvas } else { wreckage::Debris::Tin };
+                    let m = wreckage::rubble(&ground_boxes(o), kind == arena_core::destruct::RubbleKind::Flat, debris, oi as u32);
+                    self.add_piece(Piece::Rubble(oi), &m, frame);
+                }
+            }
+        }
+        for r in self.destruct.rubble.clone().iter().filter(|r| !world.rubble.contains(r)) {
+            let oi = r.obstacle;
+            self.drop_pieces(|p| p == Piece::Rubble(oi));
+        }
+        // Dents.
+        let fresh: Vec<u16> = world.dented.iter().filter(|oi| !self.destruct.dented.contains(oi)).copied().collect();
+        for oi in fresh {
+            let Some(o) = map.obstacles.get(oi as usize) else { continue };
+            let m = wreckage::dent_overlay(&ground_boxes(o), oi as u32);
+            self.add_piece(Piece::Dent(oi), &m, Mat4::from_rotation_translation(o.rot, o.pos));
+        }
+        for oi in self.destruct.dented.clone() {
+            if !world.dented.contains(&oi) && !world.rubble.iter().any(|r| r.obstacle == oi) {
+                self.drop_pieces(|p| p == Piece::Dent(oi));
+            }
+        }
+        self.destruct.dented = world.dented.clone();
+        self.destruct.rubble = world.rubble.clone();
+        self.map = Some(map);
+        self.statics_dirty = true;
+        let ms = clock_ms() - t0;
+        if ms > 4.0 {
+            log::info!("destruction sync took {ms:.1} ms");
+        }
+    }
+
+    fn add_piece(&mut self, key: Piece, m: &MeshBuilder, model: Mat4) {
+        let id = self.renderer.add_mesh(m);
+        self.scene_meshes.push(id);
+        self.statics.push(StaticPiece { instance: Instance::new(id, model), owner: None });
+        self.destruct.pieces.push((key, id));
+    }
+
+    fn drop_pieces(&mut self, pred: impl Fn(Piece) -> bool) {
+        let gone: Vec<MeshId> = self.destruct.pieces.iter().filter(|(k, _)| pred(*k)).map(|(_, id)| *id).collect();
+        if gone.is_empty() {
+            return;
+        }
+        self.destruct.pieces.retain(|(k, _)| !pred(*k));
+        self.statics.retain(|s| !gone.contains(&s.instance.mesh));
+        for id in gone {
+            self.renderer.free_mesh(id);
+            self.scene_meshes.retain(|m| *m != id);
+        }
+    }
+}
+
+/// An obstacle's standing boxes in its own frame: (centre, half, yaw).
+fn ground_boxes(o: &arena_core::Obstacle) -> Vec<(Vec3, Vec3, f32)> {
+    o.boxes
+        .iter()
+        .filter(|b| b.center.y - b.half.y < 4.0)
+        .map(|b| {
+            let (axis, angle) = b.rot.to_axis_angle();
+            (b.center, b.half, if axis.y < 0.0 { -angle } else { angle })
+        })
+        .collect()
+}
+
+/// The standing model of a thing that topples (in its frame), and how far
+/// its side sits off the ground once it lies down.
+fn standing_mesh(o: &arena_core::Obstacle) -> Option<(MeshBuilder, f32)> {
+    let boxes: Vec<(Vec3, Vec3)> = o.boxes.iter().map(|b| (b.center, b.half)).collect();
+    match o.kind {
+        ObstacleKind::WaterTower if boxes.len() >= 5 => Some((props::water_tower(&boxes[..4], boxes[4]), boxes[4].1.x)),
+        ObstacleKind::Tower if !boxes.is_empty() => {
+            let (c, h) = boxes[0];
+            let mut m = lift(props::watchtower(h), h.y);
+            m.transform_from(0, Mat4::from_translation(c - Vec3::Y * h.y));
+            Some((m, h.x))
+        }
+        ObstacleKind::Windmill if !boxes.is_empty() => Some((props::windmill(boxes[0].1, boxes[0].0), 0.9)),
+        ObstacleKind::PowerPole => Some((props::power_pole(), 0.25)),
+        _ => None,
+    }
+}
+
 fn ramp_open(t: f32) -> f32 {
     if t < 0.0 {
         0.0
@@ -2284,6 +2481,80 @@ mod shots {
                 if since.is_some_and(|s| tick > s + 7) {
                     break;
                 }
+            }
+            world.dt = 0.0;
+            world
+        });
+    }
+
+    /// Destruction: the Rust Belt's market shot up (shacks dented and
+    /// heaped, a fence flattened, a pole down, craters in the courtyard) and
+    /// the Refinery's water tower toppled by bombs (`destruct-*.png`).
+    #[test]
+    #[ignore]
+    fn shots_destruction() {
+        fn wreck(sim: &mut arena_core::Sim, kinds: &[(ObstacleKind, usize, f32)]) {
+            for &(kind, n, dmg) in kinds {
+                let idx: Vec<usize> = sim.map.obstacles.iter().enumerate().filter(|(_, o)| o.kind == kind).map(|(i, _)| i).take(n).collect();
+                for oi in idx {
+                    let o = sim.map.obstacles[oi].clone();
+                    let c = o.pos + o.rot * o.boxes[0].center;
+                    sim.blast(c + Vec3::Y * 1.5, dmg, 2.0, 0.0);
+                }
+            }
+        }
+        render("destruct-market", |wr| {
+            let id = arena_core::MapId::RustBelt;
+            let (mut sim, _) = arena_core::Sim::practice_on(id, 7, 0, 0.5);
+            wr.set_map(&arena_core::Map::by_id(id, 7));
+            wreck(&mut sim, &[(ObstacleKind::Shack, 4, 600.0), (ObstacleKind::Fence, 2, 600.0), (ObstacleKind::Stall, 2, 600.0), (ObstacleKind::PowerPole, 2, 600.0)]);
+            wreck(&mut sim, &[(ObstacleKind::Shack, 8, 140.0)]);
+            let o = sim.map.outpost;
+            for (dx, dz) in [(-8.0f32, 6.0f32), (9.0, -7.0), (2.0, 12.0)] {
+                let p = Vec3::new(o.x + dx, sim.map.height_at(o.x + dx, o.z + dz), o.z + dz);
+                sim.dig_crater(p, 14.0);
+            }
+            let mut world = RenderWorld::default();
+            let eye = o + Vec3::new(24.0, 22.0, -8.0);
+            let look = o + Vec3::new(-12.0, 0.0, -30.0);
+            for tick in 0..(60 * 4) {
+                sim.step();
+                let ev = sim.drain_events();
+                world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                world.time = 30.0 + tick as f32 * arena_core::DT;
+                world.camera = Some(Camera::look(eye, look, 55.0));
+                for e in &ev {
+                    wr.event(e, eye);
+                }
+                wr.fx.update(arena_core::DT, &world);
+            }
+            world.dt = 0.0;
+            world
+        });
+        render("destruct-tower", |wr| {
+            let id = arena_core::MapId::Refinery;
+            let (mut sim, _) = arena_core::Sim::practice_on(id, 7, 0, 0.5);
+            wr.set_map(&arena_core::Map::by_id(id, 7));
+            let t = sim.map.obstacles.iter().find(|o| o.kind == ObstacleKind::WaterTower).unwrap().clone();
+            for _ in 0..6 {
+                sim.blast(t.pos + Vec3::new(3.0, 3.0, 1.0), 260.0, 4.0, 0.0);
+            }
+            for (dx, dz) in [(-14.0f32, 10.0f32), (12.0, 14.0), (0.0, -16.0)] {
+                let p = Vec3::new(t.pos.x + dx, sim.map.height_at(t.pos.x + dx, t.pos.z + dz), t.pos.z + dz);
+                sim.dig_crater(p, 16.0);
+            }
+            let mut world = RenderWorld::default();
+            let eye = t.pos + Vec3::new(-30.0, 14.0, 34.0);
+            for tick in 0..(60 * 3) {
+                sim.step();
+                let ev = sim.drain_events();
+                world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                world.time = 30.0 + tick as f32 * arena_core::DT;
+                world.camera = Some(Camera::look(eye, t.pos + Vec3::Y * 2.0, 55.0));
+                for e in &ev {
+                    wr.event(e, eye);
+                }
+                wr.fx.update(arena_core::DT, &world);
             }
             world.dt = 0.0;
             world
