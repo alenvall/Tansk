@@ -465,6 +465,8 @@ impl WorldRenderer {
     pub fn set_map(&mut self, map: &Map) {
         self.begin_scene();
         self.renderer.recorded = Some(HashMap::new());
+        // The Refinery's pale salt flat gets its own high-sun grade.
+        self.renderer.salt_flat = map.id == arena_core::MapId::Refinery;
         self.map = Some(map.clone());
         self.statics.clear();
         self.blobs.clear();
@@ -856,6 +858,10 @@ impl WorldRenderer {
         for p in &world.props {
             blobs.push((p.pos - Vec3::Y * 0.4).extend(0.7));
         }
+        // See-through: which tank the camera follows (its own meshes are
+        // flagged below so they never dither).
+        let focus = self.renderer.see_through(&camera, world.tanks.iter().filter(|t| t.alive).map(|t| (t.player, t.pos)), dt);
+        let mut tank_starts: Vec<(PlayerId, usize)> = Vec::new();
         let r = &mut self.renderer;
         let lib = &mut self.lib;
         // Wrecks: track each one, hold it a while after the sim drops it,
@@ -899,6 +905,7 @@ impl WorldRenderer {
             if !t.alive {
                 continue;
             }
+            tank_starts.push((t.player, instances.len()));
             let health = world.health.iter().find(|h| h.0 == t.player).map(|h| h.1).unwrap_or(1.0);
             let damage = (1.0 - health).clamp(0.0, 1.0);
             let anim = self.anims.entry(t.player).or_default();
@@ -1046,6 +1053,13 @@ impl WorldRenderer {
             }
             occluders.push(hull.transform_point3(Vec3::new(1.4, -0.1, 0.0)).extend(1.7));
             occluders.push(hull.transform_point3(Vec3::new(-1.4, -0.1, 0.0)).extend(1.7));
+        }
+        // Each tank's instances run from its start to the next tank's.
+        if let Some(k) = tank_starts.iter().position(|s| Some(s.0) == focus) {
+            let end = tank_starts.get(k + 1).map_or(instances.len(), |s| s.1);
+            for i in &mut instances[tank_starts[k].1..end] {
+                *i = crate::renderer::Instance { tint: crate::renderer::no_see_through(i.tint), ..*i };
+            }
         }
         for p in &world.props {
             let xf = Mat4::from_rotation_translation(p.rot, p.pos);
@@ -1222,8 +1236,6 @@ impl WorldRenderer {
         self.fx.set_max_particles(self.renderer.quality_settings().max_particles);
         self.fx.storm = self.renderer.look.storm;
         let t3 = clock_ms();
-        // Whatever stands between the chase camera and its tank dithers away.
-        self.renderer.see_through(&camera, world.tanks.iter().filter(|t| t.alive).map(|t| t.pos), dt);
         self.renderer.render(output, &camera, world.time, &instances, &sprites, &ruts, &blobs, &lights, &occluders);
         let t4 = clock_ms();
         self.prof = [t1 - t0, t2 - t1, t3 - t2, t4 - t3];

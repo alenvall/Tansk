@@ -14,6 +14,8 @@ struct SpriteOut {
     @location(1) color: vec4<f32>,
     @location(2) params: vec4<f32>,
     @location(3) world: vec3<f32>,
+    // The sprite's centre: puffs take one shadow sample there.
+    @location(4) centre: vec3<f32>,
 };
 
 fn corner(vi: u32) -> vec2<f32> {
@@ -94,6 +96,7 @@ fn vs_sprite(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
         out.params.w = coverage;
     }
     out.world = p;
+    out.centre = centre;
     return out;
 }
 
@@ -127,7 +130,10 @@ fn fs_sprite(in: SpriteOut) -> @location(0) vec4<f32> {
         let n = normalize(globals.cam_right.xyz * in.uv.x + globals.cam_up.xyz * in.uv.y + back * (z + 0.35));
         let n_dot_l = dot(n, globals.sun_dir.xyz);
         let hl = 0.5 * n_dot_l + 0.5;
-        let shadow = sun_visibility(in.world, globals.sun_dir.xyz, 1.0);
+        // One shadow sample at the puff's centre, not per pixel: a big,
+        // faint dust cloud shadowed per pixel shows the shadows of gantries
+        // and derricks cutting through it as ghost silhouettes in the air.
+        let shadow = sun_visibility(in.centre, globals.sun_dir.xyz, 1.0);
         let lit = globals.sun_color.rgb * warp(hl * hl * mix(0.25, 1.0, shadow)) + ambient(n) + point_lights(in.world, n);
         // Back-lit smoke glows round the edge towards the sun.
         let through = pow(max(dot(dir, globals.sun_dir.xyz), 0.0), 6.0) * (1.0 - z) * 0.8;
@@ -135,7 +141,10 @@ fn fs_sprite(in: SpriteOut) -> @location(0) vec4<f32> {
         c = mix(c, air_colour(dir), air);
         // Soft near fade: smoke, dust and debris right at the lens melt
         // away (3..8 m) instead of filling the screen.
-        let a = in.color.a * mask * smoothstep(3.0, 8.0, dist);
+        // Far puffs thin out with the air as well as taking its colour: a
+        // distant smoke trail tinted to the pale haze but kept opaque reads
+        // as a ghost arch against the blue sky.
+        let a = in.color.a * mask * smoothstep(3.0, 8.0, dist) * (1.0 - air);
         return vec4<f32>(c * a, a);
     }
     if (kind == 1u) {

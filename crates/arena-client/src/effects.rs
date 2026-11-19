@@ -87,6 +87,8 @@ struct TankFx {
     exhaust_t: f32,
     dust_t: f32,
     last_rut: [Option<Vec3>; 2],
+    /// Last frame's hull height, for telling a flung tank from a driving one.
+    last_y: Option<f32>,
 }
 
 struct Flash {
@@ -510,8 +512,24 @@ impl Fx {
                     }
                 }
             }
-            // Ruts under both tracks.
+            // Ruts under both tracks, only while on the ground: a tank flung
+            // by a blast laid tread strips along its flight, which hung in
+            // the air as translucent arches. Airborne: rising or falling
+            // fast, or tipped well over.
+            let y = t.pos.y;
+            let vy = match st.last_y {
+                Some(ly) if dt > 1e-4 => (y - ly) / dt,
+                _ => 0.0,
+            };
+            st.last_y = Some(y);
+            let upright = hull.transform_vector3(Vec3::Y).normalize_or_zero().y;
+            if vy.abs() > 4.5 || upright < 0.6 {
+                st.last_rut = [None, None];
+            }
             for (k, side) in [-1.42f32, 1.42].into_iter().enumerate() {
+                if vy.abs() > 4.5 || upright < 0.6 {
+                    break;
+                }
                 let p = hull.transform_point3(Vec3::new(0.0, -0.9, side));
                 match st.last_rut[k] {
                     Some(a) if a.distance(p) > 0.8 => {
@@ -579,8 +597,10 @@ impl Fx {
                     }
                 }
                 arena_core::snapshot::ShotKind::MortarShell => {
-                    if self.every(8500 + i as u32, 0.05, dt) > 0 {
-                        self.smoke(s.pos, Vec3::Y * 0.2, 0.3, 0.3, 1.2);
+                    // Only a short, faint wisp behind the shell: a lasting
+                    // trail drew whole translucent arches across the sky.
+                    if self.every(8500 + i as u32, 0.06, dt) > 0 {
+                        self.smoke_a(s.pos, Vec3::Y * 0.2, 0.25, 0.3, 0.3, 0.3);
                     }
                 }
                 _ => {}

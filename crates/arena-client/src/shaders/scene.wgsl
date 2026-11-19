@@ -584,21 +584,32 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
     let face = select(n, face_raw * inverseSqrt(max(dot(face_raw, face_raw), 1e-30)), dot(face_raw, face_raw) > 1e-14);
     var edge = 1.0 - abs(dot(n, face));
     let material = u32(in.params.y + 0.5);
-    // See-through: anything (but the ground) inside a soft cylinder from
-    // the eye to the followed tank, nearer than the tank, is screen-door
-    // dithered away, so the player's tank always shows.
-    if (globals.focus.w > 0.01 && material != 1u && material != 9u && material != 11u) {
+    // See-through: anything (but the ground) nearer than the followed tank
+    // and covering it on screen is screen-door dithered away, so the
+    // player's tank always shows. "Covering" is tested by carrying the
+    // fragment's view ray out to the tank's depth and checking it lands in
+    // a tank-sized box round the tank (4.8 m wide, 2.4 m below to 1.5 m
+    // above its centre), so the cleared patch hugs the tank's silhouette:
+    // a derrick or gate beside the camera stays solid where it is only over
+    // the sky or the ground, instead of ghosting. The tank's own instances
+    // are flagged (tint.w 2 or -1) and never dither.
+    let own = in.tint.w > 1.5 || in.tint.w < -0.5;
+    if (globals.focus.w > 0.01 && !own && material != 1u && material != 9u && material != 11u) {
         let eye = globals.camera.xyz;
         let seg = globals.focus.xyz - eye;
         let len = length(seg);
         let axis = seg / max(len, 1e-3);
         let along = dot(in.world - eye, axis);
-        let off = length(in.world - eye - axis * along);
-        // Wider near the tank, so its whole outline clears; stops 2.5 m
-        // short of the tank's centre so its own hull never dithers.
-        let radius = mix(1.0, 2.6, clamp(along / max(len, 1e-3), 0.0, 1.0));
-        let inside = (1.0 - smoothstep(radius * 0.6, radius, off)) * (1.0 - smoothstep(len - 3.0, len - 2.5, along)) * smoothstep(0.3, 1.0, along);
-        let fade = inside * globals.focus.w * 0.85;
+        // Where this fragment's ray meets the plane through the tank.
+        let q = eye + (in.world - eye) * (len / max(along, 0.05));
+        let d = q - globals.focus.xyz;
+        let side = length(d - axis * dot(d, axis) - vec3<f32>(0.0, d.y, 0.0));
+        let box = (1.0 - smoothstep(2.0, 2.4, side)) * (1.0 - smoothstep(1.3, 1.6, d.y)) * smoothstep(-2.6, -2.3, d.y);
+        // Only nearer than the tank (stops 1.5 m short of its centre). The
+        // middle clears fully and only a thin rim stipples: a large partly
+        // dithered area reads as a translucent ghost once FXAA smooths it.
+        let inside = box * (1.0 - smoothstep(len - 2.0, len - 1.5, along)) * smoothstep(0.3, 1.0, along);
+        let fade = inside * globals.focus.w;
         let ip = vec2<u32>(in.clip.xy) % vec2<u32>(4u);
         var bayer = array<f32, 16>(0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
         if (fade > (bayer[ip.y * 4u + ip.x] + 0.5) / 16.0) {

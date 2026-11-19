@@ -283,6 +283,14 @@ pub struct Instance {
     pub tint: Vec4,
 }
 
+/// Flags an instance's tint so the see-through never dithers it (the
+/// followed tank): `tint.w` 1 (tinted) becomes 2, 0 (untinted) becomes -1;
+/// the shader still reads `w > 0.5` as "use the tint".
+pub fn no_see_through(tint: Vec4) -> Vec4 {
+    let w = if tint.w > 0.5 { 2.0 } else { -1.0 };
+    Vec4::new(tint.x, tint.y, tint.z, w)
+}
+
 impl Instance {
     pub fn new(mesh: MeshId, model: Mat4) -> Self {
         Self { mesh, model, params: Vec4::ZERO, tint: Vec4::ZERO }
@@ -593,6 +601,9 @@ pub struct Renderer {
     focus_strength: f32,
     /// See-through on (shots turn it off for a before/after).
     pub see_through_on: bool,
+    /// The map is a pale salt flat (the Refinery): a high sun gets a
+    /// darker, warmer, more saturated grade so it does not wash to white.
+    pub salt_flat: bool,
 }
 
 const INSTANCE_STRIDE: u64 = std::mem::size_of::<GpuInstance>() as u64;
@@ -1056,31 +1067,37 @@ impl Renderer {
             focus: Vec3::ZERO,
             focus_strength: 0.0,
             see_through_on: true,
+            salt_flat: false,
         }
     }
 
     /// See-through for the chase camera: picks the tank the camera follows
-    /// (the candidate nearest the view axis, 2..22 m ahead of the eye) and
+    /// (the nearest candidate 2..22 m ahead within 4 m of the view axis) and
     /// eases the dither of whatever stands between the eye and it (props,
     /// walls, containers; not the ground) in, or back out when there is no
     /// such tank (gunsight, spectating from afar). Call once a frame.
-    pub fn see_through(&mut self, camera: &Camera, tanks: impl Iterator<Item = Vec3>, dt: f32) {
+    /// Returns the followed tank, whose instances the caller flags with
+    /// [`no_see_through`].
+    pub fn see_through(&mut self, camera: &Camera, tanks: impl Iterator<Item = (u8, Vec3)>, dt: f32) -> Option<u8> {
         let fwd = (camera.target - camera.eye).normalize_or_zero();
-        let mut best: Option<(f32, Vec3)> = None;
-        for p in tanks {
+        let mut best: Option<(f32, Vec3, u8)> = None;
+        for (id, p) in tanks {
             let c = p + Vec3::Y * 1.0;
             let along = (c - camera.eye).dot(fwd);
             if !(2.0..22.0).contains(&along) {
                 continue;
             }
             let off = (c - camera.eye - fwd * along).length();
-            if off < 4.0 && best.is_none_or(|(b, _)| off < b) {
-                best = Some((off, c));
+            // The nearest tank ahead (the one the chase rig sits behind),
+            // not the one nearest the view axis: an enemy dead ahead
+            // further out would otherwise steal the focus.
+            if off < 4.0 && best.is_none_or(|(b, _, _)| along < b) {
+                best = Some((along, c, id));
             }
         }
         let want = if !self.see_through_on {
             0.0
-        } else if let Some((_, c)) = best {
+        } else if let Some((_, c, _)) = best {
             self.focus = c;
             1.0
         } else {
@@ -1089,6 +1106,7 @@ impl Renderer {
         // A still frame (dt 0: shots) takes the target at once.
         let k = if dt > 0.0 { 1.0 - (-dt * 8.0).exp() } else { 1.0 };
         self.focus_strength += (want - self.focus_strength) * k;
+        best.map(|b| b.2)
     }
 
     #[allow(dead_code)] // wired to the Settings menu by the game layer
@@ -1487,6 +1505,15 @@ impl Renderer {
             l.sky_color = look.sky_color.lerp(storm_dust * 0.7, s);
             l.ground_color = look.ground_color.lerp(storm_dust * 0.8, s * 0.6);
             l.air_glow = look.air_glow * (1.0 + 2.0 * s);
+        }
+        if self.salt_flat {
+            // Strongest at noon, nothing at golden hour or dusk.
+            let k = ((look.sun_elevation - 25.0) / 40.0).clamp(0.0, 1.0);
+            let k = k * k * (3.0 - 2.0 * k);
+            l.exposure = look.exposure * (1.0 - 0.12 * k);
+            l.saturation = look.saturation * (1.0 + 0.22 * k);
+            l.warmth = look.warmth * Vec3::new(1.0 + 0.04 * k, 1.0, 1.0 - 0.07 * k);
+            l.sun_color = look.sun_color * Vec3::new(1.0, 1.0 - 0.03 * k, 1.0 - 0.1 * k);
         }
         let look = &l;
         let globals = Globals {
@@ -1947,6 +1974,49 @@ mod look_calib {
         for (on, name) in [(false, "off"), (true, "on")] {
             wr.renderer.see_through_on = on;
             save(&mut wr, &world, w, h, &format!("{dir}/see-through-{name}.png"));
+        }
+        // Close behind the tank: its own hull must never stipple.
+        world.camera = Some(Camera::look(Vec3::new(-5.0, 2.6, -3.6), Vec3::new(4.0, 1.0, -8.0), 62.0));
+        save(&mut wr, &world, w, h, &format!("{dir}/see-through-close.png"));
+    }
+
+    /// See-through in play: Raider Waves at the Refinery outpost from a
+    /// chase camera behind the human tank, turning round in steps, with
+    /// see-through off and on (to `TANSK_LOOK_DIR`, default docs/shots/look).
+    #[test]
+    #[ignore]
+    fn shots_see_through_raid() {
+        let dir = std::env::var("TANSK_LOOK_DIR").unwrap_or_else(|_| format!("{}/../../docs/shots/look", env!("CARGO_MANIFEST_DIR")));
+        std::fs::create_dir_all(&dir).expect("dir");
+        let (w, h) = (1280, 720);
+        let (device, queue) = device();
+        let mut wr = WorldRenderer::new(Renderer::with_quality(device, queue, wgpu::TextureFormat::Rgba8Unorm, w, h, Quality::Medium));
+        let (mut sim, me) = Sim::practice_raid_on(MapId::Refinery, 7, 3, 0.7);
+        wr.set_map(&Map::by_id(MapId::Refinery, 7));
+        let mut world = RenderWorld::default();
+        for tick in 0..(60 * 20) {
+            sim.step();
+            let ev = sim.drain_events();
+            if tick > 60 * 12 {
+                world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                world.time = tick as f32 * arena_core::DT;
+                for e in &ev {
+                    wr.event(e, Vec3::ZERO);
+                }
+                wr.fx.update(arena_core::DT, &world);
+            }
+        }
+        world.dt = 0.0;
+        let t = world.tanks.iter().find(|t| t.player == me).map(|t| t.pos).unwrap_or(Vec3::ZERO);
+        for k in 0..6 {
+            let a = k as f32 * std::f32::consts::TAU / 6.0;
+            let back = Vec3::new(a.cos(), 0.0, a.sin());
+            let eye = t - back * 7.5 + Vec3::Y * 3.6;
+            world.camera = Some(Camera::look(eye, t + back * 30.0 + Vec3::Y * 1.0, 58.0));
+            for (on, name) in [(false, "off"), (true, "on")] {
+                wr.renderer.see_through_on = on;
+                save(&mut wr, &world, w, h, &format!("{dir}/st-raid-{k}-{name}.png"));
+            }
         }
     }
 
