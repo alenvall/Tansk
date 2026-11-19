@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::bots::Brain;
 use crate::events::{Event, HitLocation, PickupKind, Weapon};
 use crate::map::ScrapKind;
-use crate::parts::{PartKind, VehicleKind, BOSS_MODULES, RIG_PLATES};
+use crate::parts::{PartKind, VehicleKind, BOSS_MODULES, RIG_PLATES, SHIP_MODULES, SHIP_PLATES};
 use crate::physics::pose;
 use crate::sim::{Phase, Player, Sim};
 use crate::snapshot::q01;
@@ -29,6 +29,9 @@ pub enum ModeKind {
     RaiderWaves,
     /// Rustbacks (team 0) vs Dust Saints (team 1), team kills, no friendly fire.
     TeamBrawl,
+    /// Team PvP over a fuel tanker: one team escorts it along the map's route,
+    /// the other stops it; sides swap for round 2. See [`crate::convoy`].
+    Convoy,
 }
 
 pub const TEAM_DEFENDERS: u8 = 0;
@@ -44,7 +47,44 @@ pub enum RaidPhase {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BossKind {
     WarRig,
-    // TODO(M3): LandShip, a slow ship-hull crawler with deck guns.
+    /// A beached ship hull on giant tracks: deck guns, mortars, broadside MGs,
+    /// and a stern hangar that drops buggies. Boss waves alternate Rig, Land-Ship.
+    LandShip,
+}
+
+impl BossKind {
+    /// The chassis this boss is built on.
+    pub fn vehicle(self) -> VehicleKind {
+        match self {
+            BossKind::WarRig => VehicleKind::WarRig,
+            BossKind::LandShip => VehicleKind::LandShip,
+        }
+    }
+
+    /// The boss on a chassis, if it is one.
+    pub fn of(v: VehicleKind) -> Option<BossKind> {
+        match v {
+            VehicleKind::WarRig => Some(BossKind::WarRig),
+            VehicleKind::LandShip => Some(BossKind::LandShip),
+            _ => None,
+        }
+    }
+
+    /// Its modules, in `BossSnap::modules` order.
+    pub fn modules(self) -> &'static [PartKind] {
+        match self {
+            BossKind::WarRig => &BOSS_MODULES,
+            BossKind::LandShip => &SHIP_MODULES,
+        }
+    }
+
+    /// The plates that shield its core.
+    pub fn plates(self) -> &'static [PartKind] {
+        match self {
+            BossKind::WarRig => &RIG_PLATES,
+            BossKind::LandShip => &SHIP_PLATES,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,6 +113,12 @@ pub struct RaidState {
     pub boss_lifetimes: Vec<f32>,
     /// Living bosses: (player, spawn time in match seconds).
     pub bosses: Vec<(PlayerId, f32)>,
+    /// Every boss that spawned, in order (statistics: per-kind counts).
+    pub boss_spawn_log: Vec<BossKind>,
+    /// Every boss defeated: (kind, seconds it lived).
+    pub boss_defeat_log: Vec<(BossKind, f32)>,
+    /// Living Land-Ships' gunnery (turret aim, reloads, hangar clock).
+    pub ships: Vec<crate::landship::ShipState>,
     pending_hit: f32,
     /// Per raider: (id, best distance to the outpost, seconds without progress).
     progress: Vec<(PlayerId, f32, f32)>,
@@ -104,6 +150,17 @@ pub struct BossSnap {
     /// True once all plates are gone and the core takes full damage.
     pub core_exposed: bool,
     pub modules: Vec<ModuleSnap>,
+    /// Added in wave 7: independently aimed turrets (the Land-Ship's deck guns;
+    /// empty for the War Rig, whose cannon is its turret).
+    pub turrets: Vec<TurretSnap>,
+}
+
+/// One boss turret's aim, relative to the boss hull (yaw + = left, pitch + = up).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TurretSnap {
+    pub part: PartKind,
+    pub yaw: f32,
+    pub pitch: f32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -174,6 +231,9 @@ impl Sim {
             bosses_killed: 0,
             boss_lifetimes: Vec::new(),
             bosses: Vec::new(),
+            boss_spawn_log: Vec::new(),
+            boss_defeat_log: Vec::new(),
+            ships: Vec::new(),
             pending_hit: 0.0,
             progress: Vec::new(),
         });
@@ -208,25 +268,45 @@ impl Sim {
 
     /// Spawn a raider machine at the map edge.
     fn spawn_raider(&mut self, kind: VehicleKind) {
+        self.spawn_raider_at(kind, None);
+    }
+
+    /// Spawn a raider machine at `at` (position, yaw), or at the map edge.
+    pub(crate) fn spawn_raider_at(&mut self, kind: VehicleKind, at: Option<(Vec3, f32)>) -> Option<PlayerId> {
         let t = self.tuning.clone();
-        let raid = self.raid.as_ref().unwrap();
+        let raid = self.raid.as_ref()?;
         let wave = raid.wave;
         let outpost = raid.outpost;
         let mut pos = Vec3::ZERO;
         let mut yaw = 0.0;
-        for _ in 0..60 {
-            let a = self.rng.range(0.0, std::f32::consts::TAU);
-            let r = self.map.play_half - 25.0;
-            let p = Vec2::new(a.cos() * r, a.sin() * r);
-            if !self.map.blocked_xz(p, if kind == VehicleKind::WarRig { 10.0 } else { 4.0 }) {
-                let d = Vec2::new(outpost.x, outpost.z) - p;
-                yaw = (-d.y).atan2(d.x);
-                let lift = if kind == VehicleKind::WarRig { 3.0 } else { 1.3 };
-                pos = Vec3::new(p.x, self.map.height_at(p.x, p.y) + lift, p.y);
-                break;
+        let (margin, lift) = match kind {
+            VehicleKind::WarRig => (10.0, 3.0),
+            VehicleKind::LandShip => (18.0, 4.6),
+            _ => (4.0, 1.3),
+        };
+        if let Some((p, y)) = at {
+            pos = p;
+            yaw = y;
+        } else {
+            for attempt in 0..60 {
+                let a = self.rng.range(0.0, std::f32::consts::TAU);
+                let r = self.map.play_half - if kind == VehicleKind::LandShip { 32.0 } else { 25.0 };
+                let p = Vec2::new(a.cos() * r, a.sin() * r);
+                // The Land-Ship turns like a ship: it wants open ground ahead of it.
+                let clear_ahead = kind != VehicleKind::LandShip || attempt >= 50 || {
+                    let to = (Vec2::new(outpost.x, outpost.z) - p).normalize_or(Vec2::X);
+                    (1..=16).all(|k| !self.map.blocked_xz(p + to * (k as f32 * 5.0), 10.0))
+                };
+                if clear_ahead && !self.map.blocked_xz(p, margin) {
+
+                    let d = Vec2::new(outpost.x, outpost.z) - p;
+                    yaw = (-d.y).atan2(d.x);
+                    pos = Vec3::new(p.x, self.map.height_at(p.x, p.y) + lift, p.y);
+                    break;
+                }
             }
         }
-        let Some(id) = (0..=255u8).find(|i| self.players.iter().all(|p| p.id != *i)) else { return };
+        let id = (0..=255u8).find(|i| self.players.iter().all(|p| p.id != *i))?;
         let mut tank = Tank::new_vehicle(&mut self.phys, &t, pos, yaw, kind);
         tank.protect = 0.0;
         let hm = 1.0 + t.raid.health_per_wave * wave.saturating_sub(1) as f32;
@@ -236,6 +316,8 @@ impl Sim {
             VehicleKind::Technical => "Raider technical",
             VehicleKind::Tank => "Raider tank",
             VehicleKind::WarRig => "THE WAR RIG",
+            VehicleKind::LandShip => "THE LAND-SHIP",
+            VehicleKind::FuelTanker => "Fuel tanker",
         };
         let seed = self.rng.next_u64();
         self.players.push(Player {
@@ -288,13 +370,51 @@ impl Sim {
                 let raid = self.raid.as_mut().unwrap();
                 raid.bosses_spawned += 1;
                 raid.bosses.push((id, now));
+                raid.boss_spawn_log.push(BossKind::WarRig);
                 self.events.push(Event::BossSpawned { player: id, kind: BossKind::WarRig, pos });
             }
-            VehicleKind::Buggy => {}
+            VehicleKind::LandShip => {
+                // Its own health cycle: the first Land-Ship (wave 10) is the baseline.
+                let cycle = wave / t.raid.boss_every.max(1);
+                let n = if t.raid.boss_alternate { cycle / 2 } else { cycle };
+                let boss_mult = 1.0 + t.raid.boss_health_per_cycle * n.saturating_sub(1) as f32;
+                self.players[j].tank.health_mult = boss_mult;
+                for m in SHIP_MODULES {
+                    self.attach_special(j, m);
+                }
+                for p in &mut self.players[j].tank.parts {
+                    p.max_health *= boss_mult;
+                    p.health = p.max_health;
+                }
+                let tk = &mut self.players[j].tank;
+                tk.refresh_stats(&mut self.phys, &t);
+                tk.health = tk.stats.max_health;
+                let now = self.tick as f32 / 60.0;
+                let hangar = t.raid.ship_hangar_interval * 0.5;
+                let raid = self.raid.as_mut().unwrap();
+                raid.bosses_spawned += 1;
+                raid.bosses.push((id, now));
+                raid.boss_spawn_log.push(BossKind::LandShip);
+                raid.ships.push(crate::landship::ShipState::new(id, hangar));
+                self.events.push(Event::BossSpawned { player: id, kind: BossKind::LandShip, pos });
+            }
+            VehicleKind::Buggy | VehicleKind::FuelTanker => {}
         }
         let tk = &mut self.players[j].tank;
         tk.health = tk.stats.max_health;
         self.events.push(Event::Respawned { player: id, pos });
+        Some(id)
+    }
+
+    /// The boss for wave `wave` (a boss wave): War Rig and Land-Ship alternate.
+    pub fn boss_for_wave(&self, wave: u32) -> BossKind {
+        let r = &self.tuning.raid;
+        let cycle = wave / r.boss_every.max(1);
+        if r.boss_alternate && cycle % 2 == 0 {
+            BossKind::LandShip
+        } else {
+            BossKind::WarRig
+        }
     }
 
     fn start_wave(&mut self) {
@@ -303,7 +423,13 @@ impl Sim {
         raid.wave += 1;
         let n = raid.wave as f32;
         let boss = t.boss_every > 0 && raid.wave % t.boss_every == 0;
-        let scale = if boss { 0.5 } else { 1.0 };
+        let cycle = raid.wave / t.boss_every.max(1);
+        let boss_kind = if t.boss_alternate && cycle % 2 == 0 { BossKind::LandShip } else { BossKind::WarRig };
+        let scale = match (boss, boss_kind) {
+            (false, _) => 1.0,
+            (true, BossKind::WarRig) => 0.5,
+            (true, BossKind::LandShip) => t.ship_escort_scale,
+        };
         let buggies = ((t.buggies_base + t.buggies_per_wave * n) * scale) as usize;
         let tanks = ((t.tanks_per_wave * (n - 1.0)).max(0.0) * scale) as usize;
         let techs = ((t.technicals_per_wave * (n - 2.0)).max(0.0) * scale) as usize;
@@ -321,7 +447,7 @@ impl Sim {
         }
         if boss {
             let at = mixed.len().min(2);
-            mixed.insert(at, VehicleKind::WarRig);
+            mixed.insert(at, boss_kind.vehicle());
         }
         mixed.reverse(); // popped from the back
         let count = mixed.len() as u16;
@@ -391,7 +517,7 @@ impl Sim {
             if Vec2::new(c.x - o.x, c.z - o.z).length() < rad {
                 match p.tank.vehicle {
                     VehicleKind::Buggy => kamikaze.push(j),
-                    VehicleKind::WarRig => drain += t.boss_sabotage_dps * dt,
+                    VehicleKind::WarRig | VehicleKind::LandShip => drain += t.boss_sabotage_dps * dt,
                     _ => drain += t.sabotage_dps * dt,
                 }
             }
@@ -468,10 +594,11 @@ impl Sim {
     /// Boss core: hull hits barely scratch it while any plate stands.
     pub(crate) fn core_mult(&self, j: usize, loc: HitLocation) -> f32 {
         let tank = &self.players[j].tank;
-        if tank.vehicle != VehicleKind::WarRig || matches!(loc, HitLocation::Part(_)) {
+        let Some(boss) = BossKind::of(tank.vehicle) else { return 1.0 };
+        if matches!(loc, HitLocation::Part(_)) {
             return 1.0;
         }
-        if tank.parts.iter().any(|p| RIG_PLATES.contains(&p.kind)) {
+        if tank.parts.iter().any(|p| boss.plates().contains(&p.kind)) {
             self.tuning.raid.boss_core_shielded
         } else {
             1.0
@@ -480,12 +607,14 @@ impl Sim {
 
     /// After a part breaks off: boss module events.
     pub(crate) fn on_part_lost(&mut self, j: usize, kind: PartKind, pos: Vec3) {
-        if self.players[j].tank.vehicle != VehicleKind::WarRig || !BOSS_MODULES.contains(&kind) {
+        let Some(boss) = BossKind::of(self.players[j].tank.vehicle) else { return };
+        if !boss.modules().contains(&kind) {
             return;
         }
         let id = self.players[j].id;
         self.events.push(Event::BossModuleLost { player: id, part: kind, pos });
-        if RIG_PLATES.contains(&kind) && !self.players[j].tank.parts.iter().any(|p| RIG_PLATES.contains(&p.kind)) {
+        let plates = boss.plates();
+        if plates.contains(&kind) && !self.players[j].tank.parts.iter().any(|p| plates.contains(&p.kind)) {
             self.events.push(Event::BossCoreExposed { player: id });
         }
     }
@@ -508,15 +637,20 @@ impl Sim {
             VehicleKind::Technical => t.drop_technical,
             VehicleKind::Tank => t.drop_tank,
             VehicleKind::WarRig => t.drop_boss,
+            VehicleKind::LandShip => t.drop_ship,
+            VehicleKind::FuelTanker => 0,
         };
         // A raider killed by its own kamikaze still drops its scrap.
         for _ in 0..drops {
             let k = ScrapKind::from_index(self.rng.below(4));
             self.spill(PickupKind::Scrap(k), pos + Vec3::Y, vel);
         }
-        if vehicle == VehicleKind::WarRig {
-            let r = crate::parts::RARE_PARTS[self.rng.below(crate::parts::RARE_PARTS.len())];
-            self.spill(PickupKind::Rare(r), pos + Vec3::Y * 2.0, vel);
+        if let Some(kind) = BossKind::of(vehicle) {
+            let rares = if kind == BossKind::LandShip { 2 } else { 1 };
+            for _ in 0..rares {
+                let r = crate::parts::RARE_PARTS[self.rng.below(crate::parts::RARE_PARTS.len())];
+                self.spill(PickupKind::Rare(r), pos + Vec3::Y * 2.0, vel);
+            }
             self.spill(PickupKind::AirStrike, pos + Vec3::Y * 2.0, vel);
             let now = self.tick as f32 / 60.0;
             let raid = self.raid.as_mut().unwrap();
@@ -527,6 +661,8 @@ impl Sim {
             }
             raid.bosses_killed += 1;
             raid.boss_lifetimes.push(lived);
+            raid.boss_defeat_log.push((kind, lived));
+            raid.ships.retain(|s| s.id != id);
             self.events.push(Event::BossDefeated { player: id, killer, seconds: lived });
         }
     }
@@ -554,6 +690,7 @@ impl Sim {
         if self.raid.is_none() {
             return;
         }
+        self.ship_weapons(dt);
         let t = self.tuning.clone();
         for i in 0..self.players.len() {
             let p = &self.players[i];
@@ -616,20 +753,23 @@ impl Sim {
     pub(crate) fn boss_snaps(&self) -> Vec<BossSnap> {
         self.players
             .iter()
-            .filter(|p| p.tank.vehicle == VehicleKind::WarRig && p.tank.alive)
-            .map(|p| BossSnap {
+            .filter(|p| p.tank.alive && p.team == Some(TEAM_RAIDERS))
+            .filter_map(|p| BossKind::of(p.tank.vehicle).map(|kind| (p, kind)))
+            .map(|(p, kind)| BossSnap {
                 player: p.id,
-                kind: BossKind::WarRig,
+                kind,
                 health: p.tank.health.max(0.0) as u16,
                 max_health: p.tank.stats.max_health as u16,
-                core_exposed: !p.tank.parts.iter().any(|q| RIG_PLATES.contains(&q.kind)),
-                modules: BOSS_MODULES
+                core_exposed: !p.tank.parts.iter().any(|q| kind.plates().contains(&q.kind)),
+                modules: kind
+                    .modules()
                     .iter()
                     .map(|&k| match p.tank.parts.iter().find(|q| q.kind == k) {
                         Some(q) => ModuleSnap { kind: k, health: q01(q.health / q.max_health), alive: true },
                         None => ModuleSnap { kind: k, health: 0, alive: false },
                     })
                     .collect(),
+                turrets: self.ship_turrets(p.id),
             })
             .collect()
     }
@@ -683,7 +823,9 @@ impl Sim {
                     } else {
                         e.2 += dt;
                     }
-                    if e.2 > 25.0 && p.tank.since_damage > 10.0 && d > rad + 5.0 {
+                    // The Land-Ship parks off the walls on purpose: that's not stuck.
+                    let parked = p.tank.vehicle == VehicleKind::LandShip && d < self.tuning.raid.ship_standoff + 25.0;
+                    if e.2 > 25.0 && p.tank.since_damage > 10.0 && d > rad + 5.0 && !parked {
                         recycle.push(p.id);
                         e.1 = f32::MAX;
                         e.2 = 0.0;
@@ -696,12 +838,13 @@ impl Sim {
         for id in recycle {
             let Some(j) = self.idx(id) else { continue };
             let kind = self.players[j].tank.vehicle;
-            if kind == VehicleKind::WarRig {
+            if matches!(kind, VehicleKind::WarRig | VehicleKind::LandShip) {
+                let margin = if kind == VehicleKind::LandShip { 18.0 } else { 10.0 };
                 for _ in 0..30 {
                     let a = self.rng.range(0.0, std::f32::consts::TAU);
-                    let r = self.map.play_half - 30.0;
+                    let r = self.map.play_half - margin - 20.0;
                     let p = Vec2::new(a.cos() * r, a.sin() * r);
-                    if !self.map.blocked_xz(p, 10.0) {
+                    if !self.map.blocked_xz(p, margin) {
                         let d = Vec2::new(o.x, o.z) - p;
                         self.teleport(id, p.x, p.y, (-d.y).atan2(d.x));
                         let b = self.players[j].tank.body;
@@ -750,4 +893,15 @@ impl Sim {
     pub fn debug_spawn_boss(&mut self) -> Option<PlayerId> {
         self.spawn_raider_now(VehicleKind::WarRig)
     }
+
+    /// Debug: spawn THE LAND-SHIP at the map edge now.
+    pub fn debug_spawn_landship(&mut self) -> Option<PlayerId> {
+        self.spawn_raider_now(VehicleKind::LandShip)
+    }
+
+    /// Debug: spawn the boss of `kind` at the map edge now.
+    pub fn debug_spawn_boss_kind(&mut self, kind: BossKind) -> Option<PlayerId> {
+        self.spawn_raider_now(kind.vehicle())
+    }
+
 }

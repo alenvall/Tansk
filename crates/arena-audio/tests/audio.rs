@@ -293,3 +293,110 @@ fn ambience_is_bounded_centred_and_follows_the_weather() {
         assert!(l.iter().all(|s| s.is_finite() && s.abs() < 0.99));
     }
 }
+
+mod music {
+    use arena_audio::analysis::analyse;
+    use arena_audio::dsp::SR;
+    use arena_audio::music::{render_stinger, render_track, render_with};
+    use arena_audio::{Music, MusicTrack, Stinger};
+
+    fn check(name: &str, ch: &[f32]) {
+        let r = analyse(ch);
+        assert!(ch.iter().all(|s| s.is_finite()), "{name}: non-finite");
+        assert!(r.peak <= 0.99, "{name}: peak {}", r.peak);
+        assert!(r.dc.abs() < 2e-3, "{name}: dc {}", r.dc);
+    }
+
+    #[test]
+    fn the_title_loops_in_60_to_90_seconds_and_is_sane() {
+        let len = Music::track_seconds(MusicTrack::Title);
+        assert!((60.0..=90.0).contains(&len), "title is {len} s");
+        let [l, r] = render_track(MusicTrack::Title, 0.0, 12.0);
+        for ch in [&l, &r] {
+            check("title", ch);
+            assert!(analyse(ch).rms > 0.03, "title is too quiet");
+        }
+        assert_ne!(l, r, "the mix is not stereo");
+    }
+
+    #[test]
+    fn battle_intensity_brings_the_band_in() {
+        let level = |i: f32| {
+            let [l, _] = render_track(MusicTrack::Battle, i, 14.0);
+            check("battle", &l);
+            let r = analyse(&l[(4.0 * SR) as usize..]);
+            (r.rms, r.bands[1] + r.bands[2])
+        };
+        let (calm, calm_mids) = level(0.0);
+        let (mid, _) = level(0.5);
+        let (full, full_mids) = level(1.0);
+        assert!(calm > 0.01, "calm is inaudible: {calm}");
+        assert!(mid > calm * 2.0, "drums do not come in: {calm} -> {mid}");
+        assert!(full > mid, "full is not fuller: {mid} -> {full}");
+        assert!(full_mids > 0.15 && calm_mids > 0.05, "no mid-range: {calm_mids} {full_mids}");
+    }
+
+    #[test]
+    fn intensity_crossfades_without_jumps() {
+        // Step the intensity hard both ways; the level (over beats, so a
+        // single drum hit is not a leap) moves, never leaps.
+        let [l, _] = render_with(20.0, |m, t| m.set(MusicTrack::Battle, if (5.0..12.0).contains(&t) { 1.0 } else { 0.0 }));
+        let win = (1.0 * SR) as usize;
+        let rms: Vec<f32> = l.chunks(win).map(|c| (c.iter().map(|s| s * s).sum::<f32>() / c.len() as f32).sqrt()).collect();
+        for w in rms.windows(2).skip(1) {
+            assert!(w[1] < w[0] * 2.5 + 0.01 && w[0] < w[1] * 2.5 + 0.01, "level leapt {} -> {}", w[0], w[1]);
+        }
+        let layers: Vec<_> = (0..=100).map(|i| arena_audio::music::score::battle_layers(i as f32 / 100.0)).collect();
+        for w in layers.windows(2) {
+            for (k, (a, b)) in w[0].iter().zip(&w[1]).enumerate() {
+                assert!((b - a).abs() < 0.1, "layer {k} steps");
+            }
+        }
+    }
+
+    #[test]
+    fn stingers_are_short_bounded_and_ring_out() {
+        for s in Stinger::ALL {
+            let secs = Music::stinger_seconds(s);
+            assert!((2.0..=6.0).contains(&secs), "{s:?} is {secs} s");
+            let [l, r] = render_stinger(s);
+            for ch in [&l, &r] {
+                check(s.name(), ch);
+                assert!(analyse(ch).rms > 0.02, "{s:?} is too quiet");
+                let tail = &ch[ch.len() - (0.25 * SR) as usize..];
+                assert!(analyse(tail).rms < 0.01, "{s:?} does not ring out");
+            }
+        }
+    }
+
+    #[test]
+    fn silence_fades_the_music_out_and_switching_tracks_is_safe() {
+        let [l, _] = render_with(8.0, |m, t| {
+            let track = if t < 3.0 { MusicTrack::Title } else if t < 5.0 { MusicTrack::Battle } else { MusicTrack::Silence };
+            m.set(track, 0.8);
+            if (2.0..2.02).contains(&t) {
+                m.stinger(Stinger::WaveStart);
+            }
+        });
+        check("switching", &l);
+        let tail = &l[(7.5 * SR) as usize..];
+        assert!(analyse(tail).rms < 0.01, "silence is not silent");
+    }
+
+    #[test]
+    fn block_size_does_not_change_the_music() {
+        let mut a = Music::new(3, SR);
+        let mut b = Music::new(3, SR);
+        a.set(MusicTrack::Battle, 0.9);
+        b.set(MusicTrack::Battle, 0.9);
+        let n = 24_000;
+        let (mut al, mut ar) = (vec![0.0; n], vec![0.0; n]);
+        let (mut bl, mut br) = (vec![0.0; n], vec![0.0; n]);
+        a.render(&mut al, &mut ar);
+        for (cl, cr) in bl.chunks_mut(100).zip(br.chunks_mut(100)) {
+            b.render(cl, cr);
+        }
+        assert_eq!(al, bl);
+        assert_eq!(ar, br);
+    }
+}

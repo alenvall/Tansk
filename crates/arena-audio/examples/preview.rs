@@ -7,6 +7,9 @@
 //! 0.4 s apart, so the variation can be heard. The engine files run a
 //! programme: idle, rev up and drive off, flat out, boost, lift, coast, idle.
 //! `ambience.wav` runs calm wind, a blustery spell, a storm and back.
+//! `music_title.wav` is the title theme once round and into its loop;
+//! `music_battle_sweep.wav` takes the battle from calm to full and back;
+//! `stinger_*.wav` are the stingers.
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -15,7 +18,8 @@ use arena_audio::analysis::{analyse, db, Report};
 use arena_audio::dsp::SR;
 use arena_audio::spatial::{spatialize, Listener};
 use arena_audio::wav;
-use arena_audio::{render, Ambience, schedule, take_seed, EngineInput, EngineKind, EngineMixer, SoundId, TankEngine, SAMPLE_RATE};
+use arena_audio::music;
+use arena_audio::{render, Ambience, Music, MusicTrack, Stinger, schedule, take_seed, EngineInput, EngineKind, EngineMixer, SoundId, TankEngine, SAMPLE_RATE};
 
 fn out_dir() -> PathBuf {
     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/audio-preview");
@@ -195,5 +199,41 @@ fn main() {
     row("ambience calm", &seg(1.0, 3.0));
     row("ambience windy", &seg(6.0, 9.0));
     row("ambience storm", &seg(13.0, 18.0));
-    println!("\nwrote {} files to {}", SoundId::ALL.len() + EngineKind::ALL.len() + 2, dir.display());
+
+    // ── Music ─────────────────────────────────────────────────────────
+    println!();
+    let t = Instant::now();
+    let title_len = Music::track_seconds(MusicTrack::Title);
+    let [l, r] = music::render_track(MusicTrack::Title, 0.0, title_len + 6.0);
+    println!(
+        "music: title loop {title_len:.1} s, battle loop {:.1} s; the band costs {:.1}% of a core (native)",
+        Music::track_seconds(MusicTrack::Battle),
+        t.elapsed().as_secs_f32() / (title_len + 6.0) * 100.0
+    );
+    wav::write(&dir.join("music_title.wav"), &[l.clone(), r.clone()], SAMPLE_RATE).expect("write");
+    let seg = |x: &[f32], a: f32, b: f32| analyse(&x[(a * SR) as usize..((b * SR) as usize).min(x.len())]);
+    for (name, a, b) in [("title A (riff)", 2.5, 20.0), ("title B (tune)", 20.0, 40.0), ("title C (bridge)", 40.0, 60.0), ("title A' (all)", 60.0, 80.0)] {
+        row(name, &seg(&l, a, b));
+    }
+    println!("{:<20} loop seam: last 0.5 s rms {:.1} dB, first 0.5 s after the loop {:.1} dB", "",
+        db(seg(&l, title_len - 0.5, title_len).rms), db(seg(&l, title_len, title_len + 0.5).rms));
+    // Battle: calm for a while, then mid, then full, then back down.
+    let sweep: &[(f32, f32)] = &[(0.0, 0.0), (12.0, 0.0), (16.0, 0.5), (30.0, 0.5), (34.0, 1.0), (50.0, 1.0), (54.0, 0.2), (64.0, 0.2)];
+    let [l, r] = music::render_with(64.0, |m, t| {
+        let k = sweep.iter().rposition(|w| w.0 <= t).unwrap_or(0);
+        let (a, b) = (sweep[k], sweep[(k + 1).min(sweep.len() - 1)]);
+        let x = if b.0 > a.0 { ((t - a.0) / (b.0 - a.0)).clamp(0.0, 1.0) } else { 0.0 };
+        m.set(MusicTrack::Battle, a.1 + (b.1 - a.1) * x);
+    });
+    wav::write(&dir.join("music_battle_sweep.wav"), &[l.clone(), r.clone()], SAMPLE_RATE).expect("write");
+    for (name, a, b) in [("battle calm", 2.0, 12.0), ("battle mid", 20.0, 30.0), ("battle full", 38.0, 50.0), ("battle back to 0.2", 58.0, 64.0)] {
+        row(name, &seg(&l, a, b));
+    }
+    for s in Stinger::ALL {
+        let [l, r] = music::render_stinger(s);
+        wav::write(&dir.join(format!("stinger_{}.wav", s.name())), &[l.clone(), r.clone()], SAMPLE_RATE).expect("write");
+        let rep = analyse(&l);
+        row(&format!("stinger {}", s.name()), &rep);
+    }
+    println!("\nwrote {} files to {}", SoundId::ALL.len() + EngineKind::ALL.len() + 4 + Stinger::ALL.len(), dir.display());
 }

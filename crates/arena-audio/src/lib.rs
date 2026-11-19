@@ -5,6 +5,8 @@
 //! - [`engine`]: the continuous tank engine voice ([`TankEngine`]), driven by
 //!   rpm / load / boost / track speed and generated in real time.
 //! - [`mixer`]: every engine panned and summed into one stereo bus.
+//! - [`ambience`]: the desert wind and the sandstorm, live.
+//! - [`music`]: the procedural band, its scores, and the stingers, live.
 //! - [`spatial`]: pan, level and dullness of a source from the listener.
 //! - `web` (wasm32 only): Web Audio playback, [`Audio`].
 //! - [`wav`] and [`analysis`]: the native preview and the tests.
@@ -19,6 +21,7 @@ pub mod dsp;
 pub mod engine;
 pub mod layers;
 pub mod mixer;
+pub mod music;
 mod horns;
 mod raid;
 pub mod sounds;
@@ -32,10 +35,11 @@ pub use ambience::Ambience;
 pub use dsp::SAMPLE_RATE;
 pub use engine::{EngineInput, EngineKind, TankEngine};
 pub use mixer::{EngineHandle, EngineMixer, MAX_ENGINES};
+pub use music::{Music, MusicTrack, Stinger};
 pub use sounds::{render, Rendered, SoundId, SoundInfo};
 pub use spatial::{spatialize, Listener, Spatial};
 #[cfg(target_arch = "wasm32")]
-pub use web::Audio;
+pub use web::{Audio, Volumes};
 
 /// The seed of take `k` of a sound in the [`Bank`].
 #[must_use]

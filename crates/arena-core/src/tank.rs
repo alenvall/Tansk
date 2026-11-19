@@ -140,6 +140,7 @@ pub fn gun_stats(t: &Tuning, stats: &TankStats) -> GunStats {
         TwinBarrel => t.guns.twin_barrel.clone(),
         LongGun => t.guns.long_gun.clone(),
         RigCannons => t.raid.rig_cannon.clone(),
+        DeckGun => t.raid.deck_gun.clone(),
     };
     if stats.gun_mk >= 2 {
         g.damage *= t.guns.mk2_damage;
@@ -362,6 +363,21 @@ impl Tank {
             // Lose an engine: it slows. Lose both: it crawls.
             let engines = self.parts.iter().filter(|p| matches!(p.kind, PartKind::RigEngineLeft | PartKind::RigEngineRight)).count();
             self.stats.speed_mult *= [0.25, 0.6, 1.0][engines.min(2)];
+            self.stats.can_boost = false;
+        }
+        if self.vehicle == VehicleKind::LandShip {
+            // Track units: one lost slows it; a whole side gone and it crawls (and slews).
+            let has = |k: &PartKind| self.parts.iter().any(|p| p.kind == *k);
+            let left = crate::parts::SHIP_TRACKS_LEFT.iter().filter(|k| has(k)).count();
+            let right = crate::parts::SHIP_TRACKS_RIGHT.iter().filter(|k| has(k)).count();
+            if left == 0 || right == 0 {
+                self.stats.speed_mult *= t.raid.ship_side_lost_speed;
+            } else if left + right < 4 {
+                self.stats.speed_mult *= t.raid.ship_one_track_speed.powi(4 - (left + right) as i32);
+            }
+            self.stats.can_boost = false;
+        }
+        if self.vehicle == VehicleKind::FuelTanker {
             self.stats.can_boost = false;
         }
         if self.stats.max_health > old_max {
@@ -668,6 +684,16 @@ impl Tank {
 
     /// All hit locations as (location, frame, box).
     pub fn hit_boxes(&self) -> Vec<(HitLocation, Frame, HitBox)> {
+        if self.vehicle == VehicleKind::LandShip {
+            // The ship's hull is its own box; its tracks, guns and bridge are modules.
+            let mut v = vec![(HitLocation::Hull, Frame::Hull, crate::parts::SHIP_HULL_BOX)];
+            for p in &self.parts {
+                for b in p.def().hitboxes {
+                    v.push((HitLocation::Part(p.kind), p.def().frame, *b));
+                }
+            }
+            return v;
+        }
         let mut v = vec![
             (HitLocation::Hull, Frame::Hull, scaled(HULL_BOX, self.hit_scale)),
             (HitLocation::Track(0), Frame::Hull, scaled(TRACK_BOXES[0], self.hit_scale)),
@@ -694,7 +720,8 @@ impl Tank {
         // Bounding sphere first.
         let oc = origin - hp.pos;
         let b = oc.dot(dir);
-        let cc = oc.length_squared() - 8.0 * 8.0;
+        let r = if self.vehicle == VehicleKind::LandShip { 19.0 } else { 8.0 };
+        let cc = oc.length_squared() - r * r;
         if cc > 0.0 && b > 0.0 {
             return None;
         }
@@ -751,7 +778,10 @@ pub fn chassis_of(t: &Tuning, v: VehicleKind) -> &TankTuning {
         VehicleKind::Buggy => &t.buggy,
         VehicleKind::Technical => &t.technical,
         VehicleKind::WarRig => &t.war_rig,
+        VehicleKind::LandShip => &t.land_ship,
+        VehicleKind::FuelTanker => &t.fuel_tanker,
     }
+
 }
 
 /// Principal inertia of a hull box (with some height for the turret), kg*m^2.

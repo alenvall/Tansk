@@ -144,4 +144,22 @@ pub enum Event {
     StormEnded,
     /// HONK. `horn` is the player's Garage horn.
     Horn { player: PlayerId, horn: u8 },
+    // --- Wave 7: THE LAND-SHIP (Raider Waves) and Convoy. Appended (bincode order).
+    /// The Land-Ship's stern ramp dropped a raider buggy (`buggy` is its new player id).
+    ShipLaunchedBuggy { ship: PlayerId, buggy: PlayerId, pos: Vec3 },
+    /// A Convoy round begins (setup countdown): `escort_team` escorts truck `truck`.
+    ConvoyRoundStarted { round: u8, escort_team: u8, truck: PlayerId },
+    /// The truck is rolling (setup over, or the escorts cleared the way).
+    ConvoyMoving { truck: PlayerId, pos: Vec3 },
+    /// The truck halted: attackers close and no escort near it.
+    ConvoyStopped { truck: PlayerId, pos: Vec3 },
+    /// The truck passed the middle of the route (once per round).
+    ConvoyHalfway { truck: PlayerId, escort_team: u8 },
+    /// The truck blew up. `distance` is metres along the route, `progress` 0..1.
+    ConvoyDestroyed { truck: PlayerId, killer: Option<PlayerId>, pos: Vec3, distance: f32, progress: f32 },
+    /// The truck reached the end of the route `seconds` after it first rolled.
+    ConvoyDelivered { truck: PlayerId, escort_team: u8, seconds: f32 },
+    /// A round's score line (also sent when the round clock runs out).
+    ConvoyRoundEnded { round: u8, escort_team: u8, delivered: bool, distance: f32, seconds: f32 },
 }
+

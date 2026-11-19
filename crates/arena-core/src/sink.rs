@@ -450,6 +450,7 @@ impl Map {
             cranes: Vec::new(),
             outpost: Vec3::ZERO,
             regions: Vec::new(),
+            convoy_route: Vec::new(),
         };
         let mut rng = b.rng;
         for i in 0..map.obstacles.len() {
@@ -482,7 +483,17 @@ impl Map {
             Region { name: "The Plateau".into(), center: plat3, radius: 50.0 },
         ];
 
+        // Convoy: Highway 9, west to east: past the car slalom, through the
+        // roadblock chicane, round the collapse, out past the beach.
+        let mut t = 10.0;
+        while t < hw_len - 10.0 {
+            map.convoy_route.push(at3(&map, HW_A + hw_dir * t));
+            t += 36.0;
+        }
+        map.convoy_route.push(at3(&map, HW_A + hw_dir * (hw_len - 10.0)));
+
         // Pickup sites: every region gets a reason to visit. Each site is nudged
+
         // to the nearest free spot.
         let free = |m: &Map, p: Vec2, margin: f32| -> Vec2 {
             for r in 0..12 {

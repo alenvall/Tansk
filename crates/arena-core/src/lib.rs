@@ -25,8 +25,10 @@
 //! ```
 
 pub mod bots;
+pub mod convoy;
 pub mod events;
 pub mod garage;
+pub mod landship;
 pub mod map;
 pub mod net;
 pub mod parts;
@@ -48,6 +50,7 @@ pub use map::{Cover, Map, MapId, Obstacle, ObstacleBox, ObstacleKind, ScrapKind}
 pub use parts::{part_def, VehicleKind, AltKind, Frame, GunKind, HitBox, Part, PartKind, Slot};
 pub use sim::{Phase, PlayerInfo, PropKind, Sim};
 pub use raid::{BossKind, ModeKind, RaidPhase};
+pub use convoy::{ConvoyPhase, ConvoySnap};
 pub use garage::{ChassisClass, Loadout};
 pub use snapshot::Snapshot;
 pub use tuning::Tuning;

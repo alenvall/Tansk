@@ -3,8 +3,10 @@
 //! Graph: one-shots are `AudioBufferSource → Gain → [BiquadFilter (low-pass)
 //! → StereoPanner] → sfx bus`; engines are one `ScriptProcessorNode` running
 //! the [`EngineMixer`] on the audio callback → engine bus; the desert wind is
-//! another running [`Ambience`] → ambience bus; all buses go through the
-//! master gain to the destination.
+//! another running [`Ambience`] → ambience bus; a third runs the [`Music`]
+//! band → music bus; all buses go through the master gain to the
+//! destination. Music is synthesized live, so it costs nothing at startup
+//! beyond its drum kit (a few ms).
 //!
 //! Why a ScriptProcessor and not an AudioWorklet: a worklet runs in its own
 //! global scope, so the Rust engine would have to be compiled and
@@ -31,6 +33,7 @@ use web_sys::{
 };
 
 use crate::ambience::Ambience;
+use crate::music::{Music, MusicTrack, Stinger};
 use crate::dsp::{Rng, SR};
 use crate::engine::{EngineInput, EngineKind};
 use crate::mixer::{EngineHandle, EngineMixer};
@@ -48,12 +51,14 @@ const UNLOCK_BUDGET_MS: f64 = 200.0;
 /// Milliseconds of background rendering per `tick()`.
 const TICK_BUDGET_MS: f64 = 3.0;
 
-#[derive(Clone, Copy, Debug)]
-struct Volumes {
-    master: f32,
-    sfx: f32,
-    engine: f32,
-    ambience: f32,
+/// The mixer's bus levels (linear, `0..2`): the Settings sliders.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Volumes {
+    pub master: f32,
+    pub sfx: f32,
+    pub engine: f32,
+    pub ambience: f32,
+    pub music: f32,
 }
 
 /// A ScriptProcessor and the closure it calls, kept alive together.
@@ -71,6 +76,7 @@ struct Live {
     sfx: GainNode,
     engine_bus: GainNode,
     ambience_bus: GainNode,
+    music_bus: GainNode,
     buffers: Vec<Vec<AudioBuffer>>,
     voices: Vec<Vec<Voice>>,
     last_take: Vec<usize>,
@@ -89,6 +95,8 @@ pub struct Audio {
     listener: Listener,
     engines: Rc<RefCell<EngineMixer>>,
     ambience: Rc<RefCell<Ambience>>,
+    music: Rc<RefCell<Option<Music>>>,
+    music_wanted: (MusicTrack, f32),
     rng: Rng,
 }
 
@@ -111,10 +119,12 @@ impl Audio {
     pub fn new() -> Self {
         Self {
             live: None,
-            volumes: Volumes { master: 0.8, sfx: 1.0, engine: 0.7, ambience: 0.6 },
+            volumes: Volumes { master: 0.8, sfx: 1.0, engine: 0.7, ambience: 0.6, music: 0.55 },
             listener: Listener::default(),
             engines: Rc::new(RefCell::new(EngineMixer::new(SR))),
             ambience: Rc::new(RefCell::new(Ambience::new(1, SR))),
+            music: Rc::new(RefCell::new(None)),
+            music_wanted: (MusicTrack::Silence, 0.0),
             rng: Rng::new(now_ms().to_bits()),
         }
     }
@@ -146,6 +156,9 @@ impl Audio {
         let sfx = ctx.create_gain()?;
         let engine_bus = ctx.create_gain()?;
         let ambience_bus = ctx.create_gain()?;
+        let music_bus = ctx.create_gain()?;
+        music_bus.gain().set_value(self.volumes.music);
+        music_bus.connect_with_audio_node(&master)?;
         master.gain().set_value(self.volumes.master);
         sfx.gain().set_value(self.volumes.sfx);
         engine_bus.gain().set_value(self.volumes.engine);
@@ -188,6 +201,29 @@ impl Audio {
             Ok(s) => streams.push(s),
             Err(e) => web_sys::console::warn_2(&"arena-audio: no ScriptProcessor; ambience is silent".into(), &e),
         }
+        // The band: built here (its drum kit takes a few ms), then streamed.
+        {
+            let mut band = Music::new(self.rng.next_u64(), rate);
+            band.set(self.music_wanted.0, self.music_wanted.1);
+            *self.music.borrow_mut() = Some(band);
+        }
+        let music = self.music.clone();
+        match stream(&ctx, &music_bus, move |l, r| match music.try_borrow_mut() {
+            Ok(mut m) => match m.as_mut() {
+                Some(m) => m.render(l, r),
+                None => {
+                    l.fill(0.0);
+                    r.fill(0.0);
+                }
+            },
+            Err(_) => {
+                l.fill(0.0);
+                r.fill(0.0);
+            }
+        }) {
+            Ok(s) => streams.push(s),
+            Err(e) => web_sys::console::warn_2(&"arena-audio: no ScriptProcessor; music is silent".into(), &e),
+        }
 
         let mut live = Live {
             ctx,
@@ -195,6 +231,7 @@ impl Audio {
             sfx,
             engine_bus,
             ambience_bus,
+            music_bus,
             buffers: vec![Vec::new(); SoundId::ALL.len()],
             voices: (0..SoundId::ALL.len()).map(|_| Vec::new()).collect(),
             last_take: vec![usize::MAX; SoundId::ALL.len()],
@@ -297,10 +334,48 @@ impl Audio {
         }
     }
 
-    /// `(master, sfx, engine, ambience)`.
+    /// The music bus: the Settings "Music" slider.
+    pub fn set_music_volume(&mut self, v: f32) {
+        self.volumes.music = clean(v);
+        if let Some(l) = &self.live {
+            ramp(&l.ctx, &l.music_bus, self.volumes.music);
+        }
+    }
+
+    /// Every bus level at once (e.g. restored from saved Settings).
+    pub fn set_volumes(&mut self, v: Volumes) {
+        self.set_master_volume(v.master);
+        self.set_sfx_volume(v.sfx);
+        self.set_engine_volume(v.engine);
+        self.set_ambience_volume(v.ambience);
+        self.set_music_volume(v.music);
+    }
+
+    /// The current bus levels, for a Settings screen.
     #[must_use]
-    pub fn volumes(&self) -> (f32, f32, f32, f32) {
-        (self.volumes.master, self.volumes.sfx, self.volumes.engine, self.volumes.ambience)
+    pub fn volumes(&self) -> Volumes {
+        self.volumes
+    }
+
+    /// Chooses the music: `MusicTrack::Title`, `Battle` or `Silence`, and
+    /// the battle's `intensity` (`0` calm .. `1` full band; glides). Cheap
+    /// to call every frame. Before unlock it is remembered.
+    pub fn music_set(&mut self, track: MusicTrack, intensity: f32) {
+        self.music_wanted = (track, intensity);
+        if let Ok(mut m) = self.music.try_borrow_mut() {
+            if let Some(m) = m.as_mut() {
+                m.set(track, intensity);
+            }
+        }
+    }
+
+    /// Plays a stinger over the music (which ducks under it).
+    pub fn music_stinger(&mut self, s: Stinger) {
+        if let Ok(mut m) = self.music.try_borrow_mut() {
+            if let Some(m) = m.as_mut() {
+                m.stinger(s);
+            }
+        }
     }
 
     /// The weather: `wind` is the everyday desert wind (`0` still .. `1`

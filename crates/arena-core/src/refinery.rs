@@ -424,6 +424,7 @@ impl Map {
             cranes: Vec::new(),
             outpost: Vec3::ZERO,
             regions: Vec::new(),
+            convoy_route: Vec::new(),
         };
         let mut rng = b.rng;
         for i in 0..map.obstacles.len() {
@@ -459,7 +460,25 @@ impl Map {
             Region { name: "The Flare Stack".into(), center: at3(&map, FLARE), radius: 55.0 },
         ];
 
+        // Convoy: out of the derrick field up a track to the service road, the
+        // road west to east past the control house, then off the road down the
+        // east side of the tank farm (its tanks go up in chains) to the unloading point.
+        for (x, z) in [(-250.0, 95.0), (-245.0, 20.0)] {
+            map.convoy_route.push(at3(&map, Vec2::new(x, z)));
+        }
+        let mut x = -STRIP_X + 22.0;
+
+        while x < 226.0 {
+            map.convoy_route.push(at3(&map, Vec2::new(x, ROAD_Z)));
+            x += 36.0;
+        }
+        for (x, z) in [(226.0, ROAD_Z), (250.0, -32.0), (254.0, 12.0), (252.0, 60.0)] {
+            map.convoy_route.push(at3(&map, Vec2::new(x, z)));
+        }
+
+
         // Pickup sites, each nudged to the nearest free spot.
+
         let free = |m: &Map, p: Vec2, margin: f32| -> Vec2 {
             for r in 0..14 {
                 for k in 0..12 {

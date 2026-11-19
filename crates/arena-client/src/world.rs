@@ -147,7 +147,7 @@ fn gun_part(g: GunKind) -> PartKind {
         GunKind::TwinBarrel => PartKind::TwinBarrel,
         GunKind::LongGun => PartKind::LongGun,
         // The war rig's guns are a turret part; its gun frame carries a stub.
-        GunKind::RigCannons => PartKind::StubGun,
+        GunKind::RigCannons | GunKind::DeckGun => PartKind::StubGun,
     }
 }
 

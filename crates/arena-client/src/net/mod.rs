@@ -215,7 +215,15 @@ impl NetClient {
         Self::offline(sim, me, seed)
     }
 
+    /// Offline Convoy: you and `per_team - 1` bot allies (escorting first)
+    /// against `per_team` bots; sides swap for round 2.
+    pub fn practice_convoy(seed: u64, per_team: usize, difficulty: f32, map: MapId) -> NetClient {
+        let (sim, me) = Sim::practice_convoy_on(map, seed, per_team, difficulty);
+        Self::offline(sim, me, seed)
+    }
+
     fn offline(mut sim: Sim, me: PlayerId, seed: u64) -> NetClient {
+
         let events = sim.drain_events();
         let snap = sim.snapshot();
         let mut state = NetState::new(Status::Practice);

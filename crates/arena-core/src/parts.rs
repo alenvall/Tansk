@@ -76,6 +76,14 @@ pub enum Slot {
     BossPlate,
     BossEngine,
     BossMast,
+    // --- THE LAND-SHIP's mounts (appended: bincode order).
+    ShipGun,
+    ShipMortar,
+    ShipMg,
+    ShipBridge,
+    ShipTrack,
+    ShipPlate,
+    ShipHangar,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -119,6 +127,30 @@ pub enum PartKind {
     RigEngineLeft,
     RigEngineRight,
     RigMast,
+    // Boss modules: THE LAND-SHIP (hull frame of the ship, about 30 x 9 x 8 m).
+    // Appended after the War Rig's (bincode order).
+    /// Fore deck gun turret (heavy cannon, aims on its own).
+    ShipGunFore,
+    /// Aft deck gun turret (heavy cannon, aims on its own).
+    ShipGunAft,
+    /// Mortar battery amidships: lobs salvos at clustered defenders.
+    ShipMortar,
+    /// Port (left) broadside MG nest.
+    ShipMgLeft,
+    /// Starboard (right) broadside MG nest.
+    ShipMgRight,
+    /// The bridge and its sensor mast: losing it scatters every gun's aim.
+    ShipBridge,
+    /// Track units: front-left, front-right, rear-left, rear-right.
+    ShipTrackFL,
+    ShipTrackFR,
+    ShipTrackRL,
+    ShipTrackRR,
+    /// Deck and belt armour over the fore and aft halves of the hull core.
+    ShipPlatesFore,
+    ShipPlatesAft,
+    /// The stern hangar and ramp: drops a raider buggy every 30 s while it stands.
+    ShipHangar,
 }
 
 pub struct PartDef {
@@ -201,6 +233,19 @@ pub fn part_def(kind: PartKind) -> PartDef {
         RigEngineLeft => (Track::Fuel, Slot::BossEngine, Frame::Hull, RIG_ENGINE_L_BOXES),
         RigEngineRight => (Track::Fuel, Slot::BossEngine, Frame::Hull, RIG_ENGINE_R_BOXES),
         RigMast => (Track::Volts, Slot::BossMast, Frame::Hull, RIG_MAST_BOXES),
+        ShipGunFore => (Track::Powder, Slot::ShipGun, Frame::Hull, SHIP_GUN_FORE_BOXES),
+        ShipGunAft => (Track::Powder, Slot::ShipGun, Frame::Hull, SHIP_GUN_AFT_BOXES),
+        ShipMortar => (Track::Powder, Slot::ShipMortar, Frame::Hull, SHIP_MORTAR_BOXES),
+        ShipMgLeft => (Track::Powder, Slot::ShipMg, Frame::Hull, SHIP_MG_L_BOXES),
+        ShipMgRight => (Track::Powder, Slot::ShipMg, Frame::Hull, SHIP_MG_R_BOXES),
+        ShipBridge => (Track::Volts, Slot::ShipBridge, Frame::Hull, SHIP_BRIDGE_BOXES),
+        ShipTrackFL => (Track::Fuel, Slot::ShipTrack, Frame::Hull, SHIP_TRACK_FL_BOXES),
+        ShipTrackFR => (Track::Fuel, Slot::ShipTrack, Frame::Hull, SHIP_TRACK_FR_BOXES),
+        ShipTrackRL => (Track::Fuel, Slot::ShipTrack, Frame::Hull, SHIP_TRACK_RL_BOXES),
+        ShipTrackRR => (Track::Fuel, Slot::ShipTrack, Frame::Hull, SHIP_TRACK_RR_BOXES),
+        ShipPlatesFore => (Track::Steel, Slot::ShipPlate, Frame::Hull, SHIP_PLATES_FORE_BOXES),
+        ShipPlatesAft => (Track::Steel, Slot::ShipPlate, Frame::Hull, SHIP_PLATES_AFT_BOXES),
+        ShipHangar => (Track::Fuel, Slot::ShipHangar, Frame::Hull, SHIP_HANGAR_BOXES),
     };
     PartDef { kind, track, slot, frame, hitboxes }
 }
@@ -291,6 +336,13 @@ pub fn part_stat(t: &Tuning, kind: PartKind) -> PartStat {
         PartKind::RigPlateLeft | PartKind::RigPlateRight | PartKind::RigPlateFront => p.rig_plate,
         PartKind::RigEngineLeft | PartKind::RigEngineRight => p.rig_engine,
         PartKind::RigMast => p.rig_mast,
+        PartKind::ShipGunFore | PartKind::ShipGunAft => p.ship_gun,
+        PartKind::ShipMortar => p.ship_mortar,
+        PartKind::ShipMgLeft | PartKind::ShipMgRight => p.ship_mg,
+        PartKind::ShipBridge => p.ship_bridge,
+        PartKind::ShipTrackFL | PartKind::ShipTrackFR | PartKind::ShipTrackRL | PartKind::ShipTrackRR => p.ship_track,
+        PartKind::ShipPlatesFore | PartKind::ShipPlatesAft => p.ship_plates,
+        PartKind::ShipHangar => p.ship_hangar,
     }
 }
 
@@ -341,6 +393,8 @@ pub enum GunKind {
     LongGun,
     /// THE WAR RIG's twin cannon (boss only).
     RigCannons,
+    /// THE LAND-SHIP's deck guns (boss only; fired by the ship's own gunnery, not `fire_gun`).
+    DeckGun,
 }
 
 /// Alt-fire kinds (the Volts track's output; MG when none).
@@ -446,6 +500,7 @@ pub fn compute_stats_on(t: &Tuning, tt: &crate::tuning::TankTuning, parts: &[Par
             PartKind::RigCannons => s.gun = GunKind::RigCannons,
             PartKind::RigRockets => s.alt = AltKind::Rockets,
             PartKind::RigMast => s.sight_height += t.parts.mast_sight * 2.0,
+            PartKind::ShipBridge => s.sight_height += t.parts.mast_sight * 2.0,
             PartKind::RepairRig => {
                 s.rare = Some(p.kind);
                 s.regen = t.special.repair_rig_hps;
@@ -484,7 +539,7 @@ pub const RARE_PARTS: [PartKind; 5] =
 /// Combo and rare parts are not tier parts: they sit on a tank with `tier == 0`
 /// and breaking one off costs no tier.
 pub fn is_special(kind: PartKind) -> bool {
-    BOSS_MODULES.contains(&kind) || COMBOS.iter().any(|c| c.2 == kind) || RARE_PARTS.contains(&kind)
+    BOSS_MODULES.contains(&kind) || SHIP_MODULES.contains(&kind) || COMBOS.iter().any(|c| c.2 == kind) || RARE_PARTS.contains(&kind)
 }
 
 /// Combos a tank with these tiers qualifies for (both tracks at tier 2+).
@@ -539,4 +594,76 @@ pub enum VehicleKind {
     Technical,
     /// THE WAR RIG boss.
     WarRig,
+    /// THE LAND-SHIP boss: a beached ship hull on four giant track units.
+    LandShip,
+    /// Convoy: the fuel tanker truck (driven by the sim, not a crew).
+    FuelTanker,
 }
+
+/// THE LAND-SHIP's modules, in snapshot order. The hull core only takes full
+/// damage once both plate sets are gone.
+pub const SHIP_MODULES: [PartKind; 13] = [
+    PartKind::ShipGunFore,
+    PartKind::ShipGunAft,
+    PartKind::ShipMortar,
+    PartKind::ShipMgLeft,
+    PartKind::ShipMgRight,
+    PartKind::ShipBridge,
+    PartKind::ShipTrackFL,
+    PartKind::ShipTrackFR,
+    PartKind::ShipTrackRL,
+    PartKind::ShipTrackRR,
+    PartKind::ShipPlatesFore,
+    PartKind::ShipPlatesAft,
+    PartKind::ShipHangar,
+];
+
+pub const SHIP_PLATES: [PartKind; 2] = [PartKind::ShipPlatesFore, PartKind::ShipPlatesAft];
+/// Track units, left side (-Z).
+pub const SHIP_TRACKS_LEFT: [PartKind; 2] = [PartKind::ShipTrackFL, PartKind::ShipTrackRL];
+/// Track units, right side (+Z).
+pub const SHIP_TRACKS_RIGHT: [PartKind; 2] = [PartKind::ShipTrackFR, PartKind::ShipTrackRR];
+/// The two deck guns (fore, aft) and their turret ring centres in the ship's hull
+/// frame. Each turns on its own: see `BossSnap::turrets` for their yaw.
+pub const SHIP_GUNS: [(PartKind, Vec3); 2] =
+    [(PartKind::ShipGunFore, Vec3::new(10.0, 3.2, 0.0)), (PartKind::ShipGunAft, Vec3::new(-10.0, 3.2, 0.0))];
+/// The broadside MG nests (left, right) and their muzzles, hull frame.
+pub const SHIP_MGS: [(PartKind, Vec3); 2] =
+    [(PartKind::ShipMgLeft, Vec3::new(1.6, 1.0, -5.5)), (PartKind::ShipMgRight, Vec3::new(1.6, 1.0, 5.5))];
+/// The mortar battery's tubes, hull frame.
+pub const SHIP_MORTAR_AT: Vec3 = Vec3::new(3.6, 3.8, 0.0);
+/// Where the hangar ramp drops buggies, hull frame (behind the stern).
+pub const SHIP_RAMP_AT: Vec3 = Vec3::new(-21.0, -1.5, 0.0);
+
+// Land-Ship module boxes, hull frame (hull half extents 15 x 2 x 4.5; the
+// ground is about 3.4 m below the hull centre, the deck at y = 2).
+const SHIP_GUN_FORE_BOXES: &[HitBox] = &[hb([10.0, 3.2, 0.0], [2.0, 1.0, 2.0]), hb([13.6, 3.4, 0.0], [1.8, 0.35, 0.35])];
+const SHIP_GUN_AFT_BOXES: &[HitBox] = &[hb([-10.0, 3.2, 0.0], [2.0, 1.0, 2.0]), hb([-13.6, 3.4, 0.0], [1.8, 0.35, 0.35])];
+const SHIP_MORTAR_BOXES: &[HitBox] = &[hb([3.6, 2.9, 0.0], [1.5, 0.7, 1.9])];
+const SHIP_MG_L_BOXES: &[HitBox] = &[hb([1.0, 0.9, -4.95], [1.3, 0.6, 0.45])];
+const SHIP_MG_R_BOXES: &[HitBox] = &[hb([1.0, 0.9, 4.95], [1.3, 0.6, 0.45])];
+const SHIP_BRIDGE_BOXES: &[HitBox] = &[
+    hb([-3.0, 3.4, 0.0], [2.2, 1.3, 3.0]),
+    hb([-3.0, 6.2, 0.0], [0.22, 1.5, 0.22]),
+    hb([-3.0, 7.9, 0.0], [0.5, 0.3, 0.5]),
+];
+const SHIP_TRACK_FL_BOXES: &[HitBox] = &[hb([8.0, -2.6, -4.0], [5.6, 1.3, 1.25])];
+const SHIP_TRACK_FR_BOXES: &[HitBox] = &[hb([8.0, -2.6, 4.0], [5.6, 1.3, 1.25])];
+const SHIP_TRACK_RL_BOXES: &[HitBox] = &[hb([-8.0, -2.6, -4.0], [5.6, 1.3, 1.25])];
+const SHIP_TRACK_RR_BOXES: &[HitBox] = &[hb([-8.0, -2.6, 4.0], [5.6, 1.3, 1.25])];
+const SHIP_PLATES_FORE_BOXES: &[HitBox] = &[
+    hb([7.4, 2.12, 0.0], [6.9, 0.12, 4.4]),
+    hb([7.4, 0.2, -4.62], [6.9, 1.7, 0.12]),
+    hb([7.4, 0.2, 4.62], [6.9, 1.7, 0.12]),
+];
+const SHIP_PLATES_AFT_BOXES: &[HitBox] = &[
+    hb([-7.4, 2.12, 0.0], [6.9, 0.12, 4.4]),
+    hb([-7.4, 0.2, -4.62], [6.9, 1.7, 0.12]),
+    hb([-7.4, 0.2, 4.62], [6.9, 1.7, 0.12]),
+];
+const SHIP_HANGAR_BOXES: &[HitBox] = &[hb([-15.5, 0.0, 0.0], [0.6, 1.8, 3.2])];
+
+
+/// THE LAND-SHIP's hull (core) box, hull frame: the ship replaces the scaled
+/// tank boxes (hull, tracks, turret) with this and its modules.
+pub const SHIP_HULL_BOX: HitBox = hb([0.0, 0.0, 0.0], [15.0, 2.0, 4.5]);

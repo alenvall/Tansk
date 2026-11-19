@@ -342,6 +342,11 @@ impl Game {
                 self.ui.show_loading("Manning the outpost", "Three allies, a lot of raiders. Dig in.", Some(0.6));
                 NetClient::practice_raid(rand_seed(self.time), RAID_ALLIES, PRACTICE_DIFFICULTY, self.practice_map)
             }
+            Session::Practice { mode: ModeKind::Convoy } => {
+                self.ui.show_loading("Fuelling the tanker", "Get it down the road. Then stop theirs.", Some(0.6));
+                NetClient::practice_convoy(rand_seed(self.time), 4, PRACTICE_DIFFICULTY, self.practice_map)
+            }
+
             Session::Online(join) => {
                 let sub = match join {
                     Join::Code(c) => format!("Tuning the radio to {c}..."),

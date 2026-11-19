@@ -271,7 +271,12 @@ pub struct Map {
     pub outpost: Vec3,
     /// Named places, for the radio and the minimap.
     pub regions: Vec<Region>,
+    /// Convoy: the truck's route, start to finish (control points on the ground,
+    /// along the road where there is one). The sim joins them on the nav grid.
+    #[serde(default)]
+    pub convoy_route: Vec<Vec3>,
 }
+
 
 pub(crate) struct Pad {
     pub center: Vec2,

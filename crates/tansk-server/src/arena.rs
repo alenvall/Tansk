@@ -217,13 +217,24 @@ impl ArenaRoom {
         if self.seats_used() < self.seats() {
             return;
         }
-        let bot = self
+        // In team modes the bot leaves the bigger team, so the newcomer (who
+        // joins the smaller one) keeps the sides even.
+        let raid = self.sim.mode == ModeKind::RaiderWaves;
+        let crews = |t: u8| self.sim.players.iter().filter(|p| p.team == Some(t) && !self.sim.is_convoy_truck(p.id)).count();
+        let bigger = if raid { None } else { Some(if crews(1) > crews(0) { 1 } else { 0 }) };
+        let candidates: Vec<&arena_core::sim::Player> = self
             .sim
             .players
             .iter()
             .rev()
-            .find(|p| p.brain.is_some() && p.team != Some(TEAM_RAIDERS) && !self.humans.iter().any(|h| h.player == p.id))
+            .filter(|p| p.brain.is_some() && !(raid && p.team == Some(TEAM_RAIDERS)) && !self.humans.iter().any(|h| h.player == p.id))
+            .collect();
+        let bot = candidates
+            .iter()
+            .find(|p| bigger.is_none() || p.team.is_none() || p.team == bigger)
+            .or(candidates.first())
             .map(|p| p.id);
+
         let victim = bot.or_else(|| {
             let i = self.humans.iter().enumerate().filter(|(_, h)| h.conn.is_none()).max_by_key(|(_, h)| h.away)?.0;
             Some(self.humans.remove(i).player)
@@ -308,10 +319,15 @@ impl ArenaRoom {
         }
     }
 
-    /// Seats taken: every tank, or in a raid only the defenders.
+    /// Seats taken: every tank, or in a raid only the defenders (the Convoy
+    /// truck takes no seat either). Team 1 is only "the raiders" in Raider
+    /// Waves: in Team Brawl and Convoy it is the Dust Saints and takes seats.
     fn seats_used(&self) -> usize {
-        self.sim.players.iter().filter(|p| p.team != Some(TEAM_RAIDERS)).count()
+        let raid = self.sim.mode == ModeKind::RaiderWaves;
+        self.sim.players.iter().filter(|p| !(raid && p.team == Some(TEAM_RAIDERS)) && !self.sim.is_convoy_truck(p.id)).count()
     }
+
+
 
     fn seats(&self) -> usize {
         if self.sim.mode == ModeKind::RaiderWaves {
@@ -461,7 +477,49 @@ mod tests {
         }
     }
 
+    /// A Convoy room seats 4 v 4 crews; the truck takes no seat; a joining
+    /// human takes a bot's seat on a team.
+    #[test]
+    fn convoy_room_seats_four_a_side_plus_the_truck() {
+        let info = Arc::new(Mutex::new(ArenaInfo {
+            code: "CNVY".into(),
+            public: false,
+            humans: 0,
+            max_humans: ROOM_SEATS,
+            ended: false,
+            mode: ModeKind::Convoy,
+            map: MapId::Sink,
+        }));
+        let mut r = ArenaRoom::new("CNVY".into(), false, 9, info, ModeKind::Convoy, MapId::Sink);
+        let crews = |r: &ArenaRoom, t: u8| r.sim.players.iter().filter(|p| p.team == Some(t) && !r.sim.is_convoy_truck(p.id)).count();
+        assert_eq!(r.sim.players.len(), ROOM_SEATS + 1);
+        assert_eq!((crews(&r, 0), crews(&r, 1)), (4, 4));
+        let (out, mut rx) = mpsc::channel(64);
+        r.handle(ArenaCmd::Join { conn: 1, name: "Ann".into(), rejoin: None, out });
+        let first = arena_core::net::decode::<ServerMsg>(&rx.try_recv().unwrap().bytes).unwrap();
+        assert!(matches!(first, ServerMsg::Welcome { .. }), "{first:?}");
+        assert_eq!(r.sim.players.len(), ROOM_SEATS + 1);
+        assert_eq!((crews(&r, 0), crews(&r, 1)), (4, 4));
+        // More humans: bots make way from the bigger side, the sides stay even.
+        let mut keep = Vec::new();
+        for conn in 2..6u64 {
+            let (out, rx) = mpsc::channel(64);
+            keep.push(rx);
+            r.handle(ArenaCmd::Join { conn, name: format!("P{conn}"), rejoin: None, out });
+            assert_eq!(r.sim.players.len(), ROOM_SEATS + 1);
+            assert!(crews(&r, 0).abs_diff(crews(&r, 1)) <= 1, "{} v {}", crews(&r, 0), crews(&r, 1));
+        }
+        assert_eq!((crews(&r, 0), crews(&r, 1)), (4, 4));
+        for _ in 0..5 * TICK_HZ {
+
+            r.tick();
+        }
+        let snap = r.sim.snapshot();
+        assert!(snap.convoy.is_some());
+    }
+
     /// A room of 8 bots runs a minute of play.
+
     #[test]
     fn eight_bots_for_a_minute() {
         let mut r = room(true);

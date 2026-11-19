@@ -38,6 +38,12 @@ pub struct Tuning {
     pub chassis: ChassisTuning,
     /// The sandstorm (brawl modes).
     pub storm: StormTuning,
+    /// THE LAND-SHIP boss chassis (a ship hull on tracks, about 30 x 9 x 8 m).
+    pub land_ship: TankTuning,
+    /// Convoy: the fuel tanker truck's chassis.
+    pub fuel_tanker: TankTuning,
+    /// Convoy mode.
+    pub convoy: ConvoyTuning,
 }
 
 impl Tuning {
@@ -516,6 +522,14 @@ pub struct PartTuning {
     pub spaced_splash: f32,
     /// Max health added per Steel tier.
     pub steel_health_per_tier: f32,
+    // --- THE LAND-SHIP's modules.
+    pub ship_gun: PartStat,
+    pub ship_mortar: PartStat,
+    pub ship_mg: PartStat,
+    pub ship_bridge: PartStat,
+    pub ship_track: PartStat,
+    pub ship_plates: PartStat,
+    pub ship_hangar: PartStat,
 }
 
 impl Default for PartTuning {
@@ -559,6 +573,13 @@ impl Default for PartTuning {
             bulwark_ram: 2.2,
             spaced_splash: 0.6,
             steel_health_per_tier: 40.0,
+            ship_gun: ps(400.0, 6000.0),
+            ship_mortar: ps(320.0, 4000.0),
+            ship_mg: ps(180.0, 1200.0),
+            ship_bridge: ps(360.0, 5000.0),
+            ship_track: ps(340.0, 8000.0),
+            ship_plates: ps(500.0, 12_000.0),
+            ship_hangar: ps(390.0, 5000.0),
         }
     }
 }
@@ -954,6 +975,9 @@ impl Default for Tuning {
             raid: RaidTuning::default(),
             chassis: ChassisTuning::default(),
             storm: StormTuning::default(),
+            land_ship: TankTuning::land_ship(),
+            fuel_tanker: TankTuning::fuel_tanker(),
+            convoy: ConvoyTuning::default(),
         }
     }
 }
@@ -1035,7 +1059,129 @@ impl TankTuning {
     }
 }
 
+impl TankTuning {
+    /// THE LAND-SHIP: a beached ship hull on four giant track units, about 30 x 9 x 8 m.
+    pub fn land_ship() -> Self {
+        Self {
+            base_mass: 420_000.0,
+            base_health: 1_650.0,
+            hull_half: [15.0, 2.0, 4.5],
+            com_height: -1.6,
+            wheels_per_side: 8,
+            wheel_spacing: 3.6,
+            track_half_width: 4.0,
+            ray_origin_y: -1.6,
+            suspension_travel: 1.0,
+            wheel_radius: 0.9,
+            spring_hz: 1.0,
+            damping_ratio: 0.7,
+            max_speed: 3.8,
+            reverse_speed: 1.8,
+            mass_speed_exponent: 0.0,
+            accel: 1.0,
+            brake: 2.0,
+            coast_decel: 1.5,
+            yaw_rate_in_place: 0.14,
+            yaw_rate_at_speed: 0.12,
+            yaw_tau: 0.6,
+            yaw_accel_max: 0.4,
+            angular_damping: 0.8,
+            ram_min_speed: 1.5,
+            ram_mult: 4.0,
+            righting_delay: 1.0,
+            tipped_up_y: 0.5,
+            ..Self::default()
+        }
+    }
+
+    /// Convoy: a six-wheel fuel tanker truck. Slow, tough, no guns.
+    pub fn fuel_tanker() -> Self {
+        Self {
+            base_mass: 24_000.0,
+            base_health: 2_400.0,
+            hull_half: [4.6, 0.9, 1.4],
+            com_height: -0.5,
+            wheels_per_side: 3,
+            wheel_spacing: 3.2,
+            track_half_width: 1.25,
+            ray_origin_y: -0.5,
+            suspension_travel: 0.5,
+            wheel_radius: 0.55,
+            spring_hz: 1.4,
+            max_speed: 5.0,
+            reverse_speed: 3.0,
+            mass_speed_exponent: 0.0,
+            accel: 2.0,
+            yaw_rate_in_place: 0.55,
+            yaw_rate_at_speed: 0.45,
+            ram_mult: 1.5,
+            righting_delay: 1.5,
+            ..Self::default()
+        }
+    }
+}
+
+/// Convoy: one team escorts a fuel tanker along the map's route, the other stops it.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct ConvoyTuning {
+    /// Seconds before the truck rolls each round (both sides set up).
+    pub setup_time: f32,
+    /// A round ends as a stop (the attackers hold) if the truck hasn't arrived by then, s.
+    pub round_time: f32,
+    /// Seconds between the rounds.
+    pub intermission: f32,
+    /// The truck stops when an attacker is this close and no escort is within `escort_radius`.
+    pub stop_radius: f32,
+    pub escort_radius: f32,
+    /// Escorts within this distance patch the truck, `repair_hps` each (up to `repair_max_crews`).
+    pub repair_radius: f32,
+    pub repair_hps: f32,
+    pub repair_max_crews: u32,
+    /// Repairs pause for this long after the truck is hit, s.
+    pub repair_delay: f32,
+    /// Spawns: escorts this far behind the truck, attackers this far ahead (m, along the route).
+    pub escort_spawn_behind: f32,
+    pub attacker_spawn_ahead_min: f32,
+    pub attacker_spawn_ahead_max: f32,
+    /// Lateral spread of the spawns off the route, m.
+    pub escort_spawn_side: f32,
+    pub attacker_spawn_side: f32,
+    /// The truck counts as delivered this close to the end of the route, m.
+    pub arrive_distance: f32,
+    /// The tanker's armour: damage taken is multiplied by this, and MG bullets
+    /// by `truck_mg_mult` on top.
+    pub truck_armour: f32,
+    pub truck_mg_mult: f32,
+}
+
+impl Default for ConvoyTuning {
+    fn default() -> Self {
+        Self {
+            setup_time: 10.0,
+            round_time: 300.0,
+            intermission: 8.0,
+            stop_radius: 32.0,
+            escort_radius: 26.0,
+            repair_radius: 14.0,
+            repair_hps: 20.0,
+            repair_max_crews: 3,
+            repair_delay: 1.5,
+            escort_spawn_behind: 30.0,
+            attacker_spawn_ahead_min: 120.0,
+            attacker_spawn_ahead_max: 180.0,
+            escort_spawn_side: 14.0,
+            attacker_spawn_side: 40.0,
+            arrive_distance: 8.0,
+            truck_armour: 0.175,
+            truck_mg_mult: 0.35,
+
+        }
+    }
+}
+
 /// Raider Waves: hold the outpost against escalating raider waves.
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct RaidTuning {
@@ -1085,6 +1231,43 @@ pub struct RaidTuning {
     pub rig_blind_error_deg: f32,
     /// Raider bots aim worse than defenders by this factor.
     pub raider_aim_error_mult: f32,
+    // --- THE LAND-SHIP (boss waves alternate: Rig, Land-Ship, Rig, ...).
+    /// Alternate the boss kind on boss waves (false: always the War Rig).
+    pub boss_alternate: bool,
+    /// Land-Ship waves bring this share of a normal wave's escorts (its hangar adds buggies).
+    pub ship_escort_scale: f32,
+    /// Extra scrap the Land-Ship spills on death.
+    pub drop_ship: u32,
+    /// The deck guns (each turret fires on its own).
+    pub deck_gun: GunStats,
+    /// Deck gun aim error, deg (and once the bridge is gone).
+    pub ship_aim_error_deg: f32,
+    pub ship_blind_error_deg: f32,
+    /// Deck gun turret traverse, rad/s.
+    pub ship_gun_traverse: f32,
+    /// Mortar battery: a salvo of `ship_mortar_shells` every `ship_mortar_interval` s,
+    /// at the biggest cluster of defenders between the ranges.
+    pub ship_mortar_interval: f32,
+    pub ship_mortar_shells: u32,
+    pub ship_mortar_min_range: f32,
+    pub ship_mortar_max_range: f32,
+    /// Cluster radius for picking the mortar target, m.
+    pub ship_mortar_cluster: f32,
+    /// Scatter of each mortar shell around the aim point, m (doubled when blind).
+    pub ship_mortar_scatter: f32,
+    /// Broadside MG nests: shots per second, damage per shot, range.
+    pub ship_mg_rate: f32,
+    pub ship_mg_damage: f32,
+    pub ship_mg_range: f32,
+    /// The hangar drops a raider buggy this often while it stands, s.
+    pub ship_hangar_interval: f32,
+    /// The ship stops this far from the outpost and bombards it.
+    pub ship_standoff: f32,
+    /// Top-speed multiplier with one track unit lost on each side / a whole side gone.
+    pub ship_one_track_speed: f32,
+    pub ship_side_lost_speed: f32,
+    /// Steer bias toward a side with both track units gone (slewing).
+    pub ship_slew: f32,
 }
 
 impl Default for RaidTuning {
@@ -1135,6 +1318,41 @@ impl Default for RaidTuning {
             rig_flame_dps: 70.0,
             rig_blind_error_deg: 9.0,
             raider_aim_error_mult: 1.6,
+            boss_alternate: true,
+            ship_escort_scale: 0.4,
+            drop_ship: 20,
+            deck_gun: GunStats {
+                shell_speed: 120.0,
+                damage: 60.0,
+                splash_damage: 38.0,
+                splash_radius: 6.5,
+                knockback: 110_000.0,
+                reload: 3.2,
+                shells_per_shot: 1,
+                spread_deg: 0.5,
+                lifetime: 4.0,
+                recoil: 0.0,
+                barrel_length: 5.4,
+                traverse_mult: 1.0,
+                ..GunStats::default()
+            },
+            ship_aim_error_deg: 1.4,
+            ship_blind_error_deg: 7.0,
+            ship_gun_traverse: 0.7,
+            ship_mortar_interval: 8.0,
+            ship_mortar_shells: 3,
+            ship_mortar_min_range: 35.0,
+            ship_mortar_max_range: 240.0,
+            ship_mortar_cluster: 18.0,
+            ship_mortar_scatter: 7.0,
+            ship_mg_rate: 6.0,
+            ship_mg_damage: 3.0,
+            ship_mg_range: 75.0,
+            ship_hangar_interval: 30.0,
+            ship_standoff: 62.0,
+            ship_one_track_speed: 0.8,
+            ship_side_lost_speed: 0.4,
+            ship_slew: 0.45,
         }
     }
 }

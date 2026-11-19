@@ -40,7 +40,11 @@ pub struct Snapshot {
     pub teams: Vec<TeamScoreSnap>,
     /// Sandstorm intensity, 0 (clear) ..= 1 (full storm).
     pub storm: f32,
+    // --- Added in wave 7.
+    /// Convoy: the truck, the round and the score line (None in other modes).
+    pub convoy: Option<crate::convoy::ConvoySnap>,
 }
+
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TankSnap {

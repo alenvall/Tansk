@@ -360,6 +360,9 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
     let mut input = Input::default();
     let outpost = sim.raid.as_ref().map(|r| r.outpost);
     let raider = outpost.is_some() && p.team == Some(crate::raid::TEAM_RAIDERS);
+    // Convoy: escort the truck, or hunt it.
+    let convoy = sim.convoy_info().filter(|c| c.alive && p.id != c.truck);
+    let escort = convoy.is_some_and(|c| p.team == Some(c.escort_team));
 
     // Branch pick: bots choose at random after a short "thinking" pause.
     if let Some(c) = &tank.choice {
@@ -405,6 +408,15 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             }
             if b.target == Some(q.id) {
                 score -= 25.0;
+            }
+            if let Some(c) = convoy {
+                if q.id == c.truck {
+                    // Attackers: the truck is the job.
+                    score -= 70.0;
+                } else if escort && qhp.pos.distance(c.pos) < 50.0 {
+                    // Escorts: whoever is on the truck first.
+                    score -= 30.0;
+                }
             }
             score -= (q.tank.stats.max_health - q.tank.health) * 0.05;
             if best.is_none_or(|x| score < x.0) {
@@ -453,12 +465,41 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
                 let chase = match tank.vehicle {
                     VehicleKind::Buggy => 30.0,
                     VehicleKind::WarRig => if tank.stats.gun == GunKind::RigCannons { 0.0 } else { 60.0 },
+                    // The Land-Ship's guns do the fighting: it keeps coming.
+                    VehicleKind::LandShip => 0.0,
                     _ => 70.0,
                 };
                 if age < 0.5 && d < chase {
                     goal = Some(flat(tp));
                 }
             }
+        }
+        // Convoy roles. `convoy_post` is where a crew goes when it isn't fighting.
+        let mut convoy_post: Option<Vec2> = None;
+        if let Some(c) = convoy {
+            let tpos = flat(c.pos);
+            let side = Vec2::new(-c.dir.y, c.dir.x);
+            let threat = b.last_seen.filter(|(tp, _, age)| *age < 0.5 && flat(*tp).distance(tpos) < if escort { 90.0 } else { 140.0 });
+            let fighting = threat.is_some();
+            convoy_post = Some(if escort {
+                if let Some((tp, _, _)) = threat {
+                    // Screen the truck: between it and the threat, never far from it.
+                    tpos + (flat(tp) - tpos).normalize_or(c.dir) * 13.0 + side * b.strafe * 5.0
+                } else if c.health_frac < 0.7 {
+
+                    // Patch it up: hug the truck.
+                    tpos + side * b.strafe * 6.0
+                } else {
+                    // Ride shotgun, a little ahead, on our side of the road.
+                    flat(c.ahead) + side * b.strafe * 11.0
+                }
+            } else {
+                tpos
+            });
+            if !fighting || escort {
+                goal = convoy_post;
+            }
+
         }
         if health_frac < bt.repair_threshold || tank.tracks.iter().any(|s| s.blown > 0.0) {
             goal = sim
@@ -480,6 +521,12 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
             if let Some(o) = outpost {
                 // Defenders stay near home.
                 if flat(k.pos).distance(flat(o)) > 90.0 {
+                    continue;
+                }
+            }
+            if let Some(c) = convoy {
+                // Convoy crews don't wander off for scrap.
+                if flat(k.pos).distance(flat(c.pos)) > 50.0 {
                     continue;
                 }
             }
@@ -522,7 +569,8 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         if goal.is_none() {
             if let Some((tp, _, age)) = b.last_seen {
                 let d = tp.distance(pos);
-                let leash = outpost.is_none_or(|o| flat(tp).distance(flat(o)) < 110.0);
+                let leash = outpost.is_none_or(|o| flat(tp).distance(flat(o)) < 110.0)
+                    && convoy.is_none_or(|c| flat(tp).distance(flat(c.pos)) < 140.0);
                 let reach = if b.style == Style::Sniper { bt.engage_range + 40.0 } else { bt.engage_range };
                 if age < 0.5 && d < reach && leash {
                     // Orbit at the preferred range, swapping sides now and then.
@@ -535,6 +583,9 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
                     goal = Some(flat(tp));
                 }
             }
+        }
+        if goal.is_none() {
+            goal = convoy_post;
         }
         if goal.is_none() {
             goal = scrap.map(|s| s.1);
@@ -656,7 +707,10 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         b.noise = Vec3::new(b.rng.range(-1.0, 1.0), b.rng.range(-0.4, 0.4), b.rng.range(-1.0, 1.0)) * err;
     }
     input.aim_point = pos + fwd * 60.0 + Vec3::Y;
-    let can_gun = tank.vehicle != VehicleKind::Buggy && !(tank.vehicle == VehicleKind::WarRig && tank.stats.gun != GunKind::RigCannons);
+    let can_gun = tank.vehicle != VehicleKind::Buggy
+        && !(tank.vehicle == VehicleKind::WarRig && tank.stats.gun != GunKind::RigCannons)
+        && !matches!(tank.vehicle, VehicleKind::LandShip | VehicleKind::FuelTanker);
+
     if raider && b.last_seen.is_none_or(|l| l.2 >= 0.3) {
         // Nobody to shoot: shell the outpost.
         if let Some(o) = outpost {
@@ -672,15 +726,33 @@ pub fn think(sim: &Sim, me: usize, b: &mut Brain, dt: f32) -> Input {
         }
     }
     if let Some((tp, tv, age)) = b.last_seen {
-        let mut aim = tp + Vec3::Y * 0.4;
+        // Against the Land-Ship, crews pick at the module nearest them (guns,
+        // nests, tracks, plates) rather than the middle of the hull.
+        let mut offset = Vec3::Y * 0.4;
+        if let Some(q) = b.target.and_then(|id| sim.players.iter().find(|q| q.id == id)) {
+            if q.tank.vehicle == VehicleKind::LandShip && q.tank.alive {
+                let qhp = HullPose::of(&sim.phys, q.tank.body);
+                let near = q
+                    .tank
+                    .location_centers(&qhp, t)
+                    .into_iter()
+                    .filter(|(loc, _)| matches!(loc, crate::events::HitLocation::Part(_)))
+                    .min_by(|a, c| a.1.distance(pos).total_cmp(&c.1.distance(pos)));
+                if let Some((_, c)) = near {
+                    offset = c - qhp.pos;
+                }
+            }
+        }
+        let mut aim = tp + offset;
         if age < 0.3 {
             // Lead: time of flight from distance, iterated.
             let mut tof = aim.distance(pos) / g.shell_speed;
             for _ in 0..2 {
-                aim = tp + Vec3::Y * 0.4 + tv * tof;
+                aim = tp + offset + tv * tof;
                 tof = aim.distance(pos) / g.shell_speed;
             }
         }
+
         let d = aim.distance(pos);
         aim += b.noise * d;
         input.aim_point = aim;

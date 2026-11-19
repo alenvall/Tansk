@@ -163,6 +163,9 @@ pub struct Sim {
     pub(crate) pending_team: Option<u8>,
     /// The sandstorm (brawl modes).
     pub storm: crate::storm::StormState,
+    // --- Wave 7.
+    /// Convoy: the route, the truck and the rounds (None in other modes).
+    pub convoy: Option<crate::convoy::ConvoyState>,
 }
 
 fn yaw_of(rot: Quat) -> f32 {
@@ -207,6 +210,7 @@ impl Sim {
             raid: None,
             pending_team: None,
             storm: crate::storm::StormState::default(),
+            convoy: None,
         };
         for s in sim.map.scrap_sites.clone() {
             sim.sites.push(Site { pos: s.pos, kind: PickupKind::Scrap(s.kind), timer: 0.0, live: None });
@@ -233,6 +237,9 @@ impl Sim {
             sim.init_raid();
         } else {
             sim.schedule_storm();
+        }
+        if mode == crate::raid::ModeKind::Convoy {
+            sim.init_convoy();
         }
         sim.update_sites(0.0);
         sim
@@ -295,10 +302,11 @@ impl Sim {
     fn add(&mut self, name: &str, brain: Option<Brain>, loadout: crate::garage::Loadout) -> PlayerId {
         let team = if self.raid.is_some() {
             Some(crate::raid::TEAM_DEFENDERS)
-        } else if self.mode == crate::raid::ModeKind::TeamBrawl {
-            // Fill the smaller team (ties go to the Rustbacks).
-            let n0 = self.players.iter().filter(|p| p.team == Some(0)).count();
-            let n1 = self.players.iter().filter(|p| p.team == Some(1)).count();
+        } else if matches!(self.mode, crate::raid::ModeKind::TeamBrawl | crate::raid::ModeKind::Convoy) {
+            // Fill the smaller team (ties go to the Rustbacks). The Convoy truck isn't a crew.
+            let crew = |p: &&Player| p.tank.vehicle != crate::parts::VehicleKind::FuelTanker;
+            let n0 = self.players.iter().filter(crew).filter(|p| p.team == Some(0)).count();
+            let n1 = self.players.iter().filter(crew).filter(|p| p.team == Some(1)).count();
             Some(if n1 < n0 { 1 } else { 0 })
         } else {
             None
@@ -343,7 +351,14 @@ impl Sim {
     pub fn players(&self) -> Vec<PlayerInfo> {
         self.players
             .iter()
-            .map(|p| PlayerInfo { id: p.id, name: p.name.clone(), is_bot: p.brain.is_some(), team: p.team, loadout: p.loadout })
+            .map(|p| PlayerInfo {
+                id: p.id,
+                name: p.name.clone(),
+                // The Convoy truck has no crew: list it as a bot.
+                is_bot: p.brain.is_some() || p.tank.vehicle == crate::parts::VehicleKind::FuelTanker,
+                team: p.team,
+                loadout: p.loadout,
+            })
             .collect()
     }
 
@@ -380,6 +395,10 @@ impl Sim {
         }
         self.time_left = self.tuning.mode.time_limit;
         self.match_ticks = 0;
+        // Convoy: back to round 1, the truck to the start (respawned below with everyone).
+        if self.convoy.is_some() {
+            self.reset_convoy();
+        }
         let ids: Vec<PlayerId> = self.players.iter().map(|p| p.id).collect();
         for id in ids {
             let i = self.idx(id).unwrap();
@@ -425,6 +444,9 @@ impl Sim {
                 self.players[i].brain = Some(brain);
             }
         }
+        // Machines the sim drives on top of (or instead of) a brain.
+        self.ship_inputs();
+        self.convoy_drive(dt);
 
         let mut pre_vel = Vec::with_capacity(self.players.len());
         for i in 0..self.players.len() {
@@ -444,6 +466,7 @@ impl Sim {
         self.step_world(dt);
         self.safety_net();
         self.step_raid(dt);
+        self.step_convoy(dt);
         self.step_storm(dt);
         self.step_mode(dt);
         self.cull_raiders();
@@ -815,6 +838,7 @@ impl Sim {
                 GunKind::TwinBarrel => &t.guns.twin_barrel,
                 GunKind::LongGun => &t.guns.long_gun,
                 GunKind::RigCannons => &t.raid.rig_cannon,
+                GunKind::DeckGun => &t.raid.deck_gun,
             }
             .clone();
             // Owner's Mk II multiplier (if they still have it).
@@ -975,6 +999,9 @@ impl Sim {
         if !self.can_damage(j) || amount <= 0.0 {
             return;
         }
+        let loc = self.ship_location(j, loc);
+        let amount = amount * self.truck_armour(j, w);
+
         let Some(amount) = self.absorb(j, amount, pos, w) else { return };
         let t = self.tuning.clone();
         let target = self.players[j].id;
@@ -1121,6 +1148,7 @@ impl Sim {
         }
         self.death_specials(j, hp.pos, vel);
         self.on_raid_death(j, killer, hp.pos, vel);
+        self.on_convoy_death(j, killer, hp.pos);
         for k in ScrapKind::ALL {
             self.players[j].tank.rebuild_track(&mut self.phys, &t, k);
         }
@@ -1148,11 +1176,16 @@ impl Sim {
         if let Some(p) = self.raid_spawn() {
             return p;
         }
+        if self.convoy.is_some() {
+            if let Some(p) = self.convoy_spawn(except) {
+                return p;
+            }
+        }
         let team = match except {
             Some(j) => self.players[j].team,
             None => self.pending_team,
         };
-        let team_side = if self.mode == crate::raid::ModeKind::TeamBrawl { team } else { None };
+        let team_side = if matches!(self.mode, crate::raid::ModeKind::TeamBrawl | crate::raid::ModeKind::Convoy) { team } else { None };
         let mut best = (f32::MIN, 0usize);
         for (si, s) in self.map.spawns.iter().enumerate() {
             // Team Brawl: Rustbacks spawn on the west half, Dust Saints on the east.
@@ -1178,7 +1211,7 @@ impl Sim {
         (s.pos + Vec3::Y * 1.3, s.yaw)
     }
 
-    fn respawn(&mut self, j: usize) {
+    pub(crate) fn respawn(&mut self, j: usize) {
         let t = self.tuning.clone();
         let class = self.players[j].loadout.chassis;
         if self.players[j].tank.vehicle == crate::parts::VehicleKind::Tank && self.players[j].tank.class != class {
@@ -1511,7 +1544,8 @@ impl Sim {
     }
 
     fn step_mode(&mut self, dt: f32) {
-        if self.raid.is_some() {
+        // Raider Waves and Convoy run their own clocks.
+        if self.raid.is_some() || self.convoy.is_some() {
             return;
         }
         if self.phase != Phase::Playing {
@@ -1653,6 +1687,7 @@ impl Sim {
             bosses: self.boss_snaps(),
             teams: self.team_scores(),
             storm: self.storm.intensity,
+            convoy: self.convoy_snap(),
         }
     }
 
@@ -1718,11 +1753,12 @@ impl Sim {
         }
     }
 
-    /// Kills per team (Team Brawl; empty otherwise).
+    /// Kills per team (Team Brawl and Convoy; empty otherwise).
     pub fn team_scores(&self) -> Vec<TeamScoreSnap> {
-        if self.mode != crate::raid::ModeKind::TeamBrawl {
+        if !matches!(self.mode, crate::raid::ModeKind::TeamBrawl | crate::raid::ModeKind::Convoy) {
             return Vec::new();
         }
+
         (0..2u8)
             .map(|t| TeamScoreSnap {
                 team: t,
