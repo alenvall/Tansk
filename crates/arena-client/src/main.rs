@@ -13,6 +13,7 @@
 // their builders are compiled but unused.
 #![cfg_attr(target_arch = "wasm32", allow(dead_code))]
 
+mod anim;
 mod bloom;
 mod camera;
 mod demo;

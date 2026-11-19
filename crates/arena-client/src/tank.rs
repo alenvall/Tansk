@@ -434,11 +434,26 @@ pub fn turret_mesh_class(class: ChassisClass, team: u32) -> MeshBuilder {
     // Periscope block, front right.
     m.bevel_box(Vec3::new(0.12, 0.08, 0.16), 0.05, 2, trim, at(Vec3::new(0.75, top - 0.02, 0.62)));
     m.bevel_box(Vec3::new(0.01, 0.035, 0.11), 0.01, 1, Paint::steel(0x1a2228, 0.2), at(Vec3::new(0.875, top - 0.0, 0.62)));
-    // The antenna with a ball on top.
-    let foot = Vec3::new(-0.95, top - 0.12, 0.72);
-    m.cylinder(0.08, 0.06, 0.03, 2, 10, trim, at(foot));
-    pipe(&mut m, foot, foot + Vec3::new(-0.08, 1.15, 0.0), 0.018, trim);
-    m.cylinder(0.06, 0.06, 0.055, 3, 12, Paint::painted(0xe0b030, 0.3), at(foot + Vec3::new(-0.08, 1.2, 0.0)));
+    // The antenna's foot (the whip itself is `antenna_mesh`, so it can sway).
+    m.cylinder(0.08, 0.06, 0.03, 2, 10, trim, at(antenna_foot(class)));
+    m
+}
+
+/// Where the turret antenna stands, turret frame.
+pub fn antenna_foot(class: ChassisClass) -> Vec3 {
+    let top = match class {
+        ChassisClass::Scout => 0.97,
+        ChassisClass::Brawler => 1.11,
+        ChassisClass::Hauler => 1.15,
+    };
+    Vec3::new(-0.95, top - 0.12, 0.72)
+}
+
+/// The antenna whip with a ball on top, its foot at the origin.
+pub fn antenna_mesh() -> MeshBuilder {
+    let mut m = MeshBuilder::new();
+    pipe(&mut m, Vec3::ZERO, Vec3::new(-0.08, 1.15, 0.0), 0.018, trim_paint());
+    m.cylinder(0.06, 0.06, 0.055, 3, 12, Paint::painted(0xe0b030, 0.3), at(Vec3::new(-0.08, 1.2, 0.0)));
     m
 }
 
@@ -639,6 +654,7 @@ mod shots {
             m.indices.extend(part.indices.iter().map(|i| i + base));
         };
         add(turret_mesh_class(class, team), turret);
+        add(antenna_mesh(), turret * at(antenna_foot(class)));
         add(crate::parts::gun_mesh(gun, team), gun_xf);
         for &p in parts {
             let frame = match arena_core::part_def(p).frame {
@@ -660,14 +676,20 @@ mod shots {
         m
     }
 
-    fn render(name: &str, build: impl FnOnce(&mut WorldRenderer) -> RenderWorld) {
-        let (w, h) = (1600u32, 900u32);
+    const SHOT_W: u32 = 1600;
+    const SHOT_H: u32 = 900;
+
+    fn renderer() -> WorldRenderer {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor { backends: wgpu::Backends::PRIMARY, ..wgpu::InstanceDescriptor::new_without_display_handle() });
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).expect("adapter");
         let (device, queue) = pollster::block_on(crate::renderer::request_device(&adapter)).expect("device");
+        WorldRenderer::new(Renderer::new(device, queue, wgpu::TextureFormat::Rgba8Unorm, SHOT_W, SHOT_H))
+    }
+
+    /// Draws `world` and reads the frame back as an RGBA image.
+    fn capture(wr: &mut WorldRenderer, world: &RenderWorld) -> image::RgbaImage {
+        let (w, h) = (SHOT_W, SHOT_H);
         let format = wgpu::TextureFormat::Rgba8Unorm;
-        let mut wr = WorldRenderer::new(Renderer::new(device, queue, format, w, h));
-        let world = build(&mut wr);
         let texture = wr.renderer.device.create_texture(&wgpu::TextureDescriptor {
             label: None,
             size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
@@ -678,7 +700,7 @@ mod shots {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         });
-        wr.draw(&texture.create_view(&Default::default()), &world);
+        wr.draw(&texture.create_view(&Default::default()), world);
         let r = &wr.renderer;
         let padded = (w * 4).div_ceil(256) * 256;
         let buffer = r.device.create_buffer(&wgpu::BufferDescriptor { label: None, size: (padded * h) as u64, usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ, mapped_at_creation: false });
@@ -696,8 +718,77 @@ mod shots {
         for row in 0..h as usize {
             px.extend_from_slice(&mapped[row * padded as usize..row * padded as usize + (w * 4) as usize]);
         }
-        let path = format!("{}/../../docs/shots/{name}.png", env!("CARGO_MANIFEST_DIR"));
-        image::save_buffer(&path, &px, w, h, image::ExtendedColorType::Rgba8).expect("save");
+        image::RgbaImage::from_raw(w, h, px).expect("image")
+    }
+
+    fn shot_path(name: &str) -> String {
+        format!("{}/../../docs/shots/{name}.png", env!("CARGO_MANIFEST_DIR"))
+    }
+
+    fn render(name: &str, build: impl FnOnce(&mut WorldRenderer) -> RenderWorld) {
+        let mut wr = renderer();
+        let world = build(&mut wr);
+        capture(&mut wr, &world).save(shot_path(name)).expect("save");
+    }
+
+    /// Frame strips of the cartoon juice (`docs/shots/juice-*.png`): a Big
+    /// Bore firing (recoil, muzzle pop, rock back) and a tank dropping onto
+    /// the sand (squash, bounce, overshoot), every few frames at 30 fps.
+    #[test]
+    #[ignore]
+    fn shots_juice() {
+        use arena_core::{Event, GunKind, Weapon};
+        let mut wr = renderer();
+        wr.begin_scene();
+        let floor = wr.renderer.add_mesh(&crate::terrain::flat(90.0));
+        wr.set_statics(vec![Instance::new(floor, Mat4::IDENTITY)]);
+        let dt = 1.0 / 30.0;
+        let tile = (480u32, 270u32);
+        for (name, landing) in [("juice-fire", false), ("juice-land", true)] {
+            let mut world = RenderWorld::default();
+            let mut t = crate::world::parked_tank(7 + landing as u8 as arena_core::PlayerId, DUST_SAINT, Vec3::ZERO, -0.35, if landing { PartKind::HeavyCannon } else { PartKind::BigBore }, vec![PartKind::SensorMast]);
+            t.class = if landing { ChassisClass::Hauler } else { ChassisClass::Brawler };
+            t.turret_yaw = 0.0;
+            let ground = t.pos.y;
+            let mut vy = 0.0f32;
+            if landing {
+                t.pos.y += 3.0;
+            }
+            world.camera = Some(crate::camera::Camera::look(Vec3::new(1.0, 3.2, 10.0), Vec3::new(0.4, 1.3, 0.0), 42.0));
+            let frames: &[u32] = if landing { &[20, 23, 24, 25, 26, 27, 29, 34] } else { &[1, 2, 3, 4, 5, 7, 10, 16] };
+            let mut strip = image::RgbaImage::new(tile.0 * 4, tile.1 * 2);
+            let mut shot = 0;
+            for f in 0..=*frames.last().unwrap() {
+                world.dt = dt;
+                world.time += dt;
+                if landing {
+                    vy -= 9.8 * dt;
+                    t.pos.y += vy * dt;
+                    if t.pos.y <= ground {
+                        t.pos.y = ground;
+                        vy = 0.0;
+                        t.wheels = [0.35; 10];
+                    } else {
+                        t.wheels = [0.0; 10];
+                    }
+                    for c in &mut t.wheels {
+                        *c = c.max(0.15);
+                    }
+                }
+                world.tanks = vec![t.clone()];
+                if !landing && f == 2 {
+                    let e = Event::Fired { player: t.player, weapon: Weapon::Gun(GunKind::BigBore), pos: t.muzzle(), dir: t.rot * Vec3::X };
+                    wr.event(&e, Vec3::ZERO);
+                }
+                let img = capture(&mut wr, &world);
+                if frames.contains(&f) {
+                    let small = image::imageops::resize(&img, tile.0, tile.1, image::imageops::FilterType::Triangle);
+                    image::imageops::replace(&mut strip, &small, ((shot % 4) * tile.0) as i64, ((shot / 4) * tile.1) as i64);
+                    shot += 1;
+                }
+            }
+            strip.save(shot_path(name)).expect("save");
+        }
     }
 
     /// A light vehicle on its truck wheels, as one mesh in its hull frame

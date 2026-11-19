@@ -29,6 +29,28 @@ thread_local! {
 
 /// The Rust Belt's canyon floor: the sand pushed toward rusty red.
 pub const RUST_BELT_GROUND: Vec3 = Vec3::new(1.04, 0.9, 0.82);
+/// The dry river's mud: darker and browner, crazed with cracks.
+const RUST_BELT_MUD: Vec3 = Vec3::new(0.86, 0.68, 0.55);
+
+thread_local! {
+    /// Building the Rust Belt (steep ground is rock, the river bed is mud).
+    static CANYON: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The Rust Belt's ground by triangle: steep banks and canyon walls are
+/// banded rock, the river bed is dry cracked mud (the salt flat's crust
+/// net over a mud tint), the rest is the red canyon floor.
+fn canyon_paint(p: [Vec3; 3], face: Vec3) -> Paint {
+    if face.y < 0.9 {
+        return Paint { color: Vec3::ONE, roughness: 0.9, material: Material::Rock, wear: 0.0 };
+    }
+    let c = (p[0] + p[1] + p[2]) / 3.0;
+    let off = (c.z - arena_core::rustbelt::river_z(c.x)).abs();
+    if off < arena_core::rustbelt::BED_HALF - 0.5 && c.x.abs() < 300.0 {
+        return Paint { wear: 1.0, color: RUST_BELT_MUD, ..Paint::with(Material::Sand, 0xffffff, 0.95) };
+    }
+    sand(0.0)
+}
 
 fn smooth_normal(h: &dyn Fn(f32, f32) -> f32, x: f32, z: f32, e: f32) -> Vec3 {
     Vec3::new(h(x - e, z) - h(x + e, z), 2.0 * e, h(x, z - e) - h(x, z + e)).normalize()
@@ -38,7 +60,7 @@ fn smooth_normal(h: &dyn Fn(f32, f32) -> f32, x: f32, z: f32, e: f32) -> Vec3 {
 fn tri(m: &mut MeshBuilder, h: &dyn Fn(f32, f32) -> f32, e: f32, p: [Vec3; 3]) {
     let face = (p[1] - p[0]).cross(p[2] - p[0]).normalize_or(Vec3::Y);
     let face = if face.y < 0.0 { -face } else { face };
-    let paint = sand(SALT.with(|s| s.get()));
+    let paint = if CANYON.with(|c| c.get()) { canyon_paint(p, face) } else { sand(SALT.with(|s| s.get())) };
     let idx: Vec<u32> = p
         .iter()
         .map(|q| {
@@ -53,6 +75,7 @@ fn tri(m: &mut MeshBuilder, h: &dyn Fn(f32, f32) -> f32, e: f32, p: [Vec3; 3]) {
 pub fn build(map: &Map) -> Vec<(MeshBuilder, Mat4)> {
     SALT.with(|s| s.set(if map.id == arena_core::MapId::Refinery { 0.85 } else { 0.0 }));
     TINT.with(|t| t.set(if map.id == arena_core::MapId::RustBelt { RUST_BELT_GROUND } else { Vec3::ONE }));
+    CANYON.with(|c| c.set(map.id == arena_core::MapId::RustBelt));
     let res = map.resolution;
     let sp = map.spacing();
     let half = map.size / 2.0;
@@ -318,6 +341,7 @@ pub fn marks(map: &Map) -> Vec<MeshBuilder> {
 /// A flat sand floor for lineups and tests.
 pub fn flat(half: f32) -> MeshBuilder {
     TINT.with(|t| t.set(Vec3::ONE));
+    CANYON.with(|c| c.set(false));
     let mut m = MeshBuilder::new();
     m.heightfield(half, 40, |_, _| 0.0, sand(0.0));
     m

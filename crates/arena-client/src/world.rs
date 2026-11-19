@@ -357,6 +357,8 @@ struct StaticPiece {
 struct TankAnim {
     tread: [f32; 2],
     seen: bool,
+    /// Cartoon springs (recoil, rock, bounce, pops), see `anim`.
+    juice: crate::anim::Juice,
 }
 
 /// The renderer with its mesh library, static map and effects.
@@ -813,6 +815,9 @@ impl WorldRenderer {
         if let Event::ShipLaunchedBuggy { ship, .. } = e {
             self.ramps.insert(*ship, self.clock);
         }
+        if let Some(a) = crate::anim::subject(e).and_then(|p| self.anims.get_mut(&p)) {
+            a.juice.event(e);
+        }
         self.fx.event(e, listener)
     }
 
@@ -986,14 +991,21 @@ impl WorldRenderer {
             // the instance tint.
             let tint = crate::meshkit::srgb_hex(col).extend(1.0);
             let class = t.class;
+            // Cartoon juice: the body rocks over its raw (wheel) frame.
+            anim.juice.update(t, dt);
+            let body = anim.juice.hull(hull);
+            let turret_xf = anim.juice.turret(body, t.turret_yaw);
+            let gun_xf = anim.juice.gun(turret_xf, t.gun_pitch);
             let hull_id = lib.get(r, &format!("hull:{class:?}"), || tank::hull_mesh_class(class, TINTED));
-            instances.push(Instance::tinted(hull_id, hull, params, tint));
+            instances.push(Instance::tinted(hull_id, body, params, tint));
             let dmg = Vec4::new(0.0, 0.0, 0.0, damage);
             let turret_id = lib.get(r, &format!("turret:{class:?}"), || tank::turret_mesh_class(class, TINTED));
-            instances.push(Instance::tinted(turret_id, t.turret_transform(), dmg, tint));
+            instances.push(Instance::tinted(turret_id, turret_xf, dmg, tint));
+            let antenna_id = lib.get(r, "antenna", tank::antenna_mesh);
+            instances.push(Instance::new(antenna_id, anim.juice.antenna(turret_xf, tank::antenna_foot(class))));
             let gun = t.gun;
             let gun_id = lib.get(r, &format!("gun:{gun:?}"), || parts::gun_mesh(gun, TINTED));
-            instances.push(Instance::tinted(gun_id, t.gun_transform(), dmg, tint));
+            instances.push(Instance::tinted(gun_id, gun_xf, dmg, tint));
             let wheel = lib.get(r, "wheel", tank::road_wheel_mesh);
             for (i, c) in t.wheels.iter().enumerate() {
                 let side = if i < 5 { -1.0 } else { 1.0 };
@@ -1006,11 +1018,14 @@ impl WorldRenderer {
             }
             for &p in &t.parts {
                 let id = lib.get(r, &format!("part:{p:?}"), || parts::part_mesh(p, TINTED));
-                let frame = match arena_core::part_def(p).frame {
-                    arena_core::Frame::Hull => hull,
-                    arena_core::Frame::Turret => t.turret_transform(),
-                    arena_core::Frame::Gun => t.gun_transform(),
-                };
+                let frame = anim.juice.part(
+                    p,
+                    match arena_core::part_def(p).frame {
+                        arena_core::Frame::Hull => body,
+                        arena_core::Frame::Turret => turret_xf,
+                        arena_core::Frame::Gun => gun_xf,
+                    },
+                );
                 let part_health = world.part_health.iter().find(|h| h.0 == t.player && h.1 == p).map(|h| h.2).unwrap_or(1.0);
                 let part_damage = (1.0 - part_health).max(damage * 0.6).clamp(0.0, 1.0);
                 instances.push(Instance::tinted(id, frame, Vec4::new(0.0, 0.0, 0.0, part_damage), tint));
@@ -1642,7 +1657,7 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
     if map.id == arena_core::MapId::RustBelt {
         if let Some(pile) = map.regions.iter().find(|r| r.name == "The Magnet Crane") {
             let c = Vec2::new(pile.center.x, pile.center.z);
-            for k in 0..70u32 {
+            for k in 0..48u32 {
                 let s = 80_000 + k;
                 let a = hash(s, 1) * std::f32::consts::TAU;
                 let q = c + Vec2::new(a.cos(), a.sin()) * 34.0 * hash(s, 2).sqrt();
@@ -1652,22 +1667,45 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
                 }
             }
         }
+        // The river: rock fallen to the foot of each bank (a big boulder,
+        // smaller ones, gravel), dead reeds in the damp of the toe, pebbles
+        // strewn over the cracked mud.
         let rz = arena_core::rustbelt::river_z;
-        let mut x = -270.0f32;
-        while x < 270.0 {
+        let bed_half = arena_core::rustbelt::BED_HALF;
+        let mut x = -275.0f32;
+        while x < 275.0 {
             for sgn in [-1.0f32, 1.0] {
                 let s = 90_000 + ((x + 300.0) as u32) * 2 + (sgn > 0.0) as u32;
-                if hash(s, 1) < 0.7 {
+                if hash(s, 1) < 0.6 {
                     continue;
                 }
-                let q = Vec2::new(x + (hash(s, 2) - 0.5) * 6.0, rz(x) + sgn * (arena_core::rustbelt::BED_HALF - 1.0 - 1.5 * hash(s, 3)));
-                if free(q, 0.3) {
-                    let size = (hash(s, 4) * 4.0) as u32;
-                    push(&mut out, Boulder, size, q, hash(s, 5) * 6.28);
-                    push(&mut out, Pebbles, s, q + Vec2::new(2.0, -sgn * 1.5), 0.0);
+                let toe = Vec2::new(x + (hash(s, 2) - 0.5) * 5.0, rz(x) + sgn * (bed_half - 0.8 - 1.2 * hash(s, 3)));
+                if !free(toe, 0.3) {
+                    continue;
+                }
+                push(&mut out, Boulder, 2 + (hash(s, 4) * 3.0) as u32, toe, hash(s, 5) * 6.28);
+                for k in 0..3u32 {
+                    let q = toe + Vec2::new((hash(k, s) - 0.5) * 5.0, -sgn * (0.8 + 1.8 * hash(k, s + 1)));
+                    if free(q, 0.2) {
+                        push(&mut out, if k == 0 { Pebbles } else { Boulder }, if k == 0 { s } else { (hash(k, s + 2) * 2.0) as u32 }, q, hash(k, s + 3) * 6.28);
+                    }
+                }
+                if hash(s, 6) < 0.45 {
+                    for k in 0..3u32 {
+                        let q = toe + Vec2::new(2.0 + (hash(k, s + 4) - 0.5) * 3.0, -sgn * (1.5 + hash(k, s + 5)));
+                        if free(q, 0.1) {
+                            push(&mut out, Tuft, s + k, q, hash(k, s + 6) * 6.28);
+                        }
+                    }
                 }
             }
-            x += 11.0;
+            if hash(x as u32 + 400, 7) < 0.3 {
+                let q = Vec2::new(x + 4.0, rz(x) + (hash(x as u32 + 400, 8) - 0.5) * bed_half);
+                if free(q, 0.1) {
+                    push(&mut out, Pebbles, x as u32 + 700, q, hash(x as u32, 9) * 6.28);
+                }
+            }
+            x += 9.0;
         }
     }
 
@@ -1677,7 +1715,14 @@ fn dressing_plan(map: &Map) -> Vec<Dressing> {
     let open = |p: Vec2, clearance: f32| {
         free(p, clearance) && !on_deck(p) && marks.iter().all(|m| polyline_dist(&m.points, p) > m.width * 0.5 + 8.0)
     };
-    let groups: [(Clutter, usize, u32); 3] = if desert { [(Boulder, 12, 1), (Cactus, 8, 2), (Shrub, 28, 3)] } else { [(Boulder, 7, 1), (Shrub, 18, 3), (Pebbles, 6, 4)] };
+    let groups: [(Clutter, usize, u32); 3] = if map.id == arena_core::MapId::RustBelt {
+        // The canyon floor keeps its open ground clean: the river carries the rock.
+        [(Boulder, 7, 1), (Cactus, 4, 2), (Shrub, 8, 3)]
+    } else if desert {
+        [(Boulder, 12, 1), (Cactus, 8, 2), (Shrub, 28, 3)]
+    } else {
+        [(Boulder, 7, 1), (Shrub, 18, 3), (Pebbles, 6, 4)]
+    };
     for (gk, count, salt_k) in groups {
         let mut made = 0;
         let mut i = 0u32;

@@ -36,8 +36,6 @@ fn glass() -> Paint {
 
 /// Faded car colours: the bales and the stacked cars.
 pub const CAR_COLOURS: [u32; 8] = [0xb8463a, 0x3f6f8f, 0xd2b04a, 0x5f7f4a, 0xcfc8b6, 0x8a5a8a, 0xd07a2a, 0x7a7a72];
-/// The bales: the same cars, sun-faded and crushed.
-const BALE_COLOURS: [u32; 8] = [0x9a4a3a, 0x4a6a7a, 0xb0904a, 0x5a6a42, 0x9a9282, 0x6a4a5a, 0xa8642a, 0x6a6a62];
 /// Faded school-bus paints.
 const BUS_COLOURS: [u32; 4] = [0xd9a52a, 0xc8862a, 0xd8c27a, 0xa04a2a];
 /// Tin sheet patchwork.
@@ -49,59 +47,97 @@ fn car_paint(seed: u32) -> Paint {
 
 // ── Crushed car bales ────────────────────────────────────────────────────
 
-/// One bale, centred, of half extents `h`: a car squashed into layers of
-/// its own faded paint, pressed out of line, dark crumple seams between,
-/// a wheel rim and a bumper end poking out, rust in the folds.
+/// One bale, centred, about half extents `h`: a whole car crushed into a
+/// lumpy block. The body panels fold over one another in the car's own
+/// paint (a door skin here, a bonnet there, out of line and tilted), a
+/// tyre and its rim squashed into one face, a bent bumper and a shard of
+/// windscreen sticking out, two steel straps round it, rust in the folds.
 fn bale(m: &mut MeshBuilder, h: Vec3, seed: u32, xf: Mat4) {
     let first = m.vertices.len();
-    let colour = BALE_COLOURS[(hash(seed, 3) * 8.0) as usize % 8];
-    let seam = Paint::painted(0x2e221a, 1.0);
-    // The dark core (shows in the seams).
-    m.bevel_box(h - Vec3::new(0.1, 0.02, 0.1), 0.05, 1, seam, Mat4::IDENTITY);
-    // Three squashed layers, each pressed a little out of line.
-    let layers = 3;
-    let lh = h.y / layers as f32;
-    for k in 0..layers {
-        let y = -h.y + lh * (2 * k + 1) as f32;
-        let off = Vec3::new((hash(k, seed + 1) - 0.5) * 0.22, y, (hash(k, seed + 2) - 0.5) * 0.18);
-        // Some layers another car's colour; all of them sun-faded and rusty.
-        let c = if hash(k, seed + 4) < 0.25 { BALE_COLOURS[(hash(k, seed + 5) * 8.0) as usize % 8] } else { colour };
-        let shade = 0.82 + 0.18 * hash(k, seed + 6);
-        let paint = Paint { color: crate::meshkit::srgb_hex(c) * shade, ..Paint::painted(c, 0.95) };
-        let tilt = Quat::from_rotation_z((hash(k, seed + 7) - 0.5) * 0.05) * Quat::from_rotation_x((hash(k, seed + 8) - 0.5) * 0.05);
-        m.bevel_box(Vec3::new(h.x - 0.03 * k as f32, lh - 0.06, h.z - 0.02), 0.1, 2, paint, Mat4::from_rotation_translation(tilt, off));
+    let r = |k: u32| hash(seed, k);
+    let colour = CAR_COLOURS[(r(3) * 8.0) as usize % 8];
+    let paint = |shade: f32, wear: f32| Paint { color: crate::meshkit::srgb_hex(colour) * shade, ..Paint::painted(colour, wear) };
+    let dark = Paint::painted(0x2a1e18, 1.0);
+    // The squashed core: a wedge (the crushed cabin end higher), dark in the gaps.
+    let core = Vec3::new(h.x * 0.94, h.y * 0.9, h.z * 0.9);
+    let flip = if r(4) < 0.5 { 0.0 } else { std::f32::consts::PI };
+    m.wedge(core, 0.12, 2, 0.72 + 0.2 * r(5), paint(0.7, 0.95), Mat4::from_rotation_y(flip));
+    m.bevel_box(core * Vec3::new(0.98, 0.5, 1.02), 0.05, 1, dark, at(Vec3::new(0.0, -h.y * 0.25, 0.0)));
+    // Panels folded over the outside: lumps of the car's skin, each tilted.
+    for k in 0..5u32 {
+        let s = seed * 7 + k;
+        let side = if hash(s, 1) < 0.5 { -1.0 } else { 1.0 };
+        let on_end = hash(s, 2) < 0.3;
+        let size = Vec3::new(
+            if on_end { 0.06 } else { h.x * (0.35 + 0.4 * hash(s, 3)) },
+            h.y * (0.25 + 0.35 * hash(s, 4)),
+            if on_end { h.z * (0.4 + 0.4 * hash(s, 5)) } else { 0.06 },
+        );
+        let y = (hash(s, 6) - 0.5) * h.y * 1.2;
+        let pos = if on_end {
+            Vec3::new(side * (h.x * 0.94 + 0.03), y, (hash(s, 7) - 0.5) * h.z * 0.6)
+        } else {
+            Vec3::new((hash(s, 7) - 0.5) * h.x * 0.9, y, side * (h.z * 0.9 + 0.03))
+        };
+        let tilt = Quat::from_rotation_z((hash(s, 8) - 0.5) * 0.5) * Quat::from_rotation_x((hash(s, 9) - 0.5) * 0.3) * Quat::from_rotation_y((hash(s, 10) - 0.5) * 0.3);
+        m.bevel_box(size, 0.04, 1, paint(0.85 + 0.25 * hash(s, 11), 0.8 + 0.2 * hash(s, 12)), Mat4::from_rotation_translation(tilt, pos));
     }
-    // A rim on one face, a bumper end on another.
-    let side = if hash(seed, 5) < 0.5 { -1.0 } else { 1.0 };
-    let rim_at = Vec3::new((hash(seed, 6) - 0.5) * h.x, (hash(seed, 7) - 0.5) * h.y * 0.6, side * (h.z + 0.04));
-    m.cylinder(0.3, 0.06, 0.03, 1, 10, Paint::steel(0x6a6460, 0.55), along_z(rim_at));
-    m.cylinder(0.11, 0.08, 0.02, 1, 8, Paint::steel(0x2a2826, 0.7), along_z(rim_at + Vec3::Z * side * 0.04));
-    if hash(seed, 10) < 0.5 {
-        let bump = Vec3::new(side * (h.x + 0.04), (hash(seed, 8) - 0.5) * h.y, (hash(seed, 9) - 0.5) * h.z);
-        m.bevel_box(Vec3::new(0.05, 0.07, h.z * 0.5), 0.03, 1, Paint::steel(0x9a968e, 0.45), Mat4::from_rotation_translation(Quat::from_rotation_x(0.2), bump));
+    // A crumpled roof skin over the top, overhanging and bent.
+    let roof_tilt = Quat::from_rotation_z((r(13) - 0.5) * 0.25) * Quat::from_rotation_x((r(14) - 0.5) * 0.2);
+    m.bevel_box(Vec3::new(h.x * 0.8, 0.07, h.z * 0.85), 0.05, 1, paint(1.0, 0.85), Mat4::from_rotation_translation(roof_tilt, Vec3::new((r(15) - 0.5) * 0.3, h.y * 0.92, 0.0)));
+    // A tyre and rim crushed into one long face.
+    let side = if r(16) < 0.5 { -1.0 } else { 1.0 };
+    let wheel = Vec3::new((r(17) - 0.5) * h.x * 1.1, (r(18) - 0.5) * h.y * 0.5, side * (h.z * 0.9));
+    let squash = Mat4::from_scale_rotation_translation(Vec3::new(1.0, 0.75, 1.0), Quat::from_rotation_x(std::f32::consts::FRAC_PI_2), wheel);
+    m.cylinder(0.42, 0.12, 0.06, 2, 14, Paint::rubber(0x1e1c1a), squash);
+    m.cylinder(0.24, 0.14, 0.03, 1, 10, Paint::steel(0x9a968e, 0.4), squash);
+    // A bent bumper out of one end.
+    let end = if r(19) < 0.5 { -1.0 } else { 1.0 };
+    let bump = Vec3::new(end * (h.x * 0.95 + 0.05), (r(20) - 0.5) * h.y, 0.0);
+    let bend = Quat::from_rotation_y(end * (0.2 + 0.4 * r(21)));
+    m.bevel_box(Vec3::new(0.06, 0.08, h.z * 0.55), 0.03, 1, Paint::steel(0xc8c6be, 0.25), Mat4::from_rotation_translation(bend, bump + Vec3::Z * h.z * 0.2));
+    m.bevel_box(Vec3::new(0.06, 0.08, h.z * 0.35), 0.03, 1, Paint::steel(0xc8c6be, 0.25), Mat4::from_rotation_translation(bend * Quat::from_rotation_y(end * 0.6), bump - Vec3::Z * h.z * 0.45));
+    // A shard of windscreen and a tail light.
+    if r(22) < 0.7 {
+        let g = Vec3::new((r(23) - 0.5) * h.x, h.y * 0.75, -side * h.z * 0.9);
+        m.bevel_box(Vec3::new(h.x * 0.25, 0.22, 0.02), 0.01, 1, Paint::steel(0x6a9aa0, 0.1), Mat4::from_rotation_translation(Quat::from_rotation_x(-side * 0.5), g));
     }
-    // Rust bleeding down the faces.
-    for k in 0..4 {
+    m.bevel_box(Vec3::new(0.04, 0.09, 0.16), 0.02, 1, Paint::glow(0xb02a1a, 0.25), at(Vec3::new(-end * (h.x * 0.95), h.y * 0.2, h.z * 0.5)));
+    // A steel strap round the bale.
+    let strap = Paint::steel(0x7a746c, 0.45);
+    let x = (r(24) - 0.5) * h.x * 0.8;
+    m.bevel_box(Vec3::new(0.03, 0.02, h.z * 0.9 + 0.03), 0.0, 0, strap, at(Vec3::new(x, h.y * 0.92 + 0.05, 0.0)));
+    for sz in [-1.0f32, 1.0] {
+        m.bevel_box(Vec3::new(0.03, h.y * 0.9, 0.02), 0.0, 0, strap, at(Vec3::new(x, 0.0, sz * (h.z * 0.9 + 0.08))));
+    }
+    // Rust bleeding out of the folds.
+    for k in 0..3 {
         let x = (hash(k, seed + 12) - 0.5) * 1.6 * h.x;
-        let len = 0.25 + 0.4 * hash(k, seed + 13);
+        let len = 0.2 + 0.3 * hash(k, seed + 13);
         let s = if k % 2 == 0 { 1.0 } else { -1.0 };
-        m.bevel_box(Vec3::new(0.15 + 0.15 * hash(k, seed + 14), len, 0.012), 0.01, 1, rust(), at(Vec3::new(x, h.y - len - 0.05, s * (h.z + 0.03))));
+        m.bevel_box(Vec3::new(0.14 + 0.12 * hash(k, seed + 14), len, 0.012), 0.01, 1, rust(), at(Vec3::new(x, h.y * 0.6 - len, s * (h.z * 0.9 + 0.07))));
     }
     m.transform_from(first, xf);
 }
 
-/// A column of bales filling a box of half extents `half`, centred.
+/// A column of bales filling a box of half extents `half`, centred: each
+/// bale its own size (a small car, a big one), tilted and pushed out of line.
 pub fn car_bales(half: Vec3, seed: u32) -> MeshBuilder {
     let mut m = MeshBuilder::new();
     let n = ((2.0 * half.y) / arena_core::map::CUBE_H).round().max(1.0) as u32;
-    let bh = half.y / n as f32;
-    for k in 0..n {
+    // Uneven bale heights that still fill the column.
+    let weights: Vec<f32> = (0..n).map(|k| 0.8 + 0.4 * hash(seed * 31 + k, 9)).collect();
+    let total: f32 = weights.iter().sum();
+    let mut y = -half.y;
+    for (k, w) in weights.iter().enumerate() {
+        let k = k as u32;
         let s = seed * 31 + k * 7;
-        // Each bale a hair smaller than its slot, a little twisted and offset.
-        let h = Vec3::new(half.x - 0.08 - 0.12 * hash(s, 1), bh - 0.04, half.z - 0.06 - 0.15 * hash(s, 2));
-        let off = Vec3::new((hash(s, 3) - 0.5) * 0.18, -half.y + bh * (2 * k + 1) as f32, (hash(s, 4) - 0.5) * 0.18);
-        let rot = Quat::from_rotation_y((hash(s, 5) - 0.5) * 0.1) * Quat::from_rotation_z((hash(s, 6) - 0.5) * 0.04);
+        let bh = half.y * w / total;
+        let h = Vec3::new(half.x * (0.82 + 0.16 * hash(s, 1)), bh - 0.03, half.z * (0.8 + 0.18 * hash(s, 2)));
+        let off = Vec3::new((hash(s, 3) - 0.5) * 0.35, y + bh, (hash(s, 4) - 0.5) * 0.3);
+        let rot = Quat::from_rotation_y((hash(s, 5) - 0.5) * 0.3) * Quat::from_rotation_z((hash(s, 6) - 0.5) * 0.12) * Quat::from_rotation_x((hash(s, 8) - 0.5) * 0.1);
         bale(&mut m, h, s, Mat4::from_rotation_translation(rot, off));
+        y += 2.0 * bh;
     }
     m
 }

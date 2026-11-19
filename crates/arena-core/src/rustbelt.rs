@@ -234,12 +234,6 @@ fn rust_marks(map: &Map) -> Vec<GroundMark> {
         // The tower's plaza.
         packed((TOWER.x - 12.0, TOWER.y), (TOWER.x + 12.0, TOWER.y), 40.0),
     ]);
-    // Dried silt down the river bed.
-    let silt: Vec<Vec2> = (0..=20).map(|k| {
-        let x = -280.0 + k as f32 * 28.0;
-        Vec2::new(x, river_z(x))
-    }).collect();
-    marks.push(GroundMark { kind: GroundMarkKind::Packed, points: silt, width: 2.0 * BED_HALF - 4.0 });
     let mut oil = vec![CRUSHER + Vec2::new(-12.0, 8.0), CRUSHER + Vec2::new(10.0, 8.0), MARKET + Vec2::new(-14.0, 12.0)];
     let mut big = vec![CRUSHER + Vec2::new(0.0, 9.0)];
     for o in &map.obstacles {
@@ -359,15 +353,14 @@ impl Map {
             // By the W/E gate (long along Z, against the W/E fence).
             b.place(ObstacleKind::Shack, mx + sx * (inner - sh.z), mz + sz * (7.5 + sh.x), std::f32::consts::FRAC_PI_2);
         }
-        // Stalls in a ring round the courtyard, off the gate lines.
-        for k in 0..8 {
-            let a = (k as f32 + 0.5) * std::f32::consts::FRAC_PI_4;
-            let r = 19.5 + if k % 2 == 0 { 0.0 } else { 1.0 };
+        // Stalls on the diagonals round the courtyard, off the gate lines
+        // (room to fight between them and the shacks).
+        for k in 0..4 {
+            let a = (k as f32 + 0.5) * std::f32::consts::FRAC_PI_2;
+            let r = 20.0;
             let p = MARKET + Vec2::new(a.cos(), a.sin()) * r;
             b.place(ObstacleKind::Stall, p.x, p.y, face(p, MARKET) + std::f32::consts::FRAC_PI_2);
         }
-        // The lookout over the south gate.
-        b.place(ObstacleKind::Tower, mx - 15.0, mz + h + 14.0, 0.1);
         // Hedgehogs and barriers out front of the gates.
         for (x, z, yaw) in [(mx - 14.0, mz - h - 12.0, 0.0), (mx + 14.0, mz + h + 12.0, 0.0), (mx - h - 12.0, mz - 13.0, 1.57), (mx + h + 12.0, mz + 13.0, 1.57)] {
             let j = b.jit(2.0);
@@ -480,6 +473,11 @@ impl Map {
             let j = b.jit(0.1);
             b.place(k, x, river_z(x) + dz, yaw + j);
         }
+
+        // Cube stacks on both banks over the east ford: the convoy's last
+        // stretch runs a gauntlet.
+        b.cubes(168.0, river_z(168.0) - 38.0, 0.15, &[3, 4, 3]);
+        b.cubes(172.0, river_z(172.0) + 38.0, -0.1, &[3, 3, 4]);
 
         // ---- The canyon: red rock cliffs along both walls (out of bounds) --------
         let mut x = -330.0;
@@ -635,15 +633,15 @@ impl Map {
             Region { name: "The Tower".into(), center: at3(&map, TOWER), radius: 75.0 },
         ];
 
-        // Convoy: down the river bed from the west end, under the bridge (by
-        // the north arch), up the east ford and on to the bus graveyard.
-        let mut x: f32 = -200.0;
+        // Convoy: down the river bed from the west, under the bridge (by the
+        // north arch), to the unloading point halfway up the east ford.
+        let mut x: f32 = -205.0;
         while x < 200.0 {
             let dz = if x.abs() < 30.0 { -8.0 } else { 0.0 };
             map.convoy_route.push(at3(&map, Vec2::new(x, river_z(x) + dz)));
             x += 30.0;
         }
-        for (x, z) in [(205.0, river_z(205.0)), (205.0, -12.0), (196.0, -50.0)] {
+        for (x, z) in [(205.0, river_z(205.0)), (205.0, 2.0)] {
             map.convoy_route.push(at3(&map, Vec2::new(x, z)));
         }
 
@@ -682,7 +680,7 @@ impl Map {
             let p = free(&map, Vec2::new(*x + rng.range(-2.0, 2.0), *z + rng.range(-2.0, 2.0)), 3.0);
             map.scrap_sites.push(ScrapSite { pos: at3(&map, p), kind: ScrapKind::from_index(i) });
         }
-        for (x, z) in [(0.0, -40.0), (-150.0, -128.0), (150.0, -160.0), (-118.0, 170.0), (140.0, 164.0), (100.0, rz(100.0))] {
+        for (x, z) in [(0.0, -40.0), (-150.0, -128.0), (150.0, -160.0), (-118.0, 170.0), (140.0, 164.0), (100.0, rz(100.0)), (-60.0, rz(-60.0))] {
             let p = free(&map, Vec2::new(x, z), 4.0);
             map.repair_sites.push(at3(&map, p));
         }
