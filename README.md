@@ -41,7 +41,8 @@ cargo run --release -p arena-core --example harness -- [raid|convoy|wellhead|las
 cargo test -p arena-client --release -- --ignored shots   # native screenshots into docs/shots
 ```
 
-Debug URL flags: `?autoplay=practice|raid|team|convoy|wellhead|lastcrew`,
+Debug URL flags: `?autoplay=practice|raid|team|convoy|wellhead|lastcrew` (offline),
+`?autoplay=host-brawl|host-team|host-raid|host-convoy|host-wellhead|host-lastcrew` (a private online room),
 `&map=refinery`, `&mouse=free`, `&quality=low`, `&matchtime=45`, `&hints=reset`.
 
 ## Deploy

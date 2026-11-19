@@ -525,22 +525,32 @@ impl Tank {
         let ray_len = tt.suspension_travel + tt.wheel_radius;
 
         // 1. Rays.
-        let mut hits: Vec<Option<(Vec3, f32, Vec3)>> = Vec::with_capacity(2 * n);
+        // One broad-phase query for all the wheels (`Physics::rays_near`).
+        const MAX_WHEELS: usize = 32;
+        let mut origins = [Vec3::ZERO; MAX_WHEELS];
+        let mut raw = [None; MAX_WHEELS];
+        let m = (2 * n).min(MAX_WHEELS);
         for side in 0..2 {
             let z = if side == 0 { -tt.track_half_width } else { tt.track_half_width };
             for i in 0..n {
                 let x = (n as f32 - 1.0) * 0.5 * tt.wheel_spacing - i as f32 * tt.wheel_spacing;
-                let origin = hp.point(Vec3::new(x, tt.ray_origin_y, z));
-                let hit = phys.ray(origin, -up, ray_len, ground_query(), Some(self.body));
-                hits.push(hit.and_then(|(_, toi, normal)| {
-                    if normal.dot(up) < 0.35 {
-                        None
-                    } else {
-                        Some((origin, toi, normal))
-                    }
-                }));
+                if side * n + i < m {
+                    origins[side * n + i] = hp.point(Vec3::new(x, tt.ray_origin_y, z));
+                }
             }
         }
+        phys.rays_near(&origins[..m], -up, ray_len, ground_query(), Some(self.body), &mut raw[..m]);
+        let mut hits = [None; MAX_WHEELS];
+        for k in 0..m {
+            hits[k] = raw[k].and_then(|(_, toi, normal): (_, f32, Vec3)| {
+                if normal.dot(up) < 0.35 {
+                    None
+                } else {
+                    Some((origins[k], toi, normal))
+                }
+            });
+        }
+        let hits = &hits[..m];
 
         // 2. Springs.
         let body = phys.body_mut(self.body);

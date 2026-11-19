@@ -165,6 +165,10 @@ pub struct Game {
     pad_idle: f32,
     /// No saved quality: start Medium, drop to Low if the first 3 s are slow.
     pub quality_auto: bool,
+    /// Last frame's network/simulation update, ms (offline: the sim steps).
+    pub prof_net_ms: f64,
+    /// Last frame's game phases, ms: world, camera+aim, events, sound, HUD.
+    pub prof_game: [f64; 8],
     quality_probe: (f32, u32),
     want_quality: Option<Quality>,
     want_look: Option<TimeOfDay>,
@@ -240,6 +244,8 @@ impl Game {
             prev_pad: Pad::default(),
             pad_idle: 1e9,
             quality_auto: false,
+            prof_net_ms: 0.0,
+            prof_game: [0.0; 8],
             quality_probe: (0.0, 0),
             want_quality: None,
             want_look: Some(TimeOfDay::GoldenHour),
@@ -567,7 +573,16 @@ impl Game {
 
     fn handle_actions(&mut self) {
         for a in self.ui.poll_actions() {
+            // Every press clicks; starting a match confirms once it's up
+            // (`loading_frame`), a branch pick confirms, a refusal errors.
+            match &a {
+                UiAction::Chat(_) | UiAction::BranchPicked(_) => {}
+                UiAction::Refused => self.sound.ui_error(),
+                _ => self.sound.ui_click(),
+            }
             match a {
+                UiAction::Click => {}
+                UiAction::Refused => {}
                 UiAction::Play => self.start_online(Join::Play),
                 UiAction::Practice => self.start_practice(),
                 UiAction::PracticeMap(key) => self.practice_map = MapId::from_key(&key).unwrap_or_default(),
@@ -620,11 +635,18 @@ impl Game {
     fn pick_branch(&mut self, i: u8) {
         if self.m.branch.take().is_some() {
             self.m.choice = Some((i, 0.5));
+            self.sound.ui_confirm();
         }
+    }
+
+    /// The click of a button outside the game's own UI (the pause card).
+    pub fn ui_click(&mut self) {
+        self.sound.ui_click();
     }
 
     /// One frame: `now` a monotonic clock in seconds, `dt` the frame time.
     pub fn frame(&mut self, now: f64, dt: f32, wr: &mut WorldRenderer) -> RenderWorld {
+        let t0 = crate::world::clock_ms();
         let dt = dt.clamp(0.0, 0.1);
         self.time += dt;
         if !self.map_built && self.podium.is_none() {
@@ -636,15 +658,23 @@ impl Game {
         self.handle_actions();
         self.ui.tick(dt);
         self.radio.tick(dt);
+        if matches!(self.screen, Screen::Title | Screen::Loading) {
+            self.sound.tick();
+        }
+        let t1 = crate::world::clock_ms();
+        self.prof_game[0] = t1 - t0;
 
         let world = match self.screen {
             Screen::Title => self.title_frame(dt, wr),
             Screen::Loading => self.loading_frame(now, dt, wr),
             Screen::InGame | Screen::End => self.game_frame(now, dt, wr),
         };
+        let t2 = crate::world::clock_ms();
+        self.prof_game[5] = t2 - t1;
         if let Some(line) = self.radio.take() {
             self.ui.radio(&line);
         }
+        self.prof_game[6] = crate::world::clock_ms() - t2;
         self.controls.end_frame();
         world
     }
@@ -803,6 +833,7 @@ impl Game {
                 if self.status_note != why {
                     self.ui.show_loading("No signal", &why, Some(0.0));
                     self.status_note = why;
+                    self.sound.ui_error();
                 }
             }
             Status::Connecting | Status::Reconnecting => {}
@@ -811,6 +842,7 @@ impl Game {
                     self.status_note.clear();
                     self.use_map(seed, map_id, wr);
                     self.screen = Screen::InGame;
+                    self.sound.ui_confirm();
                     self.ui.show_hud();
                     self.ui.set_ffa(true);
                     let map_name = map_id.name();
@@ -905,12 +937,15 @@ impl Game {
             return self.title_frame(dt, wr);
         };
         net.send_input(input);
+        let t_net = crate::world::clock_ms();
         net.update(now);
+        self.prof_net_ms = crate::world::clock_ms() - t_net;
         let events = net.drain_events();
         let st = net.state();
         if let Status::Closed(why) = &st.status {
             let why = why.clone();
             self.leave();
+            self.sound.ui_error();
             self.ui.show_loading("Signal lost", &why, Some(0.0));
             self.screen = Screen::Loading;
             self.status_note = why;
@@ -926,6 +961,7 @@ impl Game {
         self.sync_chat();
 
         self.debug_scrap(dt);
+        let mut lap = crate::world::clock_ms();
         let mut world = RenderWorld::from_snapshot(&snap, &paint_for);
         if let (Some(c), Some(y), true) = (self.my_paint(), you, snap.teams.is_empty() && snap.raid.is_none()) {
             if let Some(t) = world.tanks.iter_mut().find(|t| t.player == y) {
@@ -1029,6 +1065,9 @@ impl Game {
         let skip = (pivot + Vec3::Y * self.chase.pivot_height - cam.eye).dot(dir).max(0.0);
         self.input.aim_point = aim::cast(&self.map, &world.tanks, you, cam.eye, dir, skip);
 
+        let t = crate::world::clock_ms();
+        self.prof_game[1] = t - lap;
+        lap = t;
         // ---- Events: effects, shake, sound, HUD, radio.
         let listener = my_view.as_ref().map_or(cam.eye, |v| v.pos);
         for e in &events {
@@ -1054,12 +1093,18 @@ impl Game {
             self.music_event(e, you);
             self.on_event(e, you, &world, cam);
         }
+        let t = crate::world::clock_ms();
+        self.prof_game[2] = t - lap;
+        lap = t;
         self.sound.frame(listener, dir, &world.tanks, you, input.throttle);
         // The wind: a steady desert breeze, stronger up high and at speed.
         let (speed, high) = my_view.as_ref().map_or((0.0, 0.0), |v| (v.speed, v.pos.y - self.map.height_at(0.0, 0.0)));
         let wind = 0.35 + (speed / 14.0).min(1.0) * 0.25 + (high / 6.0).clamp(0.0, 1.0) * 0.15;
         self.sound.ambience(wind, storm);
         self.music_frame(dt, &snap, &world, you);
+        let t = crate::world::clock_ms();
+        self.prof_game[3] = t - lap;
+        lap = t;
 
         // ---- HUD.
         if let Some(t) = &me {
@@ -1080,6 +1125,7 @@ impl Game {
         self.last_crew_hud(&snap, &world, you);
         self.convoy_hud(&snap, &mut world, you, wr);
         self.onboarding(me.as_ref(), &snap, &world, dt);
+        self.prof_game[4] = crate::world::clock_ms() - lap;
         if let Some(left) = &mut self.m.branch {
             *left -= dt;
             let closed = me.as_ref().is_some_and(|t| t.choice.is_none());
@@ -1733,17 +1779,24 @@ impl Game {
             }
         }
         let last_crew = snap.as_ref().is_some_and(|s| s.storm_circle.is_some());
+        // Ties share a rank (#1 / #1); Last Crew's finishing order never ties.
+        let ranks = if last_crew {
+            (1..=rows.len() as u32).collect()
+        } else {
+            crate::ui::shared_ranks(&rows.iter().map(|r| (r.kills, r.deaths)).collect::<Vec<_>>())
+        };
         let end: Vec<EndRow> = rows
             .iter()
             .enumerate()
             .map(|(i, r)| EndRow {
+                rank: ranks[i],
                 name: r.name.clone(),
                 team: r.team,
                 kills: r.kills,
                 deaths: r.deaths,
                 tag: if i == 0 && last_crew {
                     Some("Last one rolling".into())
-                } else if i == 0 && r.kills > 0 {
+                } else if ranks[i] == 1 && !last_crew && r.kills > 0 {
                     Some("Top gun".into())
                 } else if Some(i) == biggest {
                     Some("Biggest build".into())
@@ -2085,7 +2138,7 @@ impl Game {
                 .collect(),
             None => Vec::new(),
         };
-        self.ui.set_well_marks(&marks);
+        self.ui.set_well_marks(&marks, wr.renderer.size());
     }
 
     /// Last Crew Rolling: the compass to safe ground, the wall's clock, crews

@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 
-use arena_core::map::{Cover, Map, ObstacleKind};
+use arena_core::map::{Cover, GroundMarkKind, Map, ObstacleKind};
 use arena_core::snapshot::{ShotKind, Snapshot};
 use arena_core::parts::VehicleKind;
 use arena_core::{Event, GunKind, PartKind, PickupKind, PlayerId, PropKind, ScrapKind};
@@ -48,6 +48,8 @@ pub struct TankView {
     /// Engine load 0..1 (exhaust and dust).
     pub throttle: f32,
     pub speed: f32,
+    /// The chassis class (picks the hull and turret model).
+    pub class: arena_core::ChassisClass,
 }
 
 impl TankView {
@@ -187,6 +189,7 @@ impl RenderWorld {
                 }
                 let v = Vec3::from(t.linvel);
                 TankView {
+                    class: t.chassis,
                     player: t.player,
                     colour: team_colour(t),
                     pos: t.position(),
@@ -316,6 +319,9 @@ impl Library {
     }
 }
 
+/// The burnt paint of a wreck.
+const WRECK_CHARRED: u32 = 0x2c2622;
+
 /// The team colour tank meshes are built with when an instance tint
 /// repaints them (any colour works; this one shows up if a tint is missed).
 const TINTED: u32 = 0xff00ff;
@@ -388,6 +394,8 @@ pub struct WorldRenderer {
     /// CPU ms spent in the last `draw`: effects sim, instance build,
     /// sprite build, renderer (cull + pack + encode).
     pub prof: [f64; 4],
+    /// How many dressing props the last `set_map` placed.
+    pub dressed: usize,
 }
 
 /// A millisecond clock for the frame profile.
@@ -426,6 +434,7 @@ impl WorldRenderer {
             statics_dirty: true,
             statics_removed: Vec::new(),
             chunks: Vec::new(),
+            dressed: 0,
         }
     }
 
@@ -458,6 +467,10 @@ impl WorldRenderer {
         self.fx.flares.clear();
         let r = &mut self.renderer;
         let lib = &mut self.lib;
+        // Built now, not on the first kill: building them mid-fight cost a
+        // ~2 ms hitch on top of the kill's other work.
+        lib.get(r, "wreck:hull", || tank::hull_mesh(WRECK_CHARRED));
+        lib.get(r, "wreck:turret", || tank::turret_mesh(WRECK_CHARRED));
         for (mesh, transform) in crate::terrain::build(map) {
             let id = r.add_mesh(&mesh);
             self.statics.push(StaticPiece { instance: Instance::new(id, transform), owner: None });
@@ -495,6 +508,20 @@ impl WorldRenderer {
                     self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
                     let tip = boxes[1].0.y + boxes[1].1.y + 1.4;
                     self.fx.flares.push(frame.transform_point3(Vec3::Y * tip));
+                }
+                ObstacleKind::WaterTower if boxes.len() >= 5 => {
+                    let id = r.add_mesh(&props::water_tower(&boxes[..4], boxes[4]));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                }
+                ObstacleKind::RadioMast if !boxes.is_empty() => {
+                    let (c, h) = boxes[0];
+                    let id = r.add_mesh(&props::radio_mast(h, c));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
+                }
+                ObstacleKind::Windmill if !boxes.is_empty() => {
+                    let (c, h) = boxes[0];
+                    let id = r.add_mesh(&props::windmill(h, c));
+                    self.statics.push(StaticPiece { instance: Instance::new(id, frame), owner: Some((oi as u16, 255)) });
                 }
                 ObstacleKind::Pumpjack => {
                     let id = lib.scene(r, "pumpjack:base", refinery::pumpjack_base);
@@ -702,182 +729,44 @@ impl WorldRenderer {
         }
     }
 
-    /// Visual-only set dressing: cacti, boulders, tyres, crates, hedgehogs,
-    /// razor wire, and power poles along the highway.
+    /// Visual-only set dressing, clustered where people would have left it:
+    /// clutter hugging the places (crates and drums by containers, tyres
+    /// at the gas station, drifts against walls, debris along the road),
+    /// rock outcrops and cactus groves in the open, and clean empty sand
+    /// between them. Plus the ground marks and the power lines.
     fn dress(&mut self, map: &Map) {
         let r = &mut self.renderer;
         let lib = &mut self.lib;
-        let put = |statics: &mut Vec<StaticPiece>, id: MeshId, p: Vec3, yaw: f32| {
-            statics.push(StaticPiece { instance: Instance::new(id, Mat4::from_rotation_translation(Quat::from_rotation_y(yaw), p)), owner: None });
-        };
-        let mut placed = 0;
+        let salt = if map.id == arena_core::MapId::Refinery { 0.85 } else { 0.0 };
+        let plan = dressing_plan(map);
         let mut blobs: Vec<Vec4> = Vec::new();
-        let salt = map.id == arena_core::MapId::Refinery;
-        // Clusters hugging each obstacle: the outpost clutter. Tall bits sit
-        // tight against the cover (inside its footprint margin), flat bits
-        // spill a little further out where tanks can drive over them.
-        for (oi, o) in map.obstacles.iter().enumerate() {
-            if o.cover == Cover::Flat {
-                continue;
-            }
-            let n = match o.kind {
-                ObstacleKind::ContainerStack | ObstacleKind::CarWreck | ObstacleKind::ShipHull => 14,
-                ObstacleKind::Mesa | ObstacleKind::RockFormation => 10,
-                _ => 7,
-            };
-            for k in 0..n {
-                let seed = oi as u32 * 131 + k;
-                let a = hash(seed, 11) * std::f32::consts::TAU;
-                let kind_roll = hash(seed, 12);
-                let tall = kind_roll < 0.45;
-                let reach = if tall { o.radius * 0.85 + 0.5 * hash(seed, 13) } else { o.radius + 1.0 + 4.0 * hash(seed, 13) };
-                let x = o.pos.x + a.cos() * reach;
-                let z = o.pos.z + a.sin() * reach;
-                if map.blocked_xz(Vec2::new(x, z), 0.3) {
-                    continue;
-                }
-                let p = Vec3::new(x, map.height_at(x, z), z);
-                let v = seed % 3;
-                let rocky = matches!(o.kind, ObstacleKind::Mesa | ObstacleKind::RockFormation);
-                let (id, blob) = if rocky {
-                    if tall {
-                        (lib.scene(r, &format!("boulder:{}", seed % 6), || props::boulder(seed % 6 + 17, 0.4 + 0.25 * (seed % 6) as f32)), 0.9)
-                    } else if kind_roll < 0.75 {
-                        (lib.scene(r, &format!("shrub:{v}"), || props::shrub(v)), 0.6)
-                    } else {
-                        (lib.scene(r, &format!("pebbles:{v}"), || props::pebbles(v)), 0.0)
-                    }
-                } else if tall {
-                    match seed % 5 {
-                        0 => (lib.scene(r, "crates", || props::crates(1)), 1.4),
-                        1 => (lib.scene(r, &format!("jerry:{v}"), || props::jerrycans(v)), 0.5),
-                        2 => (lib.scene(r, &format!("tarp:{v}"), || props::tarp(v)), 1.4),
-                        3 => (lib.scene(r, "sandbags:short", || {
-                            let mut m = props::sandbags(Vec3::new(1.4, 0.4, 0.3), 9);
-                            m.transform_from(0, Mat4::from_translation(Vec3::Y * 0.4));
-                            m
-                        }), 1.4),
-                        _ => (lib.scene(r, "tyres:3", || props::tyres(3, 2)), 0.6),
-                    }
-                } else {
-                    match seed % 6 {
-                        0 => (lib.scene(r, &format!("pallet:{v}"), || props::pallet(v)), 0.7),
-                        1 => (lib.scene(r, &format!("cinder:{v}"), || props::cinder_blocks(v)), 0.4),
-                        2 => (lib.scene(r, &format!("sheet:{v}"), || props::sheet_on_ground(v)), 0.0),
-                        3 => (lib.scene(r, "tyres:1", || props::tyres(1, 1)), 0.5),
-                        4 => (lib.scene(r, &format!("pebbles:{v}"), || props::pebbles(v)), 0.0),
-                        _ => (lib.scene(r, &format!("tuft:{v}"), || props::grass_tuft(v)), 0.0),
-                    }
-                };
-                put(&mut self.statics, id, p, a * 2.0);
-                if blob > 0.0 {
-                    blobs.push(p.extend(blob));
-                }
-                placed += 1;
+        for d in &plan {
+            let (id, blob) = clutter_mesh(lib, r, d.kind, d.v, salt);
+            let p = Vec3::new(d.pos.x, map.height_at(d.pos.x, d.pos.y), d.pos.y);
+            self.statics.push(StaticPiece { instance: Instance::new(id, Mat4::from_rotation_translation(Quat::from_rotation_y(d.yaw), p)), owner: None });
+            if blob > 0.0 {
+                blobs.push(p.extend(blob));
             }
         }
-        // Sparse tufts, shrubs and pebbles over the open sand (visual only;
-        // tanks drive through them).
-        for i in 0..2600u32 {
-            let x = (hash(i, 501) - 0.5) * 2.0 * (map.play_half - 3.0);
-            let z = (hash(i, 502) - 0.5) * 2.0 * (map.play_half - 3.0);
-            if hash(i, 503) > 0.35 + 0.65 * hash((x / 40.0) as i32 as u32 ^ ((z / 40.0) as i32 as u32) << 8, 9) {
-                continue;
-            }
-            if map.blocked_xz(Vec2::new(x, z), 0.5) {
-                continue;
-            }
-            let p = Vec3::new(x, map.height_at(x, z), z);
-            let v = i % 4;
-            let roll = hash(i, 504);
-            let id = if roll < 0.6 {
-                lib.scene(r, &format!("tuft:{v}"), || props::grass_tuft(v))
-            } else if roll < 0.85 {
-                lib.scene(r, &format!("pebbles:{}", v % 3), || props::pebbles(v % 3))
-            } else {
-                lib.scene(r, &format!("shrub:{}", v % 3), || props::shrub(v % 3))
-            };
-            put(&mut self.statics, id, p, hash(i, 505) * 6.28);
-            placed += 1;
-        }
-        for i in 0..900u32 {
-            let x = (hash(i, 101) - 0.5) * 2.0 * (map.play_half - 5.0);
-            let z = (hash(i, 202) - 0.5) * 2.0 * (map.play_half - 5.0);
-            if map.blocked_xz(Vec2::new(x, z), 3.0) {
-                continue;
-            }
-            let p = Vec3::new(x, map.height_at(x, z), z);
-            let roll = hash(i, 303);
-            let yaw = hash(i, 404) * 6.28;
-            let id = if roll < 0.28 && salt {
-                // No cacti on the salt: pipe runs on sleepers instead.
-                let v = i % 3;
-                if roll < 0.1 {
-                    lib.scene(r, &format!("gpipe:{v}"), || refinery::ground_pipe(5.0 + 2.0 * v as f32, [0x8a8a82, 0x7a3a26, 0xd6a21e][v as usize]))
-                } else {
-                    lib.scene(r, &format!("pebbles:{v}"), || props::pebbles(v))
-                }
-            } else if roll < 0.28 {
-                let v = i % 4;
-                lib.scene(r, &format!("cactus:{v}"), || props::cactus(v))
-            } else if roll < 0.62 {
-                let v = i % 6;
-                lib.scene(r, &format!("boulder:{v}"), || props::boulder(v + 17, 0.4 + 0.25 * v as f32))
-            } else if roll < 0.72 {
-                lib.scene(r, "tyres:1", || props::tyres(1, 1))
-            } else if roll < 0.78 {
-                lib.scene(r, "tyres:3", || props::tyres(3, 2))
-            } else if roll < 0.86 {
-                lib.scene(r, "crates", || props::crates(1))
-            } else if roll < 0.93 {
-                lib.scene(r, "hedgehog", props::hedgehog)
-            } else {
-                lib.scene(r, "razor", || props::razor_wire(4.0))
-            };
-            put(&mut self.statics, id, p, yaw);
-            if roll >= 0.28 {
-                blobs.push(p.extend(if roll < 0.62 { 0.6 + 0.25 * (i % 6) as f32 } else { 0.8 }));
-            }
-            placed += 1;
-        }
+        let placed = plan.len();
         self.blobs.extend(blobs);
-        // Power poles along the highway, offset to one shoulder.
+        // Tracks, packed ground and oil, draped over the terrain.
+        for m in crate::terrain::marks(map) {
+            let id = r.add_mesh(&m);
+            self.statics.push(StaticPiece { instance: Instance::new(id, Mat4::IDENTITY), owner: None });
+        }
+        // Power lines between the map's poles.
         let map_poles: Vec<Vec3> = map.obstacles.iter().filter(|o| o.kind == ObstacleKind::PowerPole).map(|o| o.pos).collect();
-        if !map_poles.is_empty() {
-            for (i, a) in map_poles.iter().enumerate() {
-                let next = map_poles.iter().enumerate().filter(|(j, b)| *j > i && a.distance(**b) < 70.0).min_by(|x, y| a.distance(*x.1).partial_cmp(&a.distance(*y.1)).unwrap_or(std::cmp::Ordering::Equal));
-                if let Some((_, b)) = next {
-                    let top = |p: Vec3| p + Vec3::Y * props::POLE_WIRE_HEIGHT;
-                    let id = r.add_mesh(&props::wires(top(*a), top(*b), 1.6));
-                    self.statics.push(StaticPiece { instance: Instance::new(id, Mat4::IDENTITY), owner: None });
-                }
+        for (i, a) in map_poles.iter().enumerate() {
+            let next = map_poles.iter().enumerate().filter(|(j, b)| *j > i && a.distance(**b) < 70.0).min_by(|x, y| a.distance(*x.1).partial_cmp(&a.distance(*y.1)).unwrap_or(std::cmp::Ordering::Equal));
+            if let Some((_, b)) = next {
+                let top = |p: Vec3| p + Vec3::Y * props::POLE_WIRE_HEIGHT;
+                let id = r.add_mesh(&props::wires(top(*a), top(*b), 1.6));
+                self.statics.push(StaticPiece { instance: Instance::new(id, Mat4::IDENTITY), owner: None });
             }
-            log::info!("map dressing: {placed} props, {} map poles", map_poles.len());
-            return;
         }
-        let hw: Vec<_> = map.obstacles.iter().filter(|o| o.kind == ObstacleKind::Highway).collect();
-        let pole = lib.scene(r, "pole", props::power_pole);
-        let mut prev: Option<Vec3> = None;
-        for (k, o) in hw.iter().enumerate() {
-            if k % 3 != 0 {
-                continue;
-            }
-            let side = o.rot * Vec3::Z;
-            let base = o.pos + side * 10.5;
-            let p = Vec3::new(base.x, map.height_at(base.x, base.z), base.z);
-            let fwd = o.rot * Vec3::X;
-            let yaw = (-fwd.z).atan2(fwd.x);
-            put(&mut self.statics, pole, p, yaw);
-            let top = p + Vec3::Y * props::POLE_WIRE_HEIGHT;
-            if let Some(a) = prev {
-                if a.distance(top) < 70.0 {
-                    let id = r.add_mesh(&props::wires(a, top, 1.6));
-                    self.statics.push(StaticPiece { instance: Instance::new(id, Mat4::IDENTITY), owner: None });
-                }
-            }
-            prev = Some(top);
-        }
-        log::info!("map dressing: {placed} props, {} poles", hw.len().div_ceil(3));
+        self.dressed = placed;
+        log::info!("map dressing: {placed} props, {} map poles", map_poles.len());
     }
 
     /// Feeds one simulation event to the effects (and the camera shake the
@@ -945,7 +834,7 @@ impl WorldRenderer {
             }
         }
         self.wrecks.retain(|_, w| w.2.is_none_or(|g| g < 12.0));
-        let charred = 0x2c2622;
+        let charred = WRECK_CHARRED;
         for (id, (pose, _age, gone)) in &self.wrecks {
             let sink = gone.map(|g| ((g - 8.0) / 4.0).clamp(0.0, 1.0)).unwrap_or(0.0);
             let pose = Mat4::from_translation(Vec3::Y * -2.6 * sink) * *pose;
@@ -1058,10 +947,11 @@ impl WorldRenderer {
             // One mesh per part for every crew: the team paint comes from
             // the instance tint.
             let tint = crate::meshkit::srgb_hex(col).extend(1.0);
-            let hull_id = lib.get(r, "hull", || tank::hull_mesh(TINTED));
+            let class = t.class;
+            let hull_id = lib.get(r, &format!("hull:{class:?}"), || tank::hull_mesh_class(class, TINTED));
             instances.push(Instance::tinted(hull_id, hull, params, tint));
             let dmg = Vec4::new(0.0, 0.0, 0.0, damage);
-            let turret_id = lib.get(r, "turret", || tank::turret_mesh(TINTED));
+            let turret_id = lib.get(r, &format!("turret:{class:?}"), || tank::turret_mesh_class(class, TINTED));
             instances.push(Instance::tinted(turret_id, t.turret_transform(), dmg, tint));
             let gun = t.gun;
             let gun_id = lib.get(r, &format!("gun:{gun:?}"), || parts::gun_mesh(gun, TINTED));
@@ -1071,7 +961,7 @@ impl WorldRenderer {
                 let side = if i < 5 { -1.0 } else { 1.0 };
                 let x = tank::WHEEL_X[i % 5];
                 let local = Mat4::from_rotation_translation(
-                    Quat::from_rotation_y(if side < 0.0 { std::f32::consts::PI } else { 0.0 }) * Quat::from_rotation_z(-anim.tread[(side > 0.0) as usize] / 0.35),
+                    Quat::from_rotation_y(if side < 0.0 { std::f32::consts::PI } else { 0.0 }) * Quat::from_rotation_z(-anim.tread[(side > 0.0) as usize] / tank::WHEEL_R),
                     Vec3::new(x, tank::wheel_y(*c), side * tank::WHEEL_Z),
                 );
                 instances.push(Instance::new(wheel, hull * local));
@@ -1313,12 +1203,457 @@ fn lift(mut m: MeshBuilder, dy: f32) -> MeshBuilder {
     m
 }
 
+// ── Set dressing: where the clutter goes ─────────────────────────────────
+
+/// A visual-only dressing prop (tanks drive through these).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Clutter {
+    Crates,
+    Jerry,
+    Tarp,
+    Sandbags,
+    TyreStack,
+    Tyre,
+    Pallet,
+    Cinder,
+    Sheet,
+    Pebbles,
+    Tuft,
+    Shrub,
+    /// A boulder; `v` is its size class 0..6.
+    Boulder,
+    Cactus,
+    Razor,
+    GroundPipe,
+    Drum,
+    /// A sand drift heaped against a wall; +Z points away from the wall.
+    Drift,
+}
+
+/// One placed dressing prop.
+#[derive(Clone, Copy, Debug)]
+struct Dressing {
+    kind: Clutter,
+    v: u32,
+    pos: Vec2,
+    yaw: f32,
+}
+
+/// The mesh for a dressing prop (built once per variant) and its contact
+/// shadow radius (0: none).
+fn clutter_mesh(lib: &mut Library, r: &mut Renderer, k: Clutter, v: u32, salt: f32) -> (MeshId, f32) {
+    use Clutter::*;
+    match k {
+        Crates => (lib.scene(r, &format!("crates:{}", v % 2), || props::crates(v % 2)), 1.4),
+        Jerry => (lib.scene(r, &format!("jerry:{}", v % 3), || props::jerrycans(v % 3)), 0.5),
+        Tarp => (lib.scene(r, &format!("tarp:{}", v % 3), || props::tarp(v % 3)), 1.4),
+        Sandbags => (
+            lib.scene(r, "sandbags:short", || {
+                let mut m = props::sandbags(Vec3::new(1.4, 0.4, 0.3), 9);
+                m.transform_from(0, Mat4::from_translation(Vec3::Y * 0.4));
+                m
+            }),
+            1.4,
+        ),
+        TyreStack => (lib.scene(r, &format!("tyres:{}", 2 + v % 3), || props::tyres(2 + v % 3, 2 + v)), 0.6),
+        Tyre => (lib.scene(r, "tyres:1", || props::tyres(1, 1)), 0.5),
+        Pallet => (lib.scene(r, &format!("pallet:{}", v % 3), || props::pallet(v % 3)), 0.7),
+        Cinder => (lib.scene(r, &format!("cinder:{}", v % 3), || props::cinder_blocks(v % 3)), 0.4),
+        Sheet => (lib.scene(r, &format!("sheet:{}", v % 3), || props::sheet_on_ground(v % 3)), 0.0),
+        Pebbles => (lib.scene(r, &format!("pebbles:{}", v % 3), || props::pebbles(v % 3)), 0.0),
+        Tuft => (lib.scene(r, &format!("tuft:{}", v % 4), || props::grass_tuft(v % 4)), 0.0),
+        Shrub => (lib.scene(r, &format!("shrub:{}", v % 3), || props::shrub(v % 3)), 0.6),
+        Boulder => {
+            let c = v % 6;
+            (lib.scene(r, &format!("boulder:{c}"), || props::boulder(c + 17, 0.4 + 0.25 * c as f32)), 0.6 + 0.25 * c as f32)
+        }
+        Cactus => (lib.scene(r, &format!("cactus:{}", v % 4), || props::cactus(v % 4)), 0.0),
+        Razor => (lib.scene(r, "razor", || props::razor_wire(4.0)), 0.0),
+        GroundPipe => {
+            let c = v % 3;
+            (lib.scene(r, &format!("gpipe:{c}"), || refinery::ground_pipe(7.0, [0x8a8a82, 0x7a3a26, 0xd6a21e][c as usize])), 0.0)
+        }
+        Drum => {
+            let c = v % 3;
+            (lib.scene(r, &format!("drum:{c}"), || lift(props::oil_drum([0x2f5f9a, 0xb3302a, 0x5e6a3a][c as usize], 0.75), props::DRUM_HALF)), 0.5)
+        }
+        Drift => {
+            let c = v % 3;
+            let (len, depth, h) = (4.5 + 1.5 * c as f32, 2.2 + 0.5 * c as f32, 0.6 + 0.15 * c as f32);
+            // Blown sand, even over the salt flat (lower there: less of it).
+            let h = if salt > 0.0 { h * 0.6 } else { h };
+            (lib.scene(r, &format!("drift:{c}:{}", salt > 0.0), || props::sand_drift(len, depth, h, 0.0, c)), 0.0)
+        }
+    }
+}
+
+/// What clusters round an obstacle: how many props, how far out from its
+/// boxes (min, max m), and the mix (prop, weight).
+fn recipe(kind: ObstacleKind, ground_boxes: usize, desert: bool) -> (usize, (f32, f32), &'static [(Clutter, u32)]) {
+    use Clutter::*;
+    match kind {
+        ObstacleKind::ContainerStack => (3 + 4 * ground_boxes.min(4), (0.2, 1.8), &[(Crates, 4), (Pallet, 3), (Drum, 2), (Jerry, 2), (Cinder, 2), (Tarp, 1), (TyreStack, 1), (Sheet, 2)]),
+        ObstacleKind::Tent => (10, (0.3, 2.2), &[(Crates, 3), (Jerry, 2), (Pallet, 2), (Tarp, 2), (Cinder, 1), (Drum, 1)]),
+        ObstacleKind::Tower => (5, (0.3, 1.5), &[(Sandbags, 2), (Crates, 2), (Jerry, 1)]),
+        ObstacleKind::Silo | ObstacleKind::FuelTank => (5, (0.2, 1.4), &[(Drum, 3), (Jerry, 2), (Pallet, 1)]),
+        ObstacleKind::GasStation => (16, (0.3, 3.0), &[(TyreStack, 4), (Tyre, 3), (Jerry, 2), (Drum, 2), (Sheet, 2), (Cinder, 2), (Crates, 1)]),
+        ObstacleKind::CarWreck => (4, (0.0, 3.0), &[(Tyre, 3), (Sheet, 2), (Pebbles, 2), (Cinder, 1)]),
+        ObstacleKind::ShipHull => (12, (0.5, 6.0), &[(Sheet, 4), (Pebbles, 3), (GroundPipe, 1), (Tyre, 1), (Boulder, 1)]),
+        ObstacleKind::Wall => (3, (0.2, 1.4), &[(Crates, 3), (Pallet, 2), (Drum, 2), (Cinder, 2), (Sandbags, 2), (Jerry, 1), (Tarp, 1), (Sheet, 1)]),
+        ObstacleKind::Sandbags => (2, (0.3, 1.2), &[(Crates, 2), (Jerry, 2), (Tyre, 1)]),
+        ObstacleKind::Barrier => (1, (0.3, 2.0), &[(Razor, 2), (Pebbles, 1), (Tuft, 1)]),
+        ObstacleKind::Hedgehog => (1, (0.3, 1.5), &[(Razor, 1), (Pebbles, 1)]),
+        ObstacleKind::Mesa if desert => (12, (0.0, 8.0), &[(Boulder, 6), (Shrub, 2), (Pebbles, 2), (Tuft, 2), (Cactus, 1)]),
+        ObstacleKind::RockFormation if desert => (9, (0.0, 6.0), &[(Boulder, 6), (Shrub, 2), (Pebbles, 2), (Tuft, 2), (Cactus, 1)]),
+        ObstacleKind::Mesa => (10, (0.0, 8.0), &[(Boulder, 6), (Shrub, 1), (Pebbles, 2), (Tuft, 1)]),
+        ObstacleKind::RockFormation => (8, (0.0, 6.0), &[(Boulder, 6), (Shrub, 1), (Pebbles, 2), (Tuft, 1)]),
+        ObstacleKind::Crane => (9, (0.5, 4.0), &[(Pallet, 3), (Crates, 2), (Cinder, 2), (Drum, 2), (Sheet, 1)]),
+        ObstacleKind::PierRuin => (4, (0.0, 3.0), &[(Sheet, 2), (Pebbles, 2), (Tyre, 1)]),
+        ObstacleKind::Pipe => (1, (0.2, 1.0), &[(Pebbles, 1), (Tuft, 1)]),
+        ObstacleKind::PowerPole => (1, (0.3, 1.0), &[(Tuft, 2), (Shrub, 1), (Pebbles, 1)]),
+        ObstacleKind::StorageTank => (2, (0.3, 1.6), &[(Drum, 2), (GroundPipe, 1), (Jerry, 1)]),
+        ObstacleKind::Column => (2, (0.3, 1.5), &[(Crates, 2), (Pallet, 1), (Drum, 1)]),
+        ObstacleKind::PipeRack => (3, (0.3, 1.5), &[(Drum, 2), (Pallet, 1), (Cinder, 1)]),
+        ObstacleKind::Pumpjack => (3, (0.3, 2.0), &[(Drum, 2), (GroundPipe, 1), (Jerry, 1)]),
+        ObstacleKind::Derrick => (7, (0.5, 4.0), &[(GroundPipe, 3), (Pallet, 2), (Drum, 2), (Crates, 1)]),
+        ObstacleKind::TankCar => (2, (0.3, 1.5), &[(Pallet, 1), (Cinder, 1), (Pebbles, 1)]),
+        ObstacleKind::FlareStack => (4, (0.5, 2.5), &[(Drum, 2), (Crates, 1), (Sandbags, 1)]),
+        ObstacleKind::ControlHouse => (12, (0.3, 2.0), &[(Crates, 3), (Jerry, 2), (Tarp, 1), (Pallet, 2), (Drum, 1)]),
+        ObstacleKind::WaterTower => (7, (0.3, 3.0), &[(Drum, 2), (Tuft, 3), (Shrub, 2), (Jerry, 1), (Pallet, 1)]),
+        ObstacleKind::Windmill => (5, (0.5, 3.0), &[(Tuft, 3), (Shrub, 2), (Tyre, 1)]),
+        ObstacleKind::RadioMast => (2, (0.3, 1.5), &[(Crates, 2), (Cinder, 1)]),
+        _ => (0, (0.0, 0.0), &[]),
+    }
+}
+
+fn pick(table: &[(Clutter, u32)], roll: f32) -> Clutter {
+    let total: u32 = table.iter().map(|t| t.1).sum();
+    let mut x = roll * total as f32;
+    for (k, w) in table {
+        if x < *w as f32 {
+            return *k;
+        }
+        x -= *w as f32;
+    }
+    table[table.len() - 1].0
+}
+
+/// A point `d` m out from one of the obstacle's ground boxes (a side
+/// picked by length), with the outward direction.
+fn hug(o: &arena_core::Obstacle, s: u32, d: f32) -> Option<(Vec2, Vec2)> {
+    let boxes: Vec<(Vec3, Quat, Vec3)> = o.world_boxes().filter(|(c, _, h)| c.y - h.y < o.pos.y + 3.0).collect();
+    if boxes.is_empty() {
+        return None;
+    }
+    let (c, r, h) = boxes[(hash(s, 1) * boxes.len() as f32) as usize % boxes.len()];
+    let c2 = Vec2::new(c.x, c.z);
+    if o.kind.is_cylinder() {
+        let a = hash(s, 2) * std::f32::consts::TAU;
+        let n = Vec2::new(a.cos(), a.sin());
+        return Some((c2 + n * (h.x + d), n));
+    }
+    let ax = r * Vec3::X;
+    let az = r * Vec3::Z;
+    let ax = Vec2::new(ax.x, ax.z).normalize_or(Vec2::X);
+    let az = Vec2::new(az.x, az.z).normalize_or(Vec2::Y);
+    let sign = if hash(s, 3) < 0.5 { -1.0 } else { 1.0 };
+    let t = hash(s, 4) * 2.0 - 1.0;
+    let (n, along, ext, off) = if hash(s, 2) * (h.x + h.z) < h.x { (az * sign, ax, h.x, h.z) } else { (ax * sign, az, h.z, h.x) };
+    Some((c2 + n * (off + d) + along * t * ext, n))
+}
+
+/// Distance from `p` to the polyline `pts`.
+fn polyline_dist(pts: &[Vec2], p: Vec2) -> f32 {
+    pts.windows(2)
+        .map(|w| {
+            let ab = w[1] - w[0];
+            let t = ((p - w[0]).dot(ab) / ab.length_squared().max(1e-6)).clamp(0.0, 1.0);
+            (w[0] + ab * t).distance(p)
+        })
+        .fold(f32::MAX, f32::min)
+}
+
+/// Where every dressing prop goes, as a pure function of the map: dense in
+/// and round the places, sparse and grouped in the open, nothing on the
+/// spawns, the pickup sites or the wells.
+fn dressing_plan(map: &Map) -> Vec<Dressing> {
+    use Clutter::*;
+    let desert = map.id == arena_core::MapId::Sink;
+    let mut out: Vec<Dressing> = Vec::new();
+    let mut keep_clear: Vec<(Vec2, f32)> = Vec::new();
+    for s in &map.spawns {
+        keep_clear.push((Vec2::new(s.pos.x, s.pos.z), 7.0));
+    }
+    for w in &map.wells {
+        keep_clear.push((Vec2::new(w.pos.x, w.pos.z), 8.0));
+    }
+    keep_clear.push((Vec2::new(map.outpost.x, map.outpost.z), 14.0));
+    for s in &map.scrap_sites {
+        keep_clear.push((Vec2::new(s.pos.x, s.pos.z), 2.5));
+    }
+    for p in map.repair_sites.iter().chain(&map.rare_sites).chain(&map.strike_sites) {
+        keep_clear.push((Vec2::new(p.x, p.z), 3.0));
+    }
+    let clear_of_sites = |p: Vec2| keep_clear.iter().all(|(c, r)| c.distance(p) > *r);
+    let lim = map.play_half - 4.0;
+    let in_bounds = |p: Vec2| p.x.abs() < lim && p.y.abs() < lim;
+    let decks: Vec<&arena_core::Obstacle> = map.obstacles.iter().filter(|o| o.cover == Cover::Flat).collect();
+    let on_deck = |p: Vec2| {
+        decks.iter().any(|o| {
+            Vec2::new(o.pos.x, o.pos.z).distance(p) < o.radius + 4.0
+                && o.world_boxes().any(|(c, r, h)| {
+                    let l = r.inverse() * (Vec3::new(p.x, c.y, p.y) - c);
+                    l.x.abs() < h.x + 0.4 && l.z.abs() < h.z + 0.4
+                })
+        })
+    };
+    let free = |p: Vec2, margin: f32| in_bounds(p) && !map.blocked_xz(p, margin) && clear_of_sites(p);
+    let push = |out: &mut Vec<Dressing>, kind: Clutter, v: u32, pos: Vec2, yaw: f32| out.push(Dressing { kind, v, pos, yaw });
+
+    // 1. Round the obstacles: the places' clutter.
+    for (oi, o) in map.obstacles.iter().enumerate() {
+        if o.cover == Cover::Flat {
+            continue;
+        }
+        let ground = o.world_boxes().filter(|(c, _, h)| c.y - h.y < o.pos.y + 3.0).count();
+        let (n, (d0, d1), table) = recipe(o.kind, ground, desert);
+        let rocky = matches!(o.kind, ObstacleKind::Mesa | ObstacleKind::RockFormation);
+        for k in 0..n as u32 {
+            let s = oi as u32 * 7919 + k * 31 + 1;
+            // Light obstacles get their few props only some of the time.
+            if n == 1 && hash(s, 20) < 0.4 {
+                continue;
+            }
+            let d = d0 + (d1 - d0) * hash(s, 21).powf(if rocky { 1.6 } else { 1.0 });
+            let Some((p, n_out)) = hug(o, s, d) else { continue };
+            let kind = pick(table, hash(s, 22));
+            if kind == Cactus && !desert {
+                continue;
+            }
+            let margin = if matches!(kind, Pebbles | Tuft | Sheet) { 0.1 } else { 0.35 };
+            if !free(p, margin) || (on_deck(p) && !matches!(kind, Pebbles | Sheet | Tyre)) {
+                continue;
+            }
+            // Boulders by rock: mostly small, a few big ones close in.
+            let v = if kind == Boulder { (hash(s, 23) * hash(s, 24) * 6.0) as u32 + if d < 2.0 { 2 } else { 0 } } else { s };
+            let yaw = if kind == GroundPipe { (-n_out.x).atan2(-n_out.y) } else { hash(s, 25) * std::f32::consts::TAU };
+            push(&mut out, kind, v, p, yaw);
+            // Stacks: crates and pallets come in twos and threes.
+            if matches!(kind, Crates | Pallet | Drum | Cinder) && hash(s, 26) < 0.55 {
+                let along = Vec2::new(-n_out.y, n_out.x) * (1.1 + 0.4 * hash(s, 27)) * if hash(s, 28) < 0.5 { -1.0 } else { 1.0 };
+                let q = p + along;
+                if free(q, 0.35) && !on_deck(q) {
+                    push(&mut out, kind, s + 1, q, hash(s, 29) * std::f32::consts::TAU);
+                }
+            }
+        }
+        // Sand drifts against the walls, the hulls and the container rows.
+        let drifts = match o.kind {
+            ObstacleKind::Wall => 1 + (hash(oi as u32, 40) < 0.5) as u32,
+            ObstacleKind::ShipHull => 4,
+            ObstacleKind::ContainerStack => (hash(oi as u32, 41) < 0.35) as u32,
+            ObstacleKind::ControlHouse | ObstacleKind::GasStation => 2,
+            _ => 0,
+        };
+        for k in 0..drifts {
+            let s = oi as u32 * 613 + k * 17 + 5;
+            let Some((p, n_out)) = hug(o, s, 0.0) else { continue };
+            let mid = p + n_out * 1.5;
+            if !in_bounds(mid) || map.blocked_xz(mid, 0.5) || on_deck(mid) || !clear_of_sites(mid) {
+                continue;
+            }
+            push(&mut out, Drift, s, p, n_out.x.atan2(n_out.y));
+        }
+    }
+
+    // 2. Along the highway: debris trails round the wrecks on the road,
+    // grass and the odd cactus on the shoulders.
+    let wrecks: Vec<Vec2> = map.obstacles.iter().filter(|o| o.kind == ObstacleKind::CarWreck).map(|o| Vec2::new(o.pos.x, o.pos.z)).filter(|p| on_deck(*p)).collect();
+    for (wi, w) in wrecks.iter().enumerate() {
+        for k in 0..7u32 {
+            let s = wi as u32 * 101 + k + 9000;
+            let a = hash(s, 1) * std::f32::consts::TAU;
+            let p = *w + Vec2::new(a.cos(), a.sin()) * (2.5 + 7.0 * hash(s, 2));
+            if free(p, 0.1) {
+                let kind = pick(&[(Pebbles, 4), (Sheet, 2), (Tyre, 2), (Cinder, 1)], hash(s, 3));
+                push(&mut out, kind, s, p, hash(s, 4) * 6.28);
+            }
+        }
+    }
+    let road: Vec<&arena_core::Obstacle> = decks.iter().copied().filter(|o| o.kind == ObstacleKind::Highway).collect();
+    for (ri, o) in road.iter().enumerate() {
+        let fwd = o.rot * Vec3::X;
+        let fwd = Vec2::new(fwd.x, fwd.z).normalize_or(Vec2::X);
+        let side = Vec2::new(-fwd.y, fwd.x);
+        let half = o.boxes.first().map_or(6.5, |b| b.half.z);
+        for (k, sgn) in [-1.0f32, 1.0].into_iter().enumerate() {
+            let s = ri as u32 * 53 + k as u32 + 7000;
+            if hash(s, 1) > 0.45 {
+                continue;
+            }
+            let c = Vec2::new(o.pos.x, o.pos.z) + side * sgn * (half + 1.5 + 3.0 * hash(s, 2)) + fwd * (hash(s, 3) - 0.5) * 12.0;
+            let n = 2 + (hash(s, 4) * 3.0) as u32;
+            for j in 0..n {
+                let q = c + Vec2::new(hash(j, s) - 0.5, hash(j, s + 1) - 0.5) * 2.5;
+                if free(q, 0.1) && !on_deck(q) {
+                    let kind = if j == 0 && desert && hash(s, 5) < 0.3 { Cactus } else if hash(j, s + 2) < 0.75 { Tuft } else { Shrub };
+                    push(&mut out, kind, s + j, q, hash(j, s + 3) * 6.28);
+                }
+            }
+        }
+    }
+
+    // 3. The dirt tracks: grass on their edges, the odd lost tyre; on the
+    // Refinery, pipe runs along the service tracks.
+    let tracks: Vec<&arena_core::map::GroundMark> = map.marks.iter().filter(|m| m.kind == GroundMarkKind::Track).collect();
+    for (ti, t) in tracks.iter().enumerate() {
+        let mut along = 0.0;
+        for w in t.points.windows(2) {
+            let d = (w[1] - w[0]).normalize_or(Vec2::X);
+            let side = Vec2::new(-d.y, d.x);
+            let len = w[0].distance(w[1]);
+            let mut x = 0.0;
+            while x < len {
+                let s = ti as u32 * 977 + (along + x) as u32;
+                if hash(s, 1) < 0.4 {
+                    let sgn = if hash(s, 2) < 0.5 { -1.0 } else { 1.0 };
+                    let q = w[0] + d * x + side * sgn * (t.width * 0.5 + 0.4 + 1.5 * hash(s, 3));
+                    if free(q, 0.1) && !on_deck(q) {
+                        let kind = pick(&[(Tuft, 6), (Pebbles, 2), (Shrub, 1), (Tyre, 1)], hash(s, 4));
+                        push(&mut out, kind, s, q, hash(s, 5) * 6.28);
+                    }
+                }
+                x += 12.0;
+            }
+            along += len;
+        }
+        // Pipe runs: every other refinery track has a line of pipe on sleepers.
+        if !desert && ti % 2 == 0 {
+            for w in t.points.windows(2) {
+                let d = (w[1] - w[0]).normalize_or(Vec2::X);
+                let side = Vec2::new(-d.y, d.x);
+                let len = w[0].distance(w[1]);
+                let yaw = (-d.y).atan2(d.x);
+                let mut x = 4.0;
+                while x < len - 4.0 {
+                    let q = w[0] + d * x + side * (t.width * 0.5 + 2.2);
+                    if free(q, 0.6) && !on_deck(q) {
+                        push(&mut out, GroundPipe, ti as u32, q, yaw);
+                    }
+                    x += 7.4;
+                }
+            }
+        }
+    }
+
+    // 4. The compounds' floors: piles lining their edges, inside the walls
+    // (crate stacks, drum clusters, pallets, sandbag nests, tarps).
+    for (pi, m) in map.marks.iter().filter(|m| m.kind == GroundMarkKind::Packed).enumerate() {
+        for w in m.points.windows(2) {
+            let d = (w[1] - w[0]).normalize_or(Vec2::X);
+            let side = Vec2::new(-d.y, d.x);
+            let len = w[0].distance(w[1]);
+            for sgn in [-1.0f32, 1.0] {
+                // The two long edges, and the two ends.
+                let mut edges = vec![(w[0] + side * sgn * (m.width * 0.5 - 4.0), d, len)];
+                if sgn > 0.0 {
+                    edges.push((w[0] + d * 3.0 - side * (m.width * 0.5 - 6.0), side, m.width - 12.0));
+                    edges.push((w[1] - d * 3.0 - side * (m.width * 0.5 - 6.0), side, m.width - 12.0));
+                }
+                for (ei, (start, dir, l)) in edges.into_iter().enumerate() {
+                    let mut x = 3.0;
+                    while x < l - 3.0 {
+                        let s = pi as u32 * 7717 + ei as u32 * 997 + (sgn > 0.0) as u32 * 31 + x as u32 + 50_000;
+                        if hash(s, 1) < 0.55 {
+                            let c = start + dir * x;
+                            let n = 3 + (hash(s, 2) * 4.0) as u32;
+                            let table: &[(Clutter, u32)] = &[(Crates, 4), (Pallet, 3), (Drum, 3), (Cinder, 2), (Jerry, 2), (Tarp, 1), (Sandbags, 1), (TyreStack, 1)];
+                            let lead = pick(table, hash(s, 3));
+                            for k in 0..n {
+                                let q = c + dir * (k as f32 * 1.3 - n as f32 * 0.6) + Vec2::new(-dir.y, dir.x) * (hash(k, s) - 0.5) * 1.6;
+                                let kind = if hash(k, s + 1) < 0.6 { lead } else { pick(table, hash(k, s + 2)) };
+                                if free(q, 0.4) && !on_deck(q) {
+                                    push(&mut out, kind, s + k, q, (-dir.y).atan2(dir.x) + (hash(k, s + 3) - 0.5) * 0.6);
+                                }
+                            }
+                        }
+                        x += 9.0;
+                    }
+                }
+            }
+        }
+    }
+
+    // 5. The open ground: a few rock outcrops, cactus groves and bush
+    // clumps, well away from cover, tracks and compounds; clean sand between.
+    let marks: Vec<&arena_core::map::GroundMark> = map.marks.iter().filter(|m| m.kind != GroundMarkKind::Oil).collect();
+    let open = |p: Vec2, clearance: f32| {
+        free(p, clearance) && !on_deck(p) && marks.iter().all(|m| polyline_dist(&m.points, p) > m.width * 0.5 + 8.0)
+    };
+    let groups: [(Clutter, usize, u32); 3] = if desert { [(Boulder, 12, 1), (Cactus, 8, 2), (Shrub, 28, 3)] } else { [(Boulder, 7, 1), (Shrub, 18, 3), (Pebbles, 6, 4)] };
+    for (gk, count, salt_k) in groups {
+        let mut made = 0;
+        let mut i = 0u32;
+        while made < count && i < 400 {
+            i += 1;
+            let s = salt_k * 10_000 + i;
+            let c = Vec2::new((hash(s, 1) - 0.5) * 2.0 * lim, (hash(s, 2) - 0.5) * 2.0 * lim);
+            if !open(c, 14.0) || out.iter().any(|d| d.pos.distance(c) < 18.0 && matches!(d.kind, Boulder | Cactus)) {
+                continue;
+            }
+            made += 1;
+            match gk {
+                Boulder => {
+                    // An outcrop: one or two big rocks, smaller ones round them, scrub.
+                    let n = 4 + (hash(s, 3) * 4.0) as u32;
+                    for k in 0..n {
+                        let a = hash(k, s) * std::f32::consts::TAU;
+                        let q = c + Vec2::new(a.cos(), a.sin()) * (if k < 2 { 1.2 } else { 2.0 + 3.0 * hash(k, s + 1) });
+                        let size = if k < 2 { 3 + (hash(k, s + 2) * 3.0) as u32 } else { (hash(k, s + 2) * 3.0) as u32 };
+                        push(&mut out, Boulder, size, q, hash(k, s + 3) * 6.28);
+                    }
+                    for k in 0..3u32 {
+                        let a = hash(k, s + 4) * std::f32::consts::TAU;
+                        let q = c + Vec2::new(a.cos(), a.sin()) * (4.0 + 3.0 * hash(k, s + 5));
+                        push(&mut out, if k == 0 { Shrub } else { Tuft }, s + k, q, hash(k, s + 6) * 6.28);
+                    }
+                    push(&mut out, Pebbles, s, c + Vec2::new(3.5, -2.0), 0.0);
+                }
+                Cactus => {
+                    // A grove: cacti in loose pairs, grass at their feet.
+                    let n = 4 + (hash(s, 3) * 6.0) as u32;
+                    for k in 0..n {
+                        let a = hash(k, s) * std::f32::consts::TAU;
+                        let q = c + Vec2::new(a.cos(), a.sin()) * (10.0 * hash(k, s + 1).sqrt());
+                        push(&mut out, Cactus, s + k, q, hash(k, s + 2) * 6.28);
+                        if hash(k, s + 3) < 0.6 {
+                            push(&mut out, Tuft, s + k, q + Vec2::new(0.8, 0.5), 0.0);
+                        }
+                    }
+                    push(&mut out, Shrub, s, c + Vec2::new(-4.0, 3.0), 0.0);
+                    push(&mut out, Boulder, 1, c + Vec2::new(3.0, 5.0), hash(s, 4) * 6.28);
+                }
+                _ => {
+                    let n = 2 + (hash(s, 3) * 3.0) as u32;
+                    for k in 0..n {
+                        let q = c + Vec2::new(hash(k, s) - 0.5, hash(k, s + 1) - 0.5) * 3.0;
+                        let kind = if gk == Pebbles { if k == 0 { Boulder } else { Pebbles } } else if k == 0 { Shrub } else { Tuft };
+                        push(&mut out, kind, if kind == Boulder { 1 } else { s + k }, q, hash(k, s + 2) * 6.28);
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
 // ── Line-ups: the consistency checks, and the end-screen podium ──────────
 
 /// A tank parked for a line-up: `parts` bolted on, standing on y = 0.
 #[allow(dead_code)] // called by the game layer (shots, end screen)
 pub fn parked_tank(player: PlayerId, colour: u32, pos: Vec3, yaw: f32, gun: PartKind, parts: Vec<PartKind>) -> TankView {
     TankView {
+        class: Default::default(),
         player,
         colour,
         pos: pos + Vec3::Y * tank::HULL_Y,
@@ -1685,6 +2020,106 @@ mod shots {
         });
     }
 
+    /// The level layout of both maps, without a match: high overviews and
+    /// chase-camera views at each place (`level-<map>-<view>.png`; set
+    /// `TANSK_SHOT_TAG` to prefix them, e.g. for before/after sets).
+    #[test]
+    #[ignore]
+    fn shots_level() {
+        let tag = std::env::var("TANSK_SHOT_TAG").map(|t| format!("{t}-")).unwrap_or_default();
+        let only = std::env::var("TANSK_SHOT_ONLY").unwrap_or_default();
+        let seed = 7;
+        // (name, eye, look at); a chase view (eye under 12 m) stands a tank 11 m ahead.
+        let sink: [(&str, Vec2, f32, Vec2); 13] = [
+            ("high", Vec2::new(30.0, 250.0), 170.0, Vec2::new(0.0, -20.0)),
+            ("air-outpost", Vec2::new(60.0, 70.0), 45.0, Vec2::new(0.0, 0.0)),
+            ("air-yard", Vec2::new(-90.0, 175.0), 45.0, Vec2::new(-150.0, 120.0)),
+            ("air-gas", Vec2::new(135.0, -85.0), 40.0, Vec2::new(95.0, -135.0)),
+            ("air-beach", Vec2::new(130.0, 110.0), 45.0, Vec2::new(195.0, 50.0)),
+            ("outpost", Vec2::new(-20.0, 78.0), 4.5, Vec2::new(0.0, 0.0)),
+            ("roadblock", Vec2::new(-130.0, -128.0), 4.5, Vec2::new(-60.0, -110.0)),
+            ("gas", Vec2::new(50.0, -95.0), 4.5, Vec2::new(92.0, -138.0)),
+            ("yard", Vec2::new(-80.0, 150.0), 4.5, Vec2::new(-150.0, 120.0)),
+            ("beach", Vec2::new(140.0, 70.0), 4.5, Vec2::new(215.0, 80.0)),
+            ("plateau", Vec2::new(-90.0, -150.0), 4.5, Vec2::new(-160.0, -205.0)),
+            ("desert", Vec2::new(60.0, 160.0), 4.5, Vec2::new(120.0, 230.0)),
+            ("track", Vec2::new(10.0, 160.0), 4.5, Vec2::new(25.0, 60.0)),
+        ];
+        let refinery: [(&str, Vec2, f32, Vec2); 13] = [
+            ("high", Vec2::new(30.0, 250.0), 170.0, Vec2::new(0.0, -20.0)),
+            ("air-control", Vec2::new(60.0, 70.0), 45.0, Vec2::new(0.0, 0.0)),
+            ("air-farm", Vec2::new(100.0, 115.0), 50.0, Vec2::new(175.0, 40.0)),
+            ("air-derricks", Vec2::new(-120.0, 150.0), 45.0, Vec2::new(-180.0, 70.0)),
+            ("air-towers", Vec2::new(60.0, -110.0), 50.0, Vec2::new(150.0, -185.0)),
+            ("control", Vec2::new(-20.0, 75.0), 4.5, Vec2::new(0.0, 0.0)),
+            ("farm", Vec2::new(90.0, 50.0), 4.5, Vec2::new(170.0, 40.0)),
+            ("towers", Vec2::new(60.0, -95.0), 4.5, Vec2::new(150.0, -190.0)),
+            ("derricks", Vec2::new(-90.0, 120.0), 4.5, Vec2::new(-180.0, 50.0)),
+            ("yard", Vec2::new(-40.0, 160.0), 4.5, Vec2::new(40.0, 220.0)),
+            ("flare", Vec2::new(-110.0, -110.0), 4.5, Vec2::new(-185.0, -185.0)),
+            ("road", Vec2::new(-200.0, -48.0), 4.5, Vec2::new(-100.0, -60.0)),
+            ("track", Vec2::new(-60.0, 34.0), 4.5, Vec2::new(-150.0, 50.0)),
+        ];
+        for (id, views) in [(arena_core::MapId::Sink, sink), (arena_core::MapId::Refinery, refinery)] {
+            let map = Map::by_id(id, seed);
+            for (name, eye, up, look) in views {
+                let shot = format!("level-{tag}{}-{name}", id.key());
+                if !only.is_empty() && !shot.contains(&only) {
+                    continue;
+                }
+                render(&shot, |wr| {
+                    wr.set_map(&map);
+                    eprintln!("{shot}: {} dressing props", wr.dressed);
+                    let g = |p: Vec2| map.height_at(p.x, p.y);
+                    let mut world = RenderWorld::default();
+                    let chase = up < 12.0;
+                    let up = if up > 12.0 { up + g(eye) } else { up };
+                    let (e, t) = if chase {
+                        // A chase camera behind a parked tank.
+                        let dir = (look - eye).normalize();
+                        let tank_xz = eye + dir * 11.0;
+                        let yaw = (-dir.y).atan2(dir.x);
+                        world.tanks.push(parked_tank(1, tank::RUSTBACK, Vec3::new(tank_xz.x, g(tank_xz), tank_xz.y), yaw, PartKind::HeavyCannon, vec![]));
+                        let e = Vec3::new(eye.x, g(eye) + up, eye.y);
+                        let t = tank_xz + dir * 30.0;
+                        (e, Vec3::new(t.x, g(t) + 2.0, t.y))
+                    } else {
+                        (Vec3::new(eye.x, up, eye.y), Vec3::new(look.x, g(look), look.y))
+                    };
+                    world.camera = Some(Camera::look(e, t, if chase { 58.0 } else { 50.0 }));
+                    world.time = 30.0;
+                    world
+                });
+            }
+        }
+    }
+
+    /// The dressing is clustered, not sprinkled: a bounded count, nothing
+    /// inside cover or on a spawn, and most of it near the places.
+    #[test]
+    fn dressing_is_clustered() {
+        for id in arena_core::MapId::ALL {
+            let map = Map::by_id(id, 7);
+            let plan = dressing_plan(&map);
+            assert!(plan.len() > 400 && plan.len() < 2500, "{id:?}: {} props", plan.len());
+            let solid: Vec<_> = map.obstacles.iter().filter(|o| o.cover != Cover::Flat).collect();
+            let mut near = 0;
+            for d in &plan {
+                if d.kind != Clutter::Drift {
+                    assert!(!map.blocked_xz(d.pos, 0.0), "{id:?}: {:?} inside cover at {}", d.kind, d.pos);
+                }
+                for s in &map.spawns {
+                    assert!(Vec2::new(s.pos.x, s.pos.z).distance(d.pos) > 6.0, "{id:?}: {:?} on a spawn", d.kind);
+                }
+                if solid.iter().any(|o| Vec2::new(o.pos.x, o.pos.z).distance(d.pos) < o.radius + 12.0) {
+                    near += 1;
+                }
+            }
+            assert!(near * 10 > plan.len() * 6, "{id:?}: only {near} of {} props near the places", plan.len());
+            assert!(!map.marks.is_empty());
+        }
+    }
+
     /// What the static scene is made of (for sizing dressing chunks).
     #[test]
     #[ignore]
@@ -1772,7 +2207,8 @@ mod shots {
         let again = wr.renderer.mesh_count();
         println!("meshes: {first} first, {again} after 6 maps and podiums, {} pinned", wr.lib.pinned());
         assert_eq!(first, again, "GPU meshes leaked across map rebuilds");
-        assert_eq!(wr.lib.pinned(), 0, "map pieces were pinned");
+        // (The wreck meshes are pinned on purpose: built with the first map.)
+        assert!(wr.lib.ids.keys().all(|k| k.starts_with("wreck:")), "map pieces were pinned: {:?}", wr.lib.ids.keys().collect::<Vec<_>>());
     }
 
     /// Wellhead's derricks and Last Crew's wall reach the render world.

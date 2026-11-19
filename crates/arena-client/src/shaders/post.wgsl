@@ -5,7 +5,7 @@ struct Post {
     params: vec4<f32>,
     // rgb warm print tint, w saturation
     grade: vec4<f32>,
-    // x bloom strength, y contrast, zw 1 / output size
+    // x bloom strength (added), y contrast, zw 1 / this pass's target size
     bloom: vec4<f32>,
 };
 
@@ -70,9 +70,10 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     // The scene may be rendered at a lower scale: sample it filtered.
     let suv = pos.xy * post.bloom.zw;
     let size = 1.0 / post.bloom.zw;
-    var c = textureSampleLevel(hdr, bloom_sampler, suv, 0.0).rgb;
-    c = mix(c, textureSampleLevel(bloom_tex, bloom_sampler, suv, 0.0).rgb, post.bloom.x);
-    c = c * post.params.x;
+    // Exposure, then the bloom added on top (it is already exposed and
+    // thresholded, so only what is truly bright glows).
+    var c = textureSampleLevel(hdr, bloom_sampler, suv, 0.0).rgb * post.params.x;
+    c = c + textureSampleLevel(bloom_tex, bloom_sampler, suv, 0.0).rgb * post.bloom.x;
     // Contrast round mid grey, hue-preserving.
     let lum = max(luminance(c), 1e-5);
     c = c * (0.18 * pow(lum / 0.18, post.bloom.y) / lum);

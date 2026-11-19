@@ -33,6 +33,8 @@ pub(super) struct Dom {
     els: HashMap<String, Element>,
     shared: Rc<RefCell<Shared>>,
     listeners: Vec<(EventTarget, &'static str, Listener)>,
+    /// Attributes taken off by `retrigger`, put back on the next frame.
+    pending: Vec<(String, String, String)>,
 }
 
 fn prop(v: &JsValue, name: &str) -> JsValue {
@@ -120,7 +122,9 @@ impl Ctx {
 
     fn join_code(&self) {
         let code = self.value("#t-join-code").trim().to_uppercase();
-        if !code.is_empty() {
+        if code.is_empty() {
+            self.push(UiAction::Refused);
+        } else {
             self.push(UiAction::Join { code });
         }
     }
@@ -163,7 +167,7 @@ impl Ctx {
             if let (Some(panel), Some(title)) = (g.get_attribute("data-goto"), self.doc.get_element_by_id("t-title")) {
                 let _ = title.set_attribute("data-panel", &panel);
             }
-            return;
+            return self.push(UiAction::Click);
         }
         let Ok(Some(el)) = t.closest("[data-action]") else { return };
         let action = el.get_attribute("data-action").unwrap_or_default();
@@ -293,7 +297,7 @@ impl Dom {
 
         let shared = Rc::new(RefCell::new(Shared::default()));
         let ctx = Ctx { doc: doc.clone(), root: root.clone().into(), shared: shared.clone() };
-        let mut dom = Dom { doc, root: root.clone(), els: HashMap::new(), shared, listeners: Vec::new() };
+        let mut dom = Dom { doc, root: root.clone(), els: HashMap::new(), shared, listeners: Vec::new(), pending: Vec::new() };
 
         let root_t: EventTarget = root.into();
         let win_t: EventTarget = window.into();
@@ -345,11 +349,13 @@ impl Dom {
         }
     }
     pub fn attr(&mut self, id: &str, name: &str, value: &str) {
+        self.pending.retain(|(i, n, _)| !(i == id && n == name));
         if let Some(e) = self.el(id) {
             let _ = e.set_attribute(name, value);
         }
     }
     pub fn remove_attr(&mut self, id: &str, name: &str) {
+        self.pending.retain(|(i, n, _)| !(i == id && n == name));
         if let Some(e) = self.el(id) {
             let _ = e.remove_attribute(name);
         }
@@ -364,12 +370,22 @@ impl Dom {
             let _ = if hidden { e.set_attribute("hidden", "") } else { e.remove_attribute("hidden") };
         }
     }
-    /// Remove, force a style flush, set again: restarts a CSS animation.
+    /// Restarts a CSS animation: off now, back on next frame ([`Dom::flush`]).
+    /// The browser styles the "off" state in between, so no forced
+    /// synchronous layout (reading `offsetWidth` here cost 10-16 ms frames).
     pub fn retrigger(&mut self, id: &str, name: &str, value: &str) {
+        self.pending.retain(|(i, n, _)| !(i == id && n == name));
         if let Some(e) = self.el(id) {
             let _ = e.remove_attribute(name);
-            let _ = self.root.offset_width();
-            let _ = e.set_attribute(name, value);
+            self.pending.push((id.to_string(), name.to_string(), value.to_string()));
+        }
+    }
+    /// Once a frame, before any other DOM work: finishes `retrigger`s.
+    pub fn flush(&mut self) {
+        for (id, name, value) in std::mem::take(&mut self.pending) {
+            if let Some(e) = self.el(&id) {
+                let _ = e.set_attribute(&name, &value);
+            }
         }
     }
     pub fn set_value(&mut self, id: &str, value: &str) {

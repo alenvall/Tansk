@@ -119,6 +119,59 @@ fn face(p: Vec2, q: Vec2) -> f32 {
     (-d.y).atan2(d.x)
 }
 
+/// The Refinery's ground storytelling: service tracks out of each gate of
+/// the control house, the convoy's truck track, packed ground in the
+/// compound, the farm and the towers, oil soaked round every pump.
+fn refinery_marks(map: &Map) -> Vec<GroundMark> {
+    let v = |pts: &[(f32, f32)]| pts.iter().map(|&(x, z)| Vec2::new(x, z)).collect::<Vec<_>>();
+    let track = |pts: &[(f32, f32)]| GroundMark { kind: GroundMarkKind::Track, points: v(pts), width: 5.0 };
+    let mut marks = vec![
+        // West gate out to the derrick field.
+        track(&[(-38.0, 17.0), (-72.0, 30.0), (-110.0, 38.0), (-145.0, 48.0)]),
+        // The field's service loop between the pumps.
+        track(&[(-245.0, -50.0), (-230.0, 10.0), (-200.0, 40.0), (-165.0, 50.0), (-128.0, 62.0), (-120.0, 100.0), (-148.0, 132.0), (-196.0, 140.0), (-242.0, 140.0)]),
+        track(&[(-200.0, 40.0), (-206.0, 80.0), (-196.0, 112.0)]),
+        // The convoy's truck track up from the field to the road.
+        track(&[(-250.0, 95.0), (-247.0, 50.0), (-245.0, 20.0), (-245.0, -50.0)]),
+        // East gate to the tank farm's west lane.
+        track(&[(38.0, 17.0), (70.0, 24.0), (100.0, 38.0), (122.0, 40.0)]),
+        // The convoy's way off the road down the farm's east side.
+        track(&[(226.0, -54.0), (250.0, -32.0), (254.0, 12.0), (252.0, 60.0)]),
+        // South gate to the loading yard.
+        track(&[(17.0, 38.0), (20.0, 80.0), (14.0, 140.0), (4.0, 190.0)]),
+        // North gate to the road.
+        track(&[(-17.0, -38.0), (-17.0, -54.0)]),
+        // The road up the rack to the cracking towers.
+        track(&[(100.0, -66.0), (100.0, -110.0), (104.0, -150.0), (112.0, -200.0)]),
+        // The road up to the flare mound.
+        track(&[(-150.0, -66.0), (-156.0, -110.0), (-164.0, -150.0), (-176.0, -172.0)]),
+    ];
+    let packed = |a: (f32, f32), b: (f32, f32), w: f32| GroundMark { kind: GroundMarkKind::Packed, points: v(&[a, b]), width: w };
+    marks.extend([
+        // The compound, wall to wall.
+        packed((-31.0, 0.0), (31.0, 0.0), 64.0),
+        // The tank farm between its bunds.
+        packed((120.0, 39.0), (232.0, 39.0), 100.0),
+        // The flare's plinth yard.
+        packed((FLARE.x - 18.0, FLARE.y), (FLARE.x + 18.0, FLARE.y), 30.0),
+    ]);
+    // Oil: soaked round every pumpjack, derrick, tank car and fuel tank, and
+    // by the tank farm's pumps.
+    let mut oil = vec![Vec2::new(150.0, 38.0), Vec2::new(206.0, 70.0), Vec2::new(150.0, 98.0), Vec2::new(-180.0, 20.0)];
+    let mut big = Vec::new();
+    for o in &map.obstacles {
+        let p = Vec2::new(o.pos.x, o.pos.z);
+        match o.kind {
+            ObstacleKind::Pumpjack | ObstacleKind::FuelTank | ObstacleKind::TankCar => oil.push(p),
+            ObstacleKind::Derrick => big.push(p),
+            _ => {}
+        }
+    }
+    marks.push(GroundMark { kind: GroundMarkKind::Oil, points: oil, width: 7.0 });
+    marks.push(GroundMark { kind: GroundMarkKind::Oil, points: big, width: 12.0 });
+    marks
+}
+
 /// Distance from `p` to the segment a-b.
 fn seg_dist(a: Vec2, b: Vec2, p: Vec2) -> f32 {
     let ab = b - a;
@@ -248,6 +301,11 @@ impl Map {
         b.place(ObstacleKind::Crates, -27.0, 28.0, 0.0);
         b.place(ObstacleKind::Crates, 10.0, 27.0, 0.0);
         b.place(ObstacleKind::Pipe, -10.0, 26.0, 0.0);
+        // Sandbag nests covering the west and east gates from inside.
+        b.place(ObstacleKind::Sandbags, -20.0, 20.0, 0.8);
+        b.place(ObstacleKind::Sandbags, 20.0, -19.0, 0.8);
+        // The landmark: the radio mast over the control house.
+        b.place(ObstacleKind::RadioMast, -27.0, -27.0, 0.3);
         for (x, z, yaw) in [(-17.0, -48.0, 0.0), (17.0, 48.0, 0.0), (-48.0, 17.0, 1.57), (48.0, -17.0, 1.57)] {
             let j = b.jit(3.0);
             b.place(ObstacleKind::Barrier, x + j, z, yaw);
@@ -322,6 +380,10 @@ impl Map {
         b.place(ObstacleKind::Crates, -160.0, 145.0, 0.0);
         b.place(ObstacleKind::Sandbags, -240.0, 45.0, 1.4);
         b.place(ObstacleKind::LaunchPlate, -145.0, 20.0, 2.6);
+        // The field crew's camp: a water tower (the landmark) and a wind pump.
+        b.place(ObstacleKind::WaterTower, -196.0, 120.0, 0.0);
+        b.place(ObstacleKind::Windmill, -214.0, 106.0, 0.5);
+        b.place(ObstacleKind::Crates, -186.0, 108.0, 0.0);
 
         // ---- THE LOADING YARD: rails, tank cars, containers, a crane -----------
         for z in RAIL_Z {
@@ -355,20 +417,27 @@ impl Map {
         b.place(ObstacleKind::RockFormation, -240.0, -235.0, 0.4);
         b.place(ObstacleKind::RockFormation, -60.0, -150.0, 1.2);
 
-        // Open-ground junk between the places.
-        for (x, z, k) in [
-            (-60.0, -105.0, ObstacleKind::CarWreck),
-            (60.0, -95.0, ObstacleKind::Sandbags),
-            (75.0, 60.0, ObstacleKind::Pipe),
-            (-70.0, 80.0, ObstacleKind::Sandbags),
-            (60.0, 120.0, ObstacleKind::CarWreck),
-            (-60.0, 135.0, ObstacleKind::Barrier),
-            (0.0, -130.0, ObstacleKind::Crates),
-            (240.0, -20.0, ObstacleKind::Sandbags),
-            (0.0, 100.0, ObstacleKind::Hedgehog),
+        // Out on the flat: a few deliberate spots on the tracks, open
+        // sightlines between them.
+        for (x, z, k, yaw) in [
+            // A broken-down truck stop where the flare track leaves the road.
+            (-150.0, -84.0, ObstacleKind::CarWreck, 0.3),
+            (-140.0, -92.0, ObstacleKind::Crates, 0.0),
+            // The north checkpoint on the towers' track.
+            (88.0, -96.0, ObstacleKind::Sandbags, 1.5),
+            (112.0, -94.0, ObstacleKind::Barrier, 1.5),
+            // A spilt pipe load on the tank farm track.
+            (72.0, 26.0, ObstacleKind::Pipe, 0.1),
+            // The south checkpoint on the yard track.
+            (8.0, 112.0, ObstacleKind::Sandbags, 0.1),
+            (30.0, 104.0, ObstacleKind::Hedgehog, 0.0),
+            (34.0, 120.0, ObstacleKind::CarWreck, 1.4),
+            // The west track's barricade.
+            (-72.0, 40.0, ObstacleKind::Barrier, 1.4),
+            (240.0, -20.0, ObstacleKind::Sandbags, 1.6),
         ] {
-            let yaw = b.jit(3.0);
-            b.place(k, x, z, yaw);
+            let j = b.jit(0.2);
+            b.place(k, x, z, yaw + j);
         }
 
         // ---- Heights --------------------------------------------------------
@@ -426,6 +495,7 @@ impl Map {
             regions: Vec::new(),
             convoy_route: Vec::new(),
             wells: Vec::new(),
+            marks: Vec::new(),
         };
         let mut rng = b.rng;
         for i in 0..map.obstacles.len() {
@@ -543,6 +613,7 @@ impl Map {
                 map.props.push(PropSpawn { kind: PropKindSpawn::OilDrum, pos: at3(&map, p) + Vec3::Y * 0.5 });
             }
         }
+        map.marks = refinery_marks(&map);
         map
     }
 }

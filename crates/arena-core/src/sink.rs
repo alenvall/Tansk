@@ -100,6 +100,57 @@ impl Builder {
     }
 }
 
+/// The Sink's ground storytelling: dirt tracks with ruts out of each gate of
+/// the outpost to the places, packed ground in the compounds, oil stains
+/// where fuel is handled. `hw(t, lat)` is a point along Highway 9.
+fn sink_marks(map: &Map, hw: &dyn Fn(f32, f32) -> Vec2) -> Vec<GroundMark> {
+    let v = |pts: &[(f32, f32)]| pts.iter().map(|&(x, z)| Vec2::new(x, z)).collect::<Vec<_>>();
+    let track = |pts: &[(f32, f32)]| GroundMark { kind: GroundMarkKind::Track, points: v(pts), width: 5.0 };
+    let mut marks = vec![
+        // West gate to the yard.
+        track(&[(-40.0, 18.0), (-70.0, 24.0), (-96.0, 44.0), (-112.0, 70.0), (-122.0, 96.0)]),
+        // North gate up to the highway.
+        track(&[(-18.0, -40.0), (-22.0, -70.0), (-30.0, -100.0)]),
+        // East gate out to the beach camp.
+        track(&[(40.0, -18.0), (78.0, -8.0), (118.0, 4.0), (150.0, 22.0), (175.0, 30.0)]),
+        // South gate down to the south spawns, past the ambushed car.
+        track(&[(18.0, 40.0), (28.0, 88.0), (44.0, 140.0), (36.0, 190.0), (26.0, 222.0)]),
+        // The highway up the plateau's south ramp.
+        track(&[(-136.0, -108.0), (-137.0, -140.0), (-138.0, -168.0), (-150.0, -196.0)]),
+        // The west loop: the yard up past the roadblock to the plateau's foot.
+        track(&[(-205.0, 60.0), (-220.0, 10.0), (-212.0, -50.0), (-196.0, -104.0)]),
+        // The beach camp down to the pier.
+        track(&[(175.0, 30.0), (186.0, -10.0), (192.0, -50.0), (180.0, -86.0)]),
+        // The yard round its crane.
+        track(&[(-122.0, 96.0), (-134.0, 112.0), (-150.0, 104.0), (-168.0, 118.0), (-176.0, 150.0)]),
+    ];
+    let packed = |a: (f32, f32), b: (f32, f32), w: f32| GroundMark { kind: GroundMarkKind::Packed, points: v(&[a, b]), width: w };
+    marks.extend([
+        // The outpost courtyard, wall to wall.
+        packed((-33.0, 0.0), (33.0, 0.0), 68.0),
+        // The gas station forecourt and back lot.
+        packed((GAS.x - 26.0, GAS.y - 4.0), (GAS.x + 26.0, GAS.y - 3.0), 36.0),
+        // The yard's floor.
+        packed((YARD.x - 52.0, YARD.y - 6.0), (YARD.x + 48.0, YARD.y - 6.0), 100.0),
+        // The beach camp.
+        packed((150.0, 26.0), (172.0, 30.0), 20.0),
+    ]);
+    // The roadblock: a churned turning area either side of the chicane.
+    for lat in [-16.0f32, 16.0] {
+        let (a, b) = (hw(190.0, lat), hw(232.0, lat));
+        marks.push(GroundMark { kind: GroundMarkKind::Packed, points: vec![a, b], width: 12.0 });
+    }
+    // Oil: the fuel tank, the silos, the pumps, the yard's drums.
+    let mut oil = vec![Vec2::new(8.0, -22.0), Vec2::new(30.0, -26.0), GAS + Vec2::new(0.0, 7.0), GAS + Vec2::new(-4.0, 16.0), YARD + Vec2::new(-10.0, -26.0)];
+    for o in &map.obstacles {
+        if o.kind == ObstacleKind::CarWreck {
+            oil.push(Vec2::new(o.pos.x, o.pos.z));
+        }
+    }
+    marks.push(GroundMark { kind: GroundMarkKind::Oil, points: oil, width: 5.0 });
+    marks
+}
+
 /// Facing (yaw) from `p` toward `q`.
 fn face(p: Vec2, q: Vec2) -> f32 {
     let d = q - p;
@@ -227,6 +278,8 @@ impl Map {
         b.place(ObstacleKind::Crates, 30.0, 30.0, 0.0);
         b.place(ObstacleKind::Crates, -6.0, -27.0, 0.0);
         b.place(ObstacleKind::Crates, -14.0, -28.0, 0.0);
+        // A sandbag nest covering the west gate from inside.
+        b.place(ObstacleKind::Sandbags, -20.0, 22.0, 0.8);
         // Outside the gates: hedgehogs, barriers, car wrecks.
         for (x, z, yaw) in [(-18.0, -50.0, 0.0), (18.0, 52.0, 0.0), (-52.0, 18.0, 1.57), (52.0, -18.0, 1.57)] {
             let j = b.jit(3.0);
@@ -315,6 +368,11 @@ impl Map {
         b.place(ObstacleKind::GasStation, GAS.x, GAS.y, hw_yaw);
         b.place(ObstacleKind::CarWreck, GAS.x - 16.0, GAS.y + 6.0, 0.7);
         b.place(ObstacleKind::Crates, GAS.x - 20.0, GAS.y - 14.0, 0.0);
+        // The landmark: a water tower over the shop's back lot.
+        b.place(ObstacleKind::WaterTower, GAS.x + 19.0, GAS.y - 13.0, 0.0);
+        // The roadblock's guard post: a watchtower on the south shoulder.
+        let p = at(rb - 8.0, 23.0);
+        b.place(ObstacleKind::Tower, p.x, p.y, hw_yaw + 0.2);
 
         // ---- THE YARD: container maze around the crane ---------------------
         b.place(ObstacleKind::Crane, YARD.x, YARD.y, 0.0);
@@ -350,6 +408,10 @@ impl Map {
         let j = b.jit(0.1);
         b.place(ObstacleKind::PierRuin, 240.0, -70.0, 0.2 + j);
         b.place(ObstacleKind::CarWreck, 165.0, 132.0, 1.2);
+        // The salvagers' camp on the beach: a wind pump (the landmark), a tent, crates.
+        b.place(ObstacleKind::Windmill, 166.0, 18.0, 0.3);
+        b.place(ObstacleKind::Tent, 152.0, 38.0, 1.2);
+        b.place(ObstacleKind::Crates, 160.0, 24.0, 0.0);
         b.place(ObstacleKind::Pipe, 245.0, 95.0, 1.1);
 
         // ---- MESA RIM and open rocks --------------------------------------
@@ -368,19 +430,29 @@ impl Map {
         b.place(ObstacleKind::Sandbags, PLAT_C.x - 10.0, PLAT_C.y + PLAT_H.y - 4.0, 0.0);
         b.place(ObstacleKind::Sandbags, PLAT_C.x + PLAT_H.x - 5.0, PLAT_C.y - 8.0, 1.57);
         b.place(ObstacleKind::Crates, PLAT_C.x - 20.0, PLAT_C.y - 10.0, 0.0);
-        // Open-ground junk between the places.
-        for (x, z, k) in [
-            (-110.0, 30.0, ObstacleKind::CarWreck),
-            (-95.0, -10.0, ObstacleKind::Sandbags),
-            (95.0, 20.0, ObstacleKind::Sandbags),
-            (40.0, 120.0, ObstacleKind::CarWreck),
-            (-20.0, -150.0, ObstacleKind::Crates),
-            (140.0, -70.0, ObstacleKind::Barrier),
-            (-200.0, -30.0, ObstacleKind::Pipe),
-            (130.0, 190.0, ObstacleKind::Sandbags),
+        // The landmark: a guyed radio mast on the top, a lookout tower on
+        // its south-west corner over the yard.
+        b.place(ObstacleKind::RadioMast, PLAT_C.x - 28.0, PLAT_C.y - 18.0, 0.4);
+        b.place(ObstacleKind::Tower, PLAT_C.x - 34.0, PLAT_C.y + 19.0, 0.5);
+        // Out on the open ground: not sprinkled, but a few deliberate spots
+        // on the tracks between the places (and long empty sightlines between).
+        for (x, z, k, yaw) in [
+            // The west checkpoint, where the yard track leaves the outpost road.
+            (-96.0, 34.0, ObstacleKind::CarWreck, 0.5),
+            (-88.0, 22.0, ObstacleKind::Sandbags, 0.4),
+            // The east checkpoint on the beach track.
+            (104.0, 8.0, ObstacleKind::Sandbags, -0.3),
+            (112.0, -4.0, ObstacleKind::Barrier, 1.2),
+            // An ambushed car on the south track, its cargo spilt.
+            (38.0, 124.0, ObstacleKind::CarWreck, 1.3),
+            (46.0, 132.0, ObstacleKind::Crates, 0.0),
+            // A pipe dump at the yard's gate.
+            (-84.0, 62.0, ObstacleKind::Pipe, 0.2),
+            // A supply cache below the north spawn.
+            (-14.0, -160.0, ObstacleKind::Crates, 0.0),
         ] {
-            let yaw = b.jit(3.0);
-            b.place(k, x, z, yaw);
+            let j = b.jit(0.2);
+            b.place(k, x, z, yaw + j);
         }
 
         // ---- Heights ------------------------------------------------------
@@ -452,6 +524,7 @@ impl Map {
             regions: Vec::new(),
             convoy_route: Vec::new(),
             wells: Vec::new(),
+            marks: Vec::new(),
         };
         let mut rng = b.rng;
         for i in 0..map.obstacles.len() {
@@ -559,6 +632,7 @@ impl Map {
                 map.props.push(PropSpawn { kind: PropKindSpawn::OilDrum, pos: at3(&map, p) + Vec3::Y * 0.5 });
             }
         }
+        map.marks = sink_marks(&map, &|t, lat| at(t, lat));
         map
     }
 }

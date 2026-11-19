@@ -119,6 +119,15 @@ pub enum ObstacleKind {
     FlareStack,
     /// The blast-proof control house of the refinery. Tall.
     ControlHouse,
+    // ---- Landmarks (appended) ------------------------------------------------
+    /// A water tower: `boxes[0..4]` the four legs (drive between them),
+    /// `boxes[4]` the tank (overhead, from 8 m up). Tall.
+    WaterTower,
+    /// A guyed radio mast: `boxes[0]` the thin lattice mast (about 24 m). Tall (thin).
+    RadioMast,
+    /// A wind pump: `boxes[0]` the lattice tower (about 11 m) with the fan
+    /// wheel on top. Tall (thin).
+    Windmill,
 }
 
 impl ObstacleKind {
@@ -279,6 +288,30 @@ pub struct Map {
     /// 1's side). Team spawns split across the line between the two sides.
     #[serde(default)]
     pub wells: Vec<WellSite>,
+    /// Ground storytelling (visual only): dirt tracks between the places,
+    /// packed ground in the compounds, oil stains by the pumps.
+    #[serde(default)]
+    pub marks: Vec<GroundMark>,
+}
+
+/// What a [`GroundMark`] paints on the ground.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GroundMarkKind {
+    /// A dirt track with two tyre ruts, along `points`.
+    Track,
+    /// Packed, trodden ground: a wide band along `points` (a compound floor).
+    Packed,
+    /// A dark oil stain round each of `points`.
+    Oil,
+}
+
+/// A painted mark on the ground (visual only: the client drapes it over
+/// the terrain). `width` is the track or band width, or the stain diameter.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct GroundMark {
+    pub kind: GroundMarkKind,
+    pub points: Vec<Vec2>,
+    pub width: f32,
 }
 
 /// A Wellhead derrick: where it stands and what the radio calls it.
@@ -630,6 +663,25 @@ pub(crate) fn make_obstacle(kind: ObstacleKind, rng: &mut Rng) -> Obstacle {
             cover = Cover::Tall;
             boxes.push(bx(Vec3::new(0.0, 2.2, 0.0), Vec3::new(8.0, 2.6, 4.6), 0.0));
             radius = 10.5;
+        }
+        ObstacleKind::WaterTower => {
+            cover = Cover::Tall;
+            for (sx, sz) in [(-1.0f32, -1.0f32), (-1.0, 1.0), (1.0, -1.0), (1.0, 1.0)] {
+                boxes.push(bx(Vec3::new(sx * 2.6, 4.2, sz * 2.6), Vec3::new(0.3, 4.4, 0.3), 0.0));
+            }
+            boxes.push(bx(Vec3::new(0.0, 11.0, 0.0), Vec3::new(3.2, 2.6, 3.2), 0.0));
+            rot = Quat::IDENTITY;
+            radius = 5.0;
+        }
+        ObstacleKind::RadioMast => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, 12.0, 0.0), Vec3::new(1.1, 12.2, 1.1), 0.0));
+            radius = 2.5;
+        }
+        ObstacleKind::Windmill => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, 5.6, 0.0), Vec3::new(0.9, 5.8, 0.9), 0.0));
+            radius = 2.5;
         }
         ObstacleKind::PierRuin => {
             cover = Cover::Low;

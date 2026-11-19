@@ -97,6 +97,12 @@ sound_ids! {
     Horn3 => "horn_3",
     Horn4 => "horn_4",
     Horn5 => "horn_5",
+    // Added with the recorded sounds: a voice for every gun tier.
+    StubGun => "stub_gun",
+    MortarShot => "mortar_shot",
+    RocketLaunch => "rocket_launch",
+    Flamethrower => "flamethrower",
+    FuelBlast => "fuel_blast",
 }
 
 /// How a sound is rendered and played.
@@ -190,6 +196,11 @@ impl SoundId {
             Horn3 => info(1.3, false, 0.75, 2, 2, 0.01, true),
             Horn4 => info(1.0, false, 0.7, 2, 2, 0.02, true),
             Horn5 => info(2.0, false, 0.7, 2, 2, 0.01, true),
+            StubGun => info(1.4, true, 0.92, 6, 3, 0.04, true),
+            MortarShot => info(1.4, false, 0.9, 4, 2, 0.04, true),
+            RocketLaunch => info(1.5, false, 0.85, 8, 3, 0.05, true),
+            Flamethrower => info(2.2, false, 0.8, 4, 2, 0.03, true),
+            FuelBlast => info(3.6, true, 0.97, 3, 2, 0.04, true),
         }
     }
 }
@@ -302,6 +313,11 @@ fn recipe(id: SoundId) -> Recipe {
         Horn3 => aooga,
         Horn4 => squeeze,
         Horn5 => train,
+        StubGun => stub_gun,
+        MortarShot => mortar_shot,
+        RocketLaunch => rocket_launch,
+        Flamethrower => flamethrower,
+        FuelBlast => fuel_blast,
     }
 }
 
@@ -409,6 +425,54 @@ fn long_gun(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
     // The long barrel rings.
     let md = modes(980.0 * p.vary(0.04), &BAR, 0.5, 1.0, 0.5, p);
     strike(b, 0.002, &md, 0.0004, 0.1, 0.12, n);
+}
+
+fn stub_gun(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
+    // The starter gun: a smaller, sharper bark than the main cannon.
+    gun(
+        b,
+        0.0,
+        &Gun { pitch: 1.3, size: 0.7, thump: 0.7, blast: 0.95, tail: 0.3, clank: 0.15, echo_delay: 0.2, echo: 0.18 },
+        p,
+        n,
+    );
+}
+
+fn mortar_shot(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
+    // A tube "thoomp": a deep hollow pop and a puff of gas, no crack.
+    let pitch = p.vary(0.06);
+    thump(b, 0.0, Thump::new(130.0 * pitch, 55.0 * pitch, 0.03, 0.2).drive(1.2), 1.0);
+    noise(b, 0.0, Noise::bp(320.0 * pitch, 1.2, 0.08).attack(0.002).drive(1.0), 0.6, n);
+    noise(b, 0.01, Noise::lp(1500.0, 300.0, 0.25, 0.3).attack(0.01), 0.3, n);
+    echo(b, 0.26 * p.vary(0.15), 0.2, 700.0);
+}
+
+fn rocket_launch(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
+    // Ignition pop, then the motor's roar tearing away.
+    let pitch = p.vary(0.06);
+    noise(b, 0.0, Noise::lp(9000.0, 1200.0, 0.01, 0.02).attack(0.0003).drive(1.5), 0.8, n);
+    thump(b, 0.0, Thump::new(160.0 * pitch, 70.0, 0.02, 0.08).drive(1.2), 0.6);
+    noise(b, 0.01, Noise::bp(1400.0 * pitch, 0.7, 0.5).attack(0.03).drive(1.2), 0.7, n);
+    noise(b, 0.02, Noise::lp(700.0, 200.0, 0.6, 0.7).attack(0.05), 0.4, n);
+}
+
+fn flamethrower(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
+    // The igniter pops and the jet roars: low turbulent noise with a
+    // crackle riding on it.
+    let dur = 1.6 * p.vary(0.1);
+    noise(b, 0.0, Noise::lp(1800.0, 900.0, 0.08, 0.5).hold(dur).attack(0.06).drive(1.4), 0.9, n);
+    noise(b, 0.0, Noise::bp(380.0, 0.7, 0.4).hold(dur).attack(0.08), 0.5, n);
+    crackle(b, 0.05, Crackle { dur, rate0: 120.0, rate1: 60.0, centre: 2500.0, q: 0.8, spike: 2.0 }, 0.35, n);
+}
+
+fn fuel_blast(b: &mut [f32], p: &mut Rng, n: &mut Rng) {
+    // A fuel tank going up: the blast, a second tank catching, the
+    // fireball's roar.
+    boom(b, 0.0, 1.6, p, n);
+    boom(b, 0.4 * p.vary(0.2), 1.1, p, n);
+    noise(b, 0.05, Noise::lp(900.0, 250.0, 1.4, 1.2).attack(0.15).drive(1.2), 0.6, n);
+    crackle(b, 0.2, Crackle { dur: 1.8, rate0: 150.0, rate1: 20.0, centre: 2000.0, q: 0.7, spike: 2.5 }, 0.3, n);
+    echo(b, 0.34 * p.vary(0.15), 0.22, 500.0);
 }
 
 fn machine_gun(b: &mut [f32], p: &mut Rng, n: &mut Rng) {

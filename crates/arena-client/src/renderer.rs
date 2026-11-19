@@ -32,15 +32,40 @@ pub enum Quality {
     Low,
     Medium,
     High,
+    /// High plus 4x MSAA. MSAA is very costly under WebGPU (Chrome/Dawn on
+    /// D3D12 measured about 15 ms a frame at 1080p on an RTX 5070 Ti, against
+    /// under 1 ms for the whole frame with FXAA), so only this preset has it.
+    Ultra,
 }
 
-/// What a preset sets.
+/// What a preset sets. Medium is the 60 FPS preset for a mid laptop:
+/// FXAA instead of MSAA, a render scale with dynamic resolution under it,
+/// lighter shadows (the far cascade every other frame), a shorter bloom
+/// chain, stricter small-object culling. Low also drops a cascade and runs
+/// a lighter fragment shader. High is full resolution and full shadows
+/// with FXAA; only Ultra pays for MSAA.
 #[derive(Clone, Copy, Debug)]
 pub struct QualitySettings {
     pub shadow_size: u32,
+    /// Shadow cascades used (2 or 3).
+    pub cascades: usize,
+    /// The farthest cascade is redrawn every this many frames.
+    pub far_shadow_every: u32,
     pub msaa: u32,
+    /// Post anti-aliasing (FXAA) instead of MSAA.
+    pub fxaa: bool,
     /// The highest render scale; dynamic scaling stays at or below it.
     pub render_scale: f32,
+    /// The lowest render scale dynamic scaling may go to.
+    pub min_scale: f32,
+    /// Bloom mip levels (each half the last, from half resolution).
+    pub bloom_levels: usize,
+    /// Lighter fragment work: 4-tap shadows, no sphere occlusion, no fine wear.
+    pub lite: bool,
+    /// On-screen size (pixels of radius) below which the camera skips a mesh.
+    pub min_screen_radius: f32,
+    /// Shadow casters smaller than `distance / shadow_lod` (m) are skipped.
+    pub shadow_lod: f32,
     /// Effect particle cap (see `Fx::set_max_particles`).
     pub max_particles: usize,
     /// How far blob contact shadows are drawn from the eye.
@@ -50,9 +75,54 @@ pub struct QualitySettings {
 impl Quality {
     pub fn settings(self) -> QualitySettings {
         match self {
-            Quality::Low => QualitySettings { shadow_size: 1024, msaa: 1, render_scale: 0.75, max_particles: 1500, blob_range: 60.0 },
-            Quality::Medium => QualitySettings { shadow_size: 2048, msaa: 4, render_scale: 0.9, max_particles: 3000, blob_range: 100.0 },
-            Quality::High => QualitySettings { shadow_size: 2048, msaa: 4, render_scale: 1.0, max_particles: 5000, blob_range: 140.0 },
+            Quality::Low => QualitySettings {
+                shadow_size: 1024,
+                cascades: 2,
+                far_shadow_every: 2,
+                msaa: 1,
+                fxaa: true,
+                render_scale: 0.75,
+                min_scale: 0.5,
+                bloom_levels: 3,
+                lite: true,
+                min_screen_radius: 3.0,
+                shadow_lod: 40.0,
+                max_particles: 1200,
+                blob_range: 50.0,
+            },
+            Quality::Medium => QualitySettings {
+                shadow_size: 1536,
+                cascades: 3,
+                far_shadow_every: 2,
+                msaa: 1,
+                fxaa: true,
+                render_scale: 0.85,
+                min_scale: 0.6,
+                bloom_levels: 4,
+                lite: false,
+                min_screen_radius: 2.0,
+                shadow_lod: 55.0,
+                max_particles: 2500,
+                blob_range: 90.0,
+            },
+            Quality::High => QualitySettings {
+                // Not 2048: a 2048 shadow array cost about 4.5 ms in Chrome
+                // (Dawn, D3D12) against 0.15 ms at 1792 (measured, RTX 5070 Ti).
+                shadow_size: 1792,
+                cascades: 3,
+                far_shadow_every: 1,
+                msaa: 1,
+                fxaa: true,
+                render_scale: 1.0,
+                min_scale: 0.7,
+                bloom_levels: 5,
+                lite: false,
+                min_screen_radius: 1.5,
+                shadow_lod: 80.0,
+                max_particles: 5000,
+                blob_range: 140.0,
+            },
+            Quality::Ultra => QualitySettings { msaa: 4, fxaa: false, ..Quality::High.settings() },
         }
     }
 }
@@ -80,6 +150,10 @@ pub struct Look {
     /// Derived from the angles every frame.
     pub sun_dir: Vec3,
     pub sun_color: Vec3,
+    /// The blue sky's brightness on screen (divided by the exposure, so a
+    /// darker exposure for a brighter sun keeps the sky blue, not navy).
+    pub sky_gain: f32,
+    /// Ambient light from the sky (the hemisphere's upper half).
     pub sky_color: Vec3,
     pub ground_color: Vec3,
     pub haze: Vec3,
@@ -99,8 +173,12 @@ pub struct Look {
     pub vignette: f32,
     pub saturation: f32,
     pub warmth: Vec3,
+    /// Bloom added on top (not mixed in), and the threshold it starts at,
+    /// both after exposure: only the sun, emissives and fire should reach it.
     pub bloom: f32,
     pub bloom_threshold: f32,
+    /// How much each wider bloom level adds (lower: a tighter glow).
+    pub bloom_scatter: f32,
     /// Contrast round mid grey, before the curve (1 = none).
     pub contrast: f32,
     /// 0 ACES, 1 AgX.
@@ -126,7 +204,9 @@ impl Look {
                 l.sky_color = Vec3::new(0.36, 0.38, 0.62) * 0.4;
                 l.ground_color = Vec3::new(0.9, 0.45, 0.25) * 0.45;
                 l.haze = Vec3::new(1.0, 0.66, 0.46) * 1.1;
-                l.warmth = Vec3::new(1.06, 0.98, 0.9);
+                l.warmth = Vec3::new(1.04, 0.99, 0.93);
+                l.exposure = 0.5;
+                l.sky_gain = 0.4;
             }
             TimeOfDay::Noon => {
                 l.sun_elevation = 62.0;
@@ -134,6 +214,7 @@ impl Look {
                 l.sky_color = Vec3::new(0.40, 0.52, 0.78) * 0.5;
                 l.haze = Vec3::new(0.96, 0.9, 0.8) * 1.25;
                 l.warmth = Vec3::new(1.0, 1.0, 0.98);
+                l.exposure = 0.205;
             }
         }
         l.sun_dir = l.sun_direction();
@@ -150,27 +231,29 @@ impl Default for Look {
             sun_elevation: elev,
             sun_azimuth: az,
             sun_dir,
-            sun_color: Vec3::new(1.0, 0.70, 0.42) * 2.8,
+            sun_color: Vec3::new(1.0, 0.80, 0.58) * 2.8,
+            sky_gain: 0.5,
             sky_color: Vec3::new(0.40, 0.48, 0.70) * 0.42,
-            ground_color: Vec3::new(0.95, 0.56, 0.28) * 0.6,
+            ground_color: Vec3::new(0.92, 0.62, 0.38) * 0.55,
             haze: Vec3::new(1.0, 0.86, 0.68) * 1.25,
-            haze_start: 120.0,
-            haze_density: 0.0028,
-            height_fog: 0.0005,
+            haze_start: 140.0,
+            haze_density: 0.0018,
+            height_fog: 0.00035,
             height_falloff: 0.18,
             mie_g: 0.85,
-            air_glow: 0.12,
+            air_glow: 0.08,
             shadow_softness: 1.3,
             splits: [24.0, 75.0, 230.0],
             rim: 1.0,
             spec: 1.0,
-            exposure: 1.0,
+            exposure: 0.30,
             vignette: 0.3,
-            saturation: 1.12,
-            warmth: Vec3::new(1.04, 1.0, 0.93),
-            bloom: 0.16,
-            bloom_threshold: 0.85,
-            contrast: 1.1,
+            saturation: 0.97,
+            warmth: Vec3::new(1.03, 1.0, 0.95),
+            bloom: 0.05,
+            bloom_threshold: 1.0,
+            bloom_scatter: 0.55,
+            contrast: 1.7,
             storm: 0.0,
             curve: 0,
         }
@@ -235,10 +318,6 @@ pub const RECORD_MAX_VERTS: usize = 12_000;
 /// Side of the cells the static scene is culled by first, m.
 const STATIC_CELL: f32 = 48.0;
 
-/// On-screen size (pixels of radius) below which the camera skips a mesh.
-const MIN_SCREEN_RADIUS: f32 = 1.5;
-/// Shadow casters smaller than `distance / SHADOW_LOD` (m) are skipped.
-const SHADOW_LOD: f32 = 80.0;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -280,7 +359,22 @@ struct Targets {
     #[allow(dead_code)]
     hdr: wgpu::TextureView,
     post_bind: wgpu::BindGroup,
+    /// With FXAA: the tonemapped frame at the render scale, and the FXAA
+    /// pass's bind group reading it.
+    #[allow(dead_code)]
+    ldr: Option<wgpu::TextureView>,
+    fxaa_bind: Option<wgpu::BindGroup>,
 }
+
+/// The FXAA pass's pipeline, layout and uniform.
+struct FxaaPass {
+    pipeline: wgpu::RenderPipeline,
+    layout: wgpu::BindGroupLayout,
+    uniform: wgpu::Buffer,
+}
+
+/// The tonemapped intermediate FXAA reads (sRGB-encoded by the shader).
+const LDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 /// A grown-on-demand GPU buffer.
 struct Dynamic {
@@ -304,6 +398,112 @@ impl Dynamic {
         }
         if !bytes.is_empty() {
             queue.write_buffer(&self.buffer, 0, bytes);
+        }
+    }
+}
+
+/// Timestamps per frame: shadows begin, scene begin, scene end, post
+/// begin, post end (the last pass, FXAA when on).
+const TIMESTAMPS: u32 = 5;
+/// Readback buffers in flight.
+const TIMER_SLOTS: usize = 4;
+
+/// GPU pass timing with timestamp queries, where the device has them
+/// (WebGPU's `timestamp-query`, Vulkan, D3D12). Averages are logged every
+/// couple of seconds and feed the dynamic render scale.
+struct GpuTimer {
+    set: wgpu::QuerySet,
+    resolve: wgpu::Buffer,
+    /// Readback buffers and their state: 0 free, 1 waiting for the map, 2 mapped, 3 failed.
+    slots: Vec<(wgpu::Buffer, std::sync::Arc<std::sync::atomic::AtomicU8>)>,
+    /// The slot this frame writes, if one was free.
+    current: Option<usize>,
+    /// Nanoseconds per tick.
+    period: f32,
+    sums: [f64; 4],
+    count: u32,
+}
+
+impl GpuTimer {
+    fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Option<Self> {
+        if !device.features().contains(wgpu::Features::TIMESTAMP_QUERY) {
+            return None;
+        }
+        let set = device.create_query_set(&wgpu::QuerySetDescriptor { label: Some("gpu timer"), ty: wgpu::QueryType::Timestamp, count: TIMESTAMPS });
+        let size = TIMESTAMPS as u64 * 8;
+        let resolve = device.create_buffer(&wgpu::BufferDescriptor { label: Some("gpu timer resolve"), size, usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC, mapped_at_creation: false });
+        let slots = (0..TIMER_SLOTS)
+            .map(|_| {
+                let b = device.create_buffer(&wgpu::BufferDescriptor { label: Some("gpu timer readback"), size, usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+                (b, std::sync::Arc::new(std::sync::atomic::AtomicU8::new(0)))
+            })
+            .collect();
+        Some(Self { set, resolve, slots, current: None, period: queue.get_timestamp_period(), sums: [0.0; 4], count: 0 })
+    }
+
+    /// Reads finished slots; returns the averages (ms: total, shadows,
+    /// scene, bloom, post) once enough frames are in.
+    fn collect(&mut self) -> Option<[f32; 5]> {
+        use std::sync::atomic::Ordering;
+        let mut done = None;
+        for (buffer, state) in &self.slots {
+            match state.load(Ordering::Acquire) {
+                2 => {
+                    let t: Vec<u64> = {
+                        let view = buffer.slice(..).get_mapped_range().ok()?;
+                        bytemuck::cast_slice::<u8, u64>(&view).to_vec()
+                    };
+                    buffer.unmap();
+                    state.store(0, Ordering::Release);
+                    let ms = |a: usize, b: usize| t[b].saturating_sub(t[a]) as f64 * self.period as f64 * 1e-6;
+                    let parts = [ms(0, 1), ms(1, 2), ms(2, 3), ms(3, 4)];
+                    // Skip nonsense (a reset or a wrapped counter).
+                    if t[4] >= t[0] && parts.iter().sum::<f64>() < 1000.0 {
+                        for (s, p) in self.sums.iter_mut().zip(parts) {
+                            *s += p;
+                        }
+                        self.count += 1;
+                    }
+                }
+                3 => state.store(0, Ordering::Release),
+                _ => {}
+            }
+        }
+        if self.count >= 60 {
+            let n = self.count as f64;
+            let a = self.sums.map(|s| (s / n) as f32);
+            done = Some([a.iter().sum(), a[0], a[1], a[2], a[3]]);
+            self.sums = [0.0; 4];
+            self.count = 0;
+        }
+        done
+    }
+
+    /// Picks a free slot for this frame (none: no timestamps this frame).
+    fn begin(&mut self) {
+        use std::sync::atomic::Ordering;
+        self.current = self.slots.iter().position(|(_, s)| s.load(Ordering::Acquire) == 0);
+    }
+
+    fn writes(&self, begin: Option<u32>, end: Option<u32>) -> Option<wgpu::RenderPassTimestampWrites<'_>> {
+        self.current.map(|_| wgpu::RenderPassTimestampWrites { query_set: &self.set, beginning_of_pass_write_index: begin, end_of_pass_write_index: end })
+    }
+
+    fn resolve(&self, encoder: &mut wgpu::CommandEncoder) {
+        if let Some(i) = self.current {
+            encoder.resolve_query_set(&self.set, 0..TIMESTAMPS, &self.resolve, 0);
+            encoder.copy_buffer_to_buffer(&self.resolve, 0, &self.slots[i].0, 0, TIMESTAMPS as u64 * 8);
+        }
+    }
+
+    /// After submit: map the slot written this frame.
+    fn after_submit(&mut self) {
+        use std::sync::atomic::Ordering;
+        if let Some(i) = self.current.take() {
+            let (buffer, state) = &self.slots[i];
+            state.store(1, Ordering::Release);
+            let state = state.clone();
+            buffer.slice(..).map_async(wgpu::MapMode::Read, move |r| state.store(if r.is_ok() { 2 } else { 3 }, Ordering::Release));
         }
     }
 }
@@ -367,6 +567,17 @@ pub struct Renderer {
     scale_cooldown: f32,
     /// Frame time to hold, seconds (default 1/60).
     pub frame_budget: f32,
+    fxaa: Option<FxaaPass>,
+    timer: Option<GpuTimer>,
+    /// The last GPU time averages, ms: total, shadows, scene, bloom, post
+    /// (zero without timestamp queries).
+    pub gpu_ms: [f32; 5],
+    /// A new `gpu_ms` average arrived since the last scale decision.
+    gpu_fresh: bool,
+    gpu_logged: f64,
+    frames: u64,
+    /// The cascades as last drawn (the far one is not redrawn every frame).
+    cascade_state: [(Mat4, Mat4, f32); CASCADES],
 }
 
 const INSTANCE_STRIDE: u64 = std::mem::size_of::<GpuInstance>() as u64;
@@ -389,7 +600,11 @@ impl Renderer {
     }
 
     pub fn with_quality(device: wgpu::Device, queue: wgpu::Queue, output_format: wgpu::TextureFormat, width: u32, height: u32, quality: Quality) -> Self {
-        let settings = quality.settings();
+        Self::with_settings(device, queue, output_format, width, height, quality, quality.settings())
+    }
+
+    /// Like `with_quality` with the preset's settings overridden (benchmarks).
+    pub fn with_settings(device: wgpu::Device, queue: wgpu::Queue, output_format: wgpu::TextureFormat, width: u32, height: u32, quality: Quality, settings: QualitySettings) -> Self {
         let shadow_size = settings.shadow_size;
         let msaa_count = settings.msaa;
         let scene_src = include_str!("shaders/scene.wgsl");
@@ -668,6 +883,8 @@ impl Renderer {
             bind_group_layouts: &[Some(&post_layout)],
             immediate_size: 0,
         });
+        // With FXAA the tonemap writes the LDR intermediate; else the output.
+        let post_format = if settings.fxaa { LDR_FORMAT } else { output_format };
         let post_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("post pipeline"),
             layout: Some(&post_pl),
@@ -679,10 +896,66 @@ impl Renderer {
                 module: &post_shader,
                 entry_point: Some("fs_main"),
                 compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState { format: output_format, blend: None, write_mask: wgpu::ColorWrites::ALL })],
+                targets: &[Some(wgpu::ColorTargetState { format: post_format, blend: None, write_mask: wgpu::ColorWrites::ALL })],
             }),
             multiview_mask: None,
             cache: None,
+        });
+        let fxaa = settings.fxaa.then(|| {
+            let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("fxaa.wgsl"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/fxaa.wgsl").into()),
+            });
+            let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("fxaa layout"),
+                entries: &[
+                    uniform_entry(0, wgpu::ShaderStages::FRAGMENT),
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+            let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("fxaa pipeline layout"),
+                bind_group_layouts: &[Some(&layout)],
+                immediate_size: 0,
+            });
+            let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("fxaa pipeline"),
+                layout: Some(&pl),
+                vertex: wgpu::VertexState { module: &shader, entry_point: Some("vs_main"), compilation_options: Default::default(), buffers: &[] },
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some("fs_main"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState { format: output_format, blend: None, write_mask: wgpu::ColorWrites::ALL })],
+                }),
+                multiview_mask: None,
+                cache: None,
+            });
+            let uniform = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("fxaa uniform"),
+                size: 32,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            FxaaPass { pipeline, layout, uniform }
         });
 
         let instances = Dynamic::new(&device, "instances", wgpu::BufferUsages::VERTEX, INSTANCE_STRIDE * 4096);
@@ -709,10 +982,11 @@ impl Renderer {
             cache: None,
         });
         let blobs = Dynamic::new(&device, "blobs", wgpu::BufferUsages::VERTEX, 16 * 1024);
-        let mut bloom = Bloom::new(&device);
+        let mut bloom = Bloom::new(&device, settings.bloom_levels);
         let scale = settings.render_scale;
         let (iw, ih) = scaled(width, height, scale);
-        let targets = make_targets(&device, &post_layout, &post_uniform, &mut bloom, iw, ih, msaa_count);
+        let targets = make_targets(&device, &post_layout, &post_uniform, &mut bloom, iw, ih, msaa_count, fxaa.as_ref());
+        let timer = GpuTimer::new(&device, &queue);
         Self {
             device,
             queue,
@@ -757,6 +1031,13 @@ impl Renderer {
             frame_avg: 1.0 / 60.0,
             scale_cooldown: 2.0,
             frame_budget: 1.0 / 60.0,
+            fxaa,
+            timer,
+            gpu_ms: [0.0; 5],
+            gpu_fresh: false,
+            gpu_logged: -1e9,
+            frames: 0,
+            cascade_state: [(Mat4::IDENTITY, Mat4::IDENTITY, 1.0); CASCADES],
         }
     }
 
@@ -795,7 +1076,9 @@ impl Renderer {
     }
 
     /// Feeds the last frame's wall time; adjusts the render scale (between
-    /// 0.6 and the preset's) to hold `frame_budget`.
+    /// the preset's minimum and maximum) to hold `frame_budget`. With GPU
+    /// timestamps it steers by the GPU's own time (a vsynced frame time
+    /// says nothing about headroom); without, by the frame time.
     #[allow(dead_code)] // wired to the Settings menu by the game layer
     pub fn note_frame_time(&mut self, dt: f32) {
         if !(0.0..1.0).contains(&dt) {
@@ -806,18 +1089,39 @@ impl Renderer {
         if self.scale_cooldown > 0.0 {
             return;
         }
-        let max = self.settings.render_scale;
+        let (min, max) = (self.settings.min_scale, self.settings.render_scale);
         let mut next = self.scale;
-        if self.frame_avg > self.frame_budget * 1.12 {
-            next = (self.scale - 0.1).max(0.6);
+        let budget_ms = self.frame_budget * 1000.0;
+        if self.timer.is_some() {
+            // Only on a fresh average, taken at the current scale.
+            if !self.gpu_fresh {
+                return;
+            }
+            self.gpu_fresh = false;
+            let gpu = self.gpu_ms[0];
+            if gpu > budget_ms * 0.85 {
+                next = (self.scale - 0.1).max(min);
+            } else {
+                let up = (self.scale + 0.05).min(max);
+                // Pixels scale with the square: step up only with room.
+                if gpu * (up / self.scale).powi(2) < budget_ms * 0.7 {
+                    next = up;
+                }
+            }
+        } else if self.frame_avg > self.frame_budget * 1.12 {
+            next = (self.scale - 0.1).max(min);
         } else if self.frame_avg < self.frame_budget * 0.8 {
             next = (self.scale + 0.05).min(max);
         }
         if (next - self.scale).abs() > 1e-3 {
             self.scale = next;
             let (iw, ih) = scaled(self.width, self.height, self.scale);
-            self.targets = make_targets(&self.device, &self.post_layout, &self.post_uniform, &mut self.bloom, iw, ih, self.settings.msaa);
-            log::info!("render scale {:.2} (frame {:.1} ms)", self.scale, self.frame_avg * 1000.0);
+            self.targets = make_targets(&self.device, &self.post_layout, &self.post_uniform, &mut self.bloom, iw, ih, self.settings.msaa, self.fxaa.as_ref());
+            log::info!("render scale {:.2} (frame {:.1} ms, gpu {:.1} ms)", self.scale, self.frame_avg * 1000.0, self.gpu_ms[0]);
+            if let Some(t) = &mut self.timer {
+                t.sums = [0.0; 4];
+                t.count = 0;
+            }
         }
         self.scale_cooldown = 1.0;
     }
@@ -991,7 +1295,19 @@ impl Renderer {
         self.width = width;
         self.height = height;
         let (iw, ih) = scaled(width, height, self.scale);
-        self.targets = make_targets(&self.device, &self.post_layout, &self.post_uniform, &mut self.bloom, iw, ih, self.settings.msaa);
+        self.targets = make_targets(&self.device, &self.post_layout, &self.post_uniform, &mut self.bloom, iw, ih, self.settings.msaa, self.fxaa.as_ref());
+    }
+
+    /// Cascade far distances: the look's, or with two cascades (Low) a
+    /// near one a little longer and the second reaching about half as far.
+    fn splits(&self) -> [f32; 3] {
+        let s = self.look.splits;
+        if self.settings.cascades >= 3 {
+            s
+        } else {
+            let second = s[2] * 0.55;
+            [s[0] * 1.5, second, second]
+        }
     }
 
     /// Fits each cascade round its slice of the view, snapped to texels.
@@ -1002,9 +1318,10 @@ impl Renderer {
         let rot = look_at_mat4(Vec3::ZERO, -sun, Vec3::Y);
         let inv_rot = rot.inverse();
         let mut near = 0.1;
+        let splits = self.splits();
         let mut out = [(Mat4::IDENTITY, Mat4::IDENTITY, 0.0); CASCADES];
         for (i, slot) in out.iter_mut().enumerate() {
-            let far = self.look.splits[i];
+            let far = splits[i];
             // Bounding sphere of the slice: centred along the view axis.
             let h_far = far * tan;
             let w_far = h_far * aspect;
@@ -1040,12 +1357,53 @@ impl Renderer {
         occluders: &[Vec4],
     ) {
         self.look.sun_dir = self.look.sun_direction();
-        let look = &self.look;
         let aspect = self.width as f32 / self.height as f32;
+        // GPU timing: read what finished, pick a slot for this frame.
+        if let Some(timer) = &mut self.timer {
+            let _ = self.device.poll(wgpu::PollType::Poll);
+            if let Some(avg) = timer.collect() {
+                self.gpu_ms = avg;
+                self.gpu_fresh = true;
+                // At most every five seconds.
+                let now = crate::world::clock_ms();
+                if now - self.gpu_logged > 5000.0 {
+                    self.gpu_logged = now;
+                    log::info!(
+                        "gpu {:?} {}x{} scale {:.2}: {:.2} ms (shadows {:.2}, scene {:.2}, bloom {:.2}, post {:.2})",
+                        self.quality,
+                        self.width,
+                        self.height,
+                        self.scale,
+                        avg[0],
+                        avg[1],
+                        avg[2],
+                        avg[3],
+                        avg[4]
+                    );
+                }
+            }
+            timer.begin();
+        }
+        // The cascades redrawn this frame: every one in use, the farthest
+        // only every `far_shadow_every` frames (it shifts least on screen);
+        // a cascade not redrawn keeps the matrix it was drawn with.
+        let fresh = self.cascades(camera, aspect);
+        let used = self.settings.cascades.clamp(1, CASCADES);
+        let mut redraw = [false; CASCADES];
+        for (i, r) in redraw.iter_mut().enumerate().take(used) {
+            let far = used > 1 && i + 1 == used;
+            *r = !far || self.frames < 2 || self.frames % u64::from(self.settings.far_shadow_every.max(1)) == 0;
+            if *r {
+                self.cascade_state[i] = fresh[i];
+            }
+        }
+        self.frames += 1;
+        let cascades = self.cascade_state;
+        let splits = self.splits();
+        let look = &self.look;
         let view = look_at_mat4(camera.eye, camera.target, Vec3::Y);
         let projm = proj::perspective(camera.fov_y, aspect, 0.1, 3000.0);
         let view_proj = projm * view;
-        let cascades = self.cascades(camera, aspect);
         let inv_view = view.inverse();
         let right = inv_view.x_axis.truncate();
         let up = inv_view.y_axis.truncate();
@@ -1095,9 +1453,10 @@ impl Renderer {
             fog: look.haze.extend(look.haze_start).to_array(),
             fog2: [look.haze_density, look.height_fog, look.height_falloff, look.mie_g],
             shadow: [shadow_size, look.shadow_softness, look.air_glow, look.storm],
-            splits: [look.splits[0], look.splits[1], look.splits[2], 0.0],
-            texels: [texel(cascades[0].2), texel(cascades[1].2), texel(cascades[2].2), 0.0],
-            ranges: [2.0 * cascades[0].2 + SHADOW_BACK, 2.0 * cascades[1].2 + SHADOW_BACK, 2.0 * cascades[2].2 + SHADOW_BACK, 0.0],
+            splits: [splits[0], splits[1], splits[2], used as f32],
+            texels: [texel(cascades[0].2), texel(cascades[1].2), texel(cascades[2].2), if self.settings.lite { 1.0 } else { 0.0 }],
+            // w: the blue sky's gain, so it reads the same at any exposure.
+            ranges: [2.0 * cascades[0].2 + SHADOW_BACK, 2.0 * cascades[1].2 + SHADOW_BACK, 2.0 * cascades[2].2 + SHADOW_BACK, look.sky_gain / look.exposure.max(0.05)],
             misc: [occluders.len().min(MAX_OCCLUDERS) as f32, lights.len().min(MAX_LIGHTS) as f32, look.rim, look.spec],
             occluders: occ,
             light_pos,
@@ -1107,12 +1466,21 @@ impl Renderer {
         for (i, (buf, _)) in self.cascade_binds.iter().enumerate() {
             self.queue.write_buffer(buf, 0, bytemuck::bytes_of(&cascades[i].0.to_cols_array_2d()));
         }
+        // The tonemap draws at the render scale into the LDR target when
+        // FXAA follows (which then upscales), else straight to the output.
+        let (iw, ih) = scaled(self.width, self.height, self.scale);
+        let (pw, ph) = if self.fxaa.is_some() { (iw, ih) } else { (self.width, self.height) };
+        let encode = self.encode_srgb || self.fxaa.is_some();
         let post = [
-            Vec4::new(look.exposure, look.vignette, if self.encode_srgb { 1.0 } else { 0.0 }, look.curve as f32),
+            Vec4::new(look.exposure, look.vignette, if encode { 1.0 } else { 0.0 }, look.curve as f32),
             look.warmth.extend(look.saturation),
-            Vec4::new(look.bloom, look.contrast, 1.0 / self.width as f32, 1.0 / self.height as f32),
+            Vec4::new(look.bloom, look.contrast, 1.0 / pw as f32, 1.0 / ph as f32),
         ];
         self.queue.write_buffer(&self.post_uniform, 0, bytemuck::cast_slice(&post));
+        if let Some(f) = &self.fxaa {
+            let u = [1.0 / iw as f32, 1.0 / ih as f32, if self.encode_srgb { 0.0 } else { 1.0 }, 0.0, 1.0 / self.width as f32, 1.0 / self.height as f32, 0.0, 0.0];
+            self.queue.write_buffer(&f.uniform, 0, bytemuck::cast_slice(&u));
+        }
 
         // Cull per view, sort by mesh, pack all views into one buffer.
         let cull_start = crate::world::clock_ms();
@@ -1122,6 +1490,7 @@ impl Renderer {
         let planes = frustum_planes(view_proj);
         // Pixels per metre at unit distance, for the on-screen size test.
         let focal = self.height as f32 * 0.5 / (camera.fov_y * 0.5).tan();
+        let (min_screen, shadow_lod) = (self.settings.min_screen_radius, self.settings.shadow_lod);
         let eye = camera.eye;
         let statics = &self.statics;
         let total = statics.len() + moving.len();
@@ -1131,6 +1500,10 @@ impl Renderer {
         let mut visible: Vec<(MeshId, u32)> = Vec::with_capacity(total);
         for view in 0..=CASCADES {
             visible.clear();
+            if view > 0 && !redraw[view - 1] {
+                batches.push(Vec::new());
+                continue;
+            }
             let light = (view > 0).then(|| (cascades[view - 1].1, cascades[view - 1].2));
             let inside = |c: Vec3, r: f32| -> bool {
                 match light {
@@ -1146,7 +1519,7 @@ impl Renderer {
                 let d = c.distance(eye);
                 // The camera skips what is tiny on screen; shadows skip
                 // small casters far from the eye.
-                let big_enough = if light.is_none() { r * focal >= MIN_SCREEN_RADIUS * d } else { r * SHADOW_LOD >= d };
+                let big_enough = if light.is_none() { r * focal >= min_screen * d } else { r * shadow_lod >= d };
                 big_enough && inside(c, r)
             };
             for &(c, r, start, end) in &self.static_cells {
@@ -1193,7 +1566,11 @@ impl Renderer {
 
         let t_upload = crate::world::clock_ms();
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
+        let timer = self.timer.as_ref();
         for (i, layer) in self.shadow_layers.iter().enumerate() {
+            if !redraw[i] {
+                continue;
+            }
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow pass"),
                 color_attachments: &[],
@@ -1202,6 +1579,7 @@ impl Renderer {
                     depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Store }),
                     stencil_ops: None,
                 }),
+                timestamp_writes: if i == 0 { timer.and_then(|t| t.writes(Some(0), None)) } else { None },
                 ..Default::default()
             });
             pass.set_pipeline(&self.shadow_pipeline);
@@ -1222,6 +1600,7 @@ impl Renderer {
                     depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Discard }),
                     stencil_ops: None,
                 }),
+                timestamp_writes: timer.and_then(|t| t.writes(Some(1), Some(2))),
                 ..Default::default()
             });
             pass.set_bind_group(0, &self.scene_bind, &[]);
@@ -1245,24 +1624,48 @@ impl Renderer {
                 pass.draw(0..6, 0..sprites.len() as u32);
             }
         }
-        self.bloom.record(&self.queue, &mut encoder, self.look.bloom_threshold, 0.6);
+        self.bloom.record(&self.queue, &mut encoder, self.look.bloom_threshold, 0.5, self.look.exposure, self.look.bloom_scatter);
+        let fxaa = self.fxaa.as_ref().zip(self.targets.fxaa_bind.as_ref()).zip(self.targets.ldr.as_ref());
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("post pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: output,
+                    view: fxaa.map_or(output, |(_, ldr)| ldr),
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store },
                 })],
+                timestamp_writes: timer.and_then(|t| t.writes(Some(3), if fxaa.is_some() { None } else { Some(4) })),
                 ..Default::default()
             });
             pass.set_pipeline(&self.post_pipeline);
             pass.set_bind_group(0, &self.targets.post_bind, &[]);
             pass.draw(0..3, 0..1);
         }
+        if let Some(((f, bind), _)) = fxaa {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("fxaa pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: output,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store },
+                })],
+                timestamp_writes: timer.and_then(|t| t.writes(None, Some(4))),
+                ..Default::default()
+            });
+            pass.set_pipeline(&f.pipeline);
+            pass.set_bind_group(0, bind, &[]);
+            pass.draw(0..3, 0..1);
+        }
+        if let Some(t) = timer {
+            t.resolve(&mut encoder);
+        }
         let t_encode = crate::world::clock_ms();
         self.queue.submit(std::iter::once(encoder.finish()));
+        if let Some(t) = &mut self.timer {
+            t.after_submit();
+        }
         let t_end = crate::world::clock_ms();
         self.phase_ms = [t_upload - cull_start - self.cull_ms, t_encode - t_upload, t_end - t_encode];
     }
@@ -1292,7 +1695,8 @@ fn scaled(w: u32, h: u32, scale: f32) -> (u32, u32) {
     (((w as f32 * scale).round() as u32).max(1), ((h as f32 * scale).round() as u32).max(1))
 }
 
-fn make_targets(device: &wgpu::Device, post_layout: &wgpu::BindGroupLayout, post_uniform: &wgpu::Buffer, bloom: &mut Bloom, width: u32, height: u32, msaa: u32) -> Targets {
+#[allow(clippy::too_many_arguments)]
+fn make_targets(device: &wgpu::Device, post_layout: &wgpu::BindGroupLayout, post_uniform: &wgpu::Buffer, bloom: &mut Bloom, width: u32, height: u32, msaa: u32, fxaa: Option<&FxaaPass>) -> Targets {
     let make = |label, format, samples, usage| {
         device
             .create_texture(&wgpu::TextureDescriptor {
@@ -1321,7 +1725,19 @@ fn make_targets(device: &wgpu::Device, post_layout: &wgpu::BindGroupLayout, post
             wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::Sampler(bloom.sampler()) },
         ],
     });
-    Targets { msaa_color, depth, hdr, post_bind }
+    let ldr = fxaa.map(|_| make("ldr", LDR_FORMAT, 1, wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING));
+    let fxaa_bind = fxaa.zip(ldr.as_ref()).map(|(f, view)| {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fxaa bind"),
+            layout: &f.layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: f.uniform.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(view) },
+                wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(bloom.sampler()) },
+            ],
+        })
+    });
+    Targets { msaa_color, depth, hdr, post_bind, ldr, fxaa_bind }
 }
 
 /// Requests a device with WebGPU-portable limits.
@@ -1332,11 +1748,252 @@ pub async fn request_device(adapter: &wgpu::Adapter) -> anyhow::Result<(wgpu::De
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor {
             label: Some("tansk device"),
-            required_features: wgpu::Features::empty(),
+            // GPU timing where offered (WebGPU's `timestamp-query`).
+            required_features: adapter.features() & wgpu::Features::TIMESTAMP_QUERY,
             required_limits: limits,
             ..Default::default()
         })
         .await
         .map_err(|e| anyhow::anyhow!("requesting a wgpu device: {e}"))?;
     Ok((device, queue))
+}
+
+#[cfg(test)]
+mod look_calib {
+    //! Exposure calibration: every time of day on both maps, plus the storm,
+    //! rendered to `TANSK_LOOK_DIR` (default `docs/shots/look`). Run with
+    //! `cargo test -p arena-client --release -- --ignored shots_look`, then
+    //! check the luminance histograms against the references. `gpu_bench`
+    //! times each preset at 1080p with timestamp queries (where supported).
+    use super::*;
+    use crate::world::{paint_for, RenderWorld, WorldRenderer};
+    use arena_core::{Map, MapId, Sim};
+
+    fn device() -> (wgpu::Device, wgpu::Queue) {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor { backends: wgpu::Backends::PRIMARY, ..wgpu::InstanceDescriptor::new_without_display_handle() });
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions { power_preference: wgpu::PowerPreference::HighPerformance, ..Default::default() })).expect("adapter");
+        pollster::block_on(request_device(&adapter)).expect("device")
+    }
+
+    /// A practice match on `map` played `seconds`, effects fed for the last
+    /// stretch; the camera behind a live tank, or at `eye` looking at `look`.
+    fn scene(wr: &mut WorldRenderer, map: MapId, seconds: f32, view: Option<(Vec3, Vec3)>) -> RenderWorld {
+        let seed = 7;
+        let (mut sim, _) = Sim::practice_on(map, seed, 7, 0.7);
+        wr.set_map(&Map::by_id(map, seed));
+        let mut world = RenderWorld::default();
+        let ticks = (seconds * 60.0) as u32;
+        for tick in 0..ticks {
+            sim.step();
+            let ev = sim.drain_events();
+            if tick + 600 > ticks {
+                world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                world.time = tick as f32 * arena_core::DT;
+                let (eye, at) = view.unwrap_or_else(|| {
+                    let t = world.tanks.iter().find(|t| t.alive).map(|t| (t.pos, t.rot)).unwrap_or((Vec3::ZERO, glam::Quat::IDENTITY));
+                    let fwd = t.1 * Vec3::X;
+                    (t.0 - fwd * 10.0 + Vec3::Y * 4.0, t.0 + fwd * 25.0 + Vec3::Y * 1.5)
+                });
+                world.camera = Some(Camera::look(eye, at, 58.0));
+                for e in &ev {
+                    wr.event(e, eye);
+                }
+                wr.fx.update(arena_core::DT, &world);
+            }
+        }
+        world.dt = 0.0;
+        world
+    }
+
+    fn save(wr: &mut WorldRenderer, world: &RenderWorld, w: u32, h: u32, path: &str) {
+        let format = wgpu::TextureFormat::Rgba8Unorm;
+        let r = &wr.renderer;
+        let texture = r.device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&Default::default());
+        // A few frames, so every-other-frame work (far shadows) is settled.
+        for _ in 0..3 {
+            wr.draw(&view, world);
+        }
+        let r = &wr.renderer;
+        let padded = (w * 4).div_ceil(256) * 256;
+        let buffer = r.device.create_buffer(&wgpu::BufferDescriptor { label: None, size: (padded * h) as u64, usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ, mapped_at_creation: false });
+        let mut enc = r.device.create_command_encoder(&Default::default());
+        enc.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo { texture: &texture, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+            wgpu::TexelCopyBufferInfo { buffer: &buffer, layout: wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(padded), rows_per_image: Some(h) } },
+            wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        );
+        r.queue.submit([enc.finish()]);
+        buffer.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+        r.device.poll(wgpu::PollType::wait_indefinitely()).expect("poll");
+        let mapped = buffer.slice(..).get_mapped_range().expect("mapped");
+        let mut px = Vec::with_capacity((w * h * 4) as usize);
+        for row in 0..h as usize {
+            px.extend_from_slice(&mapped[row * padded as usize..row * padded as usize + (w * 4) as usize]);
+        }
+        image::save_buffer(path, &px, w, h, image::ExtendedColorType::Rgba8).expect("save");
+    }
+
+    /// The FXAA shader parses and validates (the others are checked in
+    /// `world::shots::shaders_validate`).
+    #[test]
+    fn fxaa_validates() {
+        use wgpu::naga;
+        let src = include_str!("shaders/fxaa.wgsl");
+        let module = naga::front::wgsl::parse_str(src).unwrap_or_else(|e| panic!("fxaa: {}", e.emit_to_string(src)));
+        naga::valid::Validator::new(naga::valid::ValidationFlags::all(), naga::valid::Capabilities::empty()).validate(&module).expect("fxaa validates");
+    }
+
+    /// Medium is the 60 FPS preset: no MSAA, post AA, the far cascade
+    /// every other frame, a render scale below one.
+    #[test]
+    fn presets_scale_down() {
+        let (h, m, l) = (Quality::High.settings(), Quality::Medium.settings(), Quality::Low.settings());
+        assert!(m.fxaa && m.msaa == 1 && m.far_shadow_every > 1 && m.render_scale < 1.0);
+        assert!(l.fxaa && l.lite && l.cascades == 2);
+        assert!(h.bloom_levels > m.bloom_levels && m.bloom_levels > l.bloom_levels);
+        assert!(l.min_scale <= m.min_scale && m.min_scale <= h.min_scale);
+        assert!(h.fxaa && h.msaa == 1 && Quality::Ultra.settings().msaa == 4);
+    }
+
+    type View = (&'static str, MapId, f32, Option<(Vec3, Vec3)>);
+    const VIEWS: [View; 4] = [
+        ("sink-play", MapId::Sink, 30.0, None),
+        ("sink-wide", MapId::Sink, 30.0, Some((Vec3::new(-60.0, 26.0, 70.0), Vec3::new(10.0, 0.0, 0.0)))),
+        ("refinery-play", MapId::Refinery, 30.0, None),
+        ("refinery-farm", MapId::Refinery, 30.0, Some((Vec3::new(95.0, 30.0, -40.0), Vec3::new(180.0, 4.0, 40.0)))),
+    ];
+
+    /// The presets as they were before the 60 FPS pass (4x MSAA on Medium
+    /// and High, three cascades every frame, six bloom levels), for
+    /// `gpu_bench`'s before/after.
+    fn legacy(q: Quality) -> QualitySettings {
+        let mut s = q.settings();
+        s.cascades = 3;
+        s.far_shadow_every = 1;
+        s.fxaa = false;
+        s.bloom_levels = 6;
+        s.lite = false;
+        s.min_screen_radius = 1.5;
+        s.shadow_lod = 80.0;
+        match q {
+            Quality::Low => (s.shadow_size, s.msaa, s.render_scale) = (1024, 1, 0.75),
+            Quality::Medium => (s.shadow_size, s.msaa, s.render_scale) = (2048, 4, 0.9),
+            Quality::High | Quality::Ultra => (s.shadow_size, s.msaa, s.render_scale) = (2048, 4, 1.0),
+        }
+        s
+    }
+
+    /// Frame cost per preset at 1080p, the old preset settings against the
+    /// new: `cargo test -p arena-client --release -- --ignored gpu_bench
+    /// --nocapture`. The figure is throughput (wall ms per frame with frames
+    /// in flight, so the GPU stays busy and clocked up; it is the GPU's time
+    /// whenever the GPU is the bottleneck); the pass split comes from
+    /// timestamp queries on frames drawn one at a time.
+    #[test]
+    #[ignore]
+    fn gpu_bench() {
+        let (w, h) = (1920, 1080);
+        let (device, queue) = device();
+        println!("BENCH adapter: {} ({:?})", device.adapter_info().name, device.adapter_info().backend);
+        let format = wgpu::TextureFormat::Rgba8Unorm;
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&Default::default());
+        let wait = |wr: &WorldRenderer| wr.renderer.device.poll(wgpu::PollType::wait_indefinitely()).expect("poll");
+        for (map, name) in [(MapId::Sink, "sink"), (MapId::Refinery, "refinery")] {
+            let mut worlds = Vec::new();
+            for q in [Quality::High, Quality::Medium, Quality::Low] {
+                for (label, settings) in [("before", legacy(q)), ("after", q.settings())] {
+                    let mut wr = WorldRenderer::new(Renderer::with_settings(device.clone(), queue.clone(), format, w, h, q, settings));
+                    let world = scene(&mut wr, map, 20.0, None);
+                    worlds.push((q, label, wr, world));
+                }
+            }
+            // Two rounds over every configuration: the first warms the GPU up.
+            for round in 0..2 {
+                for (q, label, wr, world) in worlds.iter_mut() {
+                    for frame in 0..200 {
+                        wr.draw(&view, world);
+                        if frame % 8 == 7 {
+                            wait(wr);
+                        }
+                    }
+                    wait(wr);
+                    let frames = 600;
+                    let start = std::time::Instant::now();
+                    for frame in 0..frames {
+                        wr.draw(&view, world);
+                        if frame % 8 == 7 {
+                            wait(wr);
+                        }
+                    }
+                    wait(wr);
+                    let ms = start.elapsed().as_secs_f64() * 1000.0 / frames as f64;
+                    // One at a time for the split (a new average every 60).
+                    for _ in 0..130 {
+                        wr.draw(&view, world);
+                        wait(wr);
+                    }
+                    let g = wr.renderer.gpu_ms;
+                    if round == 1 {
+                        println!(
+                            "BENCH {name:9} {q:?}/{label:6} scale {:.2}: {ms:.2} ms/frame | serial gpu {:.2} ms (shadows {:.2}, scene {:.2}, bloom {:.2}, post {:.2})",
+                            wr.renderer.render_scale(),
+                            g[0],
+                            g[1],
+                            g[2],
+                            g[3],
+                            g[4]
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn shots_look() {
+        let dir = std::env::var("TANSK_LOOK_DIR").unwrap_or_else(|_| format!("{}/../../docs/shots/look", env!("CARGO_MANIFEST_DIR")));
+        std::fs::create_dir_all(&dir).expect("dir");
+        let quality = match std::env::var("TANSK_LOOK_QUALITY").as_deref() {
+            Ok("low") => Quality::Low,
+            Ok("medium") => Quality::Medium,
+            Ok("ultra") => Quality::Ultra,
+            _ => Quality::High,
+        };
+        let (w, h) = (1600, 900);
+        let (device, queue) = device();
+        for (name, map, seconds, view) in VIEWS {
+            let mut wr = WorldRenderer::new(Renderer::with_quality(device.clone(), queue.clone(), wgpu::TextureFormat::Rgba8Unorm, w, h, quality));
+            let world = scene(&mut wr, map, seconds, view);
+            for (tod, t) in [("golden", TimeOfDay::GoldenHour), ("dusk", TimeOfDay::Dusk), ("noon", TimeOfDay::Noon)] {
+                wr.renderer.look = Look::preset(t);
+                save(&mut wr, &world, w, h, &format!("{dir}/{name}-{tod}.png"));
+            }
+            if view.is_none() {
+                wr.renderer.look = Look::preset(TimeOfDay::GoldenHour);
+                wr.renderer.set_storm(0.75);
+                save(&mut wr, &world, w, h, &format!("{dir}/{name}-storm.png"));
+            }
+        }
+    }
 }

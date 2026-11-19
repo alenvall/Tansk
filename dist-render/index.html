@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TANSK 2026</title>
+  
+<script type="module">
+import init, * as bindings from '/arena-client-150c8e57f887db96.js';
+const wasm = await init({ module_or_path: '/arena-client-150c8e57f887db96_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+  
+  <style>
+    html, body { margin: 0; height: 100%; background: #1d1612; overflow: hidden; }
+    #tansk-canvas { display: block; width: 100vw; height: 100vh; }
+    #tansk-message {
+      display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
+      font: 600 18px/1.5 system-ui, sans-serif; color: #fff4e6; text-align: center; padding: 24px;
+      background: radial-gradient(circle at 50% 40%, #ff8a2b 0%, #b84a12 60%, #3a1806 100%);
+    }
+    #tansk-message strong { display: block; font-size: 32px; letter-spacing: 0.04em; }
+  </style>
+<link rel="modulepreload" href="/arena-client-150c8e57f887db96.js" crossorigin="anonymous" integrity="sha384-vJ8hHWa8spxdXSlUk5RZDlWk71SLe3edyoqNLI1z3sBEvQQhJ9uDcO+f2EBF/3Zw"><link rel="preload" href="/arena-client-150c8e57f887db96_bg.wasm" crossorigin="anonymous" integrity="sha384-5Rh3OkI0dC8khp0fDsPrsHtdk567PHbvazD0lsxuP7H/QISFt/MPMPMVd40bBExi" as="fetch" type="application/wasm"></head>
+<body>
+  <canvas id="tansk-canvas"></canvas>
+  <div id="tansk-message"></div>
+  <script>
+    // Shown by the wasm module too, but this catches the case where it never
+    // gets that far (no WebGPU at all), before any wasm is downloaded.
+    if (!('gpu' in navigator)) {
+      const m = document.getElementById('tansk-message');
+      m.style.display = 'flex';
+      m.innerHTML = '<div><strong>TANSK needs WebGPU</strong>' +
+        'This browser does not expose WebGPU (navigator.gpu is missing).<br>' +
+        'Try a current Chrome, Edge, Safari or Firefox.</div>';
+    }
+  </script>
+</body>
+</html>

@@ -173,6 +173,21 @@ pub struct Sim {
     pub last_crew: Option<crate::lastcrew::LastCrewState>,
 }
 
+/// The phases of [`Sim::step_timed`], in order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StepPhase {
+    /// `bots::think` for every bot.
+    Bots,
+    /// Driving (suspension rays), aiming, firing, timers.
+    Tanks,
+    /// The rapier step.
+    Physics,
+    /// Shells in flight.
+    Projectiles,
+    /// Rams, pickups, props, world, storm and the mode rules.
+    World,
+}
+
 fn yaw_of(rot: Quat) -> f32 {
     let f = rot * Vec3::X;
     (-f.z).atan2(f.x)
@@ -449,6 +464,12 @@ impl Sim {
     // ----------------------------------------------------------------- step
 
     pub fn step(&mut self) {
+        self.step_timed(|_| {});
+    }
+
+    /// [`Sim::step`], calling `lap` as each phase ends (for profiling: the
+    /// `bench` example times them; `step` passes a no-op).
+    pub fn step_timed(&mut self, mut lap: impl FnMut(StepPhase)) {
         let dt = DT;
         self.tick += 1;
         let t = self.tuning.clone();
@@ -461,6 +482,7 @@ impl Sim {
                 self.players[i].brain = Some(brain);
             }
         }
+        lap(StepPhase::Bots);
         // Machines the sim drives on top of (or instead of) a brain.
         self.ship_inputs();
         self.convoy_drive(dt);
@@ -471,10 +493,13 @@ impl Sim {
             let b = self.phys.body(self.players[i].tank.body);
             pre_vel.push(b.linvel());
         }
+        lap(StepPhase::Tanks);
 
         self.phys.step();
+        lap(StepPhase::Physics);
 
         self.step_projectiles(&t, dt);
+        lap(StepPhase::Projectiles);
         self.check_rams(&t, &pre_vel, dt);
         self.step_pickups(&t, dt);
         self.update_sites(dt);
@@ -489,6 +514,7 @@ impl Sim {
         self.step_wellhead(dt);
         self.step_last_crew(dt);
         self.cull_raiders();
+        lap(StepPhase::World);
     }
 
     fn tick_player(&mut self, i: usize, t: &Tuning, dt: f32) {
@@ -1636,6 +1662,8 @@ impl Sim {
                 let tank = &p.tank;
                 let b = self.phys.body(tank.body);
                 let g = gun_stats(t, &tank.stats);
+                let ch = tank.chassis(t);
+                let wheel_ray = ch.suspension_travel + ch.wheel_radius;
                 TankSnap {
                     player: p.id,
                     alive: tank.alive,
@@ -1645,7 +1673,7 @@ impl Sim {
                     angvel: b.angvel().to_array(),
                     turret_yaw: tank.turret_yaw,
                     gun_pitch: tank.gun_pitch,
-                    wheels: tank.wheels.iter().map(|w| q01(w.compression / (tank.chassis(t).suspension_travel + tank.chassis(t).wheel_radius))).collect(),
+                    wheels: tank.wheels.iter().map(|w| q01(w.compression / wheel_ray)).collect(),
                     track_speed: tank.track_speed.map(|s| (s * 100.0).clamp(-32000.0, 32000.0) as i16),
                     health: tank.health.max(0.0).round() as u16,
                     max_health: tank.stats.max_health.round() as u16,

@@ -29,7 +29,14 @@ fn vs_sprite(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
     let c = corner(vi);
     let kind = u32(s.params.x + 0.5);
     let centre = s.pos_size.xyz;
-    let size = s.pos_size.w;
+    var size = s.pos_size.w;
+    // Overdraw limit for lit puffs and debris: they fade out inside 3..8 m
+    // (see fs_sprite), so one right at the lens is dropped (a zero-area
+    // quad) and a near one is kept from covering the screen.
+    if (kind == 0u || kind == 3u) {
+        let d = length(centre - globals.camera.xyz);
+        size = select(min(size, d * 0.7), 0.0, d < 2.5);
+    }
     var p = centre;
     if (kind == 2u || kind == 5u) {
         // A streak or cable: a quad stretched along its axis, facing the camera.

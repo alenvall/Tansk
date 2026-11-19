@@ -245,6 +245,7 @@ pub fn lineup(wr: &mut WorldRenderer) -> RenderWorld {
     // Tanks: base (orange), then one per non-gun part, guns on teal tanks.
     let mut world = RenderWorld::default();
     let make = |i: usize, x: f32, z: f32, colour: u32, gun: PartKind, parts: Vec<PartKind>| TankView {
+        class: Default::default(),
         player: i as PlayerId,
         colour,
         pos: Vec3::new(x, tank::HULL_Y - 0.15 + 0.15, z),

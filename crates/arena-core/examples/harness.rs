@@ -7,6 +7,8 @@
 //!     cargo run --release -p arena-core --example harness -- convoy [matches] [--map refinery]
 //!     cargo run --release -p arena-core --example harness -- wellhead [matches] [--map refinery]
 //!     cargo run --release -p arena-core --example harness -- lastcrew [matches] [--map refinery]
+//!     cargo run --release -p arena-core --example harness -- tiers [matches]   (Scrap Brawl, easy/normal/hard bots mixed)
+//!     cargo run --release -p arena-core --example harness -- team [matches]    (Team Brawl, 4v4)
 //!
 //! Prints fun metrics and flags "not fun" signals. Native only (uses threads).
 
@@ -42,6 +44,7 @@ struct MatchStats {
     top_kills: u32,
     throttling: u64,
     stuck: u64,
+    bm: BotMetrics,
 }
 
 fn loadout(t: &arena_core::tank::Tank) -> String {
@@ -49,9 +52,19 @@ fn loadout(t: &arena_core::tank::Tank) -> String {
 }
 
 fn run_match(seed: u64) -> MatchStats {
-    let mut sim = Sim::new(seed, Map::by_id(map_id(), seed), Tuning::default());
+    let mut sim = if TEAM.get().is_some() {
+        Sim::new_team_brawl(seed, Map::by_id(map_id(), seed), Tuning::default())
+    } else {
+        Sim::new(seed, Map::by_id(map_id(), seed), Tuning::default())
+    };
     for k in 0..8 {
-        sim.add_bot(arena_core::bots::BOT_NAMES[k], 0.3 + 0.1 * (k % 6) as f32);
+        let d = if TIERS.get().is_some() {
+            // `tiers`: the menu's three tiers, mixed (3 easy, 3 normal, 2 hard).
+            arena_core::bots::Difficulty::ALL[k % 3].value()
+        } else {
+            0.3 + 0.1 * (k % 6) as f32
+        };
+        sim.add_bot(arena_core::bots::BOT_NAMES[k], d);
     }
     // Chassis rotate independently of bot style so the chassis table compares like with like.
     let t = sim.tuning.clone();
@@ -66,7 +79,9 @@ fn run_match(seed: u64) -> MatchStats {
     let mut winner = None;
     for tick in 0..max_ticks {
         sim.step();
-        for e in sim.drain_events() {
+        let evs = sim.drain_events();
+        st.bm.events(&sim, &evs);
+        for e in evs {
             match e {
                 Event::Destroyed { killer: Some(_), weapon, .. } => {
                     st.kills += 1;
@@ -94,11 +109,18 @@ fn run_match(seed: u64) -> MatchStats {
                 Event::Launched { .. } => st.launches += 1,
                 Event::ContainerToppled { .. } => st.topples += 1,
                 Event::MatchEnded { winner: w } => winner = Some(w),
+                // Team Brawl: a crew of the winning team counts as a winner.
+                Event::TeamMatchEnded { team } => {
+                    winner = Some(team.and_then(|t| sim.players.iter().find(|p| p.team == Some(t)).map(|p| p.id)))
+                }
                 _ => {}
             }
         }
         if tick % 6 == 0 {
             stuck_sample(&sim, &mut st.throttling, &mut st.stuck);
+        }
+        if tick % 15 == 0 {
+            st.bm.sample(&sim);
         }
         if tick % 30 == 0 {
             for (k, p) in sim.players.iter().enumerate() {
@@ -124,10 +146,15 @@ fn run_match(seed: u64) -> MatchStats {
         }
     }
     st.top_kills = sim.players.iter().map(|p| p.kills).max().unwrap_or(0);
+    st.bm.finish(&sim);
     st
 }
 
 static MAP: std::sync::OnceLock<MapId> = std::sync::OnceLock::new();
+/// Set by `tiers`: Scrap Brawl with the three difficulty tiers mixed.
+static TIERS: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+/// Set by `team`: Team Brawl, 4v4.
+static TEAM: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn map_id() -> MapId {
     *MAP.get().unwrap_or(&MapId::Sink)
@@ -141,6 +168,16 @@ fn main() {
         args.drain(i..i + 2);
     }
     println!("map: {}", map_id().name());
+    if args.get(1).map(|s| s.as_str()) == Some("tiers") {
+        let _ = TIERS.set(());
+        args.remove(1);
+        println!("tiers: 3 easy, 3 normal, 2 hard bots per match");
+    }
+    if args.get(1).map(|s| s.as_str()) == Some("team") {
+        let _ = TEAM.set(());
+        args.remove(1);
+        println!("Team Brawl, 4v4 bots (the loadout and chassis win rates count one crew of the winning team)");
+    }
     if args.get(1).map(|s| s.as_str()) == Some("raid") {
         let n: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(40);
         raid_main(n);
@@ -202,6 +239,7 @@ fn main() {
     println!("upgrades per match {:.1}, parts shot off per minute {:.2}", mean(&|s| s.upgrades as f32), mean(&|s| s.parts_off as f32 / (s.seconds / 60.0).max(0.1)));
     let (th, stk): (u64, u64) = (r.iter().map(|s| s.throttling).sum(), r.iter().map(|s| s.stuck).sum());
     println!("stuck: {:.1}% of throttling time under 0.5 m/s", 100.0 * stk as f64 / th.max(1) as f64);
+    BotMetrics::sum(r.iter().map(|s| &s.bm)).print();
     println!("distance driven per tank per minute: {:.0} m", mean(&|s| s.distance / 8.0 / (s.seconds / 60.0).max(0.1)));
     println!("per match: combos {:.1}, rare parts {:.1}, air strikes {:.2} ({:.2} kills), cover destroyed {:.1}, hazard blasts {:.1}, launches {:.1}, containers toppled {:.1}",
         mean(&|s| s.combos as f32), mean(&|s| s.rares as f32), mean(&|s| s.strikes as f32), mean(&|s| s.strike_kills as f32),
@@ -286,6 +324,7 @@ struct RaidRun {
     peak_tier: u8,
     throttling: u64,
     stuck: u64,
+    bm: BotMetrics,
 }
 
 const RAID_WAVE_CAP: u32 = 15;
@@ -303,7 +342,9 @@ fn run_raid(seed: u64) -> RaidRun {
     let cap = 45 * 60 * 60;
     for tick in 0..cap {
         sim.step();
-        for e in sim.drain_events() {
+        let evs = sim.drain_events();
+        r.bm.events(&sim, &evs);
+        for e in evs {
             match e {
                 Event::Destroyed { victim, .. } => {
                     if sim.team_of(victim) == Some(0) {
@@ -319,6 +360,9 @@ fn run_raid(seed: u64) -> RaidRun {
         }
         if tick % 6 == 0 {
             stuck_sample(&sim, &mut r.throttling, &mut r.stuck);
+        }
+        if tick % 15 == 0 {
+            r.bm.sample(&sim);
         }
         for p in &sim.players {
             if p.team == Some(0) {
@@ -340,6 +384,7 @@ fn run_raid(seed: u64) -> RaidRun {
             break;
         }
     }
+    r.bm.finish(&sim);
     r
 }
 
@@ -404,6 +449,7 @@ fn raid_main(n: usize) {
     }
     let (th, stk): (u64, u64) = (r.iter().map(|s| s.throttling).sum(), r.iter().map(|s| s.stuck).sum());
     println!("stuck: {:.1}% of throttling time under 0.5 m/s (defenders and raiders)", 100.0 * stk as f64 / th.max(1) as f64);
+    BotMetrics::sum(r.iter().map(|s| &s.bm)).print();
     println!(
         "per run: {:.1} min, {:.0} raider kills, {:.1} defender deaths, peak defender tier {:.1}",
         r.iter().map(|x| x.minutes).sum::<f32>() / m,
@@ -569,6 +615,7 @@ struct ConvoyRun {
     minutes: f32,
     throttling: u64,
     stuck: u64,
+    bm: BotMetrics,
 }
 
 fn run_convoy(seed: u64) -> ConvoyRun {
@@ -582,7 +629,9 @@ fn run_convoy(seed: u64) -> ConvoyRun {
     let cap = ((ct.setup_time + ct.round_time + ct.intermission) * 2.0 * 60.0) as u32 + 600;
     for tick in 0..cap {
         sim.step();
-        for e in sim.drain_events() {
+        let evs = sim.drain_events();
+        r.bm.events(&sim, &evs);
+        for e in evs {
             match e {
                 Event::ConvoyRoundEnded { escort_team, delivered, distance, seconds, .. } => r.rounds.push((escort_team, delivered, distance, seconds)),
                 Event::ConvoyStopped { .. } => r.stops += 1,
@@ -596,11 +645,15 @@ fn run_convoy(seed: u64) -> ConvoyRun {
         if tick % 6 == 0 {
             stuck_sample(&sim, &mut r.throttling, &mut r.stuck);
         }
+        if tick % 15 == 0 {
+            r.bm.sample(&sim);
+        }
         if r.winner.is_some() {
             r.minutes = tick as f32 / 3600.0;
             break;
         }
     }
+    r.bm.finish(&sim);
     r
 }
 
@@ -672,6 +725,7 @@ fn convoy_main(n: usize) {
     );
     let (th, stk): (u64, u64) = (r.iter().map(|s| s.throttling).sum(), r.iter().map(|s| s.stuck).sum());
     println!("stuck: {:.1}% of throttling time under 0.5 m/s", 100.0 * stk as f64 / th.max(1) as f64);
+    BotMetrics::sum(r.iter().map(|s| &s.bm)).print();
     if !(0.4..=0.6).contains(&rate) {
         println!("NOT-FUN FLAG: escorts deliver {:.0}% of rounds (aim 40-60%)", 100.0 * rate);
     } else {
@@ -752,6 +806,7 @@ struct WellheadRun {
     by_target: bool,
     throttling: u64,
     stuck: u64,
+    bm: BotMetrics,
 }
 
 const COMEBACK: f32 = 50.0;
@@ -767,7 +822,9 @@ fn run_wellhead(seed: u64) -> WellheadRun {
     let mut held_ticks = 0u64;
     for tick in 0..cap {
         sim.step();
-        for e in sim.drain_events() {
+        let evs = sim.drain_events();
+        r.bm.events(&sim, &evs);
+        for e in evs {
             match e {
                 Event::WellCaptured { .. } => {
                     r.captures += 1;
@@ -789,6 +846,9 @@ fn run_wellhead(seed: u64) -> WellheadRun {
         if tick % 6 == 0 {
             stuck_sample(&sim, &mut r.throttling, &mut r.stuck);
         }
+        if tick % 15 == 0 {
+            r.bm.sample(&sim);
+        }
         if r.winner.is_some() {
             r.minutes = tick as f32 / 3600.0;
             let f = sim.wellhead.as_ref().unwrap().fuel;
@@ -802,6 +862,7 @@ fn run_wellhead(seed: u64) -> WellheadRun {
             break;
         }
     }
+    r.bm.finish(&sim);
     r
 }
 
@@ -844,6 +905,7 @@ fn wellhead_main(n: usize) {
     println!("final tanks (winner-loser): {:.0} - {:.0}", avg(&|x| x.fuel[0].max(x.fuel[1]) as f32), avg(&|x| x.fuel[0].min(x.fuel[1]) as f32));
     let (th, stk): (u64, u64) = (r.iter().map(|s| s.throttling).sum(), r.iter().map(|s| s.stuck).sum());
     println!("stuck: {:.1}% of throttling time under 0.5 m/s", 100.0 * stk as f64 / th.max(1) as f64);
+    BotMetrics::sum(r.iter().map(|s| &s.bm)).print();
     let mut flags = Vec::new();
     let len = avg(&|x| x.minutes);
     if !(3.0..=8.5).contains(&len) {
@@ -876,6 +938,7 @@ struct LastCrewRun {
     weapons: BTreeMap<String, u32>,
     throttling: u64,
     stuck: u64,
+    bm: BotMetrics,
 }
 
 fn run_last_crew(seed: u64) -> LastCrewRun {
@@ -889,7 +952,9 @@ fn run_last_crew(seed: u64) -> LastCrewRun {
     for tick in 0..cap {
         sim.step();
         let s = tick as f32 / 60.0;
-        for e in sim.drain_events() {
+        let evs = sim.drain_events();
+        r.bm.events(&sim, &evs);
+        for e in evs {
             match e {
                 Event::Eliminated { .. } => r.outs.push(s),
                 Event::Destroyed { weapon, .. } => *r.weapons.entry(format!("{weapon:?}")).or_default() += 1,
@@ -906,6 +971,9 @@ fn run_last_crew(seed: u64) -> LastCrewRun {
         if tick % 6 == 0 {
             stuck_sample(&sim, &mut r.throttling, &mut r.stuck);
         }
+        if tick % 15 == 0 {
+            r.bm.sample(&sim);
+        }
         if let Some(w) = ended {
             r.minutes = s / 60.0;
             if let Some(p) = w.and_then(|w| sim.players.iter().find(|p| p.id == w)) {
@@ -918,6 +986,7 @@ fn run_last_crew(seed: u64) -> LastCrewRun {
     let lc = sim.last_crew.as_ref().unwrap();
     r.kills = lc.kills.clone();
     r.storm_deaths = lc.storm_deaths;
+    r.bm.finish(&sim);
     r
 }
 
@@ -980,6 +1049,7 @@ fn last_crew_main(n: usize) {
     println!("first crew out at {:.0} s on average", firsts.iter().sum::<f32>() / firsts.len().max(1) as f32);
     let (th, stk): (u64, u64) = (r.iter().map(|s| s.throttling).sum(), r.iter().map(|s| s.stuck).sum());
     println!("stuck: {:.1}% of throttling time under 0.5 m/s", 100.0 * stk as f64 / th.max(1) as f64);
+    BotMetrics::sum(r.iter().map(|s| &s.bm)).print();
     let mut flags = Vec::new();
     if !(3.5..=6.5).contains(&len) {
         flags.push(format!("matches run {len:.1} min (aim about 5)"));
@@ -992,4 +1062,188 @@ fn last_crew_main(n: usize) {
         flags.push("winners stay small (scrap too thin)".into());
     }
     println!("NOT-FUN FLAGS: {}", if flags.is_empty() { "none".to_string() } else { flags.join("; ") });
+}
+
+// ------------------------------------------------------------ bot behaviour
+
+/// How the bots fight: cover while reloading, flanking, engagement range,
+/// and how the difficulty tiers compare.
+#[derive(Default, Clone)]
+struct BotMetrics {
+    /// Bot samples reloading with a live target within 150 m, and those of them
+    /// whose hull centre the target can't see (behind tall cover, or hull-down).
+    reload_samples: u64,
+    reload_hidden: u64,
+    /// Main-gun shots by bots with a live target, and their summed distance to it.
+    shots: u64,
+    shot_dist: f64,
+    flanks: u64,
+    bot_minutes: f64,
+    /// Summed `BotStats` of every bot.
+    covers: u64,
+    cover_misses: u64,
+    peeks: u64,
+    ducks: u64,
+    evades: u64,
+    honks: u64,
+    alive_s: f64,
+    cover_s: f64,
+    fight_s: f64,
+    /// Per tier (easy, normal, hard): bots, kills, deaths, gun shots, gun hits.
+    tiers: [[u64; 5]; 3],
+    /// Per tier: bot-minutes, flanks, evades, seconds alive, seconds behind cover.
+    tier_beh: [[f64; 5]; 3],
+}
+
+/// Raiders (Raider Waves' enemy bots) aren't crews: leave them out.
+fn crew_bot(sim: &Sim, p: &arena_core::sim::Player) -> bool {
+    p.brain.is_some() && !(sim.raid.is_some() && p.team == Some(arena_core::raid::TEAM_RAIDERS))
+}
+
+fn tier_of(d: f32) -> usize {
+    arena_core::bots::Difficulty::of(d) as usize
+}
+
+impl BotMetrics {
+    fn events(&mut self, sim: &Sim, evs: &[Event]) {
+        for e in evs {
+            match e {
+                Event::Fired { player, weapon: Weapon::Gun(_), pos, .. } => {
+                    let Some(p) = sim.players.iter().find(|p| p.id == *player && crew_bot(sim, p)) else { continue };
+                    let Some(b) = &p.brain else { continue };
+                    self.tiers[tier_of(b.difficulty)][3] += 1;
+                    if let Some(q) = b.target().and_then(|t| sim.players.iter().find(|q| q.id == t)) {
+                        if q.tank.alive {
+                            self.shots += 1;
+                            self.shot_dist += sim.phys.body(q.tank.body).translation().distance(*pos) as f64;
+                        }
+                    }
+                }
+                Event::Hit { attacker: Some(a), weapon: Weapon::Gun(_), target, .. } if a != target => {
+                    if let Some(b) = sim.players.iter().find(|p| p.id == *a && crew_bot(sim, p)).and_then(|p| p.brain.as_ref()) {
+                        self.tiers[tier_of(b.difficulty)][4] += 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn sample(&mut self, sim: &Sim) {
+        for p in &sim.players {
+            let Some(b) = p.brain.as_ref().filter(|_| crew_bot(sim, p)) else { continue };
+            if !p.tank.alive || p.tank.reload < 0.3 || p.tank.vehicle != VehicleKind::Tank {
+                continue;
+            }
+            let Some(q) = b.target().and_then(|t| sim.players.iter().find(|q| q.id == t)) else { continue };
+            if !q.tank.alive {
+                continue;
+            }
+            let me = sim.phys.body(p.tank.body).translation();
+            let qhp = arena_core::tank::HullPose::of(&sim.phys, q.tank.body);
+            if qhp.pos.distance(me) > 150.0 {
+                continue;
+            }
+            self.reload_samples += 1;
+            if !sim.sight_clear(q.tank.eye(&qhp), me) {
+                self.reload_hidden += 1;
+            }
+        }
+    }
+
+    fn finish(&mut self, sim: &Sim) {
+        let minutes = sim.tick as f64 / 3600.0;
+        for p in &sim.players {
+            let Some(b) = p.brain.as_ref().filter(|_| crew_bot(sim, p)) else { continue };
+            self.flanks += b.flank_attempts() as u64;
+            self.bot_minutes += minutes;
+            let bs = b.stats();
+            self.covers += bs.covers as u64;
+            self.cover_misses += bs.cover_misses as u64;
+            self.peeks += bs.peeks as u64;
+            self.ducks += bs.ducks as u64;
+            self.evades += bs.evades as u64;
+            self.honks += bs.honks as u64;
+            self.alive_s += bs.alive_s as f64;
+            self.cover_s += bs.cover_s as f64;
+            self.fight_s += bs.fight_s as f64;
+            let tb = &mut self.tier_beh[tier_of(b.difficulty)];
+            tb[0] += minutes;
+            tb[1] += bs.flanks as f64;
+            tb[2] += bs.evades as f64;
+            tb[3] += bs.alive_s as f64;
+            tb[4] += bs.cover_s as f64;
+            let row = &mut self.tiers[tier_of(b.difficulty)];
+            row[0] += 1;
+            row[1] += p.kills as u64;
+            row[2] += p.deaths as u64;
+        }
+    }
+
+    fn sum<'a>(it: impl Iterator<Item = &'a BotMetrics>) -> BotMetrics {
+        let mut s = BotMetrics::default();
+        for m in it {
+            s.reload_samples += m.reload_samples;
+            s.reload_hidden += m.reload_hidden;
+            s.shots += m.shots;
+            s.shot_dist += m.shot_dist;
+            s.flanks += m.flanks;
+            s.bot_minutes += m.bot_minutes;
+            s.covers += m.covers;
+            s.cover_misses += m.cover_misses;
+            s.peeks += m.peeks;
+            s.ducks += m.ducks;
+            s.evades += m.evades;
+            s.honks += m.honks;
+            s.alive_s += m.alive_s;
+            s.cover_s += m.cover_s;
+            s.fight_s += m.fight_s;
+            for k in 0..3 {
+                for j in 0..5 {
+                    s.tiers[k][j] += m.tiers[k][j];
+                    s.tier_beh[k][j] += m.tier_beh[k][j];
+                }
+            }
+        }
+        s
+    }
+
+    fn print(&self) {
+        println!(
+            "BOT BEHAVIOUR: hidden from their target while reloading {:.0}% ({} samples); flank attempts {:.2} per bot-minute; mean engagement distance {:.0} m",
+            100.0 * self.reload_hidden as f64 / self.reload_samples.max(1) as f64,
+            self.reload_samples,
+            self.flanks as f64 / self.bot_minutes.max(1e-6),
+            self.shot_dist / self.shots.max(1) as f64
+        );
+        let per = |x: u64| x as f64 / self.bot_minutes.max(1e-6);
+        println!(
+            "  per bot-minute: took cover {:.2} (no cover found {:.2}), peeks {:.2}, ducked to reload {:.2}, turned on a flanker {:.2}, honks {:.2}; {:.0}% of alive time fighting, {:.0}% behind cover",
+            per(self.covers),
+            per(self.cover_misses),
+            per(self.peeks),
+            per(self.ducks),
+            per(self.evades),
+            per(self.honks),
+            100.0 * self.fight_s / self.alive_s.max(1e-6),
+            100.0 * self.cover_s / self.alive_s.max(1e-6)
+        );
+        for (k, name) in ["easy", "normal", "hard"].iter().enumerate() {
+            let r = self.tiers[k];
+            if r[0] == 0 {
+                continue;
+            }
+            println!(
+                "  tier {name:6}: {:4} bots, kills {:.2}, deaths {:.2}, gun shots {:.0} per bot-match, gun hits per shot {:.2}; flanks {:.2} and turned on flankers {:.2} per bot-minute, {:.0}% of alive time behind cover",
+                r[0],
+                r[1] as f64 / r[0] as f64,
+                r[2] as f64 / r[0] as f64,
+                r[3] as f64 / r[0] as f64,
+                r[4] as f64 / r[3].max(1) as f64,
+                self.tier_beh[k][1] / self.tier_beh[k][0].max(1e-6),
+                self.tier_beh[k][2] / self.tier_beh[k][0].max(1e-6),
+                100.0 * self.tier_beh[k][4] / self.tier_beh[k][3].max(1e-6)
+            );
+        }
+    }
 }

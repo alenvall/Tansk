@@ -165,6 +165,64 @@ impl Physics {
             .map(|(h, hit)| (h, hit.time_of_impact, hit.normal))
     }
 
+    /// Many short parallel rays from points close together (a tank's
+    /// suspension): one broad-phase query for all of them, then each ray is
+    /// tested against the few colliders found. Hits are what [`Physics::ray`]
+    /// returns for each ray, at a fraction of the cost. `out[k]` is the hit of
+    /// `origins[k]`.
+    pub fn rays_near(
+        &self,
+        origins: &[Vec3],
+        dir: Vec3,
+        max: f32,
+        groups: InteractionGroups,
+        exclude: Option<RigidBodyHandle>,
+        out: &mut [Option<(ColliderHandle, f32, Vec3)>],
+    ) {
+        const CAP: usize = 24;
+        let mut filter = QueryFilter::new().groups(groups);
+        if let Some(b) = exclude {
+            filter = filter.exclude_rigid_body(b);
+        }
+        let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+        for o in origins {
+            let e = *o + dir * max;
+            lo = lo.min(o.min(e));
+            hi = hi.max(o.max(e));
+        }
+        let aabb = Aabb::new(lo - Vec3::splat(0.01), hi + Vec3::splat(0.01));
+        let qp = self.world.query_pipeline_with_filter(filter);
+        let mut found: [Option<&Collider>; CAP] = [None; CAP];
+        let mut handles = [ColliderHandle::invalid(); CAP];
+        let mut n = 0;
+        for (h, c) in qp.intersect_aabb_conservative(aabb) {
+            if n == CAP {
+                // Crowded: fall back to one full query per ray.
+                for (o, slot) in origins.iter().zip(out.iter_mut()) {
+                    *slot = self.ray(*o, dir, max, groups, exclude);
+                }
+                return;
+            }
+            found[n] = Some(c);
+            handles[n] = h;
+            n += 1;
+        }
+        for (o, slot) in origins.iter().zip(out.iter_mut()) {
+            let ray = Ray::new(*o, dir);
+            let mut best: Option<(ColliderHandle, f32, Vec3)> = None;
+            for k in 0..n {
+                let c = found[k].unwrap();
+                let lim = best.map_or(max, |b| b.1);
+                if let Some(hit) = c.shape().cast_ray_and_get_normal(c.position(), &ray, lim, true) {
+                    if best.is_none_or(|b| hit.time_of_impact < b.1) {
+                        best = Some((handles[k], hit.time_of_impact, hit.normal));
+                    }
+                }
+            }
+            *slot = best;
+        }
+    }
+
     /// Is the segment a→b clear of static geometry?
     pub fn clear_line(&self, a: Vec3, b: Vec3) -> bool {
         let d = b - a;

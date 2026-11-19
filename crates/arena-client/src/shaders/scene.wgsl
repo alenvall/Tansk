@@ -12,7 +12,7 @@
 //
 // Materials (per vertex, `params.y`): 0 painted steel, 1 sand, 2 bare
 // steel, 3 rubber (treads), 4 rock, 5 team paint, 6 wood, 7 matte,
-// 8 hazard stripes, 9 asphalt, 10 glow. `params.x` roughness, `params.z`
+// 8 hazard stripes, 9 asphalt, 10 glow, 11 ground decal. `params.x` roughness, `params.z`
 // wear. Per instance `iparams`: x/z tread scroll (left/right), y hit flash.
 
 const PI: f32 = 3.14159265;
@@ -37,11 +37,11 @@ struct Globals {
     fog2: vec4<f32>,
     // x map resolution, y PCF spacing (texels), z sun glow strength in the air, w sandstorm 0..1
     shadow: vec4<f32>,
-    // cascade far distances (xyz)
+    // cascade far distances (xyz), w cascades in use (2 or 3)
     splits: vec4<f32>,
-    // texel world size per cascade (xyz)
+    // texel world size per cascade (xyz), w lite shading (Low preset) 1 / 0
     texels: vec4<f32>,
-    // light depth range per cascade (xyz)
+    // light depth range per cascade (xyz), w blue sky gain
     ranges: vec4<f32>,
     // x occluder count, y light count, z rim strength, w spec strength
     misc: vec4<f32>,
@@ -292,10 +292,13 @@ fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec
     let drift = blotch3(lp * 0.45);
     let stipple = mix(0.5, noise3(lp * 9.0), detail);
     var paint = base * (0.88 + 0.22 * drift) * (0.96 + 0.08 * stipple);
-    paint = mix(paint, vec3<f32>(luminance(paint)) * 1.12, (0.1 + 0.15 * max(n.y, 0.0)) * (1.0 - 0.5 * camo));
+    // Sun-bleached a little (less for team paint, which must read), and
+    // team paint a touch more saturated so it separates from the sand.
+    paint = mix(paint, vec3<f32>(luminance(paint)) * 1.12, (0.1 + 0.15 * max(n.y, 0.0)) * (1.0 - 0.8 * camo));
+    paint = max(mix(vec3<f32>(luminance(paint)), paint, 1.0 + 0.2 * camo), vec3<f32>(0.0));
     // Two-tone camo: a darker, browner shade in big soft blobs.
     let blob = paint_edge(blotch3(lp * 0.55 + vec3<f32>(13.0, 3.0, 7.0)), 0.52, 0.07);
-    paint = mix(paint, paint * vec3<f32>(0.58, 0.46, 0.4), blob * camo);
+    paint = mix(paint, paint * vec3<f32>(0.58, 0.46, 0.4), blob * camo * 0.35);
 
     let streak = noise3(vec3<f32>(lp.x * 3.0 + lp.z * 3.0, lp.y * 0.35, 0.0)) * (1.0 - abs(n.y));
     let rust_field = blotch3(lp * 0.8 + 5.0) + 0.25 * wear - 0.2 + 0.2 * streak + 0.15 * (1.0 - smoothstep(0.0, 1.2, world_y));
@@ -312,7 +315,7 @@ fn painted_steel(base: vec3<f32>, wear: f32, lp: vec3<f32>, world_y: f32, n: vec
     // Dust: caked low down and on the running gear, settled on top faces.
     let dust_top = paint_edge(n.y + 0.35 * blotch3(lp * 0.6 + 2.0), 0.88, 0.08);
     let dust_low = 1.0 - smoothstep(0.2, 1.1, world_y + 0.35 * noise3(lp * 2.0));
-    let dust = max(dust_top * mix(0.55, 0.3, camo), dust_low * 0.6);
+    let dust = max(dust_top * mix(0.55, 0.15, camo), dust_low * 0.6);
     c = mix(c, DUST, dust);
 
     // Battle damage: paint knocked off to bare metal, then soot and
@@ -393,8 +396,8 @@ fn asphalt(lp: vec3<f32>, world: vec3<f32>, fw: vec3<f32>) -> Surface {
 // The TF2 warp: shade goes cool and a little violet, the terminator warm
 // and saturated, the lit side golden.
 fn warp(x: f32) -> vec3<f32> {
-    let cool = vec3<f32>(0.30, 0.22, 0.28);
-    let terminator = vec3<f32>(0.66, 0.36, 0.22);
+    let cool = vec3<f32>(0.20, 0.15, 0.20);
+    let terminator = vec3<f32>(0.64, 0.43, 0.29);
     let lit = vec3<f32>(1.0, 0.94, 0.84);
     let a = mix(cool, terminator, smoothstep(0.08, 0.42, x));
     return mix(a, lit, smoothstep(0.36, 0.85, x));
@@ -423,11 +426,21 @@ fn cascade_visibility(layer: i32, world: vec3<f32>, n: vec3<f32>, n_dot_l: f32, 
     let uv = vec2<f32>(0.5 * ndc.x + 0.5, 0.5 - 0.5 * ndc.y);
     let spacing = globals.shadow.y;
     let bias = texel * (1.0 + 2.0 * spacing) * (0.4 + tangent) / range;
+    let z = ndc.z - bias;
+    if (globals.texels.w > 0.5) {
+        // Lite: four bilinear-compare taps (a 4x4 texel footprint).
+        let o = 0.5 * spacing / res;
+        let sum = textureSampleCompareLevel(shadow_map, shadow_sampler, uv + vec2<f32>(-o, -o), layer, z)
+            + textureSampleCompareLevel(shadow_map, shadow_sampler, uv + vec2<f32>(o, -o), layer, z)
+            + textureSampleCompareLevel(shadow_map, shadow_sampler, uv + vec2<f32>(-o, o), layer, z)
+            + textureSampleCompareLevel(shadow_map, shadow_sampler, uv + vec2<f32>(o, o), layer, z);
+        return vec2<f32>(sum * 0.25, 1.0);
+    }
     var sum = 0.0;
     for (var y = -1; y <= 1; y = y + 1) {
         for (var x = -1; x <= 1; x = x + 1) {
             let o = vec2<f32>(f32(x), f32(y)) * spacing / res;
-            sum = sum + textureSampleCompareLevel(shadow_map, shadow_sampler, uv + o, layer, ndc.z - bias);
+            sum = sum + textureSampleCompareLevel(shadow_map, shadow_sampler, uv + o, layer, z);
         }
     }
     return vec2<f32>(sum / 9.0, 1.0);
@@ -435,6 +448,12 @@ fn cascade_visibility(layer: i32, world: vec3<f32>, n: vec3<f32>, n_dot_l: f32, 
 
 fn sun_visibility(world: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
     let d = length(world - globals.camera.xyz);
+    // Past the last cascade in use: lit, and no taps spent.
+    let last = select(globals.splits.z, globals.splits.y, globals.splits.w < 2.5);
+    let storm = 0.65 * globals.shadow.w;
+    if (d >= last) {
+        return 1.0;
+    }
     var layer = 2;
     var texel = globals.texels.z;
     var range = globals.ranges.z;
@@ -448,15 +467,16 @@ fn sun_visibility(world: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
         range = globals.ranges.y;
     }
     let v = cascade_visibility(layer, world, n, n_dot_l, texel, range);
-    // Fade out past the last cascade.
-    let fade = smoothstep(globals.splits.z * 0.85, globals.splits.z, d);
+    // Fade out towards the end of the last cascade.
+    let fade = smoothstep(last * 0.85, last, d);
     // A sandstorm washes the shadows out.
-    return mix(mix(v.x, 1.0, fade), 1.0, 0.65 * globals.shadow.w);
+    return mix(mix(v.x, 1.0, fade), 1.0, storm);
 }
 
 fn sphere_occlusion(p: vec3<f32>, n: vec3<f32>) -> f32 {
     var vis = 1.0;
-    let count = min(u32(globals.misc.x), MAX_OCCLUDERS);
+    // Lite shading skips it (a loop over every occluder per ground pixel).
+    let count = select(min(u32(globals.misc.x), MAX_OCCLUDERS), 0u, globals.texels.w > 0.5);
     for (var i = 0u; i < count; i = i + 1u) {
         let s = globals.occluders[i];
         let di = s.xyz - p;
@@ -494,11 +514,12 @@ fn hg(cos_theta: f32, g: f32) -> f32 {
 // The sky: deep blue overhead, a bright warm horizon, the sun's halo.
 fn sky_at(dir: vec3<f32>) -> vec3<f32> {
     let horizon = globals.fog.rgb;
-    let mid = vec3<f32>(0.26, 0.46, 0.88);
-    let zenith = vec3<f32>(0.05, 0.13, 0.44);
+    let gain = globals.ranges.w;
+    let mid = vec3<f32>(0.26, 0.46, 0.88) * gain;
+    let zenith = vec3<f32>(0.06, 0.15, 0.48) * gain;
     let y = max(dir.y, 0.0);
-    var c = mix(horizon, mid, smoothstep(0.0, 0.14, pow(y, 0.8)));
-    c = mix(c, zenith, smoothstep(0.12, 0.75, y));
+    var c = mix(horizon, mid, smoothstep(0.0, 0.16, pow(y, 0.8)));
+    c = mix(c, zenith, smoothstep(0.15, 0.9, y));
     c = select(c, horizon, dir.y < 0.0);
     let toward = max(dot(dir, globals.sun_dir.xyz), 0.0);
     // A modest halo round the sun, warmer near the horizon.
@@ -552,7 +573,8 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
     // How big a pixel is here (m): fine detail fades out as it shrinks
     // below a pixel or two, so far props read as clean paint, not sparkle.
     let px = max(max(fw.x, fw.y), fw.z);
-    let detail = 1.0 - smoothstep(0.012, 0.045, px);
+    let lite = globals.texels.w > 0.5;
+    let detail = select(1.0 - smoothstep(0.012, 0.045, px), 0.0, lite);
     // Bevel bands (the edge-wear signal) go sub-pixel a little further out.
     edge = edge * (1.0 - smoothstep(0.02, 0.06, px));
     // Painted corrugated sheets (params.x = 100 front / 300 back + wave
@@ -617,6 +639,12 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
     } else if (material == 9u) {
         s = asphalt(in.local, in.world, fw);
         ao = sphere_occlusion(in.world, n);
+    } else if (material == 11u) {
+        // Ground decal (tracks, packed ground, oil): the vertex colour lit
+        // like the sand it lies on (sand's rim and specular), so marks
+        // do not read paler than the ground from a low camera.
+        s = surface(in.color * (0.94 + 0.12 * noise2(in.world.xz * 0.7)), 4.0, 0.03, 0.2);
+        ao = sphere_occlusion(in.world, n);
     } else if (material == 10u) {
         s = surface(in.color * 0.2, 4.0, 0.0, 0.0);
         s.emissive = in.color;
@@ -634,10 +662,13 @@ fn fs_main(in: VertexOut, @builtin(front_facing) front: bool) -> @location(0) ve
         c = mix(c, SAND * 0.85, dust);
         s = surface(c, 6.0, 0.1 * groove, 0.5);
     }
-    if (material != 1u && material != 4u && material != 9u) {
+    if (material != 1u && material != 4u && material != 9u && material != 11u) {
         ao = mix(0.6, 1.0, smoothstep(0.0, 1.2, height));
     }
     n = normalize(n + s.bump);
+    // No painted surface is whiter than white paint (about 0.75): brighter
+    // albedos (white tanks, trailers) blow out in the sun.
+    s.albedo = min(s.albedo, vec3<f32>(0.75));
 
     let n_dot_l = dot(n, l);
     let shadow = sun_visibility(in.world, n, n_dot_l);

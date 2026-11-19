@@ -21,6 +21,7 @@ impl Dom {
     pub fn var(&mut self, _id: &str, _name: &str, _value: &str) {}
     pub fn hidden(&mut self, _id: &str, _hidden: bool) {}
     pub fn retrigger(&mut self, _id: &str, _name: &str, _value: &str) {}
+    pub fn flush(&mut self) {}
     pub fn set_value(&mut self, _id: &str, _value: &str) {}
     pub fn set_range(&mut self, _setting: &str, _value: &str, _shown: &str) {}
     pub fn check(&mut self, _selector: &str) {}

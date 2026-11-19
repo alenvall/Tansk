@@ -584,7 +584,9 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-convoy-state { min-width: 6.5rem; text-align: right; font-size: .85rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--fuel); white-space: nowrap; }
 .t-convoy[data-state="contested"] .t-convoy-state, .t-convoy[data-state="burning"] .t-convoy-state { color: #ff6a4a; animation: t-blink 1s steps(1) infinite; }
 .t-convoy[data-state="repairing"] .t-convoy-state { color: #7fe08a; }
-.t-convoy-mark { position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; pointer-events: none; filter: drop-shadow(0 2px 0 #000); }
+/* World markers keep to a safe band: under the clock and objective plates,
+   over the dash panels and the radio. Keep in step with `ui::MARK_SAFE_*`. */
+.t-convoy-mark { position: absolute; left: var(--x); top: clamp(16rem, var(--y), calc(100% - 18.5rem)); transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; pointer-events: none; filter: drop-shadow(0 2px 0 #000); }
 .t-convoy-mark svg { width: 1.9rem; height: 1.9rem; fill: #ffd24a; stroke: #1c140e; stroke-width: 2.5; animation: t-mark-bob 1.2s ease-in-out infinite; }
 .t-convoy-mark[data-role="attack"] svg { fill: #ff6a4a; }
 .t-convoy-mark b { font-family: 'Black Ops One', sans-serif; font-weight: 400; font-size: .9rem; letter-spacing: .06em; color: #fff6d8; text-shadow: 0 1px 0 #000; }
@@ -617,7 +619,7 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-well[data-contested="1"] .t-well-ring { box-shadow: inset 0 0 0 .16rem #1c140e, 0 0 0 .14rem #ff6a4a; animation: t-blink .6s steps(1) infinite; }
 .t-wells-state { grid-column: 1 / -1; text-align: center; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--fuel); min-height: .9rem; }
 .t-wells-state[data-x="1"] { color: #ff6a4a; animation: t-blink 1s steps(1) infinite; }
-.t-wellmark { --mk: #d8c8a8; position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: .15rem; pointer-events: none; filter: drop-shadow(0 2px 0 #000); }
+.t-wellmark { --mk: #d8c8a8; position: absolute; left: var(--x); top: clamp(16rem, var(--y), calc(100% - 18.5rem)); transform: translate(-50%, calc(-100% + var(--stack, 0) * 3.9rem)); display: flex; flex-direction: column; align-items: center; gap: .15rem; pointer-events: none; filter: drop-shadow(0 2px 0 #000); }
 .t-wellmark[data-owner="a"] { --mk: #f07a3e; }
 .t-wellmark[data-owner="b"] { --mk: #4fbcb3; }
 .t-wellmark svg { width: 2.1rem; height: 2.1rem; padding: .22rem; box-sizing: border-box; border-radius: 50%; color: #f6ead2; background: radial-gradient(circle at 40% 35%, #4d4640, #241f1b); box-shadow: inset 0 0 0 .2rem var(--mk), 0 0 0 .12rem #1c140e; animation: t-mark-bob 1.6s ease-in-out infinite; }

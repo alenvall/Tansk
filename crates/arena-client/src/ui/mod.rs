@@ -126,6 +126,8 @@ pub struct ScoreRow {
 
 #[derive(Clone, Debug)]
 pub struct EndRow {
+    /// Shown as #rank; tied rows share one.
+    pub rank: u32,
     pub name: String,
     pub team: Team,
     pub kills: u32,
@@ -327,6 +329,10 @@ pub enum UiAction {
     /// End screen buttons.
     Again,
     Leave,
+    /// A button that only moves between title panels (for its click sound).
+    Click,
+    /// A press that can't go through (Join with no code): the error sound.
+    Refused,
 }
 
 // --------------------------------------------------------------------- ui
@@ -338,7 +344,7 @@ const CHAT_MAX: usize = 7;
 #[derive(Default)]
 struct Cache {
     wells: Option<WellheadHud>,
-    well_marks: [Option<(i32, i32, i32, u8, bool)>; 3],
+    well_marks: [Option<(i32, i32, i32, u8, bool, i8)>; 3],
     last_crew: Option<LastCrewHud>,
     out: Option<(u8, String)>,
     convoy: Option<(bool, i32, i32, String)>,
@@ -387,6 +393,52 @@ fn roman(tier: u8) -> &'static str {
         4 => "IV",
         _ => "V",
     }
+}
+
+/// The safe band for world markers, in rem (see `.t-wellmark` in the CSS):
+/// a marker's foot sits at least this far from the top and the bottom.
+pub const MARK_SAFE_TOP: f32 = 16.0;
+pub const MARK_SAFE_BOTTOM: f32 = 18.5;
+/// A marker's box, rem (icon over a "[A] 321 m" label), and one stack step.
+const MARK_W: f32 = 6.0;
+const MARK_H: f32 = 3.9;
+
+/// Stack steps for screen markers (0..1 positions, `None` = hidden) so none
+/// overlaps another: 0 stays, +n moves n rows down, -n up. Rows go toward the
+/// middle of the safe band. Mirrors the CSS rem sizing (`html { font-size }`).
+pub fn stack_marks(pts: &[Option<(f32, f32)>], screen: (u32, u32)) -> Vec<i8> {
+    let (w, h) = (screen.0.max(1) as f32, screen.1.max(1) as f32);
+    let rem = (0.0148 * h).min(0.0084 * w).clamp(12.0, 22.0);
+    let (rx, ry) = (rem / w, rem / h);
+    let (top, bottom) = (MARK_SAFE_TOP * ry, (1.0 - MARK_SAFE_BOTTOM * ry).max(MARK_SAFE_TOP * ry));
+    let mut out = vec![0i8; pts.len()];
+    // Lowest on screen first: it keeps its place, the others step away.
+    let mut order: Vec<usize> = (0..pts.len()).filter(|&i| pts[i].is_some()).collect();
+    order.sort_by(|&a, &b| pts[b].unwrap().1.total_cmp(&pts[a].unwrap().1));
+    let mut placed: Vec<(f32, f32)> = Vec::new();
+    for i in order {
+        let (x, y) = pts[i].unwrap();
+        let y = y.clamp(top, bottom);
+        let dir: i8 = if y < (top + bottom) * 0.5 { 1 } else { -1 };
+        let mut s = 0i8;
+        while s.abs() < 4 && placed.iter().any(|&(px, py)| (px - x).abs() < MARK_W * rx && (py - (y + f32::from(s) * MARK_H * ry)).abs() < MARK_H * ry * 0.95) {
+            s += dir;
+        }
+        placed.push((x, y + f32::from(s) * MARK_H * ry));
+        out[i] = s;
+    }
+    out
+}
+
+/// Standard competition ranks for rows already sorted best first: equal
+/// keys share a rank and the next rank skips (1, 1, 3).
+pub fn shared_ranks<K: PartialEq>(keys: &[K]) -> Vec<u32> {
+    let mut ranks = Vec::with_capacity(keys.len());
+    for (i, k) in keys.iter().enumerate() {
+        let r = if i > 0 && keys[i - 1] == *k { ranks[i - 1] } else { i as u32 + 1 };
+        ranks.push(r);
+    }
+    ranks
 }
 
 /// 1st, 2nd, 3rd, 4th...
@@ -470,6 +522,7 @@ impl Ui {
 
     /// Housekeeping: expire kill feed rows and the radio line. Call once a frame.
     pub fn tick(&mut self, dt: f32) {
+        self.dom.flush();
         for age in self.feed_ages.iter_mut() {
             *age += dt;
         }
@@ -1043,15 +1096,20 @@ impl Ui {
 
     /// Wellhead: each derrick's marker (screen x, y in 0..1, distance m, owner,
     /// contested), `None` when it's behind you.
-    pub fn set_well_marks(&mut self, marks: &[Option<(f32, f32, f32, Option<Team>, bool)>]) {
+    /// `screen`: the canvas size in pixels, to tell when markers overlap
+    /// (overlapping ones stack into rows).
+    pub fn set_well_marks(&mut self, marks: &[Option<(f32, f32, f32, Option<Team>, bool)>], screen: (u32, u32)) {
         let owner = |t: Option<Team>| match t {
             Some(Team::Rustbacks) => 1u8,
             Some(Team::DustSaints) => 2,
             _ => 0,
         };
+        let pts: Vec<Option<(f32, f32)>> = marks.iter().map(|m| m.map(|(x, y, ..)| (x, y))).collect();
+        let stacks = stack_marks(&pts, screen);
         for k in 0..3 {
             let m = marks.get(k).copied().flatten();
-            let key = m.map(|(x, y, d, o, c)| (q(x), q(y), d as i32, owner(o), c));
+            let s = stacks.get(k).copied().unwrap_or(0);
+            let key = m.map(|(x, y, d, o, c)| (q(x), q(y), d as i32, owner(o), c, s));
             if self.cache.well_marks[k] == key {
                 continue;
             }
@@ -1064,6 +1122,7 @@ impl Ui {
                     }
                     self.dom.var(&id, "--x", &format!("{:.2}%", x * 100.0));
                     self.dom.var(&id, "--y", &format!("{:.2}%", y * 100.0));
+                    self.dom.var(&id, "--stack", &s.to_string());
                     self.dom.attr(&id, "data-owner", ["none", "a", "b"][owner(o) as usize]);
                     self.dom.attr(&id, "data-contested", if c { "1" } else { "0" });
                     self.dom.text(&format!("{id}-d"), &format!("{} m", d.round() as i32));
@@ -1114,13 +1173,13 @@ impl Ui {
     /// the middle; `rows` are the cards under it, best first.
     pub fn show_endscreen(&mut self, title: &str, winner: Option<Team>, rows: &[EndRow], note: &str) {
         let mut h = String::new();
-        for (i, r) in rows.iter().enumerate() {
+        for r in rows {
             let _ = write!(
                 h,
                 "<div class=\"t-ec plate\" data-team=\"{}\"><div class=\"t-ec-rank\">#{}</div><div class=\"t-ec-name\">{}</div>\
                  <div class=\"t-ec-stat\"><span><b>{}</b> {}</span><span><b>{}</b> {}</span></div>{}</div>",
                 r.team.css(),
-                i + 1,
+                r.rank,
                 esc(&r.name),
                 r.kills,
                 if r.kills == 1 { "kill" } else { "kills" },
@@ -1153,6 +1212,16 @@ mod tests {
         assert_eq!(roman(2), "II");
         assert_eq!(esc("<a&\"b\">"), "&lt;a&amp;&quot;b&quot;&gt;");
         assert_eq!(q(1.7), 1000);
+        assert_eq!(shared_ranks(&[(2, 0), (1, 0), (1, 0), (0, 1)]), vec![1, 2, 2, 4]);
+        assert_eq!(shared_ranks(&[(1, 0), (1, 0)]), vec![1, 1]);
+        assert!(shared_ranks::<u8>(&[]).is_empty());
+        // Two derricks on top of each other: one steps a row; a far one stays.
+        let s = stack_marks(&[Some((0.5, 0.5)), Some((0.51, 0.5)), Some((0.1, 0.5)), None], (1280, 720));
+        assert_eq!(s[2], 0);
+        assert_eq!(s[0].abs() + s[1].abs(), 1);
+        // Near the top of the band they stack downward.
+        let s = stack_marks(&[Some((0.5, 0.0)), Some((0.5, 0.01))], (1280, 720));
+        assert!(s.iter().all(|&k| k >= 0) && s.contains(&1));
     }
 
     #[test]
@@ -1196,7 +1265,7 @@ mod mode_tests {
         };
         ui.set_wellhead(Some(&hud));
         assert_eq!(ui.cache.wells.as_ref(), Some(&hud));
-        ui.set_well_marks(&[Some((0.5, 0.4, 80.0, Some(Team::Rustbacks), false)), None, Some((0.9, 0.3, 200.0, None, true))]);
+        ui.set_well_marks(&[Some((0.5, 0.4, 80.0, Some(Team::Rustbacks), false)), None, Some((0.9, 0.3, 200.0, None, true))], (1280, 720));
         assert!(ui.cache.well_marks[0].is_some() && ui.cache.well_marks[1].is_none());
         ui.set_wellhead(None);
         assert!(ui.cache.wells.is_none() && ui.cache.well_marks.iter().all(|m| m.is_none()));

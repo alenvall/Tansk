@@ -1,5 +1,11 @@
-//! TANSK 2026 audio. Every sound is synthesized: no audio files.
+//! TANSK 2026 audio. Sound effects, engines and weather are real recordings
+//! where a good free one exists ([`samples`]: Ogg files fetched lazily in the
+//! browser); every sound also has a synthesized version, which plays until its
+//! recording has loaded, if it fails to, and for the sounds that stay
+//! synthesized. The music is procedural.
 //!
+//! - [`samples`]: which recordings back each sound, the engine and weather
+//!   loops, their load order, and the engine crossfade.
 //! - [`sounds`]: the one-shots ([`SoundId`]), rendered to f32 buffers at
 //!   48 kHz with seeded variation ([`render`]), pre-rendered into a [`Bank`].
 //! - [`engine`]: the continuous tank engine voice ([`TankEngine`]), driven by
@@ -22,6 +28,7 @@ pub mod engine;
 pub mod layers;
 pub mod mixer;
 pub mod music;
+pub mod samples;
 mod horns;
 mod raid;
 pub mod sounds;

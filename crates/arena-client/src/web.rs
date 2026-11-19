@@ -5,7 +5,8 @@
 //! skips the pointer lock (the mouse always turns the camera; Esc pauses),
 //! `&name=X` sets the crew name. Practice test hooks: `&matchtime=45`,
 //! `&raidfast=1`, `&scrap=1` (Powder until a branch offer), `&flare=1`,
-//! `&wave=N`, `&boss=1|weak`, `&landship=1`; `autoplay=team|convoy|host-convoy` for Team Brawl / Convoy,
+//! `&wave=N`, `&boss=1|weak`, `&landship=1`; `autoplay=team|host-team|convoy|host-convoy` for Team Brawl / Convoy,
+//! `autoplay=host-brawl` hosts a private Scrap Brawl,
 //! `autoplay=wellhead|host-wellhead` and `autoplay=lastcrew|host-lastcrew` for Wellhead / Last Crew Rolling
 //! (`&wallfast=1` makes Last Crew practice's wall close at once and fast).
 //! `&quality=low|medium|high|ultra` forces a preset (profiling); `&hints=reset`
@@ -93,6 +94,8 @@ struct State {
     cpu: (f64, f64, f64, f64),
     /// Sums of `WorldRenderer::prof` since the last report.
     prof: [f64; 8],
+    /// The last few frames over 8 ms CPU, with their breakdown (`data-spike`).
+    spikes: std::collections::VecDeque<String>,
 }
 
 type Shared = Rc<RefCell<State>>;
@@ -199,6 +202,8 @@ async fn run() -> Result<()> {
         Some("team") => game.start_practice_team(),
         Some("convoy") => game.start_practice_convoy(),
         Some("host-convoy") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::Convoy, map: game.practice_map }),
+        Some("host-brawl") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::ScrapBrawl, map: game.practice_map }),
+        Some("host-team") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::TeamBrawl, map: game.practice_map }),
         Some("host-raid") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::RaiderWaves, map: game.practice_map }),
         Some("wellhead") => game.start_practice_wellhead(),
         Some("host-wellhead") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::Wellhead, map: game.practice_map }),
@@ -222,6 +227,7 @@ async fn run() -> Result<()> {
         frames: 0,
         cpu: (0.0, 0.0, 0.0, 0.0),
         prof: [0.0; 8],
+        spikes: std::collections::VecDeque::new(),
     }));
     install_input(&state)?;
     fetch_rooms(rooms);
@@ -261,6 +267,8 @@ fn install_input(state: &Shared) -> Result<()> {
     let document = window.document().ok_or_else(|| anyhow!("no document"))?;
     let win: web_sys::EventTarget = window.clone().into();
     let doc: web_sys::EventTarget = document.clone().into();
+    // Poll the pads only once one has shown up (see `read_pad`).
+    listen(&win, "gamepadconnected", |_| PAD_SEEN.with(|p| p.set(true)))?;
 
     let s = state.clone();
     listen(&win, "keydown", move |ev| {
@@ -376,12 +384,16 @@ fn install_input(state: &Shared) -> Result<()> {
             let Ok(Some(b)) = t.closest("[data-pause]") else { return };
             match b.get_attribute("data-pause").as_deref() {
                 Some("resume") => {
+                    st.game.ui_click();
                     st.game.resume();
                     if !st.game.free_mouse {
                         st.canvas.request_pointer_lock();
                     }
                 }
-                Some("leave") => st.game.leave(),
+                Some("leave") => {
+                    st.game.ui_click();
+                    st.game.leave();
+                }
                 _ => {}
             }
         })?;
@@ -504,8 +516,18 @@ fn fetch_rooms(out: Rc<RefCell<Option<Vec<RoomRow>>>>) {
 
 // ---------------------------------------------------------------- gamepad
 
+thread_local! {
+    /// A `gamepadconnected` event has fired. Until then `read_pad` skips
+    /// `navigator.getGamepads()`, which on Windows Chrome can stall a frame
+    /// for 6-10 ms (measured with `data-spike`) even with no pad plugged in.
+    static PAD_SEEN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// The first connected standard-mapping gamepad, via `navigator.getGamepads()`.
 fn read_pad() -> Option<crate::game::Pad> {
+    if !PAD_SEEN.with(std::cell::Cell::get) {
+        return None;
+    }
     let nav = web_sys::window()?.navigator();
     let get = prop(&nav, "getGamepads").dyn_into::<js_sys::Function>().ok()?;
     let list = get.call0(&nav).ok()?;
@@ -572,6 +594,7 @@ fn frame(s: &mut State) {
         }
     }
 
+    let t_pre = now_ms();
     let world = s.game.frame(now / 1000.0, dt, &mut s.wr);
     let t_game = now_ms();
 
@@ -610,6 +633,39 @@ fn frame(s: &mut State) {
     let phases = s.wr.renderer.phase_ms;
     for (sum, v) in s.prof.iter_mut().zip(s.wr.prof.into_iter().chain([cull]).chain(phases)) {
         *sum += v;
+    }
+    // Hitches: which phase a slow frame spent its time in.
+    if total > 8.0 {
+        let p = s.wr.prof;
+        let line = format!(
+            "t={:.1} total={total:.1} game={:.1} web={:.1} net={:.1} g[pre={:.1} frame={:.1} post={:.1} cam={:.1} ev={:.1} snd={:.1} hud={:.1}] draw={:.1} present={:.1} fx={:.1} inst={:.1} sprites={:.1} render={:.1} cull={cull:.1} upload={:.1} encode={:.1} submit={:.1}",
+            (now - s.start) / 1000.0,
+            t_game - now,
+            t_pre - now,
+            s.game.prof_net_ms,
+            s.game.prof_game[0],
+            s.game.prof_game[5],
+            s.game.prof_game[6],
+            s.game.prof_game[1],
+            s.game.prof_game[2],
+            s.game.prof_game[3],
+            s.game.prof_game[4],
+            t_draw - t_game,
+            end - t_draw,
+            p[0],
+            p[1],
+            p[2],
+            p[3],
+            phases[0],
+            phases[1],
+            phases[2]
+        );
+        if s.spikes.len() == 5 {
+            s.spikes.pop_front();
+        }
+        s.spikes.push_back(line);
+        let all = s.spikes.iter().cloned().collect::<Vec<_>>().join(" | ");
+        let _ = s.canvas.set_attribute("data-spike", &all);
     }
     // For headless checks: frames drawn and what is on screen.
     s.frames += 1;

@@ -38,6 +38,8 @@ pub enum Material {
     Asphalt = 9,
     /// Self-lit: the colour is emitted (coils, lamps, glowing tips).
     Glow = 10,
+    /// Ground marks (tracks, packed earth, oil): sand's light response, vertex colour.
+    GroundDecal = 11,
 }
 
 /// What a surface is made of and how worn it is.

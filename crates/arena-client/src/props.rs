@@ -967,3 +967,229 @@ pub fn pillar(half: Vec3, pump: bool) -> MeshBuilder {
     }
     m
 }
+
+// ── Landmarks: a tall silhouette per place ───────────────────────────────
+// Whole-obstacle builders, in the obstacle frame (standing on y = 0).
+
+/// A four-legged lattice tower tapering from `base` (half width) at the
+/// foot to `top` at `height`: corner posts, girts and X-braces every
+/// `bay` metres from `first` up.
+#[allow(clippy::too_many_arguments)]
+fn lattice_tower(m: &mut MeshBuilder, base: f32, top: f32, height: f32, first: f32, bay: f32, post: f32, paint: Paint) {
+    let corner = |sx: f32, sz: f32, y: f32| {
+        let t = y / height;
+        let s = base * (1.0 - t) + top * t;
+        Vec3::new(sx * s, y, sz * s)
+    };
+    let corners = [(-1.0f32, -1.0f32), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)];
+    for (sx, sz) in corners {
+        octo_pipe(m, corner(sx, sz, 0.0), corner(sx, sz, height), post, paint);
+    }
+    let mut y = first;
+    while y < height - 0.5 {
+        let y1 = (y + bay).min(height);
+        for i in 0..4 {
+            let (ax, az) = corners[i];
+            let (bx, bz) = corners[(i + 1) % 4];
+            octo_pipe(m, corner(ax, az, y), corner(bx, bz, y), post * 0.5, paint);
+            octo_pipe(m, corner(ax, az, y), corner(bx, bz, y1), post * 0.35, paint);
+            octo_pipe(m, corner(bx, bz, y), corner(ax, az, y1), post * 0.35, paint);
+        }
+        y = y1;
+    }
+    for i in 0..4 {
+        let (ax, az) = corners[i];
+        let (bx, bz) = corners[(i + 1) % 4];
+        octo_pipe(m, corner(ax, az, height), corner(bx, bz, height), post * 0.6, paint);
+    }
+}
+
+/// A water tower from its leg and tank boxes (obstacle frame): four steel
+/// legs braced above tank height, a riveted tank in faded blue with a
+/// painted band, a cone roof, a catwalk with a rail and a ladder.
+pub fn water_tower(legs: &[(Vec3, Vec3)], tank: (Vec3, Vec3)) -> MeshBuilder {
+    let mut m = MeshBuilder::new();
+    let steel = Paint::painted(0x5c564e, 0.8);
+    let (tc, th) = tank;
+    let r = th.x.min(th.z);
+    let foot = tc.y - th.y;
+    for (c, h) in legs {
+        let a = Vec3::new(c.x, 0.0, c.z);
+        let b = Vec3::new(c.x * 0.8, foot, c.z * 0.8);
+        octo_pipe(&mut m, a, b, h.x * 0.6, steel);
+        m.bevel_box(Vec3::new(0.45, 0.2, 0.45), 0.04, 1, Paint::matte(0x9a948a), at(a + Vec3::Y * 0.1));
+    }
+    // Braces from 3.6 m up (tanks pass between the legs below).
+    let pts: Vec<Vec3> = legs.iter().map(|(c, _)| Vec3::new(c.x, 0.0, c.z)).collect();
+    let ring = [0usize, 2, 3, 1];
+    let mid = foot * 0.62 + 1.2;
+    for (y0, y1) in [(3.6f32, mid), (mid, foot)] {
+        for i in 0..4 {
+            let a = pts[ring[i]];
+            let b = pts[ring[(i + 1) % 4]];
+            let s0 = 1.0 - 0.2 * y0 / foot;
+            let s1 = 1.0 - 0.2 * y1 / foot;
+            let (a0, b0) = (Vec3::new(a.x * s0, y0, a.z * s0), Vec3::new(b.x * s0, y0, b.z * s0));
+            let (a1, b1) = (Vec3::new(a.x * s1, y1, a.z * s1), Vec3::new(b.x * s1, y1, b.z * s1));
+            octo_pipe(&mut m, a0, b0, 0.09, steel);
+            octo_pipe(&mut m, a0, b1, 0.06, steel);
+            octo_pipe(&mut m, b0, a1, 0.06, steel);
+        }
+    }
+    // The tank: a painted band, a seam, a rivet row.
+    let body = Paint::painted(0x6f9db0, 0.65);
+    let band = Paint::painted(0xc8402c, 0.6);
+    let hy = th.y * 0.8;
+    let y0 = foot + 0.6;
+    m.cylinder(r, hy, 0.12, 2, 20, body, at(Vec3::Y * (y0 + hy)));
+    m.cylinder(r + 0.03, 0.45, 0.04, 1, 20, band, at(Vec3::Y * (y0 + hy * 1.2)));
+    m.cylinder(r + 0.02, 0.06, 0.02, 1, 20, Paint::painted(0x4a5a60, 0.8), at(Vec3::Y * (y0 + hy * 0.6)));
+    for k in 0..24 {
+        let a = k as f32 / 24.0 * std::f32::consts::TAU;
+        let n = Vec3::new(a.cos(), 0.0, a.sin());
+        m.rivet(Vec3::Y * (y0 + hy * 0.6 + 0.1) + n * (r + 0.02), n, 0.05, Paint::steel(0x8a9aa0, 0.5));
+    }
+    // Floor plate under the tank and a cone roof with a vent.
+    m.cylinder(r * 0.98, 0.25, 0.06, 1, 20, steel, at(Vec3::Y * (y0 - 0.1)));
+    let top = y0 + 2.0 * hy;
+    let n = |x: f32, y: f32| Vec2::new(x, y).normalize();
+    m.lathe(&[(r + 0.15, top, n(0.5, 1.0)), (0.5, top + 1.6, n(0.5, 1.0)), (0.0, top + 1.7, Vec2::Y)], 20, true, Paint::painted(0x7e8a8a, 0.75), Mat4::IDENTITY);
+    m.cylinder(0.25, 0.3, 0.05, 1, 8, steel, at(Vec3::Y * (top + 1.9)));
+    // Catwalk and rail round the tank's foot.
+    m.cylinder(r + 0.9, 0.06, 0.02, 1, 20, Paint::steel(0x4a4642, 0.6), at(Vec3::Y * (y0 - 0.25)));
+    for k in 0..16 {
+        let a = k as f32 / 16.0 * std::f32::consts::TAU;
+        let p = Vec3::new(a.cos(), 0.0, a.sin()) * (r + 0.85);
+        m.bevel_box(Vec3::new(0.03, 0.5, 0.03), 0.01, 1, Paint::painted(0xd6a21e, 0.6), at(p + Vec3::Y * (y0 + 0.25)));
+    }
+    m.torus(r + 0.85, 0.035, 0.06, 24, Paint::painted(0xd6a21e, 0.6), at(Vec3::Y * (y0 + 0.75)));
+    // A ladder up the first leg.
+    let (c0, _) = legs[0];
+    let lad = Vec3::new(c0.x, 0.0, c0.z).normalize_or(Vec3::X);
+    for side in [-0.25f32, 0.25] {
+        let s = Vec3::new(-lad.z, 0.0, lad.x) * side;
+        octo_pipe(&mut m, Vec3::new(c0.x, 2.2, c0.z) + s + lad * 0.4, Vec3::new(c0.x * 0.8, foot, c0.z * 0.8) + s + lad * 0.4, 0.035, steel);
+    }
+    m
+}
+
+/// A radio mast over its box (obstacle frame): a tapering lattice in red
+/// and white aviation bands, dishes and panels, a whip, red lights.
+pub fn radio_mast(half: Vec3, centre: Vec3) -> MeshBuilder {
+    let mut m = MeshBuilder::new();
+    let height = centre.y + half.y;
+    let base = half.x.min(half.z) * 0.95;
+    let bands = 6;
+    let seg = height / bands as f32;
+    for k in 0..bands {
+        let paint = if k % 2 == 0 { Paint::painted(0xc83a26, 0.55) } else { Paint::painted(0xe8e2d4, 0.6) };
+        let y0 = k as f32 * seg;
+        let t0 = y0 / height;
+        let t1 = (y0 + seg) / height;
+        let b0 = base * (1.0 - t0) + 0.3 * t0;
+        let b1 = base * (1.0 - t1) + 0.3 * t1;
+        let mut part = MeshBuilder::new();
+        lattice_tower(&mut part, b0, b1, seg, 0.0, seg / 2.0, 0.08, paint);
+        part.transform_from(0, at(Vec3::Y * y0));
+        let first = m.vertices.len() as u32;
+        m.vertices.extend(part.vertices);
+        m.indices.extend(part.indices.iter().map(|i| i + first));
+    }
+    for (sx, sz) in [(-1.0f32, -1.0f32), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+        m.bevel_box(Vec3::new(0.3, 0.15, 0.3), 0.03, 1, Paint::matte(0x9a948a), at(Vec3::new(sx * base, 0.08, sz * base)));
+    }
+    // Dishes and panels high up, a whip and the aviation lights.
+    for (y, a, r) in [(height * 0.72, 0.4f32, 0.7f32), (height * 0.55, 2.6, 0.55)] {
+        let d = Vec3::new(a.cos(), 0.0, a.sin());
+        let p = Vec3::Y * y + d * 0.55;
+        let rot = Quat::from_rotation_arc(Vec3::Y, d);
+        m.lathe(&[(0.0, -0.1, -Vec2::Y), (r, 0.12, Vec2::new(-0.3, 1.0).normalize()), (r + 0.04, 0.18, Vec2::X)], 14, true, Paint::painted(0xd8d4c8, 0.5), Mat4::from_rotation_translation(rot, p));
+    }
+    for k in 0..3 {
+        let a = k as f32 * 2.1;
+        let d = Vec3::new(a.cos(), 0.0, a.sin());
+        m.bevel_box(Vec3::new(0.08, 0.6, 0.25), 0.02, 1, Paint::painted(0xd8d4c8, 0.6), Mat4::from_rotation_translation(Quat::from_rotation_y(-a), Vec3::Y * (height * 0.86) + d * 0.4));
+    }
+    octo_pipe(&mut m, Vec3::Y * height, Vec3::Y * (height + 3.0), 0.04, Paint::steel(0x4a4642, 0.5));
+    m.cylinder(0.16, 0.14, 0.06, 2, 10, Paint::glow(0xff2a10, 2.5), at(Vec3::Y * (height + 0.2)));
+    m.cylinder(0.12, 0.1, 0.05, 2, 10, Paint::glow(0xff2a10, 2.5), at(Vec3::Y * (height * 0.5)));
+    octo_pipe(&mut m, Vec3::new(0.2, 0.3, 0.0), Vec3::new(0.2, height * 0.72, 0.0), 0.05, Paint::rubber(0x1e1c1b));
+    m
+}
+
+/// A wind pump over its box (obstacle frame): a steel lattice tower, a
+/// many-bladed wheel facing +X with a tail vane, a pump rod down to a
+/// trough.
+pub fn windmill(half: Vec3, centre: Vec3) -> MeshBuilder {
+    let mut m = MeshBuilder::new();
+    let height = centre.y + half.y;
+    let steel = Paint::painted(0x6a5a4a, 0.85);
+    let base = half.x.min(half.z) * 0.95;
+    lattice_tower(&mut m, base, 0.35, height, 2.8, 2.6, 0.08, steel);
+    for (sx, sz) in [(-1.0f32, -1.0f32), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+        m.bevel_box(Vec3::new(0.25, 0.12, 0.25), 0.03, 1, Paint::matte(0x9a948a), at(Vec3::new(sx * base, 0.06, sz * base)));
+    }
+    // Platform, head, wheel, vane.
+    m.bevel_box(Vec3::new(0.7, 0.05, 0.7), 0.02, 1, Paint::with(Material::Wood, 0x7a5a3a, 0.8), at(Vec3::Y * (height - 0.3)));
+    let hub = Vec3::new(0.7, height + 0.6, 0.0);
+    m.bevel_box(Vec3::new(0.5, 0.22, 0.2), 0.05, 2, Paint::painted(0x4a4642, 0.6), at(Vec3::new(0.1, height + 0.6, 0.0)));
+    octo_pipe(&mut m, Vec3::Y * (height - 0.3), Vec3::Y * (height + 0.4), 0.12, steel);
+    let blades = 16;
+    let r = 2.4;
+    for k in 0..blades {
+        let a = k as f32 / blades as f32 * std::f32::consts::TAU;
+        // Each blade radial in the wheel's YZ plane, pitched about its own axis.
+        let radial = Quat::from_rotation_x(a);
+        let pitch = Quat::from_rotation_y(0.35);
+        let c = if k % 4 == 0 { 0xc83a26 } else { 0xd8d0bc };
+        m.bevel_box(Vec3::new(0.02, r * 0.32, 0.17), 0.01, 1, Paint::painted(c, 0.7), Mat4::from_rotation_translation(radial * pitch, hub + radial * Vec3::Y * r * 0.62));
+    }
+    let wheel = Mat4::from_rotation_translation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2), hub);
+    m.torus(r * 0.95, 0.03, 0.05, 24, steel, wheel);
+    m.torus(r * 0.32, 0.03, 0.05, 16, steel, wheel);
+    m.cylinder(0.18, 0.15, 0.05, 1, 10, Paint::painted(0x4a4642, 0.6), along_x(hub + Vec3::X * 0.1));
+    octo_pipe(&mut m, Vec3::new(-0.2, height + 0.6, 0.0), Vec3::new(-2.6, height + 0.6, 0.0), 0.05, steel);
+    m.bevel_box(Vec3::new(0.7, 0.55, 0.02), 0.02, 1, Paint::painted(0xd8d0bc, 0.7), at(Vec3::new(-2.8, height + 0.7, 0.0)));
+    // The pump rod and a trough beside the tower.
+    octo_pipe(&mut m, Vec3::Y * 0.4, Vec3::Y * (height - 0.3), 0.03, Paint::steel(0x8a857c, 0.5));
+    m.bevel_box(Vec3::new(1.1, 0.25, 0.4), 0.04, 1, Paint::painted(0x5e6a3a, 0.85), at(Vec3::new(0.2, 0.25, base + 1.2)));
+    m
+}
+
+/// A sand drift heaped against a wall: `len` along X, running out `depth`
+/// along +Z from `height` at the wall to nothing, its rim sunk a little
+/// so it sits on uneven ground. Painted as the ground itself (`salt` as
+/// the terrain's).
+pub fn sand_drift(len: f32, depth: f32, height: f32, salt: f32, seed: u32) -> MeshBuilder {
+    let mut m = MeshBuilder::new();
+    let paint = Paint { wear: salt, ..Paint::with(Material::Sand, 0xffffff, 0.95) };
+    let (nx, nz) = (10usize, 5usize);
+    let wob = hash(seed, 3) * 6.0;
+    let h = move |x: f32, z: f32| -> f32 {
+        let u = (2.0 * x / len).clamp(-1.0, 1.0);
+        let along = (1.0 - u * u).max(0.0).powf(0.6) * (1.0 + 0.15 * (u * 3.0 + wob).sin());
+        let out = (1.0 - (z / depth).clamp(0.0, 1.0)).powf(1.6);
+        height * along * out - 0.15
+    };
+    let e = 0.05;
+    let mut idx = Vec::new();
+    for j in 0..=nz {
+        for i in 0..=nx {
+            let x = -len / 2.0 + len * i as f32 / nx as f32;
+            let z = -0.3 + (depth + 0.3) * j as f32 / nz as f32;
+            let n = Vec3::new(h(x - e, z) - h(x + e, z), 2.0 * e, h(x, z - e) - h(x, z + e)).normalize();
+            idx.push(m.push(Vec3::new(x, h(x, z), z), n, paint));
+        }
+    }
+    for j in 0..nz {
+        for i in 0..nx {
+            let a = idx[j * (nx + 1) + i];
+            let b = idx[j * (nx + 1) + i + 1];
+            let c = idx[(j + 1) * (nx + 1) + i + 1];
+            let d = idx[(j + 1) * (nx + 1) + i];
+            m.tri(a, b, c);
+            m.tri(a, c, d);
+        }
+    }
+    m
+}

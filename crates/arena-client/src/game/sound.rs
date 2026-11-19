@@ -70,12 +70,18 @@ fn p(v: Vec3) -> Option<[f32; 3]> {
     Some(v.to_array())
 }
 
-fn gun_sound(g: GunKind) -> SoundId {
+/// Every gun tier its own voice: (sound, gain, rate).
+fn gun_sound(g: GunKind) -> (SoundId, f32, f32) {
     match g {
-        GunKind::BigBore => SoundId::BigBore,
-        GunKind::TwinBarrel => SoundId::TwinBarrel,
-        GunKind::LongGun => SoundId::LongGun,
-        _ => SoundId::Cannon,
+        GunKind::Stub => (SoundId::StubGun, 0.9, 1.0),
+        GunKind::HeavyCannon => (SoundId::Cannon, 1.0, 1.0),
+        GunKind::BigBore => (SoundId::BigBore, 1.0, 1.0),
+        GunKind::TwinBarrel => (SoundId::TwinBarrel, 1.0, 1.0),
+        GunKind::LongGun => (SoundId::LongGun, 1.0, 1.0),
+        // The bosses: the War Rig's twin cannon a size up, the Land-Ship's
+        // deck guns rattling like autocannons.
+        GunKind::RigCannons => (SoundId::TwinBarrel, 1.15, 0.85),
+        GunKind::DeckGun => (SoundId::AutocannonBurst, 1.0, 0.9),
     }
 }
 
@@ -91,6 +97,14 @@ fn part_hit_sound(part: PartKind) -> SoundId {
 impl Sound {
     pub fn new() -> Self {
         Sound { audio: Audio::new(), engines: HashMap::new(), seen: HashMap::new() }
+    }
+
+    /// Renders more sound take variations (a few ms a frame, though one
+    /// take can run 8-20 ms). [`Sound::frame`] does this in a match; the
+    /// title and loading screens call it so the work is mostly done before
+    /// the first match starts (it showed as hitches in its first second).
+    pub fn tick(&mut self) {
+        self.audio.tick();
     }
 
     /// From a user gesture: browsers keep audio off until one.
@@ -126,6 +140,24 @@ impl Sound {
         }
     }
 
+    /// A menu button: a real switch click (call from the UI's click handler).
+    #[allow(dead_code)]
+    pub fn ui_click(&mut self) {
+        self.audio.play_pitched(SoundId::UiTick, None, 0.6, 1.0);
+    }
+
+    /// A menu choice confirmed (call from the UI).
+    #[allow(dead_code)]
+    pub fn ui_confirm(&mut self) {
+        self.audio.play_pitched(SoundId::UiConfirm, None, 0.7, 1.0);
+    }
+
+    /// A menu action refused (call from the UI).
+    #[allow(dead_code)]
+    pub fn ui_error(&mut self) {
+        self.audio.play_pitched(SoundId::UiError, None, 0.7, 1.0);
+    }
+
     pub fn kill_tick(&mut self) {
         self.audio.play_pitched(SoundId::UiConfirm, None, 0.8, 0.9);
     }
@@ -144,21 +176,31 @@ impl Sound {
             Event::Fired { player, weapon, pos, .. } => {
                 let at = if mine(*player) { None } else { p(*pos) };
                 let (id, gain, rate) = match weapon {
-                    Weapon::Gun(g) => (gun_sound(*g), 1.0, 1.0),
+                    Weapon::Gun(g) => gun_sound(*g),
                     Weapon::Alt(AltKind::Mg) => (SoundId::MachineGun, 0.6, 1.0),
                     Weapon::Alt(AltKind::Coilgun) => (SoundId::CoilgunZap, 1.0, 1.0),
                     Weapon::Alt(AltKind::Tesla) => (SoundId::TeslaCrackle, 0.9, 1.0),
-                    Weapon::Alt(AltKind::Rockets) => (SoundId::AutocannonBurst, 0.8, 1.2),
-                    Weapon::Alt(AltKind::Flamethrower) => return,
+                    Weapon::Alt(AltKind::Rockets) => (SoundId::RocketLaunch, 0.8, 1.0),
+                    // Sent once when the trigger goes down: one long burst.
+                    Weapon::Alt(AltKind::Flamethrower) => (SoundId::Flamethrower, 0.9, 1.0),
+                    Weapon::Special(PartKind::Mortar | PartKind::ShipMortar) => (SoundId::MortarShot, 1.0, 1.0),
+                    Weapon::Special(PartKind::Harpoon) => (SoundId::RocketLaunch, 0.6, 0.7),
                     Weapon::Special(_) => (SoundId::Cannon, 0.9, 0.7),
                     _ => return,
                 };
                 a.play_pitched(id, at, gain, rate);
             }
+            // The MG sends no `Fired`: each round is a tracer.
+            Event::Tracer { player, weapon: Weapon::Alt(AltKind::Mg), from, .. } => {
+                let at = if mine(*player) { None } else { p(*from) };
+                a.play_pitched(SoundId::MachineGun, at, if mine(*player) { 0.5 } else { 0.6 }, 1.0);
+            }
             Event::Hit { target, location, pos, damage, .. } => {
                 let id = match location {
                     HitLocation::Hull => {
-                        if *damage < 6.0 {
+                        if *damage < 2.5 {
+                            SoundId::Ricochet
+                        } else if *damage < 6.0 {
                             SoundId::ArmourThud
                         } else {
                             SoundId::HitHull
@@ -173,7 +215,9 @@ impl Sound {
             }
             Event::Impact { pos, .. } => a.play_pitched(SoundId::SandImpact, p(*pos), 0.8, 1.0),
             Event::Explosion { pos, radius, weapon } => {
-                let id = if *radius > 5.0 || matches!(weapon, Weapon::AirStrike | Weapon::Hazard) {
+                let id = if matches!(weapon, Weapon::Hazard) {
+                    SoundId::FuelBlast
+                } else if *radius > 5.0 || matches!(weapon, Weapon::AirStrike) {
                     SoundId::ExplosionLarge
                 } else {
                     SoundId::ExplosionSmall
@@ -217,7 +261,8 @@ impl Sound {
             }
             Event::Ram { pos, speed, .. } => a.play_pitched(SoundId::ArmourThud, p(*pos), (speed / 8.0).clamp(0.4, 1.2), 0.8),
             Event::ShieldHit { pos, .. } => a.play_pitched(SoundId::ArmourThud, p(*pos), 0.6, 1.4),
-            Event::HazardExploded { pos, .. } => a.play_pitched(SoundId::ExplosionLarge, p(*pos), 1.2, 0.8),
+            // Fuel silos, tanks and drums: the blast and the fireball, chained.
+            Event::HazardExploded { pos, .. } => a.play_pitched(SoundId::FuelBlast, p(*pos), 1.2, 1.0),
             Event::MineTriggered { pos, .. } => a.play_pitched(SoundId::ExplosionSmall, p(*pos), 1.0, 1.0),
             Event::AirStrikeCalled { target, .. } => {
                 a.play_pitched(SoundId::FlarePop, p(*target), 1.0, 1.0);

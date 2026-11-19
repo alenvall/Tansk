@@ -1,10 +1,13 @@
-// Bloom: a soft-threshold prefilter into half resolution, a chain of
-// bilinear downsamples, then tent-filtered upsamples added back up the
-// chain. The tonemap adds the top of the chain to the frame.
+// Bloom: exposure and a soft-threshold prefilter into half resolution, a
+// chain of bilinear downsamples, then tent-filtered upsamples added back up
+// the chain, each wider level scaled by `scatter` (a tight glow). The
+// tonemap adds the top of the chain to the frame.
 
 struct Bloom {
-    // x threshold, y soft knee, z upsample radius (texels), w unused
+    // x threshold, y soft knee (fraction of the threshold), z upsample radius (texels), w exposure
     params: vec4<f32>,
+    // x scatter (how much each wider level adds)
+    params2: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> bloom: Bloom;
@@ -47,7 +50,9 @@ fn downsample(uv: vec2<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_prefilter(in: Out) -> @location(0) vec4<f32> {
-    let c = min(downsample(in.uv), vec3<f32>(64.0));
+    // Exposed first, so the threshold is in the frame's terms; clamped
+    // against fireflies (a single hot texel blooming into a disc).
+    let c = min(downsample(in.uv) * bloom.params.w, vec3<f32>(16.0));
     let brightness = max(c.r, max(c.g, c.b));
     let threshold = bloom.params.x;
     let knee = threshold * bloom.params.y + 1e-4;
@@ -76,5 +81,5 @@ fn fs_up(in: Out) -> @location(0) vec4<f32> {
     c = c + textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(1.0, -1.0), 0.0).rgb;
     c = c + textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(-1.0, 1.0), 0.0).rgb;
     c = c + textureSampleLevel(source, linear_sampler, in.uv + t * vec2<f32>(1.0, 1.0), 0.0).rgb;
-    return vec4<f32>(c / 16.0, 1.0);
+    return vec4<f32>(c * (bloom.params2.x / 16.0), 1.0);
 }

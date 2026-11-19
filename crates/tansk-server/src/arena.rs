@@ -54,7 +54,8 @@ pub enum ArenaCmd {
 pub struct ArenaInfo {
     pub code: String,
     pub public: bool,
-    /// Humans in the room, including dropped ones whose seat is held.
+    /// Connected humans in the room. Dropped ones whose seat is held for a
+    /// rejoin don't count: the lobby and quick match must not see ghosts.
     pub humans: usize,
     pub max_humans: usize,
     pub ended: bool,
@@ -389,7 +390,7 @@ impl ArenaRoom {
     fn publish_info(&mut self) {
         self.fill_bots();
         let mut info = self.info.lock().unwrap();
-        info.humans = self.humans.len();
+        info.humans = self.humans.iter().filter(|h| h.conn.is_some()).count();
         info.ended = matches!(self.sim.phase, Phase::Ended { .. } | Phase::Defeated { .. } | Phase::TeamWon { .. });
     }
 }
@@ -425,7 +426,8 @@ impl ArenaRooms {
         v
     }
 
-    /// Quick match: the fullest public room with a free seat. Reserves the
+    /// Quick match: the fullest public room with someone connected and a free
+    /// seat (a room of only held seats is a ghost; start a fresh one). Reserves the
     /// seat in its info so two players at once don't both take the last one.
     pub fn quick_match(&self) -> Option<mpsc::UnboundedSender<ArenaCmd>> {
         let rooms = self.rooms.lock().unwrap();
@@ -433,7 +435,7 @@ impl ArenaRooms {
             .values()
             .filter(|(tx, i)| {
                 let i = i.lock().unwrap();
-                !tx.is_closed() && i.public && i.mode == ModeKind::ScrapBrawl && i.humans < i.max_humans
+                !tx.is_closed() && i.public && i.mode == ModeKind::ScrapBrawl && i.humans > 0 && i.humans < i.max_humans
             })
             .max_by_key(|(_, i)| i.lock().unwrap().humans)?;
         info.lock().unwrap().humans += 1;
@@ -621,6 +623,40 @@ mod tests {
         assert!(moved >= 4, "only {moved} bots moved");
         let snap = r.sim.snapshot();
         assert!(snap.tanks.iter().all(|t| t.pos.iter().all(|c| c.is_finite())));
+    }
+
+    /// A dropped human's held seat isn't counted in the room info, so the lobby
+    /// and quick match skip the room; a rejoin counts again.
+    #[test]
+    fn held_seats_are_not_listed_humans() {
+        let info = Arc::new(Mutex::new(ArenaInfo {
+            code: "HELD".into(),
+            public: true,
+            humans: 0,
+            max_humans: ROOM_SEATS,
+            ended: false,
+            mode: ModeKind::ScrapBrawl,
+            map: MapId::Sink,
+        }));
+        let mut r = ArenaRoom::new("HELD".into(), true, 5, info.clone(), ModeKind::ScrapBrawl, MapId::Sink);
+        let (tx, _rx_cmd) = mpsc::unbounded_channel();
+        let rooms = ArenaRooms::default();
+        rooms.rooms.lock().unwrap().insert("HELD".into(), (tx, info.clone()));
+        let (out, mut rx) = mpsc::channel(4096);
+        r.handle(ArenaCmd::Join { conn: 1, name: "Ann".into(), rejoin: None, out });
+        assert_eq!(info.lock().unwrap().humans, 1);
+        assert_eq!(rooms.list().len(), 1);
+        let ServerMsg::Welcome { token, .. } = arena_core::net::decode::<ServerMsg>(&rx.try_recv().unwrap().bytes).unwrap() else { panic!() };
+        r.handle(ArenaCmd::Leave { conn: 1 });
+        r.tick();
+        assert_eq!(r.humans.len(), 1, "the seat is still held");
+        assert_eq!(info.lock().unwrap().humans, 0);
+        assert!(rooms.list().is_empty());
+        assert!(rooms.quick_match().is_none());
+        let (out, _rx) = mpsc::channel(4096);
+        r.handle(ArenaCmd::Join { conn: 2, name: "Ann".into(), rejoin: Some(token), out });
+        assert_eq!(info.lock().unwrap().humans, 1);
+        assert!(rooms.quick_match().is_some());
     }
 
     #[test]

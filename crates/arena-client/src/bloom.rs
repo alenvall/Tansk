@@ -1,13 +1,15 @@
-//! Bloom: prefilter into half resolution, downsample chain, additive tent
-//! upsample back up. The result (level 0, half resolution) is read by the
-//! tonemap. Separate textures per level, so no pass reads and writes the
-//! same texture (simplest to keep valid on WebGPU).
+//! Bloom: prefilter (exposure, then threshold) into half resolution, a
+//! downsample chain, additive tent upsample back up with each wider level
+//! scaled down (`scatter`), so the glow stays tight round what is truly
+//! bright. The result (level 0, half resolution) is added by the tonemap.
+//! The level count is set by the quality preset. Separate textures per
+//! level, so no pass reads and writes the same texture (simplest to keep
+//! valid on WebGPU).
 
 use crate::renderer::HDR_FORMAT;
 
-const LEVELS: usize = 6;
-
 pub struct Bloom {
+    levels_count: usize,
     prefilter: wgpu::RenderPipeline,
     down: wgpu::RenderPipeline,
     up: wgpu::RenderPipeline,
@@ -21,7 +23,7 @@ pub struct Bloom {
 
 impl Bloom {
     /// Pipelines only; `resize` makes the levels.
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(device: &wgpu::Device, levels: usize) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("bloom.wgsl"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/bloom.wgsl").into()),
@@ -110,11 +112,11 @@ impl Bloom {
         });
         let uniform = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("bloom uniform"),
-            size: 16,
+            size: 32,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        Self { prefilter, down, up, layout, sampler, uniform, levels: vec![], binds: vec![] }
+        Self { levels_count: levels.max(2), prefilter, down, up, layout, sampler, uniform, levels: vec![], binds: vec![] }
     }
 
     /// The half-resolution result, for the tonemap.
@@ -127,7 +129,8 @@ impl Bloom {
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, hdr: &wgpu::TextureView, width: u32, height: u32) {
-        self.levels = (0..LEVELS)
+        let count = self.levels_count;
+        self.levels = (0..count)
             .map(|i| {
                 let w = (width >> (i + 1)).max(1);
                 let h = (height >> (i + 1)).max(1);
@@ -158,17 +161,19 @@ impl Bloom {
         };
         // binds[0] reads hdr; binds[i] (1..LEVELS) reads level i-1.
         let mut binds = vec![bind(hdr)];
-        for i in 1..LEVELS {
+        for i in 1..count {
             binds.push(bind(&self.levels[i - 1]));
         }
         // And one more reading the last level, for the first upsample:
         // up-pass into level i reads level i+1, which is binds[i + 2].
-        binds.push(bind(&self.levels[LEVELS - 1]));
+        binds.push(bind(&self.levels[count - 1]));
         self.binds = binds;
     }
 
-    pub fn record(&self, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, threshold: f32, knee: f32) {
-        queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&[threshold, knee, 1.0, 0.0]));
+    /// `threshold` and `knee` apply after `exposure`; `scatter` scales each
+    /// wider level as it is added back.
+    pub fn record(&self, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, threshold: f32, knee: f32, exposure: f32, scatter: f32) {
+        queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&[threshold, knee, 1.0, exposure, scatter, 0.0, 0.0, 0.0]));
         let pass = |encoder: &mut wgpu::CommandEncoder,
                     target: &wgpu::TextureView,
                     pipeline: &wgpu::RenderPipeline,
@@ -192,11 +197,12 @@ impl Bloom {
             pass.draw(0..3, 0..1);
         };
         pass(encoder, &self.levels[0], &self.prefilter, &self.binds[0], true);
-        for i in 1..LEVELS {
+        let count = self.levels.len();
+        for i in 1..count {
             pass(encoder, &self.levels[i], &self.down, &self.binds[i], true);
         }
-        // Up: level i += tent(level i+1), from the bottom of the chain.
-        for i in (0..LEVELS - 1).rev() {
+        // Up: level i += scatter * tent(level i+1), from the bottom of the chain.
+        for i in (0..count - 1).rev() {
             pass(encoder, &self.levels[i], &self.up, &self.binds[i + 2], false);
         }
     }
