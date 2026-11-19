@@ -212,6 +212,8 @@ pub struct Game {
     welcomes_seen: u32,
     /// In the lobby, driving about with the pointer held.
     lobby_drive: bool,
+    /// The party's mode label as last written.
+    party_label: String,
 }
 
 impl Game {
@@ -252,6 +254,7 @@ impl Game {
             invite_base: String::new(),
             welcomes_seen: 0,
             lobby_drive: false,
+            party_label: String::new(),
             practice_map: MapId::Sink,
             garage: None,
             pad: None,
@@ -405,6 +408,7 @@ impl Game {
         self.m = Match::default();
         self.paused = false;
         self.welcomes_seen = 0;
+        self.party_label.clear();
         self.lobby_drive = false;
         self.ui.show_lobby(None);
         self.ui.hide_endscreen();
@@ -942,7 +946,8 @@ impl Game {
         let live = ((self.screen == Screen::InGame && !self.paused && (self.controls.captured || pad_live)) || lobby) && !typing;
         let sens = self.settings.mouse_sens.clamp(0.1, 3.0);
         let fov_k = self.camera.map_or(1.0, |c| c.fov_y / 62f32.to_radians());
-        if self.controls.captured && !self.paused {
+        // In the yard the mouse is for the plate until the wheel is taken.
+        if self.controls.captured && !self.paused && (self.screen != Screen::Lobby || self.lobby_drive) {
             let (mx, my) = self.controls.mouse;
             self.chase.yaw -= mx * 0.0024 * sens * fov_k;
             self.chase.pitch = (self.chase.pitch - my * 0.0024 * sens * fov_k).clamp(-0.75, 0.5);
@@ -1075,6 +1080,11 @@ impl Game {
                 self.chase.yaw = (-fwd.z).atan2(fwd.x);
                 self.chase.pitch = -0.12;
                 self.m.aligned = true;
+                if self.screen == Screen::Lobby {
+                    // The yard: swing the boom round to open ground and start it out.
+                    self.chase.yaw = party::clear_yaw(&self.map, &self.chase, v.pos);
+                    self.chase.reset_boom();
+                }
             }
         }
         if alive && !self.m.alive {
@@ -1883,6 +1893,7 @@ impl Game {
                 },
             })
             .collect();
+        self.ui.set_end_again(if self.lobby().is_some() { "Back to the yard" } else { "Again" });
         self.ui.show_endscreen(title, winner, &end, note);
         self.ui.set_end_kicker(&format!("Match over \u{b7} {}", self.map.name));
     }

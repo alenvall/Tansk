@@ -37,6 +37,7 @@ fn glass() -> Paint {
 /// wheels drawn separately): a big-rig cab in the team colour, a long
 /// yellow and white fuel trailer with hazard stripes, rust and a
 /// FLAMMABLE placard.
+#[allow(dead_code)] // The whole rig in one mesh (shots, lineups); the game draws cab and trailer apart.
 pub fn fuel_tanker(colour: u32) -> MeshBuilder {
     let mut m = tanker_cab(colour);
     append(&mut m, tanker_trailer());

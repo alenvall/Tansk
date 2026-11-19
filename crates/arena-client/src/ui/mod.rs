@@ -1296,6 +1296,11 @@ impl Ui {
         self.dom.attr("t-hud", "data-end", "1");
     }
 
+    /// The end screen's go button ("Again", "Back to the yard").
+    pub fn set_end_again(&mut self, text: &str) {
+        self.dom.text("t-end-again", text);
+    }
+
     pub fn hide_endscreen(&mut self) {
         self.dom.hidden("t-end", true);
         self.dom.attr("t-hud", "data-end", "0");

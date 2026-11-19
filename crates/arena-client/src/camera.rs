@@ -82,6 +82,14 @@ impl Default for ChaseCam {
 }
 
 impl ChaseCam {
+    /// A fresh start in a new world (no left-over pull-in, zoom or shake).
+    pub fn reset_boom(&mut self) {
+        self.boom = self.distance;
+        self.zoom = 0.0;
+        self.zoom_target = 0.0;
+        self.trauma = 0.0;
+    }
+
     pub fn from_tuning(t: ChaseTuning) -> Self {
         Self {
             yaw: 0.0,

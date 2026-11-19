@@ -12,6 +12,48 @@ use super::{Game, Match, Screen};
 use crate::ui::{LobbyConfig, LobbyCrewRow, LobbyView, Team, VoteCardView};
 use crate::world::{RenderWorld, PAINT_SET};
 
+/// A look yaw near the chase cam's whose boom has open ground behind it
+/// (a lobby spawn can sit with its back against a dune).
+pub fn clear_yaw(map: &arena_core::map::Map, chase: &crate::camera::ChaseCam, pos: glam::Vec3) -> f32 {
+    use crate::camera::CameraCollider;
+    let col = crate::demo::MapCollider(map);
+    let pivot = pos + glam::Vec3::Y * chase.pivot_height;
+    let mut best = (f32::MIN, chase.yaw);
+    for k in 0..12 {
+        // 0, +30, -30, +60, ... degrees from the hull's heading.
+        let step = (k as f32 / 2.0).ceil() * if k % 2 == 0 { -1.0 } else { 1.0 };
+        let yaw = chase.yaw + step * std::f32::consts::TAU / 12.0;
+        let fwd = glam::Vec3::new(yaw.cos(), 0.0, -yaw.sin());
+        let eye = pivot - fwd * chase.distance + glam::Vec3::Y * 1.5;
+        let free = col.free_fraction(pivot, eye);
+        if free > 0.95 {
+            return yaw;
+        }
+        if free > best.0 {
+            best = (free, yaw);
+        }
+    }
+    best.1
+}
+
+/// The mode a world runs, read off its snapshot (the warm-up reads as
+/// Scrap Brawl, its rules).
+pub fn snapshot_mode(w: &arena_core::snapshot::Snapshot) -> ModeKind {
+    if w.raid.is_some() {
+        ModeKind::RaiderWaves
+    } else if w.convoy.is_some() {
+        ModeKind::Convoy
+    } else if w.wellhead.is_some() {
+        ModeKind::Wellhead
+    } else if w.storm_circle.is_some() {
+        ModeKind::LastCrew
+    } else if !w.teams.is_empty() {
+        ModeKind::TeamBrawl
+    } else {
+        ModeKind::ScrapBrawl
+    }
+}
+
 /// The lobby's mode keys (the plate's radio values).
 pub fn mode_key(m: ModeKind) -> &'static str {
     match m {
@@ -242,13 +284,28 @@ impl Game {
         self.ui.show_respawn(None, None);
         self.ui.show_scoreboard(false, &[]);
         self.sound.clear_engines();
-        let (Some(l), Some(code)) = (self.lobby(), self.net.as_ref().and_then(|n| n.state().code.clone())) else { return };
-        let label = match l.phase {
-            LobbyPhase::Lobby => format!("Crew yard \u{b7} {} \u{b7} {code}", l.settings.map.name()),
-            _ => format!("{} \u{b7} {} \u{b7} {code}", l.settings.mode.name(), l.settings.map.name()),
+        // The new spawn: the boom starts out, not pulled in from the old spot.
+        self.chase.reset_boom();
+    }
+
+    /// The HUD's mode label follows the room every frame: the yard while
+    /// warming up, else the mode the world actually runs (read off the
+    /// snapshot, so a Welcome that beats the phase change can't leave it stale).
+    fn party_label(&mut self, l: &LobbyState) {
+        let Some(net) = &self.net else { return };
+        let st = net.state();
+        let code = st.code.clone().unwrap_or_default();
+        let map = st.map.name();
+        let label = match (l.phase, &st.world) {
+            (LobbyPhase::Lobby, _) => format!("Crew yard \u{b7} {map} \u{b7} {code}"),
+            (_, Some(w)) => format!("{} \u{b7} {map} \u{b7} {code}", snapshot_mode(w).name()),
+            (_, None) => format!("{} \u{b7} {map} \u{b7} {code}", l.settings.mode.name()),
         };
-        self.ui.set_mode_label(&label);
-        self.ui.set_scoreboard_title("Scoreboard", &label);
+        if label != self.party_label {
+            self.ui.set_mode_label(&label);
+            self.ui.set_scoreboard_title("Scoreboard", &label);
+            self.party_label = label;
+        }
     }
 
     /// Follows the room's lobby phase (screens) and keeps the plate current.
@@ -274,6 +331,7 @@ impl Game {
             }
             _ => {}
         }
+        self.party_label(&l);
         if self.screen != Screen::Lobby {
             self.ui.show_lobby(None);
             return;
