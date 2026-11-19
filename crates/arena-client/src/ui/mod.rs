@@ -394,6 +394,18 @@ pub struct LobbyView {
     pub vote: Option<(Vec<VoteCardView>, u8, Option<u8>)>,
 }
 
+/// The kill-cam plate: who wrecked you and what they're running.
+#[derive(Clone, Debug, PartialEq)]
+pub struct KillcamView {
+    pub name: String,
+    pub team: Team,
+    pub weapon: String,
+    /// Steel, Powder, Volts, Fuel tiers.
+    pub tiers: [u8; 4],
+    /// Tier-2 branch picks ("Long gun", "Twin engines").
+    pub branches: Vec<String>,
+}
+
 /// What the player asked for. Drained with [`Ui::poll_actions`].
 #[derive(Clone, Debug, PartialEq)]
 pub enum UiAction {
@@ -423,6 +435,8 @@ pub enum UiAction {
     LobbyTeam(String),
     LobbyVote(u8),
     InviteCopied,
+    /// Skip the play of the match.
+    SkipReplay,
     /// A button that only moves between title panels (for its click sound).
     Click,
     /// A press that can't go through (Join with no code): the error sound.
@@ -469,6 +483,8 @@ pub struct Ui {
     board_title: (String, String),
     lobby: Option<LobbyView>,
     copied_left: f32,
+    killcam: Option<KillcamView>,
+    potm: bool,
 }
 
 /// Quantise a 0..1 value so tiny float jitter doesn't touch the DOM.
@@ -597,6 +613,8 @@ impl Ui {
             board_title: ("Scoreboard".into(), String::new()),
             lobby: None,
             copied_left: 0.0,
+            killcam: None,
+            potm: false,
         };
         ui.show_title();
         ui
@@ -1344,6 +1362,58 @@ impl Ui {
     pub fn hide_endscreen(&mut self) {
         self.dom.hidden("t-end", true);
         self.dom.attr("t-hud", "data-end", "0");
+    }
+
+    // ----------------------------------------------------- kill-cam, replay
+
+    /// "Wrecked by" over the kill-cam (None hides it).
+    pub fn show_killcam(&mut self, v: Option<&KillcamView>) {
+        if self.killcam.as_ref() == v {
+            return;
+        }
+        self.killcam = v.cloned();
+        let Some(v) = v else {
+            self.dom.hidden("t-killcam", true);
+            return;
+        };
+        self.dom.text("t-killcam-name", &v.name);
+        self.dom.attr("t-killcam-name", "data-team", v.team.css());
+        self.dom.text("t-killcam-gun", if v.weapon.is_empty() { "-" } else { &v.weapon });
+        let mut h = String::new();
+        for (k, t) in [ScrapKind::Steel, ScrapKind::Powder, ScrapKind::Volts, ScrapKind::Fuel].iter().zip(v.tiers) {
+            if t > 0 {
+                let _ = write!(h, "<span class=\"t-kc-chip\" data-kind=\"{}\">{} {}</span>", k.css(), k.css(), roman(t));
+            }
+        }
+        for b in &v.branches {
+            let _ = write!(h, "<span class=\"t-kc-chip\" data-kind=\"branch\">{}</span>", esc(b));
+        }
+        if h.is_empty() {
+            h.push_str("<span class=\"t-kc-chip\">Bare chassis</span>");
+        }
+        self.dom.html("t-killcam-build", &h);
+        self.dom.hidden("t-killcam", false);
+        self.dom.retrigger("t-killcam", "data-on", "1");
+    }
+
+    /// The play of the match: whose, and what ("Triple wreck"). None hides it.
+    pub fn show_potm(&mut self, v: Option<(&str, Team, &str)>) {
+        match v {
+            Some((name, team, caption)) => {
+                self.dom.text("t-potm-name", name);
+                self.dom.attr("t-potm-name", "data-team", team.css());
+                self.dom.text("t-potm-cap", caption);
+                self.dom.hidden("t-potm", false);
+                self.dom.attr("t-hud", "data-replay", "1");
+                self.potm = true;
+            }
+            None if self.potm => {
+                self.dom.hidden("t-potm", true);
+                self.dom.attr("t-hud", "data-replay", "0");
+                self.potm = false;
+            }
+            None => {}
+        }
     }
 
     // ------------------------------------------------------------- lobby

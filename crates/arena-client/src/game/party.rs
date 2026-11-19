@@ -293,6 +293,11 @@ impl Game {
         self.ui.show_respawn(None, None);
         self.ui.show_scoreboard(false, &[]);
         self.sound.clear_engines();
+        self.playback = None;
+        self.end_stash = None;
+        self.ui.show_potm(None);
+        self.ui.show_killcam(None);
+        self.recorder.clear();
         // The new spawn: the boom starts out, not pulled in from the old spot.
         self.chase.reset_boom();
     }

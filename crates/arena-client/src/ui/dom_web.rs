@@ -255,6 +255,7 @@ impl Ctx {
             "again" => UiAction::Again,
             "leave" => UiAction::Leave,
             "lobby-ready" => UiAction::LobbyReady,
+            "skip-replay" => UiAction::SkipReplay,
             "lobby-start" => UiAction::LobbyStart,
             "copy-invite" => return self.copy_invite(),
             "chat-send" => return self.send_chat(),

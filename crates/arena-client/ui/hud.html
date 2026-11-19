@@ -241,6 +241,27 @@
     <div class="t-respawn-note" id="t-respawn-note">You keep your first tier in every track.</div>
   </div>
 
+  <!-- the kill-cam: who wrecked you -->
+  <div id="t-killcam" class="t-killcam" data-on="1" hidden>
+    <div class="t-killcam-plate plate">
+      <div class="t-killcam-kicker"><span class="t-hazard"></span>Wrecked by<span class="t-hazard"></span></div>
+      <div class="t-killcam-name" id="t-killcam-name" data-team="ffa">Bolt</div>
+      <div class="t-killcam-gun" id="t-killcam-gun">Heavy cannon</div>
+      <div class="t-killcam-build" id="t-killcam-build"></div>
+    </div>
+    <div class="t-killcam-skip"><kbd>Fire</kbd> back to your wreck</div>
+  </div>
+
+  <!-- the play of the match, before the podium -->
+  <div id="t-potm" class="t-potm" hidden>
+    <div class="t-potm-plate plate">
+      <div class="t-potm-kicker">Play of the match</div>
+      <div class="t-potm-name" id="t-potm-name" data-team="ffa">Bolt</div>
+      <div class="t-potm-cap" id="t-potm-cap">Double wreck</div>
+    </div>
+    <button class="t-btn t-btn-small t-potm-skip" data-action="skip-replay"><span class="t-btn-label">Skip</span><span class="t-btn-hint">Space</span></button>
+  </div>
+
   <!-- end of match -->
   <div id="t-end" class="t-end" hidden>
     <div class="t-end-head">

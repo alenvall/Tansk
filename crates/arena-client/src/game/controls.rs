@@ -9,6 +9,8 @@ pub struct Controls {
     held: HashSet<String>,
     /// Left, right, middle.
     pub buttons: [bool; 3],
+    /// Pressed since the last frame (a click shorter than a frame still counts).
+    pub pressed: [bool; 3],
     /// Mouse movement since the last frame, pixels.
     pub mouse: (f32, f32),
     /// The pointer is locked to the canvas (or `mouse=free` debugging).
@@ -27,6 +29,7 @@ impl Controls {
     pub fn button(&mut self, b: usize, down: bool) {
         if b < 3 {
             self.buttons[b] = down;
+            self.pressed[b] |= down;
         }
     }
 
@@ -57,6 +60,7 @@ impl Controls {
 
     pub fn end_frame(&mut self) {
         self.mouse = (0.0, 0.0);
+        self.pressed = [false; 3];
     }
 }
 

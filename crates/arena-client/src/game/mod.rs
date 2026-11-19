@@ -17,6 +17,7 @@ pub mod juice;
 pub mod names;
 pub mod party;
 pub mod radio;
+pub mod replay;
 pub mod sound;
 pub mod touch;
 
@@ -51,7 +52,8 @@ const HOME_SEED: u64 = 7;
 const PRACTICE_BOTS: usize = 7;
 const PRACTICE_DIFFICULTY: f32 = 0.55;
 const RAID_ALLIES: usize = 3;
-const KILLCAM_SECS: f32 = 2.0;
+/// The kill-cam on your killer before the camera goes back to your wreck.
+const KILLCAM_SECS: f32 = 2.5;
 const BRANCH_SECS: f32 = 4.0;
 /// Seconds a blown track waits before the crew starts patching (tuning:
 /// track_repair_time - track_patch_duration).
@@ -139,6 +141,11 @@ struct Match {
     /// Seconds since you died (kill-cam), and since you last spawned.
     dead_for: f32,
     alive_for: f32,
+    /// Fire pressed during the kill-cam: straight back to the wreck.
+    killcam_skip: bool,
+    fire_prev: bool,
+    /// The camera has been brought back to your wreck after the kill-cam.
+    wreck_framed: bool,
     /// When the radio last called the Convoy truck stopped.
     truck_stopped_said: Option<f32>,
     killcam_angle: f32,
@@ -242,6 +249,14 @@ pub struct Game {
     pitch_idle: f32,
     /// The Garage pick changed: the platform may save it.
     garage_dirty: bool,
+    /// The last minute as drawn, for the play of the match.
+    recorder: replay::Recorder,
+    /// The play of the match, running before the podium, and the end screen
+    /// waiting behind it.
+    playback: Option<replay::Playback>,
+    end_stash: Option<(String, Option<Team>, Vec<EndRow>, String, String)>,
+    skip_replay: bool,
+    skip_keys_prev: bool,
 }
 
 impl Game {
@@ -287,6 +302,11 @@ impl Game {
             last_screen: Screen::Title,
             pitch_idle: 0.0,
             garage_dirty: false,
+            recorder: replay::Recorder::default(),
+            playback: None,
+            end_stash: None,
+            skip_replay: false,
+            skip_keys_prev: false,
             practice_map: MapId::Sink,
             garage: None,
             pad: None,
@@ -472,6 +492,9 @@ impl Game {
         self.paused = false;
         self.welcomes_seen = 0;
         self.party_label.clear();
+        self.stop_replay();
+        self.recorder.clear();
+        self.ui.show_killcam(None);
         self.lobby_drive = false;
         self.ui.show_lobby(None);
         self.ui.hide_endscreen();
@@ -656,6 +679,9 @@ impl Game {
         self.want_look = Some(TimeOfDay::GoldenHour);
         self.screen = Screen::Title;
         self.lobby_drive = false;
+        self.stop_replay();
+        self.recorder.clear();
+        self.ui.show_killcam(None);
         self.touch.release_all();
         self.touch.board = false;
         self.ui.show_lobby(None);
@@ -747,6 +773,7 @@ impl Game {
                 UiAction::LobbyTeam(t) => self.lobby_cmd(LobbyCmd::Team(party::team_pick(&t))),
                 UiAction::LobbyVote(i) => self.lobby_cmd(LobbyCmd::Vote(i)),
                 UiAction::InviteCopied => {}
+                UiAction::SkipReplay => self.skip_replay = true,
                 UiAction::BranchPicked(i) => self.pick_branch(i),
                 UiAction::Chat(text) => {
                     if let Some(n) = &mut self.net {
@@ -1217,6 +1244,8 @@ impl Game {
         }
         if !alive && self.m.alive {
             self.m.dead_for = 0.0;
+            self.m.killcam_skip = false;
+            self.m.wreck_framed = false;
             self.m.killcam_angle = self.chase.yaw + std::f32::consts::PI;
         }
         if !alive {
@@ -1226,15 +1255,34 @@ impl Game {
             self.m.alive_for += dt;
         }
         self.m.alive = alive;
+        // Fire skips the kill-cam (a fresh press: not the trigger held as you died).
+        let fire_now = self.controls.buttons[0] || pad_live && self.pad.is_some_and(|p| p.down(pad::RT));
+        let fresh = (fire_now && !self.m.fire_prev) || self.controls.pressed[0];
+        if !alive && self.m.dead_for > 0.25 && fresh {
+            self.m.killcam_skip = true;
+        }
+        self.m.fire_prev = fire_now;
         let killer_view = self.m.killer.and_then(|k| world.tanks.iter().find(|t| t.player == k && t.alive)).cloned();
+        let last_crew = snap.storm_circle.is_some();
+        let killcam = !alive && killer_view.is_some() && self.m.dead_for < KILLCAM_SECS && !self.m.killcam_skip;
         // Last Crew: out for good. After the kill-cam, ride along with the leader.
         let killer_view = if !alive && snap.storm_circle.is_some() && (self.m.dead_for >= KILLCAM_SECS || killer_view.is_none()) {
             self.leader(&snap, you).and_then(|l| world.tanks.iter().find(|t| t.player == l && t.alive)).cloned().or(killer_view)
         } else {
             killer_view
         };
+        if !alive && !killcam && !last_crew && !self.m.wreck_framed {
+            // Back from the kill-cam: your wreck, from open ground.
+            if let Some(v) = &my_view {
+                self.m.wreck_framed = true;
+                self.chase.yaw = party::clear_yaw(&self.map, &self.chase, v.pos);
+                self.chase.pitch = PITCH_REST;
+                self.chase.reset_boom();
+            }
+        }
         let pivot = match (&my_view, alive, &killer_view) {
-            (_, false, Some(k)) => {
+            // The kill-cam (and Last Crew's spectating); then back to your wreck.
+            (_, false, Some(k)) if killcam || last_crew || my_view.is_none() => {
                 // Spectate the killer: drift round to look where it looks.
                 let fwd = k.turret_transform().transform_vector3(Vec3::X);
                 let want = (-fwd.z).atan2(fwd.x);
@@ -1264,7 +1312,7 @@ impl Game {
         }
         world.camera = Some(self.juice.apply(cam, dt, boosting, lag, self.chase.zoom));
         if let (false, Some(k)) = (alive, &killer_view) {
-            if self.m.dead_for < KILLCAM_SECS {
+            if killcam {
                 // Kill-cam: a slow half-orbit round whoever did it.
                 let a = self.m.killcam_angle + self.m.dead_for * 0.9;
                 // Bigger machines (the War Rig) get a wider circle.
@@ -1274,7 +1322,7 @@ impl Game {
                     .and_then(|n| n.state().world.as_ref())
                     .and_then(|w| w.tank(k.player))
                     .is_some_and(|t| matches!(t.vehicle, arena_core::parts::VehicleKind::WarRig | arena_core::parts::VehicleKind::LandShip));
-                let r = if big { 30.0 } else { 13.0 } - self.m.dead_for * 1.5;
+                let r = if big { 30.0 } else { 12.0 } - self.m.dead_for * 1.2;
                 let eye = k.pos + Vec3::new(a.cos() * r, if big { 9.0 } else { 4.5 }, -a.sin() * r);
                 let free = camcol::SceneCollider(&self.map).free_fraction(k.pos + Vec3::Y * 2.0, eye);
                 let eye = k.pos + Vec3::Y * 2.0 + (eye - k.pos - Vec3::Y * 2.0) * free.clamp(0.2, 1.0);
@@ -1309,6 +1357,9 @@ impl Game {
                         _ => self.juice.small_fire(),
                     }
                 }
+            }
+            if self.screen == Screen::InGame && !self.m.ended {
+                self.recorder.event(self.time, e);
             }
             self.sound.event(e, you);
             self.music_event(e, you);
@@ -1365,12 +1416,21 @@ impl Game {
                 self.ui.show_out(place, by.as_ref().map(|(n, w)| (n.as_str(), Team::Ffa, w.as_str())), watching.as_deref());
             }
         } else if let Some(t) = &me {
-            if !t.alive {
+            if !t.alive && killcam && !self.m.ended {
+                // The kill-cam: who did it, with what, and what they've built.
+                let k = self.m.killer.unwrap_or_default();
+                let v = self.killcam_view(k, &snap);
+                self.ui.show_respawn(None, None);
+                self.ui.show_killcam(Some(&v));
+            } else if !t.alive {
+                self.ui.show_killcam(None);
                 let by = self.m.killed_by.clone();
                 self.ui.show_respawn(
                     Some(t.respawn_in as f32 / 60.0),
                     by.as_ref().map(|(n, w)| (n.as_str(), Team::Ffa, w.as_str())),
                 );
+            } else {
+                self.ui.show_killcam(None);
             }
         }
         let board = self.screen == Screen::InGame
@@ -1394,6 +1454,7 @@ impl Game {
         let over = !matches!(snap.mode.phase, Phase::Playing);
         if self.m.was_over && !over {
             // The server rolled the next match: per-match calls start over.
+            self.recorder.clear();
             self.m.out_place = None;
             self.m.out_order.clear();
             self.m.crews_called.clear();
@@ -1408,6 +1469,32 @@ impl Game {
             }
             Phase::TeamWon { team } if !self.m.ended => self.end_team(team),
             _ => {}
+        }
+        if self.screen == Screen::InGame && !self.m.ended {
+            self.recorder.push(self.time, &world);
+        }
+        // The play of the match, before the podium.
+        if self.screen == Screen::End && self.playback.is_some() {
+            let keys = self.controls.any(&["Space", "Enter", "KeyF", "Escape"]) || self.pad.is_some_and(|p| p.down(pad::A));
+            let skip = std::mem::take(&mut self.skip_replay) || (keys && !self.skip_keys_prev);
+            self.skip_keys_prev = keys;
+            let mut out = world.clone();
+            let col = camcol::SceneCollider(&self.map);
+            let mut done = skip;
+            if let Some(pb) = &mut self.playback {
+                let due = pb.frame(dt, &mut out, &col);
+                let eye = out.camera.map_or(Vec3::ZERO, |c| c.eye);
+                for e in &due {
+                    wr.event(e, eye);
+                }
+                done |= pb.done();
+            }
+            if done {
+                self.stop_replay();
+            }
+            out.time = self.time;
+            out.dt = dt;
+            return out;
         }
         if std::mem::take(&mut self.m.podium_pending) {
             let mut ids: Vec<(PlayerId, u16)> = snap
@@ -1440,6 +1527,9 @@ impl Game {
         {
             if let Some(Session::Online(_)) = self.session {
                 self.close_podium();
+                self.playback = None;
+                self.end_stash = None;
+                self.ui.show_potm(None);
                 self.ui.hide_endscreen();
                 self.m.ended = false;
                 self.screen = Screen::InGame;
@@ -2037,8 +2127,54 @@ impl Game {
             })
             .collect();
         self.ui.set_end_again(if self.lobby().is_some() { "Back to the yard" } else { "Again" });
+        let kicker = format!("Match over \u{b7} {}", self.map.name);
+        self.ui.show_killcam(None);
+        // The play of the match first, if there was one; the end screen waits.
+        let raid = self.net.as_ref().and_then(|n| n.state().world.as_ref()).is_some_and(|w| w.raid.is_some());
+        let raiders: Vec<PlayerId> = if raid {
+            self.net.as_ref().map(|n| n.state().players.iter().filter(|p| p.team == Some(TEAM_RAIDERS)).map(|p| p.id).collect()).unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        if let Some(h) = self.recorder.highlight(&|id| !raiders.contains(&id)) {
+            let name = self.name_of(h.focus);
+            let team = self.team_of(h.focus);
+            self.ui.show_potm(Some((&name, team, &h.caption())));
+            self.playback = Some(self.recorder.playback(h));
+            self.skip_replay = false;
+            self.skip_keys_prev = true;
+            self.end_stash = Some((title.to_string(), winner, end, note.to_string(), kicker));
+            return;
+        }
         self.ui.show_endscreen(title, winner, &end, note);
-        self.ui.set_end_kicker(&format!("Match over \u{b7} {}", self.map.name));
+        self.ui.set_end_kicker(&kicker);
+    }
+
+    /// Ends the play of the match: the end screen it held back comes up.
+    fn stop_replay(&mut self) {
+        self.playback = None;
+        self.ui.show_potm(None);
+        if let Some((title, winner, rows, note, kicker)) = self.end_stash.take() {
+            if self.screen == Screen::End {
+                self.ui.show_endscreen(&title, winner, &rows, &note);
+                self.ui.set_end_kicker(&kicker);
+            }
+        }
+    }
+
+    /// The kill-cam plate for killer `k`: name, side, weapon, and the build.
+    fn killcam_view(&self, k: PlayerId, snap: &Snapshot) -> crate::ui::KillcamView {
+        let t = snap.tank(k);
+        let branches = t
+            .map(|t| t.parts.iter().map(|p| p.kind).filter(|p| names::is_branch(*p)).map(|p| names::part_name(p).to_string()).collect())
+            .unwrap_or_default();
+        crate::ui::KillcamView {
+            name: self.name_of(k),
+            team: self.team_of(k),
+            weapon: self.m.killed_by.as_ref().map(|b| b.1.clone()).unwrap_or_default(),
+            tiers: t.map_or([0; 4], |t| t.tiers),
+            branches,
+        }
     }
 
     /// The battle music's intensity from the action round you: recent hits

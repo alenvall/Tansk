@@ -1442,3 +1442,36 @@ html[data-touch="1"] .t-vote-card, html[data-touch="1"] .t-crew-ready { min-heig
 .t-lobby[data-fold="1"] .t-lobby-body { display: none; }
 .t-lobby[data-fold="1"] .t-lobby-card { top: auto; bottom: max(.6rem, env(safe-area-inset-bottom)); }
 html[data-touch="1"] .t-hud[data-lobby="1"] .t-tz-stick { width: 36%; }
+
+/* -------------------------------------------------- kill-cam and replay */
+.t-killcam { position: absolute; left: 50%; top: 6.6rem; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+.t-killcam[data-on="1"] .t-killcam-plate { animation: t-slam .32s cubic-bezier(.2, 1.6, .4, 1); }
+.t-killcam-plate { min-width: 26rem; padding: .7rem 2rem .9rem; text-align: center; }
+.t-killcam-kicker { display: flex; align-items: center; gap: .8rem; font-size: 1rem; font-weight: 800; letter-spacing: .3em; text-transform: uppercase; color: var(--blood); text-shadow: 0 1px 0 #000; }
+.t-killcam-kicker .t-hazard { flex: 1; height: .4rem; }
+.t-killcam-name { margin-top: .15rem; font-family: 'Black Ops One', sans-serif; font-size: 2.8rem; line-height: 1.05; letter-spacing: .04em; text-transform: uppercase; color: var(--cream); text-shadow: 0 .2rem 0 #000; }
+.t-killcam-name[data-team="a"] { color: var(--rust-hi); }
+.t-killcam-name[data-team="b"] { color: var(--teal-hi); }
+.t-killcam-gun { font-size: 1.15rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fuel); }
+.t-killcam-build { display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem; margin-top: .45rem; }
+.t-kc-chip { padding: .08rem .5rem 0; font-size: .85rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; border-radius: 2px; color: var(--ink); background: var(--cream-dim); }
+.t-kc-chip[data-kind="steel"] { background: var(--steel); }
+.t-kc-chip[data-kind="powder"] { background: var(--powder); color: #2a0e08; }
+.t-kc-chip[data-kind="volts"] { background: var(--volts); color: #08162a; }
+.t-kc-chip[data-kind="fuel"] { background: var(--fuel); }
+.t-kc-chip[data-kind="branch"] { background: var(--grain), linear-gradient(180deg, #f07a3e, #c94c13); color: #2a160a; }
+.t-killcam-skip { font-size: 1rem; color: var(--cream-dim); text-shadow: 0 1px 3px #000; }
+.t-hud:has(#t-killcam:not([hidden])) #t-reticle { visibility: hidden; }
+
+/* The replay: letterbox bars, the plate on top, the HUD away. */
+.t-hud[data-replay="1"] > :not(#t-potm):not(#t-chat) { visibility: hidden; }
+.t-potm { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; animation: t-fade-in .4s ease-out; }
+.t-potm::before, .t-potm::after { content: ""; position: absolute; left: 0; right: 0; height: 6.5vh; background: #120c08; }
+.t-potm::before { top: 0; } .t-potm::after { bottom: 0; }
+.t-potm-plate { position: relative; z-index: 1; margin-top: calc(6.5vh + 1.2rem); padding: .6rem 2.2rem .75rem; text-align: center; animation: t-slam .35s cubic-bezier(.2, 1.6, .4, 1); }
+.t-potm-kicker { font-size: 1.05rem; font-weight: 800; letter-spacing: .32em; text-transform: uppercase; color: var(--fuel); }
+.t-potm-name { font-family: 'Black Ops One', sans-serif; font-size: 3rem; line-height: 1.05; letter-spacing: .04em; text-transform: uppercase; color: var(--cream); text-shadow: 0 .2rem 0 #000; }
+.t-potm-name[data-team="a"] { color: var(--rust-hi); }
+.t-potm-name[data-team="b"] { color: var(--teal-hi); }
+.t-potm-cap { font-size: 1.2rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--cream-dim); }
+.t-potm-skip { position: absolute; z-index: 1; right: 2rem; bottom: calc(6.5vh + 1.2rem); pointer-events: auto; }
