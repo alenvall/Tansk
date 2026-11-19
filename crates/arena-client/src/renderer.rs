@@ -201,22 +201,23 @@ impl Look {
             TimeOfDay::Dusk => {
                 l.sun_elevation = 8.0;
                 l.sun_color = Vec3::new(1.0, 0.55, 0.28) * 2.2;
-                l.sky_color = Vec3::new(0.36, 0.38, 0.62) * 0.4;
-                l.ground_color = Vec3::new(0.9, 0.45, 0.25) * 0.45;
+                l.sky_color = Vec3::new(0.36, 0.38, 0.62) * 0.5;
+                l.ground_color = Vec3::new(0.9, 0.45, 0.25) * 0.56;
                 l.haze = Vec3::new(1.0, 0.66, 0.46) * 1.1;
                 l.warmth = Vec3::new(1.04, 0.99, 0.93);
                 l.exposure = 0.5;
                 l.sky_gain = 0.4;
             }
             TimeOfDay::Noon => {
-                l.sun_elevation = 62.0;
-                // Still a desert noon: a warm white sun, warm haze and a grade
-                // that keeps the sand's (and the salt flat's) colour.
-                l.sun_color = Vec3::new(1.0, 0.9, 0.74) * 2.6;
-                l.sky_color = Vec3::new(0.42, 0.5, 0.7) * 0.45;
-                l.haze = Vec3::new(0.98, 0.87, 0.72) * 1.2;
-                l.warmth = Vec3::new(1.04, 1.0, 0.92);
-                l.saturation = 1.12;
+                l.sun_elevation = 72.0;
+                // A high sun in a near-neutral white (short shadows), with a
+                // grade that still keeps the sand's (and the salt flat's) colour.
+                l.sun_color = Vec3::new(1.0, 0.93, 0.82) * 2.6;
+                l.sky_color = Vec3::new(0.42, 0.5, 0.7) * 0.55;
+                l.ground_color = Vec3::new(0.85, 0.68, 0.5) * 0.6;
+                l.haze = Vec3::new(0.96, 0.89, 0.78) * 1.2;
+                l.warmth = Vec3::new(1.02, 1.0, 0.95);
+                l.saturation = 1.1;
                 l.exposure = 0.205;
             }
         }
@@ -227,18 +228,21 @@ impl Look {
 
 impl Default for Look {
     fn default() -> Self {
-        // Golden hour: a low warm sun about 20 degrees up.
-        let (elev, az) = (20.0f32, 140.0f32);
+        // Golden hour (the default, and most matches): a low warm sun 13
+        // degrees up, long shadows. Noon and dusk differ clearly from it.
+        let (elev, az) = (13.0f32, 140.0f32);
         let sun_dir = Vec3::new(az.to_radians().cos() * elev.to_radians().cos(), elev.to_radians().sin(), az.to_radians().sin() * elev.to_radians().cos());
         Self {
             sun_elevation: elev,
             sun_azimuth: az,
             sun_dir,
-            sun_color: Vec3::new(1.0, 0.80, 0.58) * 2.8,
+            sun_color: Vec3::new(1.0, 0.74, 0.48) * 2.9,
             sky_gain: 0.5,
-            sky_color: Vec3::new(0.40, 0.48, 0.70) * 0.42,
-            ground_color: Vec3::new(0.92, 0.62, 0.38) * 0.55,
-            haze: Vec3::new(1.0, 0.86, 0.68) * 1.25,
+            // Generous fill, so faces turned from the sun (dune and canyon
+            // walls) still read in shadow.
+            sky_color: Vec3::new(0.40, 0.48, 0.70) * 0.55,
+            ground_color: Vec3::new(0.92, 0.62, 0.38) * 0.68,
+            haze: Vec3::new(1.0, 0.84, 0.64) * 1.25,
             haze_start: 140.0,
             haze_density: 0.0018,
             height_fog: 0.00035,
@@ -249,10 +253,10 @@ impl Default for Look {
             splits: [24.0, 75.0, 230.0],
             rim: 1.0,
             spec: 1.0,
-            exposure: 0.30,
+            exposure: 0.32,
             vignette: 0.3,
             saturation: 0.97,
-            warmth: Vec3::new(1.03, 1.0, 0.95),
+            warmth: Vec3::new(1.05, 1.0, 0.91),
             bloom: 0.05,
             bloom_threshold: 1.0,
             bloom_scatter: 0.55,

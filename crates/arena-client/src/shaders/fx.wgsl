@@ -44,16 +44,42 @@ fn vs_sprite(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
         let along = s.axis.xyz;
         let len = length(along);
         let a = select(vec3<f32>(0.0, 1.0, 0.0), along / max(len, 1e-4), len > 1e-4);
-        let view = normalize(centre - globals.camera.xyz);
+        // Clip the segment to in front of the eye: a tracer or cable
+        // passing beside or behind the camera otherwise projects through
+        // w <= 0 into a streak across the whole screen.
+        let eye = globals.camera.xyz;
+        let fwd = normalize(cross(globals.cam_up.xyz, globals.cam_right.xyz));
+        let half = len * 0.5 + size;
+        var e0 = centre - a * half;
+        var e1 = centre + a * half;
+        let z0 = dot(e0 - eye, fwd);
+        let z1 = dot(e1 - eye, fwd);
+        let near = 0.6;
+        var mid = centre;
+        var half_len = half;
+        if (max(z0, z1) < near) {
+            half_len = 0.0;
+            size = 0.0;
+        } else {
+            if (z0 < near) {
+                e0 = mix(e0, e1, (near - z0) / (z1 - z0));
+            }
+            if (z1 < near) {
+                e1 = mix(e1, e0, (near - z1) / (z0 - z1));
+            }
+            mid = 0.5 * (e0 + e1);
+            half_len = 0.5 * length(e1 - e0);
+        }
+        let view = normalize(mid - eye);
         let side = normalize(cross(a, view) + vec3<f32>(1e-4, 0.0, 0.0));
         // Cables stay at least 1.5 px wide (thinner ones break into dots
         // under FXAA); the fragment fades them by how much they grew.
         var width = size;
         if (kind == 5u) {
-            width = max(size, 0.75 * globals.cam_right.w * length(centre - globals.camera.xyz));
+            width = select(max(size, 0.75 * globals.cam_right.w * length(mid - eye)), 0.0, size <= 0.0);
             coverage = size / max(width, 1e-5);
         }
-        p = centre + a * (c.y * (len * 0.5 + size)) + side * c.x * width;
+        p = mid + a * (c.y * half_len) + side * c.x * width;
     } else {
         let r = s.params.y;
         let rc = vec2<f32>(c.x * cos(r) - c.y * sin(r), c.x * sin(r) + c.y * cos(r));
@@ -84,7 +110,9 @@ fn fs_sprite(in: SpriteOut) -> @location(0) vec4<f32> {
         // Puffy, lit: a lumpy outline and a fake sphere normal.
         let ang = atan2(in.uv.y, in.uv.x);
         var edge = 0.78 + 0.14 * noise2(vec2<f32>(ang * 1.6 + seed * 40.0, seed * 7.0)) + 0.08 * sin(ang * 5.0 + seed * 20.0);
-        var mask = 1.0 - smoothstep(edge - 0.18, edge, r);
+        // Dark smoke (params.w) gets a crisper, more defined silhouette.
+        let soft = mix(0.18, 0.07, clamp(in.params.w, 0.0, 1.0));
+        var mask = 1.0 - smoothstep(edge - soft, edge, r);
         if (kind == 3u) {
             // Debris: a hard-edged polygon.
             let k = floor((ang + 3.1416) / 1.2566);

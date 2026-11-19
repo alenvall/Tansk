@@ -408,7 +408,7 @@ fn asphalt(lp: vec3<f32>, world: vec3<f32>, fw: vec3<f32>) -> Surface {
 // The TF2 warp: shade goes cool and a little violet, the terminator warm
 // and saturated, the lit side golden.
 fn warp(x: f32) -> vec3<f32> {
-    let cool = vec3<f32>(0.20, 0.15, 0.20);
+    let cool = vec3<f32>(0.24, 0.18, 0.23);
     let terminator = vec3<f32>(0.64, 0.43, 0.29);
     let lit = vec3<f32>(1.0, 0.94, 0.84);
     let a = mix(cool, terminator, smoothstep(0.08, 0.42, x));

@@ -189,7 +189,12 @@ impl Fx {
     #[allow(clippy::too_many_arguments)]
     fn smoke_a(&mut self, pos: Vec3, vel: Vec3, size: f32, dark: f32, life: f32, alpha: f32) {
         let c = Vec3::new(0.62, 0.58, 0.54).lerp(Vec3::new(0.12, 0.1, 0.09), dark);
-        self.spawn(Kind::Puff, pos, vel, life, (size * 0.5, size * 1.6), (c, c * 1.1), alpha, 1.2, 1.2, 0.0);
+        // Dark smoke stays tighter, with a crisper outline, and clears
+        // sooner (`heat` carries the darkness to the fade and the shader),
+        // so plumes read as stylized puffs, not a smudge across the sky.
+        let grow = 1.6 - 0.45 * dark;
+        let life = life * (1.0 - 0.3 * dark);
+        self.spawn(Kind::Puff, pos, vel, life, (size * 0.55, size * grow), (c, c * 1.1), alpha, 1.2, 1.2, dark);
     }
 
     fn dust(&mut self, pos: Vec3, vel: Vec3, size: f32, life: f32) {
@@ -687,7 +692,7 @@ impl Fx {
             for _ in 0..m {
                 let j = self.rand_dir() * 0.6;
                 let dark = 0.75 + 0.2 * self.rand();
-                self.smoke(tip + Vec3::Y * 5.0 + j, Vec3::Y * 4.0 + wind * 1.6, 2.6, dark, 7.0);
+                self.smoke(tip + Vec3::Y * 5.0 + j, Vec3::Y * 4.0 + wind * 1.6, 2.0, dark, 7.0);
             }
         }
         // Smoke screens: keep each cloud filled while it lives.
@@ -746,7 +751,7 @@ impl Fx {
             let c = p.col0.lerp(p.col1, t);
             // Puffs fade in quickly and out slowly; glows burn out.
             let a = match p.kind {
-                Kind::Puff => p.alpha * (t / 0.08).min(1.0) * (1.0 - t).powf(1.4),
+                Kind::Puff => p.alpha * (t / 0.08).min(1.0) * (1.0 - t).powf(1.4 + 1.4 * p.heat),
                 Kind::Glow => p.alpha * (1.0 - t),
                 Kind::Streak => p.alpha * (1.0 - t),
                 Kind::Chunk => p.alpha * (1.0 - ((t - 0.85) / 0.15).clamp(0.0, 1.0)),
@@ -771,7 +776,17 @@ impl Fx {
                 Sprite {
                     pos_size: p.pos.extend(size).to_array(),
                     color: c.extend(a).to_array(),
-                    params: [p.kind as u32 as f32, p.rot, p.seed, if p.kind == Kind::Glow { p.heat * (1.0 - t) } else { 0.0 }],
+                    params: [
+                        p.kind as u32 as f32,
+                        p.rot,
+                        p.seed,
+                        match p.kind {
+                            Kind::Glow => p.heat * (1.0 - t),
+                            // Puffs: how dark (crisper edge for smoke).
+                            Kind::Puff => p.heat,
+                            _ => 0.0,
+                        },
+                    ],
                     axis: axis.extend(0.0).to_array(),
                 },
             ));
