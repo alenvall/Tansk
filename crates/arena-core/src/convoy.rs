@@ -347,11 +347,20 @@ impl Sim {
             if self.nav.is_blocked(q) {
                 continue;
             }
-            let yaw = if escort {
+            let want = if escort {
                 yaw_toward(dir)
             } else {
                 let tp = truck_pos.map(|t| Vec2::new(t.x, t.z)).unwrap_or(Vec2::new(p.x, p.z));
                 yaw_toward(tp - q)
+            };
+            // Face open, drivable ground (within 75 degrees of the route or the
+            // truck), so a crew that just drives off doesn't hit a bank or a stack.
+            let clear = (0..=15).flat_map(|k| [1.0f32, -1.0].map(|s| want + s * k as f32 * 5f32.to_radians())).find(|y| self.map.heading_clear(q, *y, crate::map::SPAWN_CLEAR));
+            let yaw = match clear {
+                Some(y) => y,
+                // Nothing open here: try another spot (the last tries take what they get).
+                None if attempt < 34 => continue,
+                None => want,
             };
             return Some((Vec3::new(q.x, self.map.height_at(q.x, q.y) + 1.3, q.y), yaw));
         }

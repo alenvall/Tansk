@@ -124,6 +124,18 @@ impl Hints {
         }
     }
 
+    /// Takes back one tip that no longer applies (waiting or up); it can
+    /// come again later.
+    pub fn drop_tip(&mut self, tip: Tip, ui: &mut Ui) {
+        self.queue.retain(|t| *t != tip);
+        if self.showing.is_some_and(|(t, _)| t == tip) {
+            self.showing = None;
+            self.seen.remove(tip.key);
+            self.dirty = true;
+            ui.hide_hint();
+        }
+    }
+
     /// Drops waiting tips (leaving a match); what is up fades out.
     pub fn clear_queue(&mut self, ui: &mut Ui) {
         self.queue.clear();

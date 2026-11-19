@@ -66,12 +66,14 @@
     </div>
     <div class="t-seg t-pmap" role="radiogroup" aria-label="Practice map">
       <span class="t-pmap-label">Practice on</span>
-      <label><input type="radio" name="pmap" value="sink" checked><span>The Sink</span></label>
-      <label><input type="radio" name="pmap" value="refinery"><span>The Refinery</span></label>
-      <label><input type="radio" name="pmap" value="rustbelt"><span>The Rust Belt</span></label>
+      <label title="The Sink"><input type="radio" name="pmap" value="sink" checked><span>Sink</span></label>
+      <label title="The Refinery"><input type="radio" name="pmap" value="refinery"><span>Refinery</span></label>
+      <label title="The Rust Belt"><input type="radio" name="pmap" value="rustbelt"><span>Rust Belt</span></label>
     </div>
-    <button class="t-btn" data-goto="garage"><span class="t-btn-label">Garage</span><span class="t-btn-hint">Chassis &amp; paint</span></button>
-    <button class="t-btn" data-goto="settings"><span class="t-btn-label">Settings</span><span class="t-btn-hint">Ears, eyes, hands</span></button>
+    <div class="t-menu-row">
+      <button class="t-btn" data-goto="garage"><span class="t-btn-label">Garage</span><span class="t-btn-hint">Chassis &amp; paint</span></button>
+      <button class="t-btn" data-goto="settings"><span class="t-btn-label">Settings</span><span class="t-btn-hint">Ears, eyes</span></button>
+    </div>
   </nav>
 
   <button class="t-btn t-btn-small t-howto-btn" data-goto="howto"><span class="t-btn-label">How to play</span></button>
@@ -114,8 +116,8 @@
       </div>
       <div class="t-field t-code-field">
         <div class="t-field-label">Crew code</div>
-        <div class="t-code" id="t-host-code">SINK-4821</div>
-        <div class="t-note">Read it out over the radio. Friends punch it into Join.</div>
+        <div class="t-code" id="t-host-code">????</div>
+        <div class="t-note">You get a four-letter code and an invite link in the crew yard. Friends click the link or punch the code into Join.</div>
       </div>
     </div>
     <div class="t-panel-foot">
@@ -131,7 +133,7 @@
       <div class="t-field">
         <div class="t-field-label">Crew code</div>
         <div class="t-joinrow">
-          <input class="t-codein" id="t-join-code" maxlength="9" placeholder="SINK-0000" spellcheck="false" autocomplete="off">
+          <input class="t-codein" id="t-join-code" maxlength="4" placeholder="ABCD" spellcheck="false" autocomplete="off">
           <button class="t-btn t-btn-go t-btn-small" data-action="join"><span class="t-btn-label">Join</span></button>
         </div>
       </div>
@@ -140,9 +142,7 @@
         <div class="t-games">
           <div class="t-games-head"><span>Host</span><span>Mode</span><span>Map</span><span>Crews</span><span>Ping</span></div>
           <div class="t-games-body" id="t-games-body">
-            <button class="t-game" data-action="join-row" data-code="SINK-1187"><span>Old Mags</span><span>Scrap Brawl</span><span>The Sink</span><span>5/8</span><span>38</span></button>
-            <button class="t-game" data-action="join-row" data-code="SINK-3302"><span>Dustwife</span><span>Team Brawl</span><span>The Sink</span><span>7/8</span><span>52</span></button>
-            <button class="t-game" data-action="join-row" data-code="SINK-9054"><span>Rivet</span><span>Scrap Brawl</span><span>The Sink</span><span>2/8</span><span>91</span></button>
+
           </div>
         </div>
       </div>
@@ -237,6 +237,8 @@
           <dt>Team Brawl</dt><dd>Rustbacks against Dust Saints.</dd>
           <dt>Raid</dt><dd>Co-op: hold the outpost against the waves.</dd>
           <dt>Convoy</dt><dd>Escort the tanker to the depot, then stop theirs.</dd>
+          <dt>Wellhead</dt><dd>Hold the derricks; first to fill the fuel tank wins.</dd>
+          <dt>Last Crew</dt><dd>No respawns, a storm wall closing in. Be the last one rolling.</dd>
         </dl>
       </section>
     </div>
@@ -288,7 +290,17 @@
           </div>
         </div>
       </div>
-      <div class="t-note">Hood ornaments and horns: the welder's still on lunch.</div>
+      <div class="t-field">
+        <div class="t-field-label">Horn <span class="t-note">press H on the move</span></div>
+        <div class="t-seg t-seg-sm" role="radiogroup">
+          <label><input type="radio" name="horn" value="0" checked><span>Trucker</span></label>
+          <label><input type="radio" name="horn" value="1"><span>Cucaracha</span></label>
+          <label><input type="radio" name="horn" value="2"><span>Big rig</span></label>
+          <label><input type="radio" name="horn" value="3"><span>Aooga</span></label>
+          <label><input type="radio" name="horn" value="4"><span>Toot</span></label>
+          <label><input type="radio" name="horn" value="5"><span>Whistle</span></label>
+        </div>
+      </div>
     </div>
     <div class="t-panel-foot">
       <button class="t-btn t-btn-small" data-goto="none"><span class="t-btn-label">Back</span></button>

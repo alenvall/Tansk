@@ -10,6 +10,7 @@
 #![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 
 pub mod aim;
+pub mod camcol;
 pub mod controls;
 pub mod hints;
 pub mod juice;
@@ -31,7 +32,7 @@ use glam::Vec3;
 use crate::camera::{Camera, ChaseCam};
 use crate::renderer::{Look, Quality, TimeOfDay};
 use crate::camera::CameraCollider;
-use crate::demo::{Demo, MapCollider};
+use crate::demo::Demo;
 use crate::net::{self, ChatLine, NetClient, Status};
 use crate::ui::{BranchOption, EndRow, HitKind, OpenGame, ScoreRow, Settings, Team, TrackState, Ui, UiAction};
 use crate::world::{paint_for, RenderWorld, TankView, WorldRenderer};
@@ -54,6 +55,18 @@ const BRANCH_SECS: f32 = 4.0;
 /// track_repair_time - track_patch_duration).
 const TRACK_WAIT: f32 = 2.5;
 const TRACK_PATCH: f32 = 1.5;
+/// Mouse movement ignored after a screen change or pointer lock, s.
+const MOUSE_SETTLE: f32 = 0.25;
+/// The biggest mouse step one frame takes, px (a bigger one is a glitch).
+const MOUSE_MAX_STEP: f32 = 160.0;
+/// Camera pitch range and resting pitch, radians.
+const PITCH_MIN: f32 = -0.6;
+const PITCH_MAX: f32 = 0.22;
+const PITCH_REST: f32 = -0.12;
+/// Untouched this long, the camera eases back to its resting pitch, s.
+const PITCH_IDLE: f32 = 2.5;
+/// The radio calls the Convoy truck stopped at most this often, s.
+const TRUCK_STOPPED_GAP: f32 = 20.0;
 
 /// Test hooks from URL flags; they only touch the offline Practice sim.
 #[derive(Clone, Debug, Default)]
@@ -121,8 +134,11 @@ struct Match {
     names: HashMap<PlayerId, String>,
     crowd_check: f32,
     crowd_called: HashMap<usize, f32>,
-    /// Seconds since you died (kill-cam).
+    /// Seconds since you died (kill-cam), and since you last spawned.
     dead_for: f32,
+    alive_for: f32,
+    /// When the radio last called the Convoy truck stopped.
+    truck_stopped_said: Option<f32>,
     killcam_angle: f32,
     /// Build the podium on the next frame (the end screen just opened).
     podium_pending: bool,
@@ -214,6 +230,14 @@ pub struct Game {
     lobby_drive: bool,
     /// The party's mode label as last written.
     party_label: String,
+    /// Mouse movement is ignored this much longer (a screen change or a
+    /// fresh pointer lock delivers one bogus jump).
+    mouse_settle: f32,
+    last_screen: Screen,
+    /// Seconds since the player last turned the camera up or down.
+    pitch_idle: f32,
+    /// The Garage pick changed: the platform may save it.
+    garage_dirty: bool,
 }
 
 impl Game {
@@ -221,7 +245,7 @@ impl Game {
         let backdrop = Demo::new(HOME_SEED, PRACTICE_BOTS);
         let map = Map::the_sink(HOME_SEED);
         let mut ui = Ui::mount();
-        ui.set_ticker("Scrap Brawl on The Sink  //  three of a kind bolts on  //  shoot it off, take it home");
+        ui.set_ticker(&ticker(MapId::Sink));
         Game {
             ui,
             controls: Controls::default(),
@@ -255,6 +279,10 @@ impl Game {
             welcomes_seen: 0,
             lobby_drive: false,
             party_label: String::new(),
+            mouse_settle: 0.0,
+            last_screen: Screen::Title,
+            pitch_idle: 0.0,
+            garage_dirty: false,
             practice_map: MapId::Sink,
             garage: None,
             pad: None,
@@ -311,6 +339,22 @@ impl Game {
     pub fn pointer_locked(&mut self) {
         self.controls.captured = true;
         self.paused = false;
+        self.mouse_settle = MOUSE_SETTLE;
+    }
+
+    /// The saved Garage pick (startup): on the menus and on every join.
+    pub fn set_garage(&mut self, g: crate::ui::Garage) {
+        self.ui.apply_garage(&g);
+        self.garage = Some(g);
+    }
+
+    pub fn garage(&self) -> Option<&crate::ui::Garage> {
+        self.garage.as_ref()
+    }
+
+    /// The Garage pick changed: the platform may persist it.
+    pub fn garage_dirty(&mut self) -> bool {
+        std::mem::take(&mut self.garage_dirty)
     }
 
     pub fn resume(&mut self) {
@@ -490,7 +534,7 @@ impl Game {
             },
             paint: paint_index(&g.paint),
             emblem: ["wrench", "cog", "skull", "flame", "star", "drop"].iter().position(|e| *e == g.emblem).unwrap_or(0) as u8,
-            horn: 0,
+            horn: g.horn,
         };
         sim.set_loadout(you, loadout);
         // `set_loadout` only takes effect at the next respawn; offline the tank
@@ -633,7 +677,10 @@ impl Game {
                 UiAction::Refused => {}
                 UiAction::Play => self.start_online(Join::Play),
                 UiAction::Practice => self.start_practice(),
-                UiAction::PracticeMap(key) => self.practice_map = MapId::from_key(&key).unwrap_or_default(),
+                UiAction::PracticeMap(key) => {
+                    self.practice_map = MapId::from_key(&key).unwrap_or_default();
+                    self.ui.set_ticker(&ticker(self.practice_map));
+                }
                 UiAction::Host(cfg) => {
                     let mode = match cfg.mode.as_str() {
                         "raider_waves" => ModeKind::RaiderWaves,
@@ -656,6 +703,7 @@ impl Game {
                 }
                 UiAction::GarageChanged(g) => {
                     self.garage = Some(g);
+                    self.garage_dirty = true;
                     self.apply_garage();
                     self.send_loadout();
                 }
@@ -918,10 +966,10 @@ impl Game {
                         (Some(Session::Practice { mode: ModeKind::TeamBrawl }), _) => format!("Team Practice \u{b7} {map_name}"),
                         (Some(Session::Practice { mode: ModeKind::Convoy }), _) => format!("Convoy Practice \u{b7} {map_name}"),
                         (Some(Session::Practice { mode: ModeKind::RaiderWaves }), _) => format!("Raid Practice \u{b7} {map_name}"),
-                        (Some(Session::Practice { mode: m @ (ModeKind::Wellhead | ModeKind::LastCrew) }), _) => format!("{} Practice \u{b7} {map_name}", m.name()),
+                        (Some(Session::Practice { mode: m @ (ModeKind::Wellhead | ModeKind::LastCrew) }), _) => format!("{} Practice \u{b7} {map_name}", party::mode_name(*m)),
                         (Some(Session::Practice { .. }), _) | (_, None) => format!("Practice \u{b7} {map_name}"),
-                        (Some(Session::Online(Join::Host { mode, .. })), Some(code)) => format!("{} \u{b7} {map_name} \u{b7} {code}", mode.name()),
-                        (_, Some(code)) => format!("{} \u{b7} {map_name} \u{b7} {code}", room_mode.name()),
+                        (Some(Session::Online(Join::Host { mode, .. })), Some(code)) => format!("{} \u{b7} {map_name} \u{b7} {code}", party::mode_name(*mode)),
+                        (_, Some(code)) => format!("{} \u{b7} {map_name} \u{b7} {code}", party::mode_name(room_mode)),
                     };
                     self.ui.set_mode_label(&mode);
                     self.ui.set_scoreboard_title("Scoreboard", &mode);
@@ -946,16 +994,23 @@ impl Game {
         let live = ((self.screen == Screen::InGame && !self.paused && (self.controls.captured || pad_live)) || lobby) && !typing;
         let sens = self.settings.mouse_sens.clamp(0.1, 3.0);
         let fov_k = self.camera.map_or(1.0, |c| c.fov_y / 62f32.to_radians());
+        if self.screen != self.last_screen {
+            self.last_screen = self.screen;
+            self.mouse_settle = MOUSE_SETTLE;
+        }
+        self.mouse_settle -= dt;
+        let pitch0 = self.chase.pitch;
         // In the yard the mouse is for the plate until the wheel is taken.
-        if self.controls.captured && !self.paused && (self.screen != Screen::Lobby || self.lobby_drive) {
+        if self.controls.captured && !self.paused && (self.screen != Screen::Lobby || self.lobby_drive) && self.mouse_settle <= 0.0 {
             let (mx, my) = self.controls.mouse;
+            let (mx, my) = (mx.clamp(-MOUSE_MAX_STEP, MOUSE_MAX_STEP), my.clamp(-MOUSE_MAX_STEP, MOUSE_MAX_STEP));
             self.chase.yaw -= mx * 0.0024 * sens * fov_k;
-            self.chase.pitch = (self.chase.pitch - my * 0.0024 * sens * fov_k).clamp(-0.75, 0.5);
+            self.chase.pitch = (self.chase.pitch - my * 0.0024 * sens * fov_k).clamp(PITCH_MIN, PITCH_MAX);
         }
         if !typing && !self.paused {
             self.chase.yaw += self.controls.axis(&["ArrowRight"], &["ArrowLeft"]) * 1.8 * dt;
             self.chase.pitch =
-                (self.chase.pitch + self.controls.axis(&["ArrowDown"], &["ArrowUp"]) * 1.0 * dt).clamp(-0.75, 0.5);
+                (self.chase.pitch + self.controls.axis(&["ArrowDown"], &["ArrowUp"]) * 1.0 * dt).clamp(PITCH_MIN, PITCH_MAX);
         }
         let pad = if pad_live { self.pad } else { None };
         if let (Some(p), true) = (pad, live) {
@@ -964,7 +1019,16 @@ impl Game {
             let (rx, ry) = (p.axis(2), p.axis(3));
             let rate = 2.6 * sens * fov_k * assist;
             self.chase.yaw -= rx * rx.abs() * rate * dt;
-            self.chase.pitch = (self.chase.pitch - ry * ry.abs() * 1.6 * sens * fov_k * assist * dt).clamp(-0.75, 0.5);
+            self.chase.pitch = (self.chase.pitch - ry * ry.abs() * 1.6 * sens * fov_k * assist * dt).clamp(PITCH_MIN, PITCH_MAX);
+        }
+        // Left alone, the view drifts back to the resting pitch.
+        if (self.chase.pitch - pitch0).abs() > 1e-4 {
+            self.pitch_idle = 0.0;
+        } else {
+            self.pitch_idle += dt;
+            if self.pitch_idle > PITCH_IDLE && !self.paused {
+                self.chase.pitch += (PITCH_REST - self.chase.pitch) * (1.0 - (-dt * 1.5).exp());
+            }
         }
         let c = &self.controls;
         let mut input = Input { aim_point: self.input.aim_point, ..Input::default() };
@@ -1078,7 +1142,7 @@ impl Game {
                 // Spawned: look along the hull.
                 let fwd = v.rot * Vec3::X;
                 self.chase.yaw = (-fwd.z).atan2(fwd.x);
-                self.chase.pitch = -0.12;
+                self.chase.pitch = PITCH_REST;
                 self.m.aligned = true;
                 if self.screen == Screen::Lobby {
                     // The yard: swing the boom round to open ground and start it out.
@@ -1097,6 +1161,9 @@ impl Game {
         }
         if !alive {
             self.m.dead_for += dt;
+            self.m.alive_for = 0.0;
+        } else {
+            self.m.alive_for += dt;
         }
         self.m.alive = alive;
         let killer_view = self.m.killer.and_then(|k| world.tanks.iter().find(|t| t.player == k && t.alive)).cloned();
@@ -1118,7 +1185,7 @@ impl Game {
             _ => self.camera.map_or(Vec3::ZERO, |c| c.target),
         };
         self.chase.zoom_target = if zoom && alive { 1.0 } else { 0.0 };
-        let mut cam = self.chase.update(dt, self.time, pivot, &MapCollider(&self.map));
+        let mut cam = self.chase.update(dt, self.time, pivot, &camcol::SceneCollider(&self.map));
         let long_gun = me.as_ref().is_some_and(|t| t.gun == arena_core::GunKind::LongGun);
         if long_gun {
             cam.fov_y *= 1.0 - 0.5 * self.chase.zoom;
@@ -1149,7 +1216,7 @@ impl Game {
                     .is_some_and(|t| matches!(t.vehicle, arena_core::parts::VehicleKind::WarRig | arena_core::parts::VehicleKind::LandShip));
                 let r = if big { 30.0 } else { 13.0 } - self.m.dead_for * 1.5;
                 let eye = k.pos + Vec3::new(a.cos() * r, if big { 9.0 } else { 4.5 }, -a.sin() * r);
-                let free = MapCollider(&self.map).free_fraction(k.pos + Vec3::Y * 2.0, eye);
+                let free = camcol::SceneCollider(&self.map).free_fraction(k.pos + Vec3::Y * 2.0, eye);
                 let eye = k.pos + Vec3::Y * 2.0 + (eye - k.pos - Vec3::Y * 2.0) * free.clamp(0.2, 1.0);
                 world.camera = Some(Camera::look(eye, k.pos + Vec3::Y * 1.4, 48.0));
             }
@@ -1533,6 +1600,9 @@ impl Game {
     /// Onboarding tips the situation calls for (each shows once per browser).
     fn onboarding(&mut self, me: Option<&TankSnap>, snap: &Snapshot, world: &RenderWorld, dt: f32) {
         let alive = me.is_some_and(|t| t.alive);
+        if !alive {
+            self.hints.drop_tip(hints::LOW_HEALTH, &mut self.ui);
+        }
         if let (Some(t), true) = (me, alive) {
             // Mode first, then the controls, as you roll out.
             if snap.wellhead.is_some() {
@@ -1554,8 +1624,12 @@ impl Game {
             if t.rare_ammo > 0 || t.air_strike {
                 self.hints.want(hints::SPECIAL);
             }
-            if (t.health as f32) < 0.3 * f32::from(t.max_health.max(1)) {
+            // Only for a hull failing now, not a fresh spawn.
+            let low = (t.health as f32) < 0.3 * f32::from(t.max_health.max(1));
+            if low && self.m.alive_for > 2.0 {
                 self.hints.want(hints::LOW_HEALTH);
+            } else {
+                self.hints.drop_tip(hints::LOW_HEALTH, &mut self.ui);
             }
         }
         let can_show = alive && self.screen == Screen::InGame && !self.paused && !self.m.ended;
@@ -1719,8 +1793,11 @@ impl Game {
             }
             Event::ConvoyMoving { .. } => self.radio.say(&radio::convoy_moving(), false),
             Event::ConvoyStopped { .. } => {
-                let escort = self.convoy_escort();
-                self.radio.say(&radio::convoy_stopped(escort), true);
+                if self.m.truck_stopped_said.is_none_or(|t| self.time - t >= TRUCK_STOPPED_GAP) {
+                    self.m.truck_stopped_said = Some(self.time);
+                    let escort = self.convoy_escort();
+                    self.radio.say(&radio::convoy_stopped(escort), true);
+                }
             }
             Event::ConvoyHalfway { .. } => self.radio.say(&radio::convoy_halfway(), true),
             Event::ConvoyDestroyed { .. } => self.radio.say(&radio::convoy_destroyed(), true),
@@ -1871,7 +1948,8 @@ impl Game {
         let ranks = if last_crew {
             (1..=rows.len() as u32).collect()
         } else {
-            crate::ui::shared_ranks(&rows.iter().map(|r| (r.kills, r.deaths)).collect::<Vec<_>>())
+            // By wrecks: crews level on kills share the rank (deaths don't split them).
+            crate::ui::shared_ranks(&rows.iter().map(|r| r.kills).collect::<Vec<_>>())
         };
         let end: Vec<EndRow> = rows
             .iter()
@@ -2398,6 +2476,11 @@ fn wrap(mut a: f32) -> f32 {
 /// Practice shares the backdrop's map; the seed only varies the match.
 fn rand_seed(_t: f32) -> u64 {
     HOME_SEED
+}
+
+/// The title's ticker, naming the picked map.
+pub fn ticker(map: MapId) -> String {
+    format!("Scrap Brawl on {}  //  three of a kind bolts on  //  shoot it off, take it home", map.name())
 }
 
 fn tip(t: f32) -> &'static str {

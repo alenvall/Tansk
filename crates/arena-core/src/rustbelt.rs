@@ -637,7 +637,7 @@ impl Map {
             map.convoy_route.push(at3(&map, Vec2::new(x, river_z(x) + dz)));
             x += 30.0;
         }
-        for (x, z) in [(205.0, river_z(205.0)), (205.0, 5.0)] {
+        for (x, z) in [(205.0, river_z(205.0)), (205.0, 0.0)] {
             map.convoy_route.push(at3(&map, Vec2::new(x, z)));
         }
 

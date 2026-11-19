@@ -171,6 +171,9 @@ async fn run() -> Result<()> {
         game.quality_auto = false;
     }
     game.apply_settings(settings);
+    if let Some(g) = load_garage() {
+        game.set_garage(g);
+    }
     if query_flag("hints").as_deref() == Some("reset") {
         if let Some(st) = storage() {
             let _ = st.remove_item(HINTS_KEY);
@@ -325,10 +328,12 @@ fn install_input(state: &Shared) -> Result<()> {
         st.game.gesture();
         let on_canvas = prop(&ev, "target").dyn_into::<web_sys::Element>().is_ok_and(|t| t.id() == "tansk-canvas");
         let button = prop(&ev, "button").as_f64().unwrap_or(0.0) as usize;
-        if st.game.screen() == Screen::Lobby && on_canvas && !st.game.free_mouse && !pointer_locked() {
-            // The yard: a click on the world takes the wheel.
+        if st.game.screen() == Screen::Lobby && on_canvas && !pointer_locked() && !st.game.wants_pointer() {
+            // The yard: a click on the world takes the wheel (Esc gives it back).
             st.game.lobby_take_wheel();
-            st.canvas.request_pointer_lock();
+            if !st.game.free_mouse {
+                st.canvas.request_pointer_lock();
+            }
             return;
         }
         if st.game.wants_pointer() && !st.game.free_mouse && !pointer_locked() {
@@ -443,6 +448,8 @@ fn mount_pause(document: &web_sys::Document) -> Option<web_sys::Element> {
          <h2 style=\"margin:0 0 .3rem;font-family:'Black Ops One',sans-serif;letter-spacing:.08em;color:var(--cream)\">Engine idling</h2>\
          <button class=\"t-btn\" data-pause=\"resume\"><span class=\"t-btn-label\">Back in</span><span class=\"t-btn-hint\">Grabs the mouse</span></button>\
          <button class=\"t-btn\" data-pause=\"leave\"><span class=\"t-btn-label\">Leave</span><span class=\"t-btn-hint\">Back to the title</span></button>\
+         <div class=\"t-pause-where\" id=\"t-pause-where\"></div>\
+         <div class=\"t-pause-tip\">The match keeps rolling while you're in here: your crew sits tight, the others don't. Settings live on the title screen.</div>\
          </div><div class=\"plate t-pause-ctl\">{}</div></div>",
         crate::ui::CONTROLS_HTML
     ));
@@ -458,6 +465,47 @@ const HINTS_KEY: &str = "tansk.hints.v1";
 
 fn storage() -> Option<web_sys::Storage> {
     web_sys::window()?.local_storage().ok().flatten()
+}
+
+const GARAGE_KEY: &str = "tansk.garage.v1";
+
+/// The Garage pick: chassis, paint (#rrggbb), emblem, horn, tab separated.
+fn load_garage() -> Option<crate::ui::Garage> {
+    let raw = storage()?.get_item(GARAGE_KEY).ok().flatten()?;
+    parse_garage(&raw)
+}
+
+fn parse_garage(raw: &str) -> Option<crate::ui::Garage> {
+    let f: Vec<&str> = raw.split('\t').collect();
+    if f.len() < 3 {
+        return None;
+    }
+    let chassis = match f[0] {
+        "scout" => crate::ui::Chassis::Scout,
+        "hauler" => crate::ui::Chassis::Hauler,
+        _ => crate::ui::Chassis::Brawler,
+    };
+    let paint = f[1].trim();
+    let ok = paint.len() == 7 && paint.starts_with('#') && paint[1..].chars().all(|c| c.is_ascii_hexdigit());
+    let emblem = f[2].trim();
+    let emblem = if ["wrench", "cog", "skull", "flame", "star", "drop"].contains(&emblem) { emblem } else { "wrench" };
+    Some(crate::ui::Garage {
+        chassis,
+        paint: if ok { paint.to_ascii_lowercase() } else { "#e2581e".into() },
+        emblem: emblem.into(),
+        horn: f.get(3).and_then(|h| h.parse().ok()).unwrap_or(0).min(5),
+    })
+}
+
+fn save_garage(g: &crate::ui::Garage) {
+    let chassis = match g.chassis {
+        crate::ui::Chassis::Scout => "scout",
+        crate::ui::Chassis::Brawler => "brawler",
+        crate::ui::Chassis::Hauler => "hauler",
+    };
+    if let Some(st) = storage() {
+        let _ = st.set_item(GARAGE_KEY, &format!("{chassis}\t{}\t{}\t{}", g.paint, g.emblem, g.horn));
+    }
 }
 
 fn load_settings() -> Option<Settings> {
@@ -614,6 +662,11 @@ fn frame(s: &mut State) {
     if s.game.settings_dirty() {
         save_settings(&s.game.settings);
     }
+    if s.game.garage_dirty() {
+        if let Some(g) = s.game.garage() {
+            save_garage(g);
+        }
+    }
     if std::mem::take(&mut s.game.hints.dirty) {
         if let Some(st) = storage() {
             let _ = st.set_item(HINTS_KEY, &s.game.hints.saved());
@@ -634,6 +687,16 @@ fn frame(s: &mut State) {
         let hidden = p.has_attribute("hidden");
         if show == hidden {
             let _ = if show { p.remove_attribute("hidden") } else { p.set_attribute("hidden", "") };
+            if let Some(d) = web_sys::window().and_then(|w| w.document()) {
+                if let Some(hud) = d.get_element_by_id("t-hud") {
+                    let _ = hud.set_attribute("data-paused", if show { "1" } else { "0" });
+                }
+                // Where you are, off the HUD's mode label.
+                let where_ = d.get_element_by_id("t-mode").and_then(|e| e.text_content()).unwrap_or_default();
+                if let Some(w) = d.get_element_by_id("t-pause-where") {
+                    w.set_text_content(Some(&where_));
+                }
+            }
         }
     }
 

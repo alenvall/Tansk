@@ -54,6 +54,14 @@ pub fn snapshot_mode(w: &arena_core::snapshot::Snapshot) -> ModeKind {
     }
 }
 
+/// The mode's name on HUD labels and cards ("Raid", as on the menus).
+pub fn mode_name(m: ModeKind) -> &'static str {
+    match m {
+        ModeKind::RaiderWaves => "Raid",
+        m => m.name(),
+    }
+}
+
 /// The lobby's mode keys (the plate's radio values).
 pub fn mode_key(m: ModeKind) -> &'static str {
     match m {
@@ -145,14 +153,14 @@ pub fn lobby_view(l: &LobbyState, you: Option<arena_core::PlayerId>, code: &str,
         .collect();
     let seats = if l.settings.mode == ModeKind::RaiderWaves { 4.max(l.crew.len()) } else { arena_core::net::ROOM_SEATS } as u8;
     let waiting = l.crew.iter().filter(|c| !c.away && !c.ready && !c.host).count();
-    let start_label = if l.vote.is_some() {
-        "Vote first".to_string()
+    let (start_label, start_hint) = if l.vote.is_some() {
+        ("Vote first".to_string(), "after the vote".to_string())
     } else if l.all_ready() {
-        "Start".to_string()
+        ("Start".to_string(), "everyone's ready".to_string())
     } else if l.force_in == 0 {
-        "Start anyway".to_string()
+        ("Start anyway".to_string(), "not everyone's ready".to_string())
     } else {
-        format!("Start ({})", l.force_in)
+        ("Start".to_string(), format!("when all ready, or anyway in {} s", l.force_in))
     };
     let plural = |n: usize| if n == 1 { "" } else { "s" };
     let status = match (&l.vote, you_host, me.is_some_and(|c| c.ready)) {
@@ -169,7 +177,7 @@ pub fn lobby_view(l: &LobbyState, you: Option<arena_core::PlayerId>, code: &str,
             .iter()
             .enumerate()
             .map(|(i, c)| VoteCardView {
-                mode: c.mode.name().to_string(),
+                mode: mode_name(c.mode).to_string(),
                 map: c.map.name().to_string(),
                 map_key: c.map.key(),
                 votes: l.crew.iter().filter(|k| k.vote == Some(i as u8)).count() as u8,
@@ -208,6 +216,7 @@ pub fn lobby_view(l: &LobbyState, you: Option<arena_core::PlayerId>, code: &str,
         ready: me.is_some_and(|c| c.ready),
         can_start: l.can_start(),
         start_label,
+        start_hint,
         status,
         vote,
     }
@@ -262,7 +271,7 @@ impl Game {
                 },
                 paint: super::paint_index(&g.paint),
                 emblem: ["wrench", "cog", "skull", "flame", "star", "drop"].iter().position(|e| *e == g.emblem).unwrap_or(0) as u8,
-                horn: 0,
+                horn: g.horn,
             },
             None => match self.my_crew() {
                 // Already told this room: keep it.
@@ -298,8 +307,8 @@ impl Game {
         let map = st.map.name();
         let label = match (l.phase, &st.world) {
             (LobbyPhase::Lobby, _) => format!("Crew yard \u{b7} {map} \u{b7} {code}"),
-            (_, Some(w)) => format!("{} \u{b7} {map} \u{b7} {code}", snapshot_mode(w).name()),
-            (_, None) => format!("{} \u{b7} {map} \u{b7} {code}", l.settings.mode.name()),
+            (_, Some(w)) => format!("{} \u{b7} {map} \u{b7} {code}", mode_name(snapshot_mode(w))),
+            (_, None) => format!("{} \u{b7} {map} \u{b7} {code}", mode_name(l.settings.mode)),
         };
         if label != self.party_label {
             self.ui.set_mode_label(&label);
@@ -390,7 +399,7 @@ mod tests {
         };
         let v = lobby_view(&l, Some(1), "ABCD", "http://x/?room=ABCD", None);
         assert!(!v.you_host && v.host_name == "Ann");
-        assert!(!v.can_start && v.start_label == "Start (6)");
+        assert!(!v.can_start && v.start_label == "Start" && v.start_hint.contains("anyway in 6 s"));
         assert_eq!(v.status, "Tick Ready when you're set");
         assert_eq!(v.secs, 30);
         assert!(!v.team_mode);

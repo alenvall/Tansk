@@ -234,8 +234,15 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-chip:hover b, .t-chip:focus-visible b { color: #2a160a; text-shadow: 0 1px 0 rgba(255, 210, 160, .55); }
 .t-chip:hover i, .t-chip:focus-visible i { color: #3b1b08; opacity: 1; }
 .t-chip:active { transform: translateY(.18rem) scale(.98); }
-.t-pmap .t-pmap-label { padding: 0 .4rem 0 0; font-size: .95rem; letter-spacing: .16em; color: #4a2410; background: none; box-shadow: none; }
-.t-pmap label span { padding: .35rem .8rem .3rem; font-size: 1rem; background: rgba(28, 20, 14, .55); }
+.t-pmap .t-pmap-label { padding: 0 .4rem 0 0; font-size: .95rem; letter-spacing: .16em; color: #4a2410; background: none; box-shadow: none; white-space: nowrap; }
+.t-pmap label span { padding: .35rem .7rem .3rem; font-size: 1rem; background: rgba(28, 20, 14, .55); white-space: nowrap; }
+.t-pmap { flex-wrap: nowrap; }
+.t-chip b { white-space: nowrap; }
+/* Garage and Settings side by side: the stack fits a 720p screen above the ticker. */
+.t-menu-row { display: grid; grid-template-columns: 1fr 1fr; gap: .38rem; }
+.t-menu-row .t-btn { padding-left: 1.4rem; padding-right: 1.2rem; flex-direction: column; gap: .1rem; }
+.t-menu-row .t-btn-label { font-size: 1.45rem; }
+.t-menu-row .t-btn-hint { font-size: .78rem; }
 
 .t-crewtag {
   position: absolute; top: 2rem; right: 2rem;
@@ -606,7 +613,7 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-fuel b { min-width: 2.4rem; font-family: 'Black Ops One', sans-serif; font-weight: 400; font-size: 1.2rem; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 1px 0 #000; }
 .t-fuel-a b { text-align: right; color: var(--rust-hi); }
 .t-fuel-b b { color: var(--teal-hi); }
-.t-wells-row { display: flex; gap: .55rem; }
+.t-wells-row { display: flex; gap: .9rem; padding-bottom: .35rem; }
 .t-well { --tc: #8a8178; position: relative; width: 2.7rem; height: 2.7rem; display: grid; place-items: center; color: #8a8178; }
 .t-well[data-owner="a"] { color: var(--rust-hi); }
 .t-well[data-owner="b"] { color: var(--teal-hi); }
@@ -940,6 +947,10 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-ctl-list dt { font-size: 1.1rem; letter-spacing: .06em; text-transform: uppercase; color: var(--cream-dim); }
 .t-ctl-list dd { margin: 0; font-size: 1.05rem; color: var(--cream-dim); }
 #tansk-pause .t-pause-wrap { display: flex; gap: 1.2rem; align-items: stretch; }
+#tansk-pause .t-pause-where { font-size: 1.05rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--fuel); }
+#tansk-pause .t-pause-tip { margin-top: auto; max-width: 20rem; padding-top: .8rem; border-top: 1px solid rgba(0,0,0,.45); font-size: 1.05rem; line-height: 1.3; color: var(--cream-dim); }
+/* Paused: the branch pick waits behind the card instead of showing through. */
+.t-hud[data-paused="1"] #t-branch { visibility: hidden; }
 #tansk-pause .t-pause-ctl { padding: 1.2rem 1.6rem 1.3rem; }
 
 /* ---------------------------------------------------------- how to play */
@@ -1069,7 +1080,8 @@ html { font-size: clamp(12px, min(1.48vh, 0.84vw), 22px); }
 .t-lobby[data-ready="1"] .t-lobby-ready .t-btn-label::before { background: linear-gradient(180deg, #a6d66a, #5f9a2e); box-shadow: 0 0 .4rem rgba(166, 214, 106, .8); }
 .t-lobby[data-host="1"] .t-lobby-ready { display: none; }
 .t-lobby[data-host="0"] .t-lobby-start { display: none; }
-.t-lobby-start { width: auto; padding-left: 2rem; padding-right: 2.4rem; }
+.t-lobby-start { width: auto; padding-left: 2rem; padding-right: 2.4rem; flex-direction: column; align-items: flex-start; gap: .15rem; }
+.t-lobby-start .t-btn-hint { font-size: .78rem; letter-spacing: .06em; }
 .t-lobby-start[data-on="0"] { filter: grayscale(.85) brightness(.7); cursor: not-allowed; }
 .t-lobby-start[data-on="0"]:hover { transform: none; animation: none; }
 

@@ -294,7 +294,12 @@ pub struct Garage {
     pub paint: String,
     /// One of wrench, cog, skull, flame, star, drop.
     pub emblem: String,
+    /// Horn index (the sim's `Loadout::horn`).
+    pub horn: u8,
 }
+
+/// The Garage's paint swatches (anything else is a custom colour).
+pub const SWATCHES: [&str; 7] = ["#e2581e", "#2fa39b", "#7d8a3a", "#d9b77a", "#c8322b", "#2f6fb5", "#efb92a"];
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HostConfig {
@@ -378,6 +383,8 @@ pub struct LobbyView {
     /// The host's Start is live, and its label.
     pub can_start: bool,
     pub start_label: String,
+    /// Under the label: why it waits ("when all ready, or anyway in 6 s").
+    pub start_hint: String,
     /// The line by the buttons ("Waiting on 2 crews").
     pub status: String,
     /// The map vote: cards, seconds left, your pick.
@@ -713,6 +720,28 @@ impl Ui {
     }
 
     /// Put saved settings into the Settings panel.
+    /// Shows a saved Garage pick on the Garage panel and the crew tag.
+    pub fn apply_garage(&mut self, g: &Garage) {
+        let chassis = match g.chassis {
+            Chassis::Scout => "scout",
+            Chassis::Brawler => "brawler",
+            Chassis::Hauler => "hauler",
+        };
+        self.dom.check(&format!("input[name=chassis][value={chassis}]"));
+        let paint = g.paint.to_ascii_lowercase();
+        if SWATCHES.contains(&paint.as_str()) {
+            self.dom.check(&format!("input[name=paint][value=\"{paint}\"]"));
+        } else {
+            for s in SWATCHES {
+                self.dom.set_checked(&format!("input[name=paint][value=\"{s}\"]"), false);
+            }
+            self.dom.set_value("t-paint-custom", &paint);
+        }
+        self.dom.check(&format!("input[name=emblem][value={}]", esc(&g.emblem)));
+        self.dom.check(&format!("input[name=horn][value=\"{}\"]", g.horn));
+        self.dom.html("t-crew-emblem", &format!("<use href=\"#e-{}\"/>", esc(&g.emblem)));
+    }
+
     pub fn apply_settings(&mut self, s: &Settings) {
         self.local_name = s.name.clone();
         self.dom.text("t-crew-name", &s.name);
@@ -1402,9 +1431,11 @@ impl Ui {
             self.dom.attr("t-lobby", "data-ready", if v.ready { "1" } else { "0" });
             self.dom.text("t-lobby-ready", if v.ready { "Ready" } else { "Ready?" });
         }
-        if o.map(|o| (o.can_start, &o.start_label, &o.status)) != Some((v.can_start, &v.start_label, &v.status)) {
+        if o.map(|o| (o.can_start, &o.start_label, &o.status, &o.start_hint)) != Some((v.can_start, &v.start_label, &v.status, &v.start_hint)) {
             self.dom.attr("t-lobby-start", "data-on", if v.can_start { "1" } else { "0" });
+            self.dom.attr("t-lobby-start", "title", &format!("Start: {}", v.start_hint));
             self.dom.text("t-lobby-start-label", &v.start_label);
+            self.dom.text("t-lobby-start-hint", &v.start_hint);
             self.dom.text("t-lobby-status", &v.status);
         }
         if o.map(|o| &o.vote) != Some(&v.vote) {

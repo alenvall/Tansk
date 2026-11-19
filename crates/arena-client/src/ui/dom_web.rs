@@ -107,7 +107,8 @@ impl Ctx {
             paint = self.value("#t-paint-custom");
         }
         let emblem = self.value("input[name=emblem]:checked");
-        Garage { chassis, paint, emblem: if emblem.is_empty() { "wrench".into() } else { emblem } }
+        let horn = self.value("input[name=horn]:checked").parse().unwrap_or(0);
+        Garage { chassis, paint, emblem: if emblem.is_empty() { "wrench".into() } else { emblem }, horn }
     }
 
     fn read_host(&self) -> HostConfig {
