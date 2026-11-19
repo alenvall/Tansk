@@ -83,6 +83,20 @@
   </div>
 
   <!-- top right: kill feed -->
+  <!-- Convoy: the truck's health and route, your role, its state -->
+  <div id="t-convoy" class="t-convoy plate" data-role="escort" hidden>
+    <div class="t-convoy-role" id="t-convoy-role">Escort</div>
+    <div class="t-convoy-bars">
+      <div class="t-convoy-bar t-convoy-hpbar"><span>Tanker</span><div class="t-convoy-track"><i id="t-convoy-hp" style="--v:1"></i></div></div>
+      <div class="t-convoy-bar t-convoy-routebar"><span>Route</span><div class="t-convoy-track"><i id="t-convoy-route" style="--v:0"></i><b class="t-convoy-depot"></b></div></div>
+    </div>
+    <div class="t-convoy-state" id="t-convoy-state">Rolling</div>
+  </div>
+  <div id="t-convoy-mark" class="t-convoy-mark" data-role="escort" style="--x:50%;--y:40%" hidden aria-hidden="true">
+    <svg viewBox="0 0 40 40"><path d="M6 8 L20 30 L34 8 L20 16 Z" /></svg>
+    <b id="t-convoy-dist">0 m</b>
+  </div>
+
   <div id="t-feed" class="t-feed"></div>
 
   <!-- left: chat -->

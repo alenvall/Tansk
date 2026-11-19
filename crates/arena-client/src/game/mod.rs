@@ -38,7 +38,7 @@ pub use controls::{Controls, Pad};
 use controls::pad;
 use juice::Juice;
 use radio::Radio;
-use sound::Sound;
+use sound::{MusicTrack, Sound, Stinger};
 
 /// The backdrop and Practice share this map seed, so starting Practice
 /// doesn't rebuild the scenery.
@@ -56,6 +56,8 @@ const TRACK_PATCH: f32 = 1.5;
 /// Test hooks from URL flags; they only touch the offline Practice sim.
 #[derive(Clone, Debug, Default)]
 pub struct DebugFlags {
+    /// `?landship=1`: THE LAND-SHIP rolls in at once (raid practice).
+    pub landship: bool,
     /// `?matchtime=45`: Scrap Brawl length, seconds.
     pub match_time: Option<f32>,
     /// `?raidfast=1`: waves at once, a boss every wave, a weak outpost.
@@ -121,6 +123,11 @@ struct Match {
     raid_label: String,
     outpost_max: f32,
     outpost_quarter: u8,
+    /// Music: recent action (decays) and the smoothed intensity.
+    heat: f32,
+    intensity: f32,
+    /// The round-start stinger has played.
+    started: bool,
 }
 
 pub struct Game {
@@ -171,6 +178,9 @@ pub struct Game {
     podium: Option<RenderWorld>,
     camera_title: Option<Vec3>,
     title_follow: (Option<PlayerId>, f32),
+    /// Convoy: the truck's road (as the sim joins it) for this map, and the
+    /// distance along it at each point.
+    convoy_route: Option<((u64, MapId), Vec<Vec3>, Vec<f32>)>,
 }
 
 impl Game {
@@ -206,6 +216,7 @@ impl Game {
             podium: None,
             camera_title: None,
             title_follow: (None, 0.0),
+            convoy_route: None,
             debug: DebugFlags::default(),
             practice_map: MapId::Sink,
             garage: None,
@@ -264,7 +275,7 @@ impl Game {
     }
 
     pub fn apply_settings(&mut self, s: Settings) {
-        self.sound.set_volumes(s.vol_master, s.vol_sfx, s.vol_ambience);
+        self.sound.set_volumes(s.vol_master, s.vol_sfx, s.vol_ambience, s.vol_music);
         self.want_quality = Some(render_quality(s.quality));
         self.ui.apply_settings(&s);
         self.settings = s;
@@ -300,6 +311,11 @@ impl Game {
     /// Offline Raider Waves with bot allies.
     pub fn start_practice_raid(&mut self) {
         self.start(Session::Practice { mode: ModeKind::RaiderWaves });
+    }
+
+    /// Offline Convoy: you and 3 bot allies escort first, then stop theirs.
+    pub fn start_practice_convoy(&mut self) {
+        self.start(Session::Practice { mode: ModeKind::Convoy });
     }
 
     /// Offline Team Brawl: you and 3 bot allies against 4 bots.
@@ -352,6 +368,7 @@ impl Game {
                     Join::Code(c) => format!("Tuning the radio to {c}..."),
                     Join::Host { mode: ModeKind::RaiderWaves, .. } => "Fortifying the outpost...".to_string(),
                     Join::Host { mode: ModeKind::TeamBrawl, .. } => "Painting the hulls...".to_string(),
+                    Join::Host { mode: ModeKind::Convoy, .. } => "Fuelling the tanker...".to_string(),
                     Join::Host { .. } => "Opening the gates...".to_string(),
                     _ => "Looking for a crew to fight...".to_string(),
                 };
@@ -419,6 +436,9 @@ impl Game {
         }
         if let Some(n) = d.wave {
             sim.debug_jump_to_wave(n);
+        }
+        if d.landship {
+            sim.debug_spawn_landship();
         }
         if let Some(weak) = d.boss {
             if let Some(id) = sim.debug_spawn_boss() {
@@ -506,6 +526,7 @@ impl Game {
                     let mode = match cfg.mode.as_str() {
                         "raider_waves" => ModeKind::RaiderWaves,
                         "team_brawl" => ModeKind::TeamBrawl,
+                        "convoy" => ModeKind::Convoy,
                         _ => ModeKind::ScrapBrawl,
                     };
                     let map = MapId::from_key(&cfg.map).unwrap_or_default();
@@ -696,6 +717,7 @@ impl Game {
         }
         self.sound.frame(world.camera.map_or(Vec3::ZERO, |c| c.eye), Vec3::X, &[], None, 0.0);
         self.sound.ambience(0.2, 0.0);
+        self.sound.music(MusicTrack::Title, 0.5);
         world
     }
 
@@ -726,6 +748,8 @@ impl Game {
                     let map_name = map_id.name();
                     let mode = match (&self.session, &code) {
                         (Some(Session::Practice { mode: ModeKind::TeamBrawl }), _) => format!("Team Practice \u{b7} {map_name}"),
+                        (Some(Session::Practice { mode: ModeKind::Convoy }), _) => format!("Convoy Practice \u{b7} {map_name}"),
+                        (Some(Session::Online(Join::Host { mode: ModeKind::Convoy, .. })), Some(code)) => format!("Convoy \u{b7} {map_name} \u{b7} {code}"),
                         (Some(Session::Practice { .. }), _) | (_, None) => format!("Practice \u{b7} {map_name}"),
                         (Some(Session::Online(Join::Host { mode: ModeKind::TeamBrawl, .. })), Some(code)) => format!("Team Brawl \u{b7} {map_name} \u{b7} {code}"),
                         (Some(Session::Online(Join::Host { mode: ModeKind::RaiderWaves, .. })), Some(code)) => format!("Raider Waves \u{b7} {map_name} \u{b7} {code}"),
@@ -917,7 +941,7 @@ impl Game {
                     .as_ref()
                     .and_then(|n| n.state().world.as_ref())
                     .and_then(|w| w.tank(k.player))
-                    .is_some_and(|t| t.vehicle == arena_core::parts::VehicleKind::WarRig);
+                    .is_some_and(|t| matches!(t.vehicle, arena_core::parts::VehicleKind::WarRig | arena_core::parts::VehicleKind::LandShip));
                 let r = if big { 30.0 } else { 13.0 } - self.m.dead_for * 1.5;
                 let eye = k.pos + Vec3::new(a.cos() * r, if big { 9.0 } else { 4.5 }, -a.sin() * r);
                 let free = MapCollider(&self.map).free_fraction(k.pos + Vec3::Y * 2.0, eye);
@@ -952,6 +976,7 @@ impl Game {
                 }
             }
             self.sound.event(e, you);
+            self.music_event(e, you);
             self.on_event(e, you, &world, cam);
         }
         self.sound.frame(listener, dir, &world.tanks, you, input.throttle);
@@ -959,6 +984,7 @@ impl Game {
         let (speed, high) = my_view.as_ref().map_or((0.0, 0.0), |v| (v.speed, v.pos.y - self.map.height_at(0.0, 0.0)));
         let wind = 0.35 + (speed / 14.0).min(1.0) * 0.25 + (high / 6.0).clamp(0.0, 1.0) * 0.15;
         self.sound.ambience(wind, snap.storm);
+        self.music_frame(dt, &snap, &world, you);
 
         // ---- HUD.
         if let Some(t) = &me {
@@ -975,6 +1001,7 @@ impl Game {
             }
         }
         self.raid_hud(&snap);
+        self.convoy_hud(&snap, &mut world, you, wr);
         if let Some(left) = &mut self.m.branch {
             *left -= dt;
             let closed = me.as_ref().is_some_and(|t| t.choice.is_none());
@@ -1170,6 +1197,7 @@ impl Game {
         let mut rows: Vec<ScoreRow> = players
             .iter()
             .filter(|p| snap.raid.is_none() || p.team != Some(TEAM_RAIDERS))
+            .filter(|p| snap.convoy.as_ref().is_none_or(|c| c.truck != p.id))
             .map(|p| {
                 let s = snap.scores.iter().find(|s| s.player == p.id);
                 let t = snap.tank(p.id);
@@ -1404,6 +1432,18 @@ impl Game {
             Event::StormIncoming { in_seconds } => self.radio.say(&radio::storm_incoming(*in_seconds), true),
             Event::StormStarted { .. } => self.radio.say(&radio::storm_started(), false),
             Event::StormEnded => self.radio.say(&radio::storm_ended(), false),
+            Event::ConvoyRoundStarted { round, escort_team, .. } => {
+                let mine = you.and_then(|y| self.net.as_ref().and_then(|n| n.state().world.as_ref()?.tank(y).map(|t| t.team)));
+                self.radio.say(&radio::convoy_round(*round, mine == Some(*escort_team)), true);
+            }
+            Event::ConvoyMoving { .. } => self.radio.say(&radio::convoy_moving(), false),
+            Event::ConvoyStopped { .. } => {
+                let escort = self.convoy_escort();
+                self.radio.say(&radio::convoy_stopped(escort), true);
+            }
+            Event::ConvoyHalfway { .. } => self.radio.say(&radio::convoy_halfway(), true),
+            Event::ConvoyDestroyed { .. } => self.radio.say(&radio::convoy_destroyed(), true),
+            Event::ConvoyDelivered { .. } => self.radio.say(&radio::convoy_delivered(), true),
             Event::MatchEnded { winner } => self.end_match(*winner),
             Event::TeamMatchEnded { team } => self.end_team(*team),
             _ => {}
@@ -1428,6 +1468,7 @@ impl Game {
             _ => "Again for another round",
         };
         self.show_end(&title, note);
+        self.sound.stinger(if you_won { Stinger::Victory } else { Stinger::Defeat });
         self.radio.say(&radio::match_over(wname.as_deref(), you_won), true);
     }
 
@@ -1446,8 +1487,13 @@ impl Game {
             Some(Session::Online(_)) => "Next round rolls out in a few seconds",
             _ => "Again for another round",
         };
-        self.show_end_team(&title, note, winner);
+        let note = match self.convoy_results() {
+            Some(r) => format!("{r}  \u{b7}  {note}"),
+            None => note.to_string(),
+        };
+        self.show_end_team(&title, &note, winner);
         let won = winner.map(|w| Some(w) == mine);
+        self.sound.stinger(if won == Some(true) { Stinger::Victory } else { Stinger::Defeat });
         let name = match winner {
             Some(Team::Rustbacks) => "Rustbacks",
             Some(Team::DustSaints) => "Dust Saints",
@@ -1463,6 +1509,7 @@ impl Game {
         let title = if outpost_fell { "The outpost fell" } else { "The crew is scrap" };
         let note = format!("Held {waves} wave{}", if waves == 1 { "" } else { "s" });
         self.show_end(title, &note);
+        self.sound.stinger(Stinger::Defeat);
         self.radio.say(&radio::raid_lost(waves, outpost_fell), true);
     }
 
@@ -1507,6 +1554,191 @@ impl Game {
             })
             .collect();
         self.ui.show_endscreen(title, winner, &end, note);
+    }
+
+    /// The battle music's intensity from the action round you: recent hits
+    /// dealt or taken, kills and shots (decaying), enemies close by, a boss on
+    /// the field, low health. Smoothed; 0.1 calm .. 1 in a brawl.
+    fn music_frame(&mut self, dt: f32, snap: &Snapshot, world: &RenderWorld, you: Option<PlayerId>) {
+        if !self.m.started {
+            self.m.started = true;
+            if snap.convoy.is_none() {
+                self.sound.stinger(Stinger::RoundStart);
+            }
+        }
+        if self.screen == Screen::End {
+            self.sound.music(MusicTrack::Silence, 0.0);
+            return;
+        }
+        self.m.heat *= (-dt / 7.0).exp();
+        let me = you.and_then(|y| snap.tank(y));
+        let my_pos = you.and_then(|y| world.tanks.iter().find(|t| t.player == y)).map(|t| t.pos);
+        let my_team = me.map(|t| t.team);
+        let near = my_pos.map_or(0, |p| {
+            snap.tanks
+                .iter()
+                .filter(|t| t.alive && Some(t.player) != you && (my_team.is_none_or(|m| m == 255) || Some(t.team) != my_team))
+                .filter(|t| t.position().distance(p) < 70.0)
+                .count()
+        });
+        let hp = me.map_or(1.0, |t| t.health as f32 / f32::from(t.max_health.max(1)));
+        let mut target = 0.1 + self.m.heat.min(0.55) + (near as f32 * 0.09).min(0.3);
+        if !snap.bosses.is_empty() {
+            target += 0.25;
+        }
+        if me.is_some_and(|t| t.alive) && hp < 0.35 {
+            target += 0.2;
+        }
+        let target = target.clamp(0.1, 1.0);
+        let rate = if target > self.m.intensity { 1.2 } else { 0.25 };
+        self.m.intensity += (target - self.m.intensity) * (1.0 - (-dt * rate).exp());
+        self.sound.music(MusicTrack::Battle, self.m.intensity);
+    }
+
+    /// Music heat from one event near you.
+    fn music_event(&mut self, e: &Event, you: Option<PlayerId>) {
+        let is_you = |p: &PlayerId| Some(*p) == you;
+        let heat = match e {
+            Event::Hit { target, attacker, .. } if is_you(target) || attacker.as_ref().is_some_and(is_you) => 0.18,
+            Event::Destroyed { victim, killer, .. } if is_you(victim) || killer.as_ref().is_some_and(is_you) => 0.3,
+            Event::Fired { player, .. } if is_you(player) => 0.04,
+            Event::HazardExploded { .. } => 0.08,
+            _ => 0.0,
+        };
+        self.m.heat += heat;
+        match e {
+            Event::WaveStarted { boss: false, .. } => self.sound.stinger(Stinger::WaveStart),
+            Event::BossSpawned { .. } => self.sound.stinger(Stinger::BossAppears),
+            Event::ConvoyRoundStarted { .. } => self.sound.stinger(Stinger::RoundStart),
+            _ => {}
+        }
+    }
+
+    /// Convoy: does your team escort the truck this round?
+    fn convoy_escort(&self) -> bool {
+        let Some(snap) = self.net.as_ref().and_then(|n| n.state().world.as_ref()) else { return false };
+        let Some(c) = &snap.convoy else { return false };
+        self.you().and_then(|y| snap.tank(y)).is_some_and(|t| t.team == c.side)
+    }
+
+    /// Convoy: the round results for the end screen ("R1 Rustbacks delivered
+    /// in 3:12 · R2 Dust Saints stopped at 64%").
+    fn convoy_results(&self) -> Option<String> {
+        let snap = self.net.as_ref()?.state().world.as_ref()?;
+        let c = snap.convoy.as_ref()?;
+        let team = |t: u8| if t == 0 { "Rustbacks" } else { "Dust Saints" };
+        let parts: Vec<String> = c
+            .rounds
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                let s = r.seconds.max(0.0) as i32;
+                if r.delivered {
+                    format!("R{} {} delivered in {}:{:02}", i + 1, team(r.escort_team), s / 60, s % 60)
+                } else {
+                    format!("R{} {} got {:.0}% down the road", i + 1, team(r.escort_team), 100.0 * r.distance / c.length.max(1.0))
+                }
+            })
+            .collect();
+        (!parts.is_empty()).then(|| parts.join("  \u{b7}  "))
+    }
+
+    /// The truck's road for this map, joined on the nav grid exactly as the
+    /// sim does (`Sim::convoy_path`), with cumulative distances.
+    fn route(&mut self) {
+        let key = (self.map_seed, self.map.id);
+        if self.convoy_route.as_ref().is_none_or(|r| r.0 != key) {
+            let nav = arena_core::bots::NavGrid::build(&self.map, arena_core::Tuning::default().bots.nav_cell);
+            let mut ctrl = self.map.convoy_route.clone();
+            if ctrl.len() < 2 {
+                let h = self.map.play_half - 30.0;
+                ctrl = vec![Vec3::new(-h, 0.0, 0.0), Vec3::new(h, 0.0, 0.0)];
+            }
+            let flat = |v: Vec3| glam::Vec2::new(v.x, v.z);
+            let mut pts = vec![flat(ctrl[0])];
+            for w in ctrl.windows(2) {
+                let from = *pts.last().unwrap();
+                pts.extend(nav.path(from, flat(w[1])));
+            }
+            pts.dedup_by(|a, b| a.distance(*b) < 0.5);
+            let path: Vec<Vec3> = pts.iter().map(|p| Vec3::new(p.x, self.map.height_at(p.x, p.y), p.y)).collect();
+            let mut cum = vec![0.0];
+            for w in path.windows(2) {
+                let d = glam::Vec2::new(w[1].x - w[0].x, w[1].z - w[0].z).length();
+                cum.push(cum.last().unwrap() + d);
+            }
+            self.convoy_route = Some((key, path, cum));
+        }
+    }
+
+    /// Convoy: the bar under the clock, the clock and label, the truck's
+    /// marker (seen through walls: it's the objective) and, for the escorts,
+    /// chevrons on the road ahead of it.
+    fn convoy_hud(&mut self, snap: &Snapshot, world: &mut RenderWorld, you: Option<PlayerId>, wr: &WorldRenderer) {
+        let Some(c) = snap.convoy.clone() else {
+            self.ui.set_convoy(None);
+            return;
+        };
+        let escort = you.and_then(|y| snap.tank(y)).is_some_and(|t| t.team == c.side);
+        use arena_core::convoy::ConvoyPhase;
+        let state = match c.phase {
+            ConvoyPhase::Setup => "Setting up",
+            ConvoyPhase::RoundOver => "Round over",
+            ConvoyPhase::Done => "Done",
+            ConvoyPhase::Rolling if !c.alive => "Burning",
+            ConvoyPhase::Rolling if c.contested => "Contested",
+            ConvoyPhase::Rolling if c.repairing => "Repairing",
+            ConvoyPhase::Rolling if c.moving => "Rolling",
+            ConvoyPhase::Rolling => "Stopped",
+        };
+        self.ui.set_convoy(Some(&crate::ui::ConvoyHud {
+            escort,
+            health: f32::from(c.health) / f32::from(c.max_health.max(1)),
+            progress: c.progress,
+            state: state.to_string(),
+        }));
+        self.ui.set_timer(c.ticks_left as f32 / 60.0);
+        let label = format!("Convoy \u{b7} Round {}/2 \u{b7} {}", c.round, self.map.name);
+        if label != self.m.raid_label {
+            self.ui.set_mode_label(&label);
+            self.m.raid_label = label;
+        }
+        // The marker over the truck, projected to the screen.
+        let mark = world.camera.filter(|_| c.alive && self.screen == Screen::InGame).and_then(|cam| {
+            let (w, h) = wr.renderer.size();
+            let aspect = w as f32 / h.max(1) as f32;
+            let vp = glam::camera::rh::proj::directx::perspective(cam.fov_y, aspect, 0.1, 3000.0) * glam::camera::rh::view::look_at_mat4(cam.eye, cam.target, Vec3::Y);
+            let p = Vec3::from(c.pos) + Vec3::Y * 5.0;
+            let clip = vp * p.extend(1.0);
+            if clip.w <= 0.1 {
+                return None;
+            }
+            let ndc = clip.truncate() / clip.w;
+            let x = (ndc.x * 0.5 + 0.5).clamp(0.03, 0.97);
+            let y = (0.5 - ndc.y * 0.5).clamp(0.08, 0.95);
+            Some((x, y, p.distance(cam.eye), escort))
+        });
+        self.ui.set_convoy_mark(mark);
+        // Chevrons on the road ahead, for the escorts.
+        if escort && c.alive && matches!(c.phase, ConvoyPhase::Setup | ConvoyPhase::Rolling) {
+            let start = c.distance;
+            self.route();
+            let Some((_, path, cum)) = self.convoy_route.as_ref() else { return };
+            let mut d = (start / 8.0).floor() * 8.0 + 8.0;
+            let mut seg = 0;
+            while d < start + 140.0 && d < *cum.last().unwrap_or(&0.0) {
+                while seg + 1 < cum.len() - 1 && cum[seg + 1] < d {
+                    seg += 1;
+                }
+                let (a, b) = (path[seg], path[seg + 1]);
+                let t = ((d - cum[seg]) / (cum[seg + 1] - cum[seg]).max(1e-3)).clamp(0.0, 1.0);
+                let p = a.lerp(b, t);
+                let dir = b - a;
+                let ground = self.map.height_at(p.x, p.z);
+                world.route.push((Vec3::new(p.x, ground + 0.06, p.z), (-dir.z).atan2(dir.x), 1.0 - (d - start) / 140.0));
+                d += 8.0;
+            }
+        }
     }
 
     /// Rustbacks / Dust Saints in Team Brawl; everyone else a crew.
@@ -1555,7 +1787,11 @@ impl Game {
             let hp = f32::from(b.health) / f32::from(b.max_health.max(1)) * 100.0;
             let left = b.modules.iter().filter(|m| m.alive).count();
             let core = if b.core_exposed { " \u{b7} CORE OPEN" } else { "" };
-            label.push_str(&format!(" \u{b7} War Rig {hp:.0}% \u{b7} {left}/{} modules{core}", b.modules.len()));
+            let name = match b.kind {
+                arena_core::raid::BossKind::WarRig => "War Rig",
+                arena_core::raid::BossKind::LandShip => "Land-Ship",
+            };
+            label.push_str(&format!(" \u{b7} {name} {hp:.0}% \u{b7} {left}/{} modules{core}", b.modules.len()));
         }
         if label != self.m.raid_label {
             self.ui.set_mode_label(&label);

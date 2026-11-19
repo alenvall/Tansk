@@ -5,7 +5,7 @@
 //! skips the pointer lock (the mouse always turns the camera; Esc pauses),
 //! `&name=X` sets the crew name. Practice test hooks: `&matchtime=45`,
 //! `&raidfast=1`, `&scrap=1` (Powder until a branch offer), `&flare=1`,
-//! `&wave=N`, `&boss=1|weak`; `autoplay=team` for Team Brawl practice.
+//! `&wave=N`, `&boss=1|weak`, `&landship=1`; `autoplay=team|convoy|host-convoy` for Team Brawl / Convoy.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -163,6 +163,7 @@ async fn run() -> Result<()> {
     game.debug.wave = query_flag("wave").and_then(|v| v.parse().ok());
     game.debug.fragile = query_flag("fragile").is_some();
     game.debug.boss = query_flag("boss").map(|v| v == "weak");
+    game.debug.landship = query_flag("landship").is_some();
     if let Some(m) = query_flag("map").and_then(|m| arena_core::MapId::from_key(&m)) {
         game.practice_map = m;
         // Show it on the title's map switch too.
@@ -175,6 +176,8 @@ async fn run() -> Result<()> {
         Some("play") => game.start_online(Join::Play),
         Some("raid") => game.start_practice_raid(),
         Some("team") => game.start_practice_team(),
+        Some("convoy") => game.start_practice_convoy(),
+        Some("host-convoy") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::Convoy, map: game.practice_map }),
         Some("host-raid") => game.start_online(Join::Host { public: false, mode: arena_core::raid::ModeKind::RaiderWaves, map: game.practice_map }),
         _ => {}
     }
@@ -329,6 +332,7 @@ fn install_input(state: &Shared) -> Result<()> {
             match b.get_attribute("data-game").as_deref() {
                 Some("raid") => st.game.start_practice_raid(),
                 Some("team") => st.game.start_practice_team(),
+                Some("convoy") => st.game.start_practice_convoy(),
                 _ => {}
             }
         })?;

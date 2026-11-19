@@ -131,6 +131,18 @@ pub struct EndRow {
     pub tag: Option<String>,
 }
 
+/// The Convoy bar under the clock.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ConvoyHud {
+    /// Your side escorts the truck this round (else you stop it).
+    pub escort: bool,
+    /// Truck health and route progress, 0..1.
+    pub health: f32,
+    pub progress: f32,
+    /// "Rolling", "Contested", "Repairing", "Setting up", "Burning"...
+    pub state: String,
+}
+
 #[derive(Clone, Debug)]
 pub struct OpenGame {
     pub host: String,
@@ -280,6 +292,8 @@ const CHAT_MAX: usize = 7;
 
 #[derive(Default)]
 struct Cache {
+    convoy: Option<(bool, i32, i32, String)>,
+    mark: Option<(i32, i32, i32, bool)>,
     health: Option<i32>,
     armour: Option<i32>,
     boost: Option<i32>,
@@ -677,6 +691,50 @@ impl Ui {
         if self.cache.timer.replace(s) != Some(s) {
             self.dom.text("t-timer", &clock(s));
             self.dom.attr("t-clock", "data-low", if s <= 30 { "1" } else { "0" });
+        }
+    }
+
+    /// Convoy: the truck's health and route bar with your role, or `None` to hide it.
+    pub fn set_convoy(&mut self, hud: Option<&ConvoyHud>) {
+        let key = hud.map(|h| (h.escort, q(h.health), q(h.progress), h.state.clone()));
+        if self.cache.convoy == key && key.is_some() {
+            return;
+        }
+        let was = self.cache.convoy.is_some();
+        self.cache.convoy = key;
+        let Some(h) = hud else {
+            if was {
+                self.dom.hidden("t-convoy", true);
+                self.dom.hidden("t-convoy-mark", true);
+            }
+            return;
+        };
+        self.dom.hidden("t-convoy", false);
+        self.dom.attr("t-convoy", "data-role", if h.escort { "escort" } else { "attack" });
+        self.dom.text("t-convoy-role", if h.escort { "Escort" } else { "Stop the truck" });
+        self.dom.var("t-convoy-hp", "--v", &format!("{:.3}", h.health.clamp(0.0, 1.0)));
+        self.dom.var("t-convoy-route", "--v", &format!("{:.3}", h.progress.clamp(0.0, 1.0)));
+        self.dom.text("t-convoy-state", &h.state);
+        self.dom.attr("t-convoy", "data-state", &h.state.to_ascii_lowercase().replace(' ', "-"));
+    }
+
+    /// The truck's marker: screen position (0..1, top-left origin) and
+    /// distance in metres, or `None` when it's behind you or gone.
+    pub fn set_convoy_mark(&mut self, at: Option<(f32, f32, f32, bool)>) {
+        let key = at.map(|(x, y, d, e)| (q(x), q(y), d as i32, e));
+        if self.cache.mark == key {
+            return;
+        }
+        self.cache.mark = key;
+        match at {
+            None => self.dom.hidden("t-convoy-mark", true),
+            Some((x, y, d, escort)) => {
+                self.dom.hidden("t-convoy-mark", false);
+                self.dom.var("t-convoy-mark", "--x", &format!("{:.2}%", x * 100.0));
+                self.dom.var("t-convoy-mark", "--y", &format!("{:.2}%", y * 100.0));
+                self.dom.attr("t-convoy-mark", "data-role", if escort { "escort" } else { "attack" });
+                self.dom.text("t-convoy-dist", &format!("{} m", d.round() as i32));
+            }
         }
     }
 

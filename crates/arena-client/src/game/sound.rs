@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use arena_audio::{EngineHandle, EngineInput, EngineKind, SoundId};
+pub use arena_audio::{MusicTrack, Stinger};
 use arena_core::events::{HitLocation, PickupKind, Weapon};
 use arena_core::parts::{AltKind, GunKind, PartKind};
 use arena_core::{Event, PlayerId, ScrapKind};
@@ -11,7 +12,18 @@ use glam::Vec3;
 use crate::world::TankView;
 
 #[cfg(target_arch = "wasm32")]
-use arena_audio::Audio;
+use arena_audio::{Audio, Volumes};
+
+/// The bus levels (natively a stand-in for arena-audio's).
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Copy, Debug)]
+struct Volumes {
+    master: f32,
+    sfx: f32,
+    engine: f32,
+    ambience: f32,
+    music: f32,
+}
 
 /// Natively there is no playback yet: the same calls, silent.
 #[cfg(not(target_arch = "wasm32"))]
@@ -30,7 +42,9 @@ impl Audio {
     fn set_master_volume(&mut self, _v: f32) {}
     fn set_sfx_volume(&mut self, _v: f32) {}
     fn set_engine_volume(&mut self, _v: f32) {}
-    fn set_ambience_volume(&mut self, _v: f32) {}
+    fn set_volumes(&mut self, _v: Volumes) {}
+    fn music_set(&mut self, _track: MusicTrack, _intensity: f32) {}
+    fn music_stinger(&mut self, _s: Stinger) {}
     fn ambience_set(&mut self, _wind: f32, _storm: f32) {}
     fn horn(&mut self, _index: usize, _pos: Option<[f32; 3]>, _gain: f32) {}
     fn engine_add(&mut self, _kind: EngineKind, _seed: u64) -> Option<EngineHandle> {
@@ -84,11 +98,18 @@ impl Sound {
         self.audio.unlock();
     }
 
-    pub fn set_volumes(&mut self, master: f32, sfx: f32, ambience: f32) {
-        self.audio.set_master_volume(master);
-        self.audio.set_sfx_volume(sfx);
-        self.audio.set_engine_volume(sfx * 0.8);
-        self.audio.set_ambience_volume(ambience);
+    pub fn set_volumes(&mut self, master: f32, sfx: f32, ambience: f32, music: f32) {
+        self.audio.set_volumes(Volumes { master, sfx, engine: sfx * 0.8, ambience, music });
+    }
+
+    /// The soundtrack, every frame: which track and how hard (0.1 calm .. 1 brawl).
+    pub fn music(&mut self, track: MusicTrack, intensity: f32) {
+        self.audio.music_set(track, intensity.clamp(0.0, 1.0));
+    }
+
+    /// A cue over the music (round start, victory, boss...).
+    pub fn stinger(&mut self, s: Stinger) {
+        self.audio.music_stinger(s);
     }
 
     /// The weather bed, every frame: desert `wind` 0..1 and `storm` 0..1.

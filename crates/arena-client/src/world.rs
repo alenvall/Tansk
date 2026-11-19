@@ -137,6 +137,10 @@ pub struct RenderWorld {
     pub health: Vec<(PlayerId, f32)>,
     /// Part health 0..1 (scorch, sparks before they break off).
     pub part_health: Vec<(PlayerId, PartKind, f32)>,
+    /// Convoy: chevrons on the road ahead of the truck (ground point, yaw, fade 0..1).
+    pub route: Vec<(Vec3, f32, f32)>,
+    /// Boss turrets aimed on their own: (boss, part, yaw, pitch) relative to its hull.
+    pub turrets: Vec<(PlayerId, PartKind, f32, f32)>,
 }
 
 fn gun_part(g: GunKind) -> PartKind {
@@ -238,6 +242,8 @@ impl RenderWorld {
             part_health: snap.tanks.iter().flat_map(|t| t.parts.iter().map(move |p| (t.player, p.kind, p.health as f32 / 255.0))).collect(),
             shields: snap.tanks.iter().filter(|t| t.alive && t.shield > 0).map(|t| (t.player, t.shield as f32 / 255.0)).collect(),
             flaming: snap.tanks.iter().filter(|t| t.alive && t.flaming).map(|t| t.player).collect(),
+            route: Vec::new(),
+            turrets: snap.bosses.iter().flat_map(|b| b.turrets.iter().map(move |t| (b.player, t.part, t.yaw, t.pitch))).collect(),
         }
     }
 }
@@ -317,6 +323,10 @@ pub struct WorldRenderer {
     blobs: Vec<Vec4>,
     /// Crane jib tips the wrecking-ball ropes hang from.
     crane_anchors: Vec<Vec3>,
+    /// Land-Ship stern ramps: when each ship last dropped a buggy (renderer clock).
+    ramps: HashMap<PlayerId, f32>,
+    /// The renderer clock (`RenderWorld::time` of the last frame).
+    clock: f32,
     /// Pumpjacks to animate: (obstacle, frame, phase).
     pumpjacks: Vec<(u16, Mat4, f32)>,
     /// When each air strike's run began (renderer clock).
@@ -345,6 +355,8 @@ impl WorldRenderer {
             blobs: Vec::new(),
             crane_anchors: Vec::new(),
             pumpjacks: Vec::new(),
+            ramps: HashMap::new(),
+            clock: 0.0,
             strike_runs: HashMap::new(),
             tuning: arena_core::Tuning::default(),
             scene_meshes: Vec::new(),
@@ -705,12 +717,17 @@ impl WorldRenderer {
     /// Feeds one simulation event to the effects (and the camera shake the
     /// caller may apply: returns trauma to add for an event near `listener`).
     pub fn event(&mut self, e: &Event, listener: Vec3) -> f32 {
+        if let Event::ShipLaunchedBuggy { ship, .. } = e {
+            self.ramps.insert(*ship, self.clock);
+        }
         self.fx.event(e, listener)
     }
 
     /// Draws a frame of `world` (plus the static map) into `output`.
     pub fn draw(&mut self, output: &wgpu::TextureView, world: &RenderWorld) {
         let camera = world.camera.unwrap_or_else(|| Camera::look(Vec3::new(30.0, 20.0, 30.0), Vec3::ZERO, 45.0));
+        self.clock = world.time;
+        self.ramps.retain(|_, s| world.time - *s < 6.0 && world.time >= *s);
         let dt = world.dt.clamp(0.0, 0.1);
         self.fx.update(dt, world);
 
@@ -793,6 +810,8 @@ impl WorldRenderer {
                 let (hull_mesh, key): (fn(u32) -> MeshBuilder, &str) = match kind {
                     VehicleKind::Buggy => (tank::buggy_mesh, "buggy"),
                     VehicleKind::Technical => (tank::technical_mesh, "technical"),
+                    VehicleKind::LandShip => (crate::ships::land_ship, "landship"),
+                    VehicleKind::FuelTanker => (crate::ships::fuel_tanker, "tanker"),
                     _ => (tank::war_rig_mesh, "warrig"),
                 };
                 let id = lib.get(r, &format!("{key}:{col:x}"), || hull_mesh(col));
@@ -814,7 +833,9 @@ impl WorldRenderer {
                 let n = chassis.wheels_per_side.max(1);
                 let ray_len = chassis.suspension_travel + chassis.wheel_radius;
                 let comps = vehicle.map(|v| v.2.clone()).unwrap_or_default();
-                for i in 0..2 * n {
+                // The Land-Ship rolls on its track modules, not wheels.
+                let wheels = if kind == VehicleKind::LandShip { 0 } else { 2 * n };
+                for i in 0..wheels {
                     let side = if i < n { -1.0 } else { 1.0 };
                     let k = i % n;
                     let x = (n as f32 - 1.0) * 0.5 * chassis.wheel_spacing - k as f32 * chassis.wheel_spacing;
@@ -828,6 +849,26 @@ impl WorldRenderer {
                     instances.push(Instance::new(wheel, hull * local));
                 }
                 for &p in &t.parts {
+                    // The Land-Ship's deck guns turn and lift on their own; its
+                    // stern ramp drops when a buggy rolls out.
+                    if let Some(ring) = arena_core::parts::SHIP_GUNS.iter().find(|g| g.0 == p).map(|g| g.1) {
+                        let rest = if p == PartKind::ShipGunAft { std::f32::consts::PI } else { 0.0 };
+                        let (yaw, pitch) = world.turrets.iter().find(|x| x.0 == t.player && x.1 == p).map_or((rest, 0.0), |x| (x.2, x.3));
+                        let house = lib.get(r, &format!("shipgun:{col:x}"), || crate::ships::ship_gun_house(col));
+                        let tf = hull * Mat4::from_rotation_translation(Quat::from_rotation_y(yaw), ring);
+                        instances.push(Instance::new(house, tf));
+                        let barrel = lib.get(r, "shipgun:barrel", crate::ships::ship_gun_barrel);
+                        instances.push(Instance::new(barrel, tf * Mat4::from_rotation_translation(Quat::from_rotation_z(pitch), crate::ships::SHIP_TRUNNION)));
+                        continue;
+                    }
+                    if p == PartKind::ShipHangar {
+                        let frame_id = lib.get(r, "shiphangar", crate::ships::ship_hangar_frame);
+                        instances.push(Instance::new(frame_id, hull));
+                        let open = self.ramps.get(&t.player).map_or(0.0, |s| ramp_open(world.time - s));
+                        let ramp = lib.get(r, "shipramp", crate::ships::ship_ramp);
+                        instances.push(Instance::new(ramp, hull * Mat4::from_rotation_translation(Quat::from_rotation_z(open * 1.25), crate::ships::SHIP_RAMP_HINGE)));
+                        continue;
+                    }
                     let id = lib.get(r, &format!("part:{p:?}:{col:x}"), || parts::part_mesh(p, col));
                     let frame = match arena_core::part_def(p).frame {
                         arena_core::Frame::Hull => hull,
@@ -933,6 +974,11 @@ impl WorldRenderer {
             let xf = *frame * Mat4::from_rotation_translation(Quat::from_rotation_z(-a), refinery::PUMPJACK_CRANK);
             instances.push(Instance::new(crank, xf));
         }
+        for (p, yaw, fade) in &world.route {
+            let id = lib.get(r, "chevron", crate::ships::chevron);
+            let s = 0.7 + 0.3 * fade;
+            instances.push(Instance::new(id, Mat4::from_scale_rotation_translation(Vec3::splat(s), Quat::from_rotation_y(*yaw), *p)));
+        }
         for (_, p, _) in &world.mines {
             let id = lib.get(r, "mine", props::mine);
             instances.push(Instance::new(id, Mat4::from_translation(*p)));
@@ -978,6 +1024,20 @@ impl WorldRenderer {
         self.fx.set_max_particles(self.renderer.quality_settings().max_particles);
         self.fx.storm = self.renderer.look.storm;
         self.renderer.render(output, &camera, world.time, &instances, &sprites, &ruts, &blobs, &lights, &occluders);
+    }
+}
+
+/// How far a Land-Ship's stern ramp is open (0 shut .. 1 down), `t` seconds
+/// after a buggy launch: it drops fast, holds, then winches back up.
+fn ramp_open(t: f32) -> f32 {
+    if t < 0.0 {
+        0.0
+    } else if t < 0.5 {
+        (t / 0.5).powf(0.7)
+    } else if t < 3.0 {
+        1.0
+    } else {
+        (1.0 - (t - 3.0) / 1.5).max(0.0)
     }
 }
 
@@ -1436,6 +1496,93 @@ mod shots {
         for t in snap.tanks.iter().filter(|t| t.team == 1) {
             assert_eq!(world.tanks.iter().find(|v| v.player == t.player).unwrap().colour, tank::RAIDER);
         }
+    }
+
+    /// THE LAND-SHIP rolling in on a raid, close (bow quarter) and far.
+    #[test]
+    #[ignore]
+    fn shots_landship() {
+        for (name, dist, height, side) in [("landship-close", 30.0f32, 9.0f32, 0.9f32), ("landship-far", 75.0, 26.0, 0.5), ("landship-stern", 26.0, 7.0, 3.6)] {
+            render(name, |wr| {
+                let seed = 7;
+                let (mut sim, _) = arena_core::Sim::practice_raid(seed, 3, 0.7);
+                wr.set_map(&arena_core::Map::the_sink(seed));
+                let ship = sim.debug_spawn_landship().expect("a land-ship");
+                let mut world = RenderWorld::default();
+                let mut launched = false;
+                for tick in 0..(60 * 50) {
+                    sim.step();
+                    let ev = sim.drain_events();
+                    let t = tick as f32 * arena_core::DT;
+                    let hit = ev.iter().any(|e| matches!(e, Event::ShipLaunchedBuggy { .. }));
+                    if tick > 60 * 25 || hit || launched {
+                        world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                        world.time = t;
+                        wr.clock = t;
+                        for e in &ev {
+                            wr.event(e, Vec3::ZERO);
+                        }
+                        wr.fx.update(arena_core::DT, &world);
+                    }
+                    // Stern shot: half a second after a buggy drops.
+                    if hit {
+                        launched = true;
+                    }
+                    if name == "landship-stern" && launched && world.time > 0.0 && wr.ramps.values().any(|s| t - s > 0.6) {
+                        break;
+                    }
+                }
+                let (pos, rot) = world.tanks.iter().find(|v| v.player == ship).map(|v| (v.pos, v.rot)).unwrap_or((Vec3::ZERO, Quat::IDENTITY));
+                let a = side;
+                let dir = rot * Vec3::new(a.cos(), 0.0, a.sin());
+                world.camera = Some(Camera::look(pos + dir * dist + Vec3::Y * height, pos + Vec3::Y * 2.0, 50.0));
+                eprintln!("{name}: ship at {pos:?}, launched {launched}, {} tanks", world.tanks.len());
+                world.dt = 0.0;
+                world
+            });
+        }
+    }
+
+    /// A Convoy round under way: the tanker on the road with its escorts,
+    /// chevrons on the road ahead.
+    #[test]
+    #[ignore]
+    fn shots_convoy() {
+        render("convoy", |wr| {
+            let seed = 7;
+            let (mut sim, _) = arena_core::Sim::practice_convoy_on(arena_core::MapId::Sink, seed, 4, 0.7);
+            wr.set_map(&arena_core::Map::the_sink(seed));
+            let mut world = RenderWorld::default();
+            for tick in 0..(60 * 45) {
+                sim.step();
+                let ev = sim.drain_events();
+                if tick > 60 * 37 {
+                    world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                    world.time = tick as f32 * arena_core::DT;
+                    for e in &ev {
+                        wr.event(e, Vec3::ZERO);
+                    }
+                    wr.fx.update(arena_core::DT, &world);
+                }
+            }
+            let snap = sim.snapshot();
+            let c = snap.convoy.clone().expect("convoy");
+            let truck = world.tanks.iter().find(|t| t.player == c.truck).map(|t| (t.pos, t.rot)).unwrap_or((Vec3::ZERO, Quat::IDENTITY));
+            let path = sim.convoy_path().to_vec();
+            let mut acc = 0.0;
+            for w in path.windows(2) {
+                let d = w[1] - w[0];
+                acc += d.length();
+                if acc > c.distance + 6.0 && acc < c.distance + 120.0 && (acc as i32) % 8 < 4 {
+                    world.route.push((w[0] + Vec3::Y * 0.06, (-d.z).atan2(d.x), 1.0));
+                }
+            }
+            let side = truck.1 * Vec3::new(0.35, 0.0, 1.0);
+            world.camera = Some(Camera::look(truck.0 + side * 18.0 + Vec3::Y * 9.0, truck.0 + truck.1 * Vec3::X * 10.0, 55.0));
+            eprintln!("convoy: phase {:?}, progress {:.2}, truck {:?}, {} route pts", c.phase, c.progress, truck.0, path.len());
+            world.dt = 0.0;
+            world
+        });
     }
 
     /// A practice match under a sandstorm.

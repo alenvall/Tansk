@@ -124,6 +124,9 @@ pub fn muzzle_x(kind: PartKind) -> f32 {
 
 /// A non-gun part, in its own frame (see the module docs).
 pub fn part_mesh(kind: PartKind, team: u32) -> MeshBuilder {
+    if arena_core::parts::SHIP_MODULES.contains(&kind) {
+        return crate::ships::ship_part(kind, team);
+    }
     let mut m = MeshBuilder::new();
     let paint = Paint::team(team, 0.4);
     let rivet = Paint::team(team, 0.2);

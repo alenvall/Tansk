@@ -27,6 +27,7 @@ mod props;
 mod props_refinery;
 mod renderer;
 mod shapes;
+mod ships;
 mod tank;
 mod terrain;
 mod ui;

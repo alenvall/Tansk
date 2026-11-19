@@ -217,3 +217,38 @@ pub fn storm_started() -> Vec<String> {
 pub fn storm_ended() -> Vec<String> {
     vec!["Storm's passing. Get your bearings.".into(), "Sky's back. Count your parts.".into()]
 }
+
+// ── Convoy ───────────────────────────────────────────────────────────────
+
+pub fn convoy_round(round: u8, escort: bool) -> Vec<String> {
+    match (round, escort) {
+        (1, true) => vec!["Tanker's ours. Get it to the depot in one piece.".into()],
+        (1, false) => vec!["Their tanker's heading for the depot. It doesn't get there.".into()],
+        (_, true) => vec!["Sides swap. Our turn to drive. Don't scratch the paint.".into()],
+        (_, false) => vec!["Sides swap. Their truck now. Light it up.".into()],
+    }
+}
+
+pub fn convoy_moving() -> Vec<String> {
+    vec!["Truck's rolling.".into(), "Wheels turning. Stay on it.".into()]
+}
+
+pub fn convoy_stopped(escort: bool) -> Vec<String> {
+    if escort {
+        vec!["Truck's stuck. Get on it.".into(), "Tanker's stalled. Clear the road.".into()]
+    } else {
+        vec!["Truck's stopped. Keep it that way.".into()]
+    }
+}
+
+pub fn convoy_halfway() -> Vec<String> {
+    vec!["Halfway to the depot.".into()]
+}
+
+pub fn convoy_destroyed() -> Vec<String> {
+    vec!["Tanker's burning. Nice work, or not.".into()]
+}
+
+pub fn convoy_delivered() -> Vec<String> {
+    vec!["Delivered.".into(), "Delivered. Somebody sign for it.".into()]
+}

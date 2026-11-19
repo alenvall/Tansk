@@ -837,6 +837,11 @@ impl Renderer {
         self.scope.take().unwrap_or_default()
     }
 
+    /// The output size, pixels.
+    pub fn size(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
+
     pub fn mesh_count(&self) -> usize {
         self.meshes.iter().filter(|m| m.is_some()).count()
     }
