@@ -28,6 +28,7 @@ pub mod bots;
 pub mod convoy;
 pub mod events;
 pub mod garage;
+pub mod hazards;
 pub mod landship;
 pub mod lastcrew;
 pub mod map;

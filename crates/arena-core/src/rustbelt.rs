@@ -563,6 +563,7 @@ impl Map {
             convoy_route: Vec::new(),
             wells: Vec::new(),
             marks: Vec::new(),
+            springs: Vec::new(),
         };
         let mut rng = b.rng;
         for i in 0..map.obstacles.len() {
@@ -612,6 +613,18 @@ impl Map {
                 radius: BRIDGE_HALF + 1.0,
             });
         }
+        // Spectacle: springs that jump the river and the crusher's outer wall,
+        // fuel trailers by the bus depot, the bridge's south road and the tower.
+        for (from, to) in [
+            (Vec2::new(-60.0, river_z(-60.0) - 38.0), Vec2::new(-60.0, river_z(-60.0) + 40.0)),
+            (Vec2::new(140.0, river_z(140.0) + 38.0), Vec2::new(140.0, river_z(140.0) - 40.0)),
+            (Vec2::new(-130.0, -93.0), Vec2::new(-130.0, -114.0)),
+        ] {
+            map.add_spring(from, to);
+        }
+        for (x, z, yaw) in [(225.0, -205.0, std::f32::consts::FRAC_PI_2), (24.0, 118.0, std::f32::consts::FRAC_PI_2), (108.0, 158.0, 0.3)] {
+            map.add_trailer(Vec2::new(x, z), yaw);
+        }
         for i in 0..map.spawns.len() {
             let p = map.spawns[i].pos;
             map.spawns[i].pos.y = map.height_at(p.x, p.z);
@@ -636,7 +649,7 @@ impl Map {
             map.convoy_route.push(at3(&map, Vec2::new(x, river_z(x) + dz)));
             x += 30.0;
         }
-        for (x, z) in [(205.0, river_z(205.0)), (205.0, 0.0)] {
+        for (x, z) in [(205.0, river_z(205.0)), (205.0, 4.0)] {
             map.convoy_route.push(at3(&map, Vec2::new(x, z)));
         }
 

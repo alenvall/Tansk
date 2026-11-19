@@ -549,6 +549,7 @@ impl Map {
             convoy_route: Vec::new(),
             wells: Vec::new(),
             marks: Vec::new(),
+            springs: Vec::new(),
         };
         let mut rng = b.rng;
         for i in 0..map.obstacles.len() {
@@ -563,6 +564,14 @@ impl Map {
                 let top = o.boxes.iter().map(|bx| { let c = o.pos + o.rot * bx.center; map.height_at(c.x, c.z) }).fold(f32::MIN, f32::max);
                 map.obstacles[i].pos.y = top;
             }
+        }
+        // Spectacle: a spring over the outpost's south wall into the
+        // courtyard, one from the outpost's east side toward the beach; fuel
+        // trailers by the gas station, the yard and the beach road.
+        map.add_spring(Vec2::new(8.0, 68.0), Vec2::new(6.0, -4.0));
+        map.add_spring(Vec2::new(98.0, 62.0), Vec2::new(142.0, 76.0));
+        for (x, z, yaw) in [(128.0, -150.0, 0.5), (-66.0, 78.0, 0.4), (128.0, 150.0, 1.2)] {
+            map.add_trailer(Vec2::new(x, z), yaw);
         }
         for i in 0..map.spawns.len() {
             let p = map.spawns[i].pos;

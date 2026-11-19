@@ -264,6 +264,7 @@ impl Sound {
             Event::ShieldHit { pos, .. } => a.play_pitched(SoundId::ArmourThud, p(*pos), 0.6, 1.4),
             // Fuel silos, tanks and drums: the blast and the fireball, chained.
             Event::HazardExploded { pos, .. } => a.play_pitched(SoundId::FuelBlast, p(*pos), 1.2, 1.0),
+            Event::Launched { pos, .. } => a.play_pitched(SoundId::ArmourThud, p(*pos), 1.0, 1.6),
             Event::MineTriggered { pos, .. } => a.play_pitched(SoundId::ExplosionSmall, p(*pos), 1.0, 1.0),
             Event::AirStrikeCalled { target, .. } => {
                 a.play_pitched(SoundId::FlarePop, p(*target), 1.0, 1.0);

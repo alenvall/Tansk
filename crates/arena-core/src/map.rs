@@ -155,6 +155,14 @@ pub enum ObstacleKind {
     /// The tower of stacked cars, the skyline landmark: `boxes[0]` the lower
     /// stack, `boxes[1]` the upper. Tall.
     CarTower,
+    // ---- Spectacle hazards (appended) ------------------------------------------
+    /// A hand-welded spring pad (a scrap leaf spring under a steel plate),
+    /// flush with the ground, facing local +X. Driven over fast along +X it
+    /// flings the tank in an arc to its landing spot (`Map::springs`). Flat.
+    SpringPad,
+    /// A parked fuel trailer (long along X). Shot up it leaks and burns, then
+    /// blows up big; it is back after a while (see `hazards.rs`). Tall.
+    FuelTrailer,
 }
 
 impl ObstacleKind {
@@ -324,6 +332,16 @@ pub struct Map {
     /// packed ground in the compounds, oil stains by the pumps.
     #[serde(default)]
     pub marks: Vec<GroundMark>,
+    /// Spring pads and where each one throws you.
+    #[serde(default)]
+    pub springs: Vec<SpringSite>,
+}
+
+/// A spring pad: which obstacle it is, and where a tank it throws lands.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SpringSite {
+    pub obstacle: usize,
+    pub land: Vec3,
 }
 
 /// What a [`GroundMark`] paints on the ground.
@@ -819,6 +837,16 @@ pub(crate) fn make_obstacle(kind: ObstacleKind, rng: &mut Rng) -> Obstacle {
             rot = Quat::IDENTITY;
             radius = 26.0;
         }
+        ObstacleKind::SpringPad => {
+            cover = Cover::Flat;
+            boxes.push(bx(Vec3::new(0.0, -0.25, 0.0), Vec3::new(2.8, 0.3, 2.4), 0.0));
+            radius = 4.0;
+        }
+        ObstacleKind::FuelTrailer => {
+            cover = Cover::Tall;
+            boxes.push(bx(Vec3::new(0.0, TRAILER_HALF.y, 0.0), TRAILER_HALF, 0.0));
+            radius = TRAILER_HALF.x + 1.5;
+        }
         ObstacleKind::CarTower => {
             cover = Cover::Tall;
             boxes.push(bx(Vec3::new(0.0, 6.0, 0.0), Vec3::new(3.0, 6.0, 3.0), 0.0));
@@ -856,6 +884,36 @@ pub(crate) fn pipe_rack_boxes(boxes: &mut Vec<ObstacleBox>, len: f32) {
         for z in [-5.0f32, 5.0] {
             boxes.push(bx(Vec3::new(x, 2.9, z), Vec3::new(0.3, 3.0, 0.3), 0.0));
         }
+    }
+}
+
+/// A fuel trailer's half extents (long along X): top 3.3 m up.
+pub const TRAILER_HALF: Vec3 = Vec3::new(5.6, 1.65, 1.35);
+
+impl Map {
+    /// Adds a spring pad at `from` that throws a tank to `to` (both on the
+    /// ground; the pad faces `to`). Call once the heights are final.
+    pub fn add_spring(&mut self, from: Vec2, to: Vec2) {
+        let mut rng = Rng::new(self.obstacles.len() as u64);
+        let mut ob = make_obstacle(ObstacleKind::SpringPad, &mut rng);
+        let d = to - from;
+        ob.pos = Vec3::new(from.x, self.height_at(from.x, from.y), from.y);
+        ob.rot = Quat::from_rotation_y((-d.y).atan2(d.x));
+        self.obstacles.push(ob);
+        let land = Vec3::new(to.x, self.height_at(to.x, to.y), to.y);
+        self.springs.push(SpringSite { obstacle: self.obstacles.len() - 1, land });
+    }
+
+    /// Parks a fuel trailer at `p`, long along `yaw`, on the highest ground
+    /// under it. Call once the heights are final.
+    pub fn add_trailer(&mut self, p: Vec2, yaw: f32) {
+        let mut rng = Rng::new(self.obstacles.len() as u64 + 7);
+        let mut ob = make_obstacle(ObstacleKind::FuelTrailer, &mut rng);
+        ob.rot = Quat::from_rotation_y(yaw);
+        let ax = ob.rot * Vec3::X * TRAILER_HALF.x;
+        let y = [Vec3::ZERO, ax, -ax].iter().map(|o| self.height_at(p.x + o.x, p.y + o.z)).fold(f32::MIN, f32::max);
+        ob.pos = Vec3::new(p.x, y, p.y);
+        self.obstacles.push(ob);
     }
 }
 

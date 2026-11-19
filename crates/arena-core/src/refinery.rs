@@ -501,6 +501,7 @@ impl Map {
             convoy_route: Vec::new(),
             wells: Vec::new(),
             marks: Vec::new(),
+            springs: Vec::new(),
         };
         let mut rng = b.rng;
         for i in 0..map.obstacles.len() {
@@ -520,6 +521,14 @@ impl Map {
                 map.height_at(p.x, p.z)
             };
             map.obstacles[i].pos.y = y;
+        }
+        // Spectacle: a spring over the control house's west wall into the
+        // courtyard, one over the train into the loading yard; fuel trailers
+        // on the service road, by the yard's containers and at the farm's gate.
+        map.add_spring(Vec2::new(-62.0, -2.0), Vec2::new(-12.0, -2.0));
+        map.add_spring(Vec2::new(-45.0, 160.0), Vec2::new(-45.0, 238.0));
+        for (x, z, yaw) in [(86.0, -47.5, 0.0), (100.0, 186.0, 0.0), (88.0, 60.0, std::f32::consts::FRAC_PI_2)] {
+            map.add_trailer(Vec2::new(x, z), yaw);
         }
         for i in 0..map.spawns.len() {
             let p = map.spawns[i].pos;

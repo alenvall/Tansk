@@ -21,6 +21,7 @@ use crate::parts;
 use crate::props;
 use crate::props_refinery as refinery;
 use crate::props_rustbelt as rustbelt;
+use crate::props_hazards as spectacle;
 use crate::renderer::{Instance, Light, MeshId, Renderer};
 use crate::shapes::hash;
 use crate::tank;
@@ -622,6 +623,11 @@ impl WorldRenderer {
                             }
                             ObstacleKind::Fence => lib.scene(r, &k("fence"), || lift(rustbelt::fence(h, 5), h.y)),
                             ObstacleKind::LaunchPlate => lib.scene(r, &k("launch"), || lift(props::launch_plate(h), 2.0 * h.y - 0.12)),
+                            ObstacleKind::SpringPad => lib.scene(r, &k("spring"), || lift(spectacle::spring_pad(h), 2.0 * h.y - 0.05)),
+                            ObstacleKind::FuelTrailer => {
+                                let v = oi as u32 % 3;
+                                lib.scene(r, &format!("{}:{v}", k("trailer")), || lift(spectacle::fuel_trailer(h, v), h.y))
+                            }
                             ObstacleKind::Crates => lib.scene(r, &k("crates"), || {
                                 let mut m = MeshBuilder::new();
                                 crate::tank::crate_box(&mut m, Vec3::ZERO, h);
@@ -1412,6 +1418,7 @@ fn recipe(kind: ObstacleKind, ground_boxes: usize, desert: bool) -> (usize, (f32
         ObstacleKind::Stall => (2, (0.3, 1.2), &[(Crates, 3), (Jerry, 2), (TyreStack, 1), (Pallet, 1)]),
         ObstacleKind::Fence => (3, (0.2, 1.4), &[(Tyre, 2), (Sheet, 2), (Pallet, 2), (Drum, 1), (Cinder, 1), (Tuft, 1)]),
         ObstacleKind::CarTower => (10, (0.5, 4.0), &[(Tyre, 4), (TyreStack, 2), (Sheet, 3), (Pebbles, 2)]),
+        ObstacleKind::FuelTrailer => (4, (0.3, 1.8), &[(Drum, 3), (Jerry, 2), (Cinder, 1)]),
         ObstacleKind::Bridge => (6, (0.5, 3.0), &[(Boulder, 3), (Pebbles, 3), (Sheet, 1), (Tyre, 1)]),
         _ => (0, (0.0, 0.0), &[]),
     }
@@ -2174,6 +2181,81 @@ mod shots {
                         wr.event(e, t.0);
                     }
                     wr.fx.update(arena_core::DT, &world);
+                }
+            }
+            world.dt = 0.0;
+            world
+        });
+    }
+
+    /// The spectacle hazards: a tank in the air off the Rust Belt's river
+    /// spring, and a fuel trailer going up on the Refinery's service road
+    /// (`spectacle-launch.png`, `spectacle-blast.png`).
+    #[test]
+    #[ignore]
+    fn shots_spectacle() {
+        render("spectacle-launch", |wr| {
+            let id = arena_core::MapId::RustBelt;
+            let (mut sim, me) = arena_core::Sim::practice_on(id, 7, 0, 0.5);
+            wr.set_map(&arena_core::Map::by_id(id, 7));
+            let site = sim.map.springs[0];
+            let pad = sim.map.obstacles[site.obstacle].clone();
+            let fwd = pad.rot * Vec3::X;
+            let start = pad.pos - fwd * 22.0;
+            sim.teleport(me, start.x, start.z, (-fwd.z).atan2(fwd.x));
+            let mut world = RenderWorld::default();
+            let mut since = None;
+            for tick in 0..(60 * 8) {
+                sim.set_input(me, arena_core::Input { throttle: if since.is_some() { 0.0 } else { 1.0 }, aim_point: site.land, ..Default::default() });
+                sim.step();
+                let ev = sim.drain_events();
+                if since.is_none() && ev.iter().any(|e| matches!(e, Event::Launched { .. })) {
+                    since = Some(tick);
+                }
+                world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                world.time = tick as f32 * arena_core::DT;
+                let side = Vec3::new(-fwd.z, 0.0, fwd.x);
+                let mid = (pad.pos + site.land) * 0.5;
+                let eye = mid + side * 46.0 + Vec3::Y * 9.0;
+                world.camera = Some(Camera::look(eye, mid + Vec3::Y * 6.0, 55.0));
+                for e in &ev {
+                    wr.event(e, eye);
+                }
+                wr.fx.update(arena_core::DT, &world);
+                if since.is_some_and(|t| tick > t + 72) {
+                    break;
+                }
+            }
+            world.dt = 0.0;
+            world
+        });
+        render("spectacle-blast", |wr| {
+            let id = arena_core::MapId::Refinery;
+            let (mut sim, me) = arena_core::Sim::practice_on(id, 7, 3, 0.5);
+            wr.set_map(&arena_core::Map::by_id(id, 7));
+            let t = sim.map.obstacles.iter().find(|o| o.kind == ObstacleKind::FuelTrailer).unwrap().clone();
+            let side = t.rot * Vec3::Z;
+            let at = t.pos + side * 14.0;
+            sim.teleport(me, at.x, at.z, 0.0);
+            sim.blast(t.pos - side * 0.2 + Vec3::Y * 2.0, 120.0, 3.0, 0.0);
+            let eye = t.pos + side * 70.0 + t.rot * Vec3::X * 40.0 + Vec3::Y * 22.0;
+            let mut world = RenderWorld::default();
+            let mut since = None;
+            for tick in 0..(60 * 8) {
+                sim.step();
+                let ev = sim.drain_events();
+                if since.is_none() && ev.iter().any(|e| matches!(e, Event::HazardExploded { radius, .. } if *radius > 20.0)) {
+                    since = Some(tick);
+                }
+                world = RenderWorld::from_snapshot(&sim.snapshot(), &paint_for);
+                world.time = tick as f32 * arena_core::DT;
+                world.camera = Some(Camera::look(eye, t.pos + Vec3::Y * 4.0, 60.0));
+                for e in &ev {
+                    wr.event(e, eye);
+                }
+                wr.fx.update(arena_core::DT, &world);
+                if since.is_some_and(|s| tick > s + 7) {
+                    break;
                 }
             }
             world.dt = 0.0;

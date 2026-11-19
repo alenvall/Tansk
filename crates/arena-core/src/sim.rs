@@ -157,6 +157,8 @@ pub struct Sim {
     pub obstacle_hp: Vec<Option<f32>>,
     /// Removed obstacles (box 255 = all of it) and loose container boxes.
     pub removed: Vec<RemovedSnap>,
+    /// Spring pads and fuel trailers (`hazards.rs`).
+    pub spectacle: crate::hazards::Spectacle,
     // --- Wave 3.
     pub mode: crate::raid::ModeKind,
     pub raid: Option<crate::raid::RaidState>,
@@ -226,6 +228,7 @@ impl Sim {
             hazards: Vec::new(),
             obstacle_hp: Vec::new(),
             removed: Vec::new(),
+            spectacle: Default::default(),
             mode,
             raid: None,
             pending_team: None,
@@ -255,6 +258,7 @@ impl Sim {
             }
         }
         sim.init_world();
+        sim.init_spectacle();
         if mode == crate::raid::ModeKind::RaiderWaves {
             sim.init_raid();
         } else {
@@ -328,7 +332,7 @@ impl Sim {
     /// A bot crew; `difficulty` 0 (sloppy) ..= 1 (sharp).
     pub fn add_bot(&mut self, name: &str, difficulty: f32) -> PlayerId {
         let seed = self.rng.next_u64();
-        let brain = Brain::new(seed, difficulty);
+        let brain = Brain::named(seed, difficulty, name);
         let loadout = crate::garage::Loadout {
             chassis: brain.style().chassis(),
             paint: (seed % 8) as u8,
@@ -466,6 +470,7 @@ impl Sim {
         }
         self.projectiles.clear();
         self.reset_world();
+        self.reset_spectacle();
         if self.raid.is_none() {
             self.schedule_storm();
         }
@@ -517,6 +522,7 @@ impl Sim {
         self.step_props(dt);
         self.boss_weapons(dt);
         self.step_world(dt);
+        self.step_spectacle(dt);
         self.safety_net();
         self.step_raid(dt);
         self.step_convoy(dt);
